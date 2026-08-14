@@ -19,6 +19,7 @@ type Filter = "all" | "top" | "new";
 export default function ParticipantsPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
+  const [giftCounts, setGiftCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [votedIds, setVotedIds] = useState<string[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -41,11 +42,24 @@ export default function ParticipantsPage() {
         .from("votes")
         .select("participant_id");
 
-      const counts: Record<string, number> = {};
+      const vCounts: Record<string, number> = {};
       (votesData ?? []).forEach((v: { participant_id: string }) => {
-        counts[v.participant_id] = (counts[v.participant_id] ?? 0) + 1;
+        vCounts[v.participant_id] = (vCounts[v.participant_id] ?? 0) + 1;
       });
-      setVoteCounts(counts);
+      setVoteCounts(vCounts);
+
+      const { data: giftsData } = await supabase
+        .from("gifts")
+        .select("participant_id, quantity");
+
+      const gCounts: Record<string, number> = {};
+      (giftsData ?? []).forEach(
+        (g: { participant_id: string; quantity: number }) => {
+          gCounts[g.participant_id] =
+            (gCounts[g.participant_id] ?? 0) + (g.quantity ?? 1);
+        }
+      );
+      setGiftCounts(gCounts);
     }
 
     setLoading(false);
@@ -175,7 +189,12 @@ export default function ParticipantsPage() {
               <h2 className="text-sm text-offwhite font-semibold truncate">
                 {p.display_name}
               </h2>
-              <p className="text-rose text-xs">♥ {voteCounts[p.id] ?? 0}</p>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-rose">♥ {voteCounts[p.id] ?? 0}</span>
+                <span className="text-gold">
+                  🎁 {giftCounts[p.id] ?? 0}
+                </span>
+              </div>
               <button
                 onClick={() => handleVote(p.id)}
                 disabled={votedIds.includes(p.id) || busyId === p.id}
