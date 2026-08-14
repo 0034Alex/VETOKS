@@ -3,47 +3,27 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { getDeviceId, getTelegramId } from "@/lib/currentUser";
 
 type Region = { id: string; name: string; slug: string };
-
-declare global {
-  interface Window {
-    Telegram?: {
-      WebApp?: {
-        initDataUnsafe?: {
-          user?: {
-            id: number;
-            first_name?: string;
-            last_name?: string;
-            username?: string;
-          };
-        };
-        ready?: () => void;
-        expand?: () => void;
-      };
-    };
-  }
-}
 
 export default function RegisterPage() {
   const [regions, setRegions] = useState<Region[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>("");
-  const [telegramUser, setTelegramUser] = useState<{
-    id: number;
-    first_name?: string;
-    username?: string;
-  } | null>(null);
+  const [firstName, setFirstName] = useState<string>("");
   const [status, setStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isTelegram, setIsTelegram] = useState(false);
 
   useEffect(() => {
-    const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+    const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
     if (tgUser) {
-      setTelegramUser(tgUser);
-      window.Telegram?.WebApp?.ready?.();
-      window.Telegram?.WebApp?.expand?.();
+      setIsTelegram(true);
+      setFirstName(tgUser.first_name ?? "");
+      (window as any).Telegram?.WebApp?.ready?.();
+      (window as any).Telegram?.WebApp?.expand?.();
     }
 
     supabase
@@ -62,10 +42,13 @@ export default function RegisterPage() {
     setStatus("loading");
     setErrorMessage("");
 
+    const tgId = getTelegramId();
+    const deviceId = getDeviceId();
+
     const { error } = await supabase.from("users").insert({
-      telegram_id: telegramUser?.id ?? null,
-      first_name: telegramUser?.first_name ?? "Гость",
-      username: telegramUser?.username ?? null,
+      telegram_id: tgId,
+      device_id: deviceId,
+      first_name: firstName || "Гость",
       region_id: selectedRegion,
       role: "viewer",
     });
@@ -92,10 +75,10 @@ export default function RegisterPage() {
           Регистрация прошла успешно. Ваш регион сохранён.
         </p>
         <Link
-          href="/apply"
+          href="/"
           className="bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full hover:bg-goldSoft transition-colors"
         >
-          Подать анкету на участие
+          На главную
         </Link>
       </main>
     );
@@ -105,8 +88,8 @@ export default function RegisterPage() {
     <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
       <h1 className="text-3xl font-semibold text-gold mb-2">Регистрация</h1>
       <p className="text-muted mb-8">
-        {telegramUser
-          ? `Привет, ${telegramUser.first_name}!`
+        {isTelegram
+          ? `Привет, ${firstName}!`
           : "Открыто в браузере (не в Telegram) — тестовый режим."}
       </p>
 
@@ -114,6 +97,18 @@ export default function RegisterPage() {
         onSubmit={handleSubmit}
         className="w-full max-w-sm flex flex-col gap-4"
       >
+        {!isTelegram && (
+          <div className="flex flex-col gap-1">
+            <label className="text-left text-offwhite text-sm">Имя</label>
+            <input
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3"
+              placeholder="Как вас называть"
+            />
+          </div>
+        )}
+
         <label className="text-left text-offwhite text-sm">
           Выберите ваш регион
         </label>
