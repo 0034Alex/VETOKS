@@ -4,13 +4,17 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
+import Logo from "@/components/Logo";
 
 type Participant = {
   id: string;
   display_name: string;
   bio: string | null;
   photo_url: string | null;
+  created_at: string;
 };
+
+type Filter = "all" | "top" | "new";
 
 export default function ParticipantsPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -18,13 +22,15 @@ export default function ParticipantsPage() {
   const [loading, setLoading] = useState(true);
   const [votedIds, setVotedIds] = useState<string[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
 
   async function loadData() {
     setLoading(true);
 
     const { data: participantsData } = await supabase
       .from("participants")
-      .select("id, display_name, bio, photo_url")
+      .select("id, display_name, bio, photo_url, created_at")
       .eq("is_eliminated", false);
 
     const list = (participantsData as Participant[]) ?? [];
@@ -76,66 +82,122 @@ export default function ParticipantsPage() {
     setBusyId(null);
   }
 
+  const filtered = participants
+    .filter((p) =>
+      p.display_name.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (filter === "new") {
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      }
+      return (voteCounts[b.id] ?? 0) - (voteCounts[a.id] ?? 0);
+    });
+
+  const filters: { key: Filter; label: string }[] = [
+    { key: "all", label: "Все" },
+    { key: "top", label: "Топ" },
+    { key: "new", label: "Новые" },
+  ];
+
   return (
-    <main className="min-h-screen px-6 py-12 pb-24">
-      <h1 className="text-3xl font-semibold text-gold mb-2 text-center">
-        Участницы
-      </h1>
-      <p className="text-muted text-center mb-10">
-        Голосуйте за свою фаворитку
-      </p>
+    <main className="min-h-screen pb-24">
+      <div className="flex items-center justify-between px-6 py-4">
+        <Logo size={28} />
+      </div>
+
+      <div className="px-6 mb-4">
+        <h1 className="text-2xl font-semibold text-offwhite mb-1">
+          Участницы
+        </h1>
+        <p className="text-muted text-sm">MISS · {participants.length} анкет</p>
+      </div>
+
+      <div className="px-6 mb-4">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Поиск участницы"
+          className="w-full bg-bgSurface text-offwhite border border-muted rounded-full px-5 py-3 text-sm"
+        />
+      </div>
+
+      <div className="px-6 mb-6 flex gap-2 overflow-x-auto">
+        {filters.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
+              filter === f.key
+                ? "bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
+                : "bg-bgSurface text-muted border border-muted"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
 
       {loading && <p className="text-muted text-center">Загрузка...</p>}
-
-      {!loading && participants.length === 0 && (
-        <p className="text-muted text-center">
-          Пока нет одобренных участниц.
-        </p>
+      {!loading && filtered.length === 0 && (
+        <p className="text-muted text-center px-6">Ничего не найдено.</p>
       )}
 
-      <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-        {participants
-          .sort((a, b) => (voteCounts[b.id] ?? 0) - (voteCounts[a.id] ?? 0))
-          .map((p, index) => (
-            <div
-              key={p.id}
-              className="bg-bgSurface border border-muted rounded-xl overflow-hidden flex flex-col"
-            >
-              <div className="aspect-[3/4] bg-black/40 flex items-center justify-center">
-                {p.photo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={p.photo_url}
-                    alt={p.display_name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-muted text-sm">Нет фото</span>
-                )}
-              </div>
-              <div className="p-4 flex flex-col gap-2 flex-1">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg text-offwhite font-semibold">
-                    {index === 0 && voteCounts[p.id] > 0 ? "👑 " : ""}
-                    {p.display_name}
-                  </h2>
-                  <span className="text-gold text-sm font-semibold">
-                    {voteCounts[p.id] ?? 0} голосов
-                  </span>
-                </div>
-                {p.bio && (
-                  <p className="text-muted text-sm flex-1">{p.bio}</p>
-                )}
-                <button
-                  onClick={() => handleVote(p.id)}
-                  disabled={votedIds.includes(p.id) || busyId === p.id}
-                  className="bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40 mt-2"
-                >
-                  {votedIds.includes(p.id) ? "Вы проголосовали" : "Голосовать"}
-                </button>
-              </div>
+      <div className="px-6 grid grid-cols-2 gap-3">
+        {filtered.map((p, index) => (
+          <div
+            key={p.id}
+            className="bg-bgSurface border border-muted rounded-xl overflow-hidden flex flex-col"
+          >
+            <div className="aspect-[3/4] bg-black/40 flex items-center justify-center relative">
+              <span
+                className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
+                  index === 0
+                    ? "bg-gold text-bgPrimary"
+                    : "bg-gradient-to-br from-[#7C3AED] to-[#EC4899] text-white"
+                }`}
+              >
+                {index === 0 ? "👑" : index + 1}
+              </span>
+              {p.photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={p.photo_url}
+                  alt={p.display_name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-muted text-xs">Нет фото</span>
+              )}
             </div>
-          ))}
+            <div className="p-3 flex flex-col gap-1">
+              <h2 className="text-sm text-offwhite font-semibold truncate">
+                {p.display_name}
+              </h2>
+              <p className="text-rose text-xs">♥ {voteCounts[p.id] ?? 0}</p>
+              <button
+                onClick={() => handleVote(p.id)}
+                disabled={votedIds.includes(p.id) || busyId === p.id}
+                className="mt-1 bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold py-2 rounded-full text-xs disabled:opacity-40"
+              >
+                {votedIds.includes(p.id) ? "Голос отдан" : "Поддержать"}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mx-6 mt-8 bg-bgSurface border border-gold/40 rounded-xl p-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-offwhite text-sm font-semibold">
+            Хочешь попасть в топ?
+          </p>
+          <p className="text-muted text-xs">
+            Получай больше голосов от своих поклонников
+          </p>
+        </div>
+        <span className="text-gold text-xl">👑</span>
       </div>
 
       <BottomNav />
