@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { getCurrentUser } from "@/lib/currentUser";
+import BottomNav from "@/components/BottomNav";
 
 type Season = { id: string; title: string; status: string };
 
@@ -35,45 +37,24 @@ export default function ApplyPage() {
     setStatus("loading");
     setErrorMessage("");
 
-    // Находим telegram_id текущего пользователя, если он открыт в Telegram —
-    // иначе используем тестового гостевого пользователя.
-    const tgId = (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.id;
-
-    let userId: string | null = null;
-
-    if (tgId) {
-      const { data: existingUser } = await supabase
-        .from("users")
-        .select("id")
-        .eq("telegram_id", tgId)
-        .maybeSingle();
-      userId = existingUser?.id ?? null;
-    }
-
-    if (!userId) {
-      // Тестовый режим: берём самого свежего зарегистрированного пользователя.
-      const { data: lastUser } = await supabase
-        .from("users")
-        .select("id")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      userId = lastUser?.id ?? null;
-    }
-
-    if (!userId) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       setStatus("error");
-      setErrorMessage(
-        "Сначала пройдите регистрацию на главной странице."
-      );
+      setErrorMessage("Сначала пройдите регистрацию на главной странице.");
       return;
     }
 
     const { error } = await supabase.from("applications").insert({
-      user_id: userId,
+      user_id: currentUser.id,
       season_id: selectedSeason,
       status: "submitted",
-      form_data: { display_name: displayName, age, city, bio, photo_url: photoUrl },
+      form_data: {
+        display_name: displayName,
+        age,
+        city,
+        bio,
+        photo_url: photoUrl,
+      },
     });
 
     if (error) {
@@ -86,19 +67,20 @@ export default function ApplyPage() {
 
   if (status === "success") {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center pb-24">
         <h1 className="text-3xl font-semibold text-gold mb-4">
           Анкета отправлена!
         </h1>
         <p className="text-muted">
           Модератор рассмотрит вашу заявку и сообщит о решении.
         </p>
+        <BottomNav />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center px-6 py-16">
+    <main className="min-h-screen flex flex-col items-center px-6 py-16 pb-24">
       <h1 className="text-3xl font-semibold text-gold mb-8 text-center">
         Анкета участницы
       </h1>
@@ -170,9 +152,7 @@ export default function ApplyPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-left text-offwhite text-sm">
-            О себе
-          </label>
+          <label className="text-left text-offwhite text-sm">О себе</label>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
@@ -193,6 +173,8 @@ export default function ApplyPage() {
           <p className="text-danger text-sm">{errorMessage}</p>
         )}
       </form>
+
+      <BottomNav />
     </main>
   );
 }
