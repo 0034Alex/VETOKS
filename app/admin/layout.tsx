@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "VETOKS CRM",
+  manifest: "/manifest-admin.json",
   icons: {
     icon: "/admin-icon-192.png",
     apple: "/admin-apple-touch-icon.png",
