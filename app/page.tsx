@@ -97,138 +97,135 @@ export default function Home() {
   const leaderPhoto = participants[0]?.photo_url;
 
   return (
-    <main className="min-h-screen pb-24">
-      <div className="flex items-center justify-between px-6 py-4">
-        <Logo size={32} />
-      </div>
+    <main className="min-h-screen pb-28">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-center justify-between px-6 py-4">
+          <Logo size={32} />
+        </div>
 
-      {/* Баннер сезона */}
-      <div
-        className="mx-6 mb-6 rounded-2xl overflow-hidden relative min-h-[220px] flex flex-col justify-end p-5"
-        style={{
-          backgroundImage: leaderPhoto
-            ? `linear-gradient(to top, rgba(11,11,13,0.95), rgba(11,11,13,0.3)), url(${leaderPhoto})`
-            : "linear-gradient(135deg, #2a1f3d, #0B0B0D)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
-        <p className="text-goldSoft text-xs tracking-widest mb-1">
-          VETOKS MISS
-        </p>
-        <h1 className="text-2xl font-semibold text-offwhite mb-1">
-          {season?.title ?? user?.regions?.name ?? "Сезон скоро стартует"}
-        </h1>
-        <p className="text-muted text-sm mb-3">Красота. Харизма. Энергия.</p>
-        <span className="inline-block w-fit bg-bgSurface/80 text-gold text-xs px-3 py-1 rounded-full border border-gold/40">
-          {season ? STATUS_LABELS[season.status] ?? season.status : "Скоро старт"}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 px-6 mb-8">
-        <div className="bg-bgSurface border border-muted rounded-xl p-4">
-          <p className="text-gold text-xl font-semibold">
-            👑 {participantCount}
+        <div
+          className="mx-6 mb-6 rounded-2xl overflow-hidden relative min-h-[220px] md:min-h-[300px] flex flex-col justify-end p-5 md:p-8"
+          style={{
+            backgroundImage: leaderPhoto
+              ? `linear-gradient(to top, rgba(11,11,13,0.95), rgba(11,11,13,0.3)), url(${leaderPhoto})`
+              : "linear-gradient(135deg, #2a1f3d, #0B0B0D)",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        >
+          <p className="text-goldSoft text-xs tracking-widest mb-1">
+            VETOKS MISS
           </p>
-          <p className="text-muted text-xs">Участниц сезона</p>
+          <h1 className="text-2xl md:text-4xl font-semibold text-offwhite mb-1">
+            {season?.title ?? user?.regions?.name ?? "Сезон скоро стартует"}
+          </h1>
+          <p className="text-muted text-sm mb-3">Красота. Харизма. Энергия.</p>
+          <span className="inline-block w-fit bg-bgSurface/80 text-gold text-xs px-3 py-1 rounded-full border border-gold/40">
+            {season ? STATUS_LABELS[season.status] ?? season.status : "Скоро старт"}
+          </span>
         </div>
-        <div className="bg-bgSurface border border-muted rounded-xl p-4">
-          <p className="text-gold text-xl font-semibold">
-            👥 {activeUsersCount}
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-6 mb-8">
+          <div className="bg-bgSurface border border-muted rounded-xl p-4">
+            <p className="text-gold text-xl font-semibold">
+              👑 {participantCount}
+            </p>
+            <p className="text-muted text-xs">Участниц сезона</p>
+          </div>
+          <div className="bg-bgSurface border border-muted rounded-xl p-4">
+            <p className="text-gold text-xl font-semibold">
+              👥 {activeUsersCount}
+            </p>
+            <p className="text-muted text-xs">Пользователей</p>
+          </div>
+          <div className="bg-bgSurface border border-muted rounded-xl p-4">
+            <p className="text-gold text-xl font-semibold">🎁 0</p>
+            <p className="text-muted text-xs">Подарков сегодня</p>
+          </div>
+          <div className="bg-bgSurface border border-muted rounded-xl p-4">
+            <p className="text-gold text-xl font-semibold">🔥 {contentCount}</p>
+            <p className="text-muted text-xs">Роликов в соцсетях</p>
+          </div>
+        </div>
+
+        <div className="px-6 mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-offwhite">
+            🔥 Участницы дня
+          </h2>
+          <Link href="/participants" className="text-gold text-sm">
+            Смотреть всех →
+          </Link>
+        </div>
+
+        {participants.length === 0 ? (
+          <p className="text-muted text-center px-6 mb-8">
+            Пока нет одобренных участниц.
           </p>
-          <p className="text-muted text-xs">Пользователей</p>
-        </div>
-        <div className="bg-bgSurface border border-muted rounded-xl p-4">
-          <p className="text-gold text-xl font-semibold">🎁 0</p>
-          <p className="text-muted text-xs">Подарков сегодня</p>
-        </div>
-        <div className="bg-bgSurface border border-muted rounded-xl p-4">
-          <p className="text-gold text-xl font-semibold">🔥 {contentCount}</p>
-          <p className="text-muted text-xs">Роликов в соцсетях</p>
-        </div>
-      </div>
-
-      <div className="px-6 mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-offwhite">
-          🔥 Участницы дня
-        </h2>
-        <Link href="/participants" className="text-gold text-sm">
-          Смотреть всех →
-        </Link>
-      </div>
-
-      {participants.length === 0 ? (
-        <p className="text-muted text-center px-6 mb-8">
-          Пока нет одобренных участниц.
-        </p>
-      ) : (
-        <div className="flex gap-3 px-6 overflow-x-auto mb-8 pb-2">
-          {participants.map((p, i) => (
-            <div
-              key={p.id}
-              className={`min-w-[140px] bg-bgSurface border rounded-xl overflow-hidden flex-shrink-0 ${
-                i === 0 ? "border-gold" : "border-muted"
-              }`}
-            >
-              <div className="aspect-[3/4] bg-black/40 flex items-center justify-center relative">
-                <span
-                  className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
-                    i === 0
-                      ? "bg-gold text-bgPrimary"
-                      : "bg-bgPrimary/80 text-offwhite border border-muted"
-                  }`}
-                >
-                  {i === 0 ? "👑" : i + 1}
-                </span>
-                {p.photo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={p.photo_url}
-                    alt={p.display_name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-muted text-xs">Нет фото</span>
-                )}
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 px-6 mb-8">
+            {participants.map((p, i) => (
+              <div
+                key={p.id}
+                className={`bg-bgSurface border rounded-xl overflow-hidden ${
+                  i === 0 ? "border-gold" : "border-muted"
+                }`}
+              >
+                <div className="aspect-[3/4] bg-black/40 flex items-center justify-center relative">
+                  {i === 0 && (
+                    <span className="absolute top-2 left-2 text-gold text-lg">
+                      👑
+                    </span>
+                  )}
+                  {p.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.photo_url}
+                      alt={p.display_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-muted text-xs">Нет фото</span>
+                  )}
+                </div>
+                <div className="p-3">
+                  <p className="text-offwhite text-sm font-semibold">
+                    {p.display_name}
+                  </p>
+                  <p className="text-gold text-xs">♥ {p.votes}</p>
+                </div>
               </div>
-              <div className="p-3">
-                <p className="text-offwhite text-sm font-semibold">
-                  {p.display_name}
-                </p>
-                <p className="text-gold text-xs">♥ {p.votes}</p>
-              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="px-6 grid md:grid-cols-3 gap-3">
+          <Link
+            href="/media"
+            className="bg-bgSurface border border-muted rounded-xl p-4 flex items-center justify-between"
+          >
+            <div>
+              <p className="text-offwhite font-semibold">Смотри контент участниц</p>
+              <p className="text-muted text-xs">Лучшие видео и закулисье сезона</p>
             </div>
-          ))}
+            <span className="text-gold">→</span>
+          </Link>
+          <Link
+            href="/shop"
+            className="bg-bgSurface border border-muted rounded-xl p-4 flex items-center justify-between"
+          >
+            <div>
+              <p className="text-offwhite font-semibold">Подарки участницам</p>
+              <p className="text-muted text-xs">Поддержи любимую участницу</p>
+            </div>
+            <span className="text-gold">→</span>
+          </Link>
+          <Link
+            href="/apply"
+            className="border border-gold text-gold font-semibold px-8 py-3 rounded-full text-center hover:bg-bgSurface transition-colors flex items-center justify-center"
+          >
+            Подать анкету на участие
+          </Link>
         </div>
-      )}
-
-      <div className="px-6 flex flex-col gap-3">
-        <Link
-          href="/media"
-          className="bg-bgSurface border border-muted rounded-xl p-4 flex items-center justify-between"
-        >
-          <div>
-            <p className="text-offwhite font-semibold">Смотри контент участниц</p>
-            <p className="text-muted text-xs">Лучшие видео и закулисье сезона</p>
-          </div>
-          <span className="text-gold">→</span>
-        </Link>
-        <Link
-          href="/shop"
-          className="bg-bgSurface border border-muted rounded-xl p-4 flex items-center justify-between"
-        >
-          <div>
-            <p className="text-offwhite font-semibold">Подарки участницам</p>
-            <p className="text-muted text-xs">Поддержи любимую участницу</p>
-          </div>
-          <span className="text-gold">→</span>
-        </Link>
-        <Link
-          href="/apply"
-          className="border border-gold text-gold font-semibold px-8 py-3 rounded-full text-center hover:bg-bgSurface transition-colors"
-        >
-          Подать анкету на участие
-        </Link>
       </div>
 
       <BottomNav />

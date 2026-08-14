@@ -22,6 +22,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -31,10 +32,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru">
-      <body className="bg-black">
-        <div className="max-w-[480px] mx-auto min-h-screen bg-bgPrimary relative shadow-2xl">
-          {children}
-        </div>
+      <body className="bg-bgPrimary">
+        {children}
         <ServiceWorkerRegister />
       </body>
     </html>
