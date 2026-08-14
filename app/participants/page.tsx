@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { getCurrentUser } from "@/lib/currentUser";
+import BottomNav from "@/components/BottomNav";
 
 type Participant = {
   id: string;
@@ -53,35 +55,14 @@ export default function ParticipantsPage() {
     if (votedIds.includes(participantId)) return;
     setBusyId(participantId);
 
-    // Находим текущего пользователя (Telegram или тестовый — последний зарегистрированный).
-    const tgId = (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    let voterId: string | null = null;
-
-    if (tgId) {
-      const { data } = await supabase
-        .from("users")
-        .select("id")
-        .eq("telegram_id", tgId)
-        .maybeSingle();
-      voterId = data?.id ?? null;
-    }
-    if (!voterId) {
-      const { data } = await supabase
-        .from("users")
-        .select("id")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      voterId = data?.id ?? null;
-    }
-
-    if (!voterId) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       setBusyId(null);
       return;
     }
 
     await supabase.from("votes").insert({
-      voter_id: voterId,
+      voter_id: currentUser.id,
       participant_id: participantId,
       weight: 1,
       is_paid: false,
@@ -96,7 +77,7 @@ export default function ParticipantsPage() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-12">
+    <main className="min-h-screen px-6 py-12 pb-24">
       <h1 className="text-3xl font-semibold text-gold mb-2 text-center">
         Участницы
       </h1>
@@ -114,9 +95,7 @@ export default function ParticipantsPage() {
 
       <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
         {participants
-          .sort(
-            (a, b) => (voteCounts[b.id] ?? 0) - (voteCounts[a.id] ?? 0)
-          )
+          .sort((a, b) => (voteCounts[b.id] ?? 0) - (voteCounts[a.id] ?? 0))
           .map((p, index) => (
             <div
               key={p.id}
@@ -158,6 +137,8 @@ export default function ParticipantsPage() {
             </div>
           ))}
       </div>
+
+      <BottomNav />
     </main>
   );
 }
