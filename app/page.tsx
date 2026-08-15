@@ -42,7 +42,7 @@ export default function Home() {
     (async () => {
       const u = await getCurrentUser();
       if (!u) {
-        router.push("/register");
+        router.push("/login");
         return;
       }
       setUser(u);
