@@ -30,7 +30,7 @@ export default function TasksPage() {
     (async () => {
       const u = await getCurrentUser();
       if (!u) {
-        router.push("/login");
+        router.push("/login?redirect=/tasks");
         return;
       }
 
