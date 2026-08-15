@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
+import Logo from "@/components/Logo";
 
 type Row = { id: string; display_name: string; votes: number };
 
@@ -37,7 +38,11 @@ export default function RatingPage() {
   }, []);
 
   return (
-    <main className="min-h-screen px-6 py-12 pb-24">
+    <main className="min-h-screen pb-28">
+      <div className="flex items-center justify-between px-6 py-4">
+        <Logo size={28} />
+      </div>
+
       <h1 className="text-3xl font-semibold text-gold mb-8 text-center">
         Рейтинг
       </h1>
@@ -47,7 +52,7 @@ export default function RatingPage() {
         <p className="text-muted text-center">Пока нет данных.</p>
       )}
 
-      <div className="max-w-md mx-auto flex flex-col gap-2">
+      <div className="max-w-md mx-auto flex flex-col gap-2 px-6">
         {rows.map((r, i) => (
           <div
             key={r.id}
