@@ -34,7 +34,7 @@ export default function AdminPage() {
     (async () => {
       const u = await getCurrentUser();
       if (!u) {
-        router.push("/login");
+        router.push("/login?redirect=/admin");
         return;
       }
       setMe(u);
