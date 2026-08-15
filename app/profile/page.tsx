@@ -23,7 +23,7 @@ export default function ProfilePage() {
     (async () => {
       const u = await getCurrentUser();
       if (!u) {
-        router.push("/login");
+        router.push("/login?redirect=/profile");
         return;
       }
       setUser(u);
