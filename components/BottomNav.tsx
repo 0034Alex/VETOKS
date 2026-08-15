@@ -2,14 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  IconHome,
+  IconUsers,
+  IconPlay,
+  IconStar,
+  IconChart,
+  IconProfile,
+} from "./Icons";
 
 const items = [
-  { href: "/", label: "Главная", icon: "👑" },
-  { href: "/participants", label: "Участницы", icon: "👤" },
-  { href: "/media", label: "Медиа", icon: "▶" },
-  { href: "/tasks", label: "Задания", icon: "⭐" },
-  { href: "/rating", label: "Рейтинг", icon: "📊" },
-  { href: "/profile", label: "Профиль", icon: "👤" },
+  { href: "/", label: "Главная", Icon: IconHome },
+  { href: "/participants", label: "Участницы", Icon: IconUsers },
+  { href: "/media", label: "Медиа", Icon: IconPlay },
+  { href: "/tasks", label: "Задания", Icon: IconStar },
+  { href: "/rating", label: "Рейтинг", Icon: IconChart },
+  { href: "/profile", label: "Профиль", Icon: IconProfile },
 ];
 
 export default function BottomNav() {
@@ -31,7 +39,7 @@ export default function BottomNav() {
                 active ? "text-gold" : "text-muted"
               }`}
             >
-              <span className="text-base">{item.icon}</span>
+              <item.Icon active={active} />
               {item.label}
             </Link>
           );
