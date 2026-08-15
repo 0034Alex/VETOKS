@@ -25,17 +25,24 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 bg-bgSurface border-t border-muted flex justify-center z-50"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+      className="bg-bgSurface border-t border-muted flex justify-center"
     >
-      <div className="w-full max-w-3xl flex justify-around items-center py-2 px-1">
+      <div className="w-full max-w-3xl flex items-stretch">
         {items.map((item) => {
           const active = pathname === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center gap-0.5 text-[10px] leading-tight font-medium px-1 min-w-0 flex-1 ${
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 ${
                 active ? "text-gold" : "text-muted"
               }`}
             >
@@ -48,7 +55,10 @@ export default function BottomNav() {
               >
                 <item.Icon active={active} />
               </span>
-              <span className="truncate w-full text-center">
+              <span
+                className="font-medium text-center leading-none"
+                style={{ fontSize: "9px" }}
+              >
                 {item.label}
               </span>
             </Link>
