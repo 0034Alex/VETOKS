@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { getCurrentUser, isStaff, CurrentUser } from "@/lib/currentUser";
 
 type Tab =
   | "dashboard"
@@ -21,34 +23,107 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 export default function AdminPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("dashboard");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [allowed, setAllowed] = useState(false);
+  const [me, setMe] = useState<CurrentUser | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const u = await getCurrentUser();
+      if (!u) {
+        router.push("/login");
+        return;
+      }
+      setMe(u);
+      setAllowed(isStaff(u));
+      setChecking(false);
+    })();
+  }, [router]);
+
+  if (checking) {
+    return (
+      <main className="min-h-screen flex items-center justify-center text-muted">
+        Проверка доступа...
+      </main>
+    );
+  }
+
+  if (!allowed) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center text-center px-6">
+        <h1 className="text-2xl font-semibold text-gold mb-3">
+          Доступ только для персонала
+        </h1>
+        <p className="text-muted text-sm">
+          Аккаунт {me?.email} не имеет прав на вход в CRM. Если это ошибка —
+          обратитесь к владельцу проекта.
+        </p>
+      </main>
+    );
+  }
 
   return (
-    <main className="min-h-screen bg-bgPrimary text-offwhite px-4 md:px-8 py-6 pb-20">
-      <h1 className="text-2xl font-semibold text-gold mb-6">VETOKS CRM</h1>
-
-      <div className="flex gap-2 overflow-x-auto mb-8 border-b border-muted pb-2">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-full text-sm whitespace-nowrap ${
-              tab === t.key
-                ? "bg-gold text-bgPrimary font-semibold"
-                : "text-muted"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+    <main className="min-h-screen bg-bgPrimary text-offwhite">
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-muted">
+        <button
+          onClick={() => setMenuOpen(true)}
+          className="text-2xl text-gold leading-none"
+          aria-label="Открыть меню"
+        >
+          ☰
+        </button>
+        <h1 className="text-xl font-semibold text-gold">VETOKS CRM</h1>
       </div>
 
-      {tab === "dashboard" && <Dashboard />}
-      {tab === "applications" && <Applications />}
-      {tab === "participants" && <ParticipantsTab />}
-      {tab === "users" && <UsersTab />}
-      {tab === "staff" && <StaffTab />}
-      {tab === "partners" && <PartnersTab />}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40"
+          onClick={() => setMenuOpen(false)}
+        >
+          <div
+            className="bg-bgSurface w-72 h-full p-4 flex flex-col gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-gold font-semibold">Разделы</span>
+              <button
+                onClick={() => setMenuOpen(false)}
+                className="text-muted text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => {
+                  setTab(t.key);
+                  setMenuOpen(false);
+                }}
+                className={`text-left px-4 py-3 rounded-lg text-sm ${
+                  tab === t.key
+                    ? "bg-gold text-bgPrimary font-semibold"
+                    : "text-offwhite hover:bg-bgPrimary"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="px-4 md:px-8 py-6 pb-20">
+        {tab === "dashboard" && <Dashboard />}
+        {tab === "applications" && <Applications />}
+        {tab === "participants" && <ParticipantsTab />}
+        {tab === "users" && <UsersTab />}
+        {tab === "staff" && <StaffTab />}
+        {tab === "partners" && <PartnersTab />}
+      </div>
     </main>
   );
 }
@@ -147,7 +222,7 @@ function Dashboard() {
 }
 
 // ---------------------------------------------------------------------
-// АНКЕТЫ (модерация)
+// АНКЕТЫ
 // ---------------------------------------------------------------------
 
 type Application = {
@@ -512,16 +587,18 @@ type StaffRow = {
 
 function StaffTab() {
   const [rows, setRows] = useState<StaffRow[]>([]);
+  const [allUsers, setAllUsers] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState("");
 
   async function load() {
     setLoading(true);
     const { data } = await supabase
       .from("users")
-      .select("id, first_name, role, permissions")
-      .neq("role", "viewer")
-      .neq("role", "participant");
-    setRows((data as StaffRow[]) ?? []);
+      .select("id, first_name, role, permissions");
+    const list = (data as StaffRow[]) ?? [];
+    setAllUsers(list);
+    setRows(list.filter((r) => !["viewer", "participant"].includes(r.role)));
     setLoading(false);
   }
 
@@ -551,17 +628,37 @@ function StaffTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-muted text-sm">
-        Здесь показаны пользователи с ролью выше «обычный». Чтобы назначить
-        нового сотрудника — сначала измените его роль в разделе
-        «Пользователи» (добавим туда кнопку далее), либо через SQL напрямую.
-      </p>
+      <div className="bg-bgSurface border border-muted rounded-xl p-4 flex flex-col md:flex-row gap-3 items-start md:items-center">
+        <span className="text-sm text-muted">Назначить сотрудником:</span>
+        <select
+          value={selectedId}
+          onChange={(e) => setSelectedId(e.target.value)}
+          className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm flex-1"
+        >
+          <option value="">— выберите пользователя —</option>
+          {allUsers
+            .filter((u) => u.role === "viewer")
+            .map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.first_name ?? u.id}
+              </option>
+            ))}
+        </select>
+        <button
+          onClick={() => selectedId && changeRole(selectedId, "moderator")}
+          disabled={!selectedId}
+          className="bg-gold text-bgPrimary font-semibold px-4 py-2 rounded-full text-sm disabled:opacity-40"
+        >
+          Сделать модератором
+        </button>
+      </div>
+
       {rows.map((r) => (
         <div
           key={r.id}
           className="bg-bgSurface border border-muted rounded-xl p-5"
         >
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 gap-3">
             <h2 className="text-lg text-offwhite font-semibold">
               {r.first_name ?? "Без имени"}
             </h2>
@@ -705,8 +802,8 @@ function PartnersTab() {
 
       <p className="text-muted text-xs mt-6">
         Метрики «сколько заданий участниц выполнено по заданию партнёра» пока
-        не считаются — для этого нужно сначала решить, как задание
-        привязывается к конкретному партнёру (обсудим отдельно).
+        не считаются — для этого нужно решить, как задание привязывается к
+        конкретному партнёру.
       </p>
     </div>
   );
