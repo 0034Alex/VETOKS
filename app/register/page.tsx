@@ -1,34 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import { getDeviceId, getTelegramId } from "@/lib/currentUser";
 
-type Region = { id: string; name: string; slug: string };
+type Region = { id: string; name: string };
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [regions, setRegions] = useState<Region[]>([]);
-  const [selectedRegion, setSelectedRegion] = useState<string>("");
-  const [firstName, setFirstName] = useState<string>("");
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "error"
-  >("idle");
+  const [firstName, setFirstName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [regionId, setRegionId] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
-  const [isTelegram, setIsTelegram] = useState(false);
 
   useEffect(() => {
-    const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
-    if (tgUser) {
-      setIsTelegram(true);
-      setFirstName(tgUser.first_name ?? "");
-      (window as any).Telegram?.WebApp?.ready?.();
-      (window as any).Telegram?.WebApp?.expand?.();
-    }
-
     supabase
       .from("regions")
-      .select("id, name, slug")
+      .select("id, name")
       .order("name")
       .then(({ data }) => {
         if (data) setRegions(data as Region[]);
@@ -37,106 +31,155 @@ export default function RegisterPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedRegion) return;
-
-    setStatus("loading");
     setErrorMessage("");
 
-    const tgId = getTelegramId();
-    const deviceId = getDeviceId();
+    if (password.length < 6) {
+      setErrorMessage("Пароль должен быть не короче 6 символов.");
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setErrorMessage("Пароли не совпадают.");
+      return;
+    }
+    if (!regionId) {
+      setErrorMessage("Выберите регион.");
+      return;
+    }
 
-    const { error } = await supabase.from("users").insert({
+    setStatus("loading");
+
+    const tgId = (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.id ?? null;
+
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (signUpError || !signUpData.user) {
+      setStatus("error");
+      setErrorMessage(
+        signUpError?.message === "User already registered"
+          ? "Такая почта уже зарегистрирована — войдите вместо регистрации."
+          : signUpError?.message ?? "Не удалось зарегистрироваться."
+      );
+      return;
+    }
+
+    const { error: insertError } = await supabase.from("users").insert({
+      id: signUpData.user.id,
+      first_name: firstName,
+      phone,
+      email,
+      region_id: regionId,
       telegram_id: tgId,
-      device_id: deviceId,
-      first_name: firstName || "Гость",
-      region_id: selectedRegion,
       role: "viewer",
     });
 
-    if (error) {
-      if (error.code === "23505") {
-        setStatus("success");
-      } else {
-        setStatus("error");
-        setErrorMessage(error.message);
-      }
-    } else {
-      setStatus("success");
+    if (insertError) {
+      setStatus("error");
+      setErrorMessage(insertError.message);
+      return;
     }
-  }
 
-  if (status === "success") {
-    return (
-      <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-        <h1 className="text-3xl font-semibold text-gold mb-4">
-          Добро пожаловать в VETOKS!
-        </h1>
-        <p className="text-muted mb-8">
-          Регистрация прошла успешно. Ваш регион сохранён.
-        </p>
-        <Link
-          href="/"
-          className="bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full hover:bg-goldSoft transition-colors"
-        >
-          На главную
-        </Link>
-      </main>
-    );
+    router.push("/");
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12 text-center">
       <h1 className="text-3xl font-semibold text-gold mb-2">Регистрация</h1>
-      <p className="text-muted mb-8">
-        {isTelegram
-          ? `Привет, ${firstName}!`
-          : "Открыто в браузере (не в Telegram) — тестовый режим."}
+      <p className="text-muted mb-6 text-sm">
+        Уже есть аккаунт?{" "}
+        <Link href="/login" className="text-gold underline">
+          Войти
+        </Link>
       </p>
 
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm flex flex-col gap-4"
+        className="w-full max-w-sm flex flex-col gap-3 text-left"
       >
-        {!isTelegram && (
-          <div className="flex flex-col gap-1">
-            <label className="text-left text-offwhite text-sm">Имя</label>
-            <input
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3"
-              placeholder="Как вас называть"
-            />
-          </div>
-        )}
+        <div>
+          <label className="text-offwhite text-sm">Имя</label>
+          <input
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
+            required
+          />
+        </div>
 
-        <label className="text-left text-offwhite text-sm">
-          Выберите ваш регион
-        </label>
-        <select
-          value={selectedRegion}
-          onChange={(e) => setSelectedRegion(e.target.value)}
-          className="bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3"
-          required
-        >
-          <option value="" disabled>
-            — выберите —
-          </option>
-          {regions.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
+        <div>
+          <label className="text-offwhite text-sm">Телефон</label>
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+7 900 000 00 00"
+            className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="text-offwhite text-sm">Почта</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="text-offwhite text-sm">Регион</label>
+          <select
+            value={regionId}
+            onChange={(e) => setRegionId(e.target.value)}
+            className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
+            required
+          >
+            <option value="" disabled>
+              — выберите —
             </option>
-          ))}
-        </select>
+            {regions.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="text-offwhite text-sm">Пароль</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="text-offwhite text-sm">Повторите пароль</label>
+          <input
+            type="password"
+            value={passwordConfirm}
+            onChange={(e) => setPasswordConfirm(e.target.value)}
+            className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
+            required
+          />
+        </div>
 
         <button
           type="submit"
           disabled={status === "loading"}
-          className="bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full hover:bg-goldSoft transition-colors disabled:opacity-50"
+          className="bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full mt-2 disabled:opacity-50"
         >
-          {status === "loading" ? "Сохраняем..." : "Продолжить"}
+          {status === "loading" ? "Регистрируем..." : "Зарегистрироваться"}
         </button>
 
-        {status === "error" && (
+        {errorMessage && (
           <p className="text-danger text-sm">{errorMessage}</p>
         )}
       </form>
