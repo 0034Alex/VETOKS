@@ -67,7 +67,10 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen bg-bgPrimary text-offwhite">
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-muted">
+      <div
+        className="flex items-center gap-3 px-4 py-4 border-b border-muted"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
+      >
         <button
           onClick={() => setMenuOpen(true)}
           className="text-2xl text-gold leading-none"
@@ -85,6 +88,7 @@ export default function AdminPage() {
         >
           <div
             className="bg-bgSurface w-72 h-full p-4 flex flex-col gap-1"
+            style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
