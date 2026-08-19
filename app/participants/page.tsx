@@ -203,6 +203,12 @@ export default function ParticipantsPage() {
                 >
                   {votedIds.includes(p.id) ? "Голос отдан" : "Поддержать"}
                 </button>
+                <a
+                  href={`/shop?participant=${p.id}&name=${encodeURIComponent(p.display_name)}`}
+                  className="bg-bgPrimary border border-gold text-gold font-semibold py-2 rounded-full text-xs text-center"
+                >
+                  🎁 Подарить
+                </a>
               </div>
             </div>
           ))}
