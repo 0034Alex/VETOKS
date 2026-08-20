@@ -20,6 +20,7 @@ export default function ParticipantsPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
   const [giftCounts, setGiftCounts] = useState<Record<string, number>>({});
+  const [followerCounts, setFollowerCounts] = useState<Record<string, number>>({});
   const [boostedIds, setBoostedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [votedIds, setVotedIds] = useState<string[]>([]);
@@ -61,6 +62,15 @@ export default function ParticipantsPage() {
         }
       );
       setGiftCounts(gCounts);
+
+      const { data: followsData } = await supabase
+        .from("participant_follows")
+        .select("participant_id");
+      const fCounts: Record<string, number> = {};
+      (followsData ?? []).forEach((f: { participant_id: string }) => {
+        fCounts[f.participant_id] = (fCounts[f.participant_id] ?? 0) + 1;
+      });
+      setFollowerCounts(fCounts);
 
       const { data: boostsData } = await supabase
         .from("boosts")
@@ -181,52 +191,59 @@ export default function ParticipantsPage() {
               key={p.id}
               className="bg-bgSurface border border-muted rounded-xl overflow-hidden flex flex-col"
             >
-              <div className="aspect-[3/4] bg-black/40 flex items-center justify-center relative">
-                <span
-                  className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
-                    index === 0
-                      ? "bg-gold text-bgPrimary"
-                      : "bg-gradient-to-br from-[#7C3AED] to-[#EC4899] text-white"
-                  }`}
-                >
-                  {index === 0 ? "👑" : index + 1}
-                </span>
-                {boostedIds.has(p.id) && (
-                  <span className="absolute top-2 right-2 bg-bgPrimary/90 text-gold text-[10px] px-2 py-0.5 rounded-full border border-gold/50">
-                    🚀 В топе
+              <a href={`/participant/${p.id}`}>
+                <div className="aspect-[3/4] bg-black/40 flex items-center justify-center relative">
+                  <span
+                    className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
+                      index === 0
+                        ? "bg-gold text-bgPrimary"
+                        : "bg-gradient-to-br from-[#7C3AED] to-[#EC4899] text-white"
+                    }`}
+                  >
+                    {index === 0 ? "👑" : index + 1}
                   </span>
-                )}
-                {p.photo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={p.photo_url}
-                    alt={p.display_name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-muted text-xs">Нет фото</span>
-                )}
-              </div>
-              <div className="p-3 flex flex-col gap-1">
-                <h2 className="text-sm text-offwhite font-semibold truncate">
-                  {p.display_name}
-                </h2>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-rose">♥ {voteCounts[p.id] ?? 0}</span>
-                  <span className="text-gold">
-                    🎁 {giftCounts[p.id] ?? 0}
-                  </span>
+                  {boostedIds.has(p.id) && (
+                    <span className="absolute top-2 right-2 bg-bgPrimary/90 text-gold text-[10px] px-2 py-0.5 rounded-full border border-gold/50">
+                      🚀 В топе
+                    </span>
+                  )}
+                  {p.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.photo_url}
+                      alt={p.display_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-muted text-xs">Нет фото</span>
+                  )}
                 </div>
+                <div className="px-3 pt-3">
+                  <h2 className="text-sm text-offwhite font-semibold truncate">
+                    {p.display_name}
+                  </h2>
+                  <div className="flex items-center gap-2 text-xs mt-1">
+                    <span className="text-rose">♥ {voteCounts[p.id] ?? 0}</span>
+                    <span className="text-gold">
+                      🎁 {giftCounts[p.id] ?? 0}
+                    </span>
+                    <span className="text-muted">
+                      👥 {followerCounts[p.id] ?? 0}
+                    </span>
+                  </div>
+                </div>
+              </a>
+              <div className="p-3 pt-2">
                 <button
                   onClick={() => handleVote(p.id)}
                   disabled={votedIds.includes(p.id) || busyId === p.id}
-                  className="mt-1 bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold py-2 rounded-full text-xs disabled:opacity-40"
+                  className="w-full bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold py-2 rounded-full text-xs disabled:opacity-40"
                 >
                   {votedIds.includes(p.id) ? "Голос отдан" : "Поддержать"}
                 </button>
                 <a
                   href={`/shop?participant=${p.id}&name=${encodeURIComponent(p.display_name)}`}
-                  className="bg-bgPrimary border border-gold text-gold font-semibold py-2 rounded-full text-xs text-center"
+                  className="block mt-2 bg-bgPrimary border border-gold text-gold font-semibold py-2 rounded-full text-xs text-center"
                 >
                   🎁 Подарить
                 </a>
