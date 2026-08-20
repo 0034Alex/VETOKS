@@ -213,11 +213,23 @@ export default function ProfilePage() {
               <span>Настройки</span>
               <span>→</span>
             </div>
-            <div className="p-4 flex items-center justify-between text-muted text-sm">
+            <a
+              href="/support"
+              className="p-4 flex items-center justify-between text-muted text-sm"
+            >
               <span>Помощь и поддержка</span>
               <span>→</span>
-            </div>
+            </a>
           </div>
+
+          <a
+            href="/partner"
+            className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mb-6 text-center"
+          >
+            <span className="text-white font-semibold text-sm">
+              🤝 Стать партнёром
+            </span>
+          </a>
 
           <button
             onClick={handleLogout}
