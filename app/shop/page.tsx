@@ -58,6 +58,7 @@ function ShopContent() {
   const [walletId, setWalletId] = useState<string | null>(null);
   const [balance, setBalance] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [status, setStatus] = useState<
     "idle" | "sending" | "sent" | "error"
   >("idle");
@@ -123,7 +124,9 @@ function ShopContent() {
 
   async function sendGift(gift: Gift) {
     if (!walletId || !userId || !selectedParticipant) return;
-    if (balance < gift.price) {
+    const qty = quantities[gift.id] ?? 1;
+    const totalPrice = gift.price * qty;
+    if (balance < totalPrice) {
       setErrorMessage("Недостаточно средств. Пополните тестовый баланс.");
       return;
     }
@@ -132,7 +135,7 @@ function ShopContent() {
     setErrorMessage("");
 
     const participantEarning =
-      (gift.price * gift.participant_share_percent) / 100;
+      (totalPrice * gift.participant_share_percent) / 100;
 
     // Списываем у отправителя.
     const { data: senderTx } = await supabase
@@ -140,7 +143,7 @@ function ShopContent() {
       .insert({
         wallet_id: walletId,
         type: "gift_sent",
-        amount: -gift.price,
+        amount: -totalPrice,
         related_participant_id: selectedParticipant,
       })
       .select("id")
@@ -148,7 +151,7 @@ function ShopContent() {
 
     await supabase
       .from("wallets")
-      .update({ balance: balance - gift.price })
+      .update({ balance: balance - totalPrice })
       .eq("id", walletId);
 
     // Находим/создаём кошелёк участницы и начисляем её долю.
@@ -193,15 +196,24 @@ function ShopContent() {
       sender_id: userId,
       participant_id: selectedParticipant,
       gift_catalog_id: gift.id,
-      quantity: 1,
-      total_price: gift.price,
+      quantity: qty,
+      total_price: totalPrice,
       participant_earning: participantEarning,
       wallet_transaction_id: senderTx?.id ?? null,
     });
 
-    setBalance((b) => b - gift.price);
+    setBalance((b) => b - totalPrice);
+    setQuantities((q) => ({ ...q, [gift.id]: 1 }));
     setStatus("sent");
     setTimeout(() => setStatus("idle"), 2000);
+  }
+
+  function changeQty(giftId: string, delta: number) {
+    setQuantities((q) => {
+      const current = q[giftId] ?? 1;
+      const next = Math.min(99, Math.max(1, current + delta));
+      return { ...q, [giftId]: next };
+    });
   }
 
   const filteredGifts = gifts.filter((g) => g.category === category);
@@ -269,22 +281,47 @@ function ShopContent() {
       </div>
 
       <div className="px-6 grid grid-cols-3 gap-3">
-        {filteredGifts.map((g) => (
-          <button
-            key={g.id}
-            onClick={() => sendGift(g)}
-            disabled={!selectedParticipant || status === "sending"}
-            className="bg-bgSurface border border-muted rounded-xl p-3 flex flex-col items-center gap-1 disabled:opacity-40"
-          >
-            <span className="text-3xl">{GIFT_EMOJI[g.name] ?? "🎁"}</span>
-            <span className="text-offwhite text-xs text-center">
-              {g.name}
-            </span>
-            <span className="text-gold text-xs font-semibold">
-              {g.price} ₽
-            </span>
-          </button>
-        ))}
+        {filteredGifts.map((g) => {
+          const qty = quantities[g.id] ?? 1;
+          return (
+            <div
+              key={g.id}
+              className="bg-bgSurface border border-muted rounded-xl p-3 flex flex-col items-center gap-1"
+            >
+              <span className="text-3xl">{GIFT_EMOJI[g.name] ?? "🎁"}</span>
+              <span className="text-offwhite text-xs text-center">
+                {g.name}
+              </span>
+              <span className="text-gold text-xs font-semibold">
+                {g.price * qty} ₽
+              </span>
+              <div className="flex items-center gap-2 mt-1">
+                <button
+                  onClick={() => changeQty(g.id, -1)}
+                  className="w-6 h-6 rounded-full bg-bgPrimary border border-muted text-offwhite text-xs"
+                >
+                  −
+                </button>
+                <span className="text-offwhite text-xs w-4 text-center">
+                  {qty}
+                </span>
+                <button
+                  onClick={() => changeQty(g.id, 1)}
+                  className="w-6 h-6 rounded-full bg-bgPrimary border border-muted text-offwhite text-xs"
+                >
+                  +
+                </button>
+              </div>
+              <button
+                onClick={() => sendGift(g)}
+                disabled={!selectedParticipant || status === "sending"}
+                className="mt-1 w-full bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold py-1.5 rounded-full text-xs disabled:opacity-40"
+              >
+                Подарить
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {errorMessage && (
