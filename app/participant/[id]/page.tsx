@@ -159,15 +159,17 @@ export default function ParticipantProfilePage() {
     if (!userId) return;
     setBusy(true);
     if (isFollowing) {
-      await supabase
+      const { error } = await supabase
         .from("participant_follows")
         .delete()
         .eq("participant_id", id)
         .eq("user_id", userId);
+      if (error) setNotice(`Ошибка: ${error.message}`);
     } else {
-      await supabase
+      const { error } = await supabase
         .from("participant_follows")
         .insert({ participant_id: id, user_id: userId });
+      if (error) setNotice(`Ошибка: ${error.message}`);
     }
     await load();
     setBusy(false);
@@ -211,17 +213,21 @@ export default function ParticipantProfilePage() {
       }
     }
 
-    await supabase.from("participant_messages").insert({
-      sender_id: userId,
-      participant_id: id,
-      body: messageText,
-      price: MESSAGE_PRICE,
-    });
+    const { error: msgError } = await supabase
+      .from("participant_messages")
+      .insert({
+        sender_id: userId,
+        participant_id: id,
+        body: messageText,
+        price: MESSAGE_PRICE,
+      });
 
     setBalance((b) => b - MESSAGE_PRICE);
     setMessageText("");
     setMessageOpen(false);
-    setNotice("Сообщение отправлено!");
+    setNotice(
+      msgError ? `Ошибка отправки: ${msgError.message}` : "Сообщение отправлено!"
+    );
     setBusy(false);
   }
 
@@ -249,6 +255,25 @@ export default function ParticipantProfilePage() {
       .from("wallets")
       .update({ balance: balance - BOOST_PRICE })
       .eq("id", walletId);
+
+    // Половина стоимости буста — участнице, как и с подарками/сообщениями.
+    if (participant) {
+      const pWallet = await getOrCreateWallet(participant.user_id);
+      if (pWallet) {
+        const earning = BOOST_PRICE * 0.5;
+        await supabase.from("wallet_transactions").insert({
+          wallet_id: pWallet.id,
+          type: "gift_received",
+          amount: earning,
+          related_participant_id: id,
+          metadata: { kind: "boost" },
+        });
+        await supabase
+          .from("wallets")
+          .update({ balance: Number(pWallet.balance) + earning })
+          .eq("id", pWallet.id);
+      }
+    }
 
     const endsAt = new Date();
     endsAt.setDate(endsAt.getDate() + 7);
