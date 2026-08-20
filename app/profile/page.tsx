@@ -6,6 +6,7 @@ import { getCurrentUser, signOutUser, CurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
+import PageHeader from "@/components/PageHeader";
 
 type Participant = { id: string; display_name: string };
 
@@ -103,9 +104,7 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen pb-28">
       <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between px-6 py-4">
-          <Logo size={28} />
-        </div>
+        <PageHeader />
 
         <div className="px-6">
           <div className="bg-bgSurface border border-muted rounded-xl p-5 mb-4">
@@ -161,6 +160,17 @@ export default function ProfilePage() {
             >
               <span className="text-gold font-semibold text-sm">
                 ✉️ Сообщения от зрителей
+              </span>
+            </a>
+          )}
+
+          {participant && (
+            <a
+              href="/my-application"
+              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
+            >
+              <span className="text-gold font-semibold text-sm">
+                📝 Моя анкета (редактировать)
               </span>
             </a>
           )}
