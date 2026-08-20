@@ -170,7 +170,7 @@ export default function Home() {
           <h2 className="text-lg font-semibold text-offwhite">
             🔥 Участницы дня
           </h2>
-          <Link href="/participants" className="text-gold text-sm">
+          <Link href="/top25" className="text-gold text-sm">
             Смотреть всех →
           </Link>
         </div>
@@ -180,39 +180,50 @@ export default function Home() {
             Пока нет одобренных участниц.
           </p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 px-6 mb-8">
-            {participants.map((p, i) => (
-              <div
-                key={p.id}
-                className={`bg-bgSurface border rounded-xl overflow-hidden ${
-                  i === 0 ? "border-gold" : "border-muted"
-                }`}
-              >
-                <div className="aspect-[3/4] bg-black/40 flex items-center justify-center relative">
-                  {i === 0 && (
-                    <span className="absolute top-2 left-2 text-gold text-lg">
-                      👑
-                    </span>
-                  )}
-                  {p.photo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.photo_url}
-                      alt={p.display_name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-muted text-xs">Нет фото</span>
-                  )}
-                </div>
-                <div className="p-3">
-                  <p className="text-offwhite text-sm font-semibold">
-                    {p.display_name}
-                  </p>
-                  <p className="text-gold text-xs">♥ {p.votes}</p>
-                </div>
-              </div>
-            ))}
+          <div className="flex items-end justify-center gap-3 px-6 mb-8">
+            {[participants[1], participants[0], participants[2]].map(
+              (p, slot) => {
+                if (!p) return <div key={slot} className="flex-1 max-w-[110px]" />;
+                const isFirst = slot === 1;
+                return (
+                  <Link
+                    href={`/participant/${p.id}`}
+                    key={p.id}
+                    className={`flex-1 max-w-[130px] bg-bgSurface border rounded-xl overflow-hidden ${
+                      isFirst ? "border-gold" : "border-muted"
+                    }`}
+                    style={{ marginBottom: isFirst ? 0 : 16 }}
+                  >
+                    <div
+                      className={`bg-black/40 flex items-center justify-center relative ${
+                        isFirst ? "aspect-[3/4]" : "aspect-[3/4]"
+                      }`}
+                      style={{ transform: isFirst ? "scale(1)" : "scale(0.92)" }}
+                    >
+                      <span className="absolute top-1.5 left-1.5 text-lg">
+                        {isFirst ? "👑" : slot === 0 ? "🥈" : "🥉"}
+                      </span>
+                      {p.photo_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.photo_url}
+                          alt={p.display_name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-muted text-xs">Нет фото</span>
+                      )}
+                    </div>
+                    <div className="p-2">
+                      <p className="text-offwhite text-xs font-semibold truncate">
+                        {p.display_name}
+                      </p>
+                      <p className="text-gold text-[10px]">♥ {p.votes}</p>
+                    </div>
+                  </Link>
+                );
+              }
+            )}
           </div>
         )}
 
