@@ -14,6 +14,8 @@ type Participant = {
   display_name: string;
   photo_url: string | null;
   votes: number;
+  gifts: number;
+  followers: number;
 };
 
 type Season = { id: string; title: string; status: string };
@@ -70,10 +72,31 @@ export default function Home() {
         counts[v.participant_id] = (counts[v.participant_id] ?? 0) + 1;
       });
 
+      const { data: giftsData } = await supabase
+        .from("gifts")
+        .select("participant_id, quantity");
+      const giftCounts: Record<string, number> = {};
+      (giftsData ?? []).forEach(
+        (g: { participant_id: string; quantity: number }) => {
+          giftCounts[g.participant_id] =
+            (giftCounts[g.participant_id] ?? 0) + (g.quantity ?? 1);
+        }
+      );
+
+      const { data: followsData } = await supabase
+        .from("participant_follows")
+        .select("participant_id");
+      const followCounts: Record<string, number> = {};
+      (followsData ?? []).forEach((f: { participant_id: string }) => {
+        followCounts[f.participant_id] = (followCounts[f.participant_id] ?? 0) + 1;
+      });
+
       const list = (participantsData ?? []).map(
         (p: { id: string; display_name: string; photo_url: string | null }) => ({
           ...p,
           votes: counts[p.id] ?? 0,
+          gifts: giftCounts[p.id] ?? 0,
+          followers: followCounts[p.id] ?? 0,
         })
       );
       list.sort((a, b) => b.votes - a.votes);
@@ -218,7 +241,11 @@ export default function Home() {
                       <p className="text-offwhite text-xs font-semibold truncate">
                         {p.display_name}
                       </p>
-                      <p className="text-gold text-[10px]">♥ {p.votes}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-rose text-[10px]">♥ {p.votes}</p>
+                        <p className="text-gold text-[10px]">🎁 {p.gifts}</p>
+                        <p className="text-muted text-[10px]">👥 {p.followers}</p>
+                      </div>
                     </div>
                   </Link>
                 );
