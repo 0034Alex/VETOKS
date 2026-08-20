@@ -156,6 +156,17 @@ export default function ProfilePage() {
 
           {participant && (
             <a
+              href="/messages"
+              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
+            >
+              <span className="text-gold font-semibold text-sm">
+                ✉️ Сообщения от зрителей
+              </span>
+            </a>
+          )}
+
+          {participant && (
+            <a
               href="/tasks"
               className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mb-4"
             >
