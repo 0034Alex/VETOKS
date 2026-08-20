@@ -351,6 +351,7 @@ type ParticipantRow = {
   id: string;
   display_name: string;
   user_id: string;
+  is_editors_choice: boolean;
   users: {
     is_banned: boolean;
     last_login_at: string | null;
@@ -367,7 +368,9 @@ function ParticipantsTab() {
     setLoading(true);
     const { data } = await supabase
       .from("participants")
-      .select("id, display_name, user_id, users(is_banned, last_login_at)");
+      .select(
+        "id, display_name, user_id, is_editors_choice, users(is_banned, last_login_at)"
+      );
     const list = (data as unknown as ParticipantRow[]) ?? [];
     setRows(list);
 
@@ -401,6 +404,13 @@ function ParticipantsTab() {
 
   async function toggleBan(userId: string, current: boolean) {
     await supabase.from("users").update({ is_banned: !current }).eq("id", userId);
+    await load();
+  }
+
+  async function setEditorsChoice(participantId: string) {
+    // Снимаем флаг со всех, ставим только на выбранную — титул один.
+    await supabase.from("participants").update({ is_editors_choice: false }).neq("id", participantId);
+    await supabase.from("participants").update({ is_editors_choice: true }).eq("id", participantId);
     await load();
   }
 
@@ -447,6 +457,13 @@ function ParticipantsTab() {
               className="bg-danger text-bgPrimary px-3 py-1.5 rounded-full text-xs font-semibold"
             >
               Удалить
+            </button>
+            <button
+              onClick={() => setEditorsChoice(r.id)}
+              disabled={r.is_editors_choice}
+              className="bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white px-3 py-1.5 rounded-full text-xs font-semibold disabled:opacity-40"
+            >
+              {r.is_editors_choice ? "🌟 Выбор редакции" : "Назначить выбор редакции"}
             </button>
           </div>
         </div>
