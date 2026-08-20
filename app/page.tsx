@@ -98,11 +98,20 @@ export default function Home() {
 
   return (
     <main className="min-h-screen pb-28">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between px-6 py-4">
-          <Logo size={32} />
-        </div>
+      <div
+        className="flex items-center justify-between px-6 py-4 sticky top-0 z-40 bg-bgPrimary/95 backdrop-blur"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
+      >
+        <Logo size={32} />
+        <Link
+          href="/hall-of-fame"
+          className="text-gold text-xs font-semibold border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap"
+        >
+          🏆 Зал славы
+        </Link>
+      </div>
 
+      <div className="max-w-5xl mx-auto">
         <div
           className="mx-6 mb-6 rounded-2xl overflow-hidden relative min-h-[220px] md:min-h-[300px] flex flex-col justify-end p-5 md:p-8"
           style={{
@@ -120,9 +129,18 @@ export default function Home() {
             {season?.title ?? user?.regions?.name ?? "Сезон скоро стартует"}
           </h1>
           <p className="text-muted text-sm mb-3">Красота. Харизма. Энергия.</p>
-          <span className="inline-block w-fit bg-bgSurface/80 text-gold text-xs px-3 py-1 rounded-full border border-gold/40">
-            {season ? STATUS_LABELS[season.status] ?? season.status : "Скоро старт"}
-          </span>
+          {season?.status === "registration" ? (
+            <Link
+              href="/apply"
+              className="inline-block w-fit bg-gold text-bgPrimary text-xs font-semibold px-4 py-2 rounded-full"
+            >
+              Регистрация открыта — подать анкету
+            </Link>
+          ) : (
+            <span className="inline-block w-fit bg-bgSurface/80 text-gold text-xs px-3 py-1 rounded-full border border-gold/40">
+              {season ? STATUS_LABELS[season.status] ?? season.status : "Скоро старт"}
+            </span>
+          )}
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-6 mb-8">
