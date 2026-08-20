@@ -191,7 +191,7 @@ export default function Home() {
 
         <div className="px-6 mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-offwhite">
-            🔥 Участницы дня
+            🔥 ТОП участниц дня
           </h2>
           <Link href="/top25" className="text-gold text-sm">
             Смотреть всех →
