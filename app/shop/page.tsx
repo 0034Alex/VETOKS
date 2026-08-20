@@ -18,6 +18,29 @@ type Gift = {
 
 type Participant = { id: string; display_name: string; user_id: string };
 
+const TRANSLIT: Record<string, string> = {
+  а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh",
+  з: "z", и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o",
+  п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "h", ц: "ts",
+  ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
+};
+
+function translit(str: string): string {
+  return str
+    .toLowerCase()
+    .split("")
+    .map((c) => TRANSLIT[c] ?? c)
+    .join("");
+}
+
+function matchesSearch(name: string, query: string): boolean {
+  if (!query.trim()) return true;
+  const q = query.toLowerCase().trim();
+  const n = name.toLowerCase();
+  if (n.includes(q)) return true;
+  return translit(n).includes(translit(q));
+}
+
 const GIFT_EMOJI: Record<string, string> = {
   Роза: "🌹",
   Сердце: "💗",
@@ -56,6 +79,7 @@ function ShopContent() {
   const [selectedParticipant, setSelectedParticipant] = useState(
     participantId ?? ""
   );
+  const [participantSearch, setParticipantSearch] = useState("");
   const [walletId, setWalletId] = useState<string | null>(null);
   const [balance, setBalance] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
@@ -248,18 +272,56 @@ function ShopContent() {
       {!participantId && (
         <div className="px-6 mb-4">
           <label className="text-offwhite text-sm">Кому дарим</label>
-          <select
-            value={selectedParticipant}
-            onChange={(e) => setSelectedParticipant(e.target.value)}
-            className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
-          >
-            <option value="">— выберите участницу —</option>
-            {participants.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.display_name}
-              </option>
-            ))}
-          </select>
+          {selectedParticipant ? (
+            <div className="flex items-center justify-between bg-bgSurface border border-gold rounded-lg px-4 py-3 mt-1">
+              <span className="text-offwhite text-sm">
+                {participants.find((p) => p.id === selectedParticipant)
+                  ?.display_name ?? ""}
+              </span>
+              <button
+                onClick={() => {
+                  setSelectedParticipant("");
+                  setParticipantSearch("");
+                }}
+                className="text-muted text-xs"
+              >
+                Изменить
+              </button>
+            </div>
+          ) : (
+            <>
+              <input
+                value={participantSearch}
+                onChange={(e) => setParticipantSearch(e.target.value)}
+                placeholder="Введите имя или ник — рус. или англ."
+                className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
+              />
+              {participantSearch && (
+                <div className="max-h-48 overflow-y-auto mt-2 flex flex-col gap-1">
+                  {participants
+                    .filter((p) => matchesSearch(p.display_name, participantSearch))
+                    .slice(0, 20)
+                    .map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          setSelectedParticipant(p.id);
+                          setParticipantSearch("");
+                        }}
+                        className="text-left bg-bgSurface border border-muted rounded-lg px-4 py-2 text-sm text-offwhite"
+                      >
+                        {p.display_name}
+                      </button>
+                    ))}
+                  {participants.filter((p) =>
+                    matchesSearch(p.display_name, participantSearch)
+                  ).length === 0 && (
+                    <p className="text-muted text-xs px-2">Никого не найдено.</p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
