@@ -20,6 +20,7 @@ type Participant = {
 const MESSAGE_PRICE = 10000;
 const BOOST_PRICE = 100000;
 const BOOST_LIMIT = 3;
+const BOOST_VOTES = 1000;
 
 export default function ParticipantProfilePage() {
   const params = useParams();
@@ -287,6 +288,17 @@ export default function ParticipantProfilePage() {
       wallet_transaction_id: tx?.id ?? null,
     });
 
+    // Буст = 1000 реальных голосов, честно помеченных как купленные —
+    // они сразу считаются в общем счётчике голосов везде в приложении,
+    // но не участвуют в честном суточном топ-25.
+    const boostVotes = Array.from({ length: BOOST_VOTES }, () => ({
+      voter_id: userId,
+      participant_id: id,
+      weight: 1,
+      is_paid: true,
+    }));
+    await supabase.from("votes").insert(boostVotes);
+
     setBalance((b) => b - BOOST_PRICE);
     setNotice("Буст активирован на 7 дней!");
     await load();
@@ -339,7 +351,9 @@ export default function ParticipantProfilePage() {
 
           <div className="flex gap-4 text-sm mb-4">
             <span className="text-rose">♥ {voteCount} голосов</span>
-            <span className="text-gold">🎁 {giftCount} подарков</span>
+            <Link href={`/participant/${id}/gifts`} className="text-gold underline">
+              🎁 {giftCount} подарков
+            </Link>
             <span className="text-muted">👥 {followerCount} подписчиков</span>
           </div>
 
@@ -424,8 +438,9 @@ export default function ParticipantProfilePage() {
               🚀 Продвинуть в топ — {BOOST_PRICE.toLocaleString("ru-RU")} ₽
             </p>
             <p className="text-muted text-xs mb-3">
-              Осталось {boostsLeft} из {BOOST_LIMIT} возможных бустов для этой
-              участницы
+              +1000 голосов сразу · осталось {boostsLeft} из {BOOST_LIMIT}{" "}
+              возможных бустов для этой участницы (не учитывается в честном
+              суточном топ-25)
             </p>
             <button
               onClick={buyBoost}
