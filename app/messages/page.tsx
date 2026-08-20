@@ -2,26 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
-import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
 
-type Message = {
-  id: string;
-  body: string;
-  price: number;
-  created_at: string;
-  sender_id: string;
+type Conversation = {
+  userId: string;
+  name: string;
+  lastMessage: string;
+  lastAt: string;
 };
 
 export default function MessagesPage() {
   const router = useRouter();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [senderNames, setSenderNames] = useState<Record<string, string>>({});
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [isParticipant, setIsParticipant] = useState(false);
+  const [participantId, setParticipantId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -43,30 +42,46 @@ export default function MessagesPage() {
         return;
       }
       setIsParticipant(true);
+      setParticipantId(p.id);
 
       const { data: msgs } = await supabase
         .from("participant_messages")
-        .select("id, body, price, created_at, sender_id")
+        .select("id, sender_id, recipient_id, body, created_at")
         .eq("participant_id", p.id)
         .order("created_at", { ascending: false });
 
-      setMessages((msgs as Message[]) ?? []);
+      const map = new Map<string, Conversation>();
+      (msgs ?? []).forEach(
+        (m: {
+          sender_id: string;
+          recipient_id: string | null;
+          body: string;
+          created_at: string;
+        }) => {
+          const otherId = m.sender_id === u.id ? m.recipient_id : m.sender_id;
+          if (!otherId || map.has(otherId)) return;
+          map.set(otherId, {
+            userId: otherId,
+            name: "",
+            lastMessage: m.body,
+            lastAt: m.created_at,
+          });
+        }
+      );
 
-      const senderIds = [
-        ...new Set((msgs ?? []).map((m: Message) => m.sender_id)),
-      ];
-      if (senderIds.length > 0) {
+      const ids = [...map.keys()];
+      if (ids.length > 0) {
         const { data: senders } = await supabase
           .from("users")
           .select("id, first_name")
-          .in("id", senderIds);
-        const map: Record<string, string> = {};
+          .in("id", ids);
         (senders ?? []).forEach((s: { id: string; first_name: string }) => {
-          map[s.id] = s.first_name;
+          const conv = map.get(s.id);
+          if (conv) conv.name = s.first_name ?? "Гость";
         });
-        setSenderNames(map);
       }
 
+      setConversations([...map.values()]);
       setLoading(false);
     })();
   }, [router]);
@@ -82,6 +97,7 @@ export default function MessagesPage() {
   if (!isParticipant) {
     return (
       <main className="min-h-screen px-6 py-12 pb-28 flex flex-col items-center justify-center text-center">
+        <PageHeader />
         <h1 className="text-2xl font-semibold text-gold mb-4">Сообщения</h1>
         <p className="text-muted max-w-sm">
           Этот раздел доступен только участницам конкурса.
@@ -94,34 +110,31 @@ export default function MessagesPage() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
-
       <h1 className="text-2xl font-semibold text-offwhite mb-6 px-6">
         Сообщения
       </h1>
 
-      {messages.length === 0 && (
+      {conversations.length === 0 && (
         <p className="text-muted text-center px-6">Пока нет сообщений.</p>
       )}
 
-      <div className="px-6 flex flex-col gap-3">
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className="bg-bgSurface border border-muted rounded-xl p-4"
+      <div className="px-6 flex flex-col gap-2">
+        {conversations.map((c) => (
+          <Link
+            key={c.userId}
+            href={`/messages/${c.userId}`}
+            className="bg-bgSurface border border-muted rounded-xl p-4 flex flex-col"
           >
-            <div className="flex justify-between items-center mb-2">
+            <div className="flex justify-between items-center mb-1">
               <span className="text-offwhite text-sm font-semibold">
-                {senderNames[m.sender_id] ?? "Гость"}
+                {c.name}
               </span>
-              <span className="text-gold text-xs">
-                {m.price.toLocaleString("ru-RU")} ₽
+              <span className="text-muted text-xs">
+                {new Date(c.lastAt).toLocaleDateString("ru-RU")}
               </span>
             </div>
-            <p className="text-offwhite text-sm">{m.body}</p>
-            <p className="text-muted text-xs mt-2">
-              {new Date(m.created_at).toLocaleString("ru-RU")}
-            </p>
-          </div>
+            <p className="text-muted text-sm truncate">{c.lastMessage}</p>
+          </Link>
         ))}
       </div>
 
