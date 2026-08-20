@@ -117,8 +117,6 @@ export default function ParticipantsPage() {
     setBusyId(null);
   }
 
-  const BOOST_BONUS = 1000000;
-
   const filtered = participants
     .filter((p) =>
       p.display_name.toLowerCase().includes(search.toLowerCase())
@@ -129,11 +127,7 @@ export default function ParticipantsPage() {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
       }
-      const scoreA =
-        (voteCounts[a.id] ?? 0) + (boostedIds.has(a.id) ? BOOST_BONUS : 0);
-      const scoreB =
-        (voteCounts[b.id] ?? 0) + (boostedIds.has(b.id) ? BOOST_BONUS : 0);
-      return scoreB - scoreA;
+      return (voteCounts[b.id] ?? 0) - (voteCounts[a.id] ?? 0);
     });
 
   const filters: { key: Filter; label: string }[] = [
