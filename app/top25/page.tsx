@@ -58,6 +58,7 @@ export default function Top25Page() {
       const { data: votes } = await supabase
         .from("votes")
         .select("participant_id")
+        .eq("is_paid", false)
         .gte("created_at", since.toISOString());
 
       const counts: Record<string, number> = {};
