@@ -13,6 +13,7 @@ type Participant = {
   display_name: string;
   bio: string | null;
   photo_url: string | null;
+  user_id: string;
 };
 
 export default function ParticipantProfilePage() {
@@ -35,7 +36,7 @@ export default function ParticipantProfilePage() {
 
     const { data: p } = await supabase
       .from("participants")
-      .select("id, display_name, bio, photo_url")
+      .select("id, display_name, bio, photo_url, user_id")
       .eq("id", id)
       .maybeSingle();
     setParticipant(p as Participant | null);
@@ -181,14 +182,15 @@ export default function ParticipantProfilePage() {
             <span className="text-muted">👥 {followerCount} подписчиков</span>
           </div>
 
-          {giftTotal > 0 && (
-            <p className="text-muted text-xs mb-4">
-              На сумму {giftTotal} ₽
-            </p>
-          )}
-
           {participant.bio && (
             <p className="text-offwhite text-sm mb-6">{participant.bio}</p>
+          )}
+
+          {userId === participant.user_id && giftTotal > 0 && (
+            <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
+              <p className="text-muted text-xs mb-1">Ваш заработок с подарков (видно только вам)</p>
+              <p className="text-gold text-xl font-semibold">{giftTotal} ₽</p>
+            </div>
           )}
 
           <div className="flex gap-3 mb-3">
