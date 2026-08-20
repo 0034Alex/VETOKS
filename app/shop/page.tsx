@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
+import PageHeader from "@/components/PageHeader";
 
 type Gift = {
   id: string;
@@ -220,9 +221,7 @@ function ShopContent() {
 
   return (
     <main className="min-h-screen pb-28">
-      <div className="flex items-center justify-between px-6 py-4">
-        <Logo size={28} />
-      </div>
+      <PageHeader />
 
       <div className="px-6 mb-4">
         <h1 className="text-2xl font-semibold text-offwhite mb-1">
