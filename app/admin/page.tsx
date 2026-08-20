@@ -11,7 +11,8 @@ type Tab =
   | "participants"
   | "users"
   | "staff"
-  | "partners";
+  | "partners"
+  | "support";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -20,6 +21,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "users", label: "Пользователи" },
   { key: "staff", label: "Персонал" },
   { key: "partners", label: "Партнёры" },
+  { key: "support", label: "Поддержка" },
 ];
 
 export default function AdminPage() {
@@ -67,10 +69,7 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen bg-bgPrimary text-offwhite">
-      <div
-        className="flex items-center gap-3 px-4 py-4 border-b border-muted"
-        style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
-      >
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-muted">
         <button
           onClick={() => setMenuOpen(true)}
           className="text-2xl text-gold leading-none"
@@ -88,7 +87,6 @@ export default function AdminPage() {
         >
           <div
             className="bg-bgSurface w-72 h-full p-4 flex flex-col gap-1"
-            style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -127,6 +125,7 @@ export default function AdminPage() {
         {tab === "users" && <UsersTab />}
         {tab === "staff" && <StaffTab />}
         {tab === "partners" && <PartnersTab />}
+        {tab === "support" && <SupportTab />}
       </div>
     </main>
   );
@@ -809,6 +808,84 @@ function PartnersTab() {
         не считаются — для этого нужно решить, как задание привязывается к
         конкретному партнёру.
       </p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// ПОДДЕРЖКА
+// ---------------------------------------------------------------------
+
+type SupportRequest = {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  message: string;
+  status: string;
+  created_at: string;
+};
+
+function SupportTab() {
+  const [rows, setRows] = useState<SupportRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("support_requests")
+      .select("id, name, phone, email, message, status, created_at")
+      .order("created_at", { ascending: false });
+    setRows((data as SupportRequest[]) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function markDone(id: string) {
+    await supabase
+      .from("support_requests")
+      .update({ status: "done" })
+      .eq("id", id);
+    await load();
+  }
+
+  if (loading) return <p className="text-muted">Загрузка...</p>;
+  if (rows.length === 0) return <p className="text-muted">Заявок нет.</p>;
+
+  return (
+    <div className="grid md:grid-cols-2 gap-4">
+      {rows.map((r) => (
+        <div
+          key={r.id}
+          className="bg-bgSurface border border-muted rounded-xl p-5"
+        >
+          <div className="flex justify-between items-start mb-2">
+            <h2 className="text-lg text-gold font-semibold">{r.name}</h2>
+            <span className="text-muted text-xs">
+              {new Date(r.created_at).toLocaleDateString("ru-RU")}
+            </span>
+          </div>
+          <p className="text-sm mb-1">
+            {r.phone ?? "—"} · {r.email ?? "—"}
+          </p>
+          <p className="text-offwhite text-sm mb-3">{r.message}</p>
+          {r.status === "done" ? (
+            <span className="text-success text-xs font-semibold">
+              Обработано
+            </span>
+          ) : (
+            <button
+              onClick={() => markDone(r.id)}
+              className="bg-success text-bgPrimary font-semibold px-4 py-2 rounded-full text-xs"
+            >
+              Отметить обработанным
+            </button>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
