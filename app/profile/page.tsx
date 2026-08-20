@@ -17,6 +17,8 @@ export default function ProfilePage() {
   const [giftCount, setGiftCount] = useState(0);
   const [referralCount, setReferralCount] = useState(0);
   const [balance, setBalance] = useState(0);
+  const [tasksDone, setTasksDone] = useState(0);
+  const TOTAL_TASKS = 3;
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,6 +54,20 @@ export default function ProfilePage() {
             0
           )
         );
+
+        const { data: wallet } = await supabase
+          .from("wallets")
+          .select("id")
+          .eq("user_id", u.id)
+          .maybeSingle();
+        if (wallet) {
+          const { count: doneTasks } = await supabase
+            .from("wallet_transactions")
+            .select("id", { count: "exact", head: true })
+            .eq("wallet_id", wallet.id)
+            .eq("type", "task_reward");
+          setTasksDone(doneTasks ?? 0);
+        }
       }
 
       const { count: referrals } = await supabase
@@ -136,6 +152,31 @@ export default function ProfilePage() {
                 <p className="text-muted text-xs">Подарков получено</p>
               </div>
             </div>
+          )}
+
+          {participant && (
+            <a
+              href="/tasks"
+              className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mb-4"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-white font-semibold">⭐ Задания</span>
+                <span className="text-white text-sm">
+                  {tasksDone} / {TOTAL_TASKS}
+                </span>
+              </div>
+              <div className="w-full bg-black/30 rounded-full h-2">
+                <div
+                  className="bg-white rounded-full h-2"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      (tasksDone / TOTAL_TASKS) * 100
+                    )}%`,
+                  }}
+                />
+              </div>
+            </a>
           )}
 
           <div className="bg-bgSurface border border-muted rounded-xl divide-y divide-muted mb-6">
