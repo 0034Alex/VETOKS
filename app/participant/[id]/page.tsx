@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
+import PageHeader from "@/components/PageHeader";
 
 type Participant = {
   id: string;
@@ -313,9 +314,7 @@ export default function ParticipantProfilePage() {
 
   return (
     <main className="min-h-screen pb-28">
-      <div className="flex items-center justify-between px-6 py-4">
-        <Logo size={28} />
-      </div>
+      <PageHeader />
 
       <div className="max-w-md mx-auto">
         <div className="aspect-[3/4] bg-black/40 rounded-2xl mx-6 overflow-hidden mb-4">
