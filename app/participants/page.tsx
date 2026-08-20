@@ -20,6 +20,7 @@ export default function ParticipantsPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
   const [giftCounts, setGiftCounts] = useState<Record<string, number>>({});
+  const [boostedIds, setBoostedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [votedIds, setVotedIds] = useState<string[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -60,6 +61,15 @@ export default function ParticipantsPage() {
         }
       );
       setGiftCounts(gCounts);
+
+      const { data: boostsData } = await supabase
+        .from("boosts")
+        .select("participant_id")
+        .eq("boost_type", "rating_bump")
+        .gt("ends_at", new Date().toISOString());
+      setBoostedIds(
+        new Set((boostsData ?? []).map((b: { participant_id: string }) => b.participant_id))
+      );
     }
 
     setLoading(false);
@@ -96,6 +106,8 @@ export default function ParticipantsPage() {
     setBusyId(null);
   }
 
+  const BOOST_BONUS = 1000000;
+
   const filtered = participants
     .filter((p) =>
       p.display_name.toLowerCase().includes(search.toLowerCase())
@@ -106,7 +118,11 @@ export default function ParticipantsPage() {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
       }
-      return (voteCounts[b.id] ?? 0) - (voteCounts[a.id] ?? 0);
+      const scoreA =
+        (voteCounts[a.id] ?? 0) + (boostedIds.has(a.id) ? BOOST_BONUS : 0);
+      const scoreB =
+        (voteCounts[b.id] ?? 0) + (boostedIds.has(b.id) ? BOOST_BONUS : 0);
+      return scoreB - scoreA;
     });
 
   const filters: { key: Filter; label: string }[] = [
@@ -175,6 +191,11 @@ export default function ParticipantsPage() {
                 >
                   {index === 0 ? "👑" : index + 1}
                 </span>
+                {boostedIds.has(p.id) && (
+                  <span className="absolute top-2 right-2 bg-bgPrimary/90 text-gold text-[10px] px-2 py-0.5 rounded-full border border-gold/50">
+                    🚀 В топе
+                  </span>
+                )}
                 {p.photo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
