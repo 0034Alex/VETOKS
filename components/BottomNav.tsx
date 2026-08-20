@@ -6,7 +6,7 @@ import {
   IconHome,
   IconUsers,
   IconPlay,
-  IconStar,
+  IconGift,
   IconChart,
   IconProfile,
 } from "./Icons";
@@ -15,7 +15,7 @@ const items = [
   { href: "/", label: "Главная", Icon: IconHome },
   { href: "/participants", label: "Участницы", Icon: IconUsers },
   { href: "/media", label: "Медиа", Icon: IconPlay },
-  { href: "/tasks", label: "Задания", Icon: IconStar },
+  { href: "/shop", label: "Подарки", Icon: IconGift },
   { href: "/rating", label: "Рейтинг", Icon: IconChart },
   { href: "/profile", label: "Профиль", Icon: IconProfile },
 ];

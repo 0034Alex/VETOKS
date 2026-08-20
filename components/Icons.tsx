@@ -78,6 +78,29 @@ export function IconChart({ active }: { active?: boolean }) {
   );
 }
 
+export function IconGift({ active }: { active?: boolean }) {
+  const c = active ? "#C9A227" : "#8A8A8E";
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <rect x="4" y="9" width="16" height="11" rx="1" stroke={c} strokeWidth="1.8" />
+      <path d="M4 9h16v3H4z" stroke={c} strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M12 9v11" stroke={c} strokeWidth="1.8" />
+      <path
+        d="M12 9c0-2.5-2-4-3.5-4S6 6 6 7.2 7.3 9 9 9h3z"
+        stroke={c}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 9c0-2.5 2-4 3.5-4S18 6 18 7.2 16.7 9 15 9h-3z"
+        stroke={c}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function IconProfile({ active }: { active?: boolean }) {
   const c = active ? "#C9A227" : "#8A8A8E";
   return (
