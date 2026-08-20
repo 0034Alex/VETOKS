@@ -9,6 +9,14 @@ import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
 
+type ThreadMessage = {
+  id: string;
+  sender_id: string;
+  body: string;
+  price: number;
+  created_at: string;
+};
+
 type Participant = {
   id: string;
   display_name: string;
@@ -42,6 +50,7 @@ export default function ParticipantProfilePage() {
   const [notice, setNotice] = useState("");
   const [messageOpen, setMessageOpen] = useState(false);
   const [messageText, setMessageText] = useState("");
+  const [thread, setThread] = useState<ThreadMessage[]>([]);
 
   async function getOrCreateWallet(uid: string) {
     let { data: wallet } = await supabase
@@ -127,6 +136,18 @@ export default function ParticipantProfilePage() {
       if (wallet) {
         setWalletId(wallet.id);
         setBalance(Number(wallet.balance));
+      }
+
+      if (p) {
+        const { data: threadData } = await supabase
+          .from("participant_messages")
+          .select("id, sender_id, body, price, created_at")
+          .eq("participant_id", id)
+          .or(
+            `and(sender_id.eq.${u.id},recipient_id.eq.${(p as Participant).user_id}),and(sender_id.eq.${(p as Participant).user_id},recipient_id.eq.${u.id})`
+          )
+          .order("created_at", { ascending: true });
+        setThread((threadData as ThreadMessage[]) ?? []);
       }
     }
 
@@ -219,6 +240,7 @@ export default function ParticipantProfilePage() {
       .from("participant_messages")
       .insert({
         sender_id: userId,
+        recipient_id: participant?.user_id,
         participant_id: id,
         body: messageText,
         price: MESSAGE_PRICE,
@@ -226,11 +248,40 @@ export default function ParticipantProfilePage() {
 
     setBalance((b) => b - MESSAGE_PRICE);
     setMessageText("");
-    setMessageOpen(false);
     setNotice(
       msgError ? `Ошибка отправки: ${msgError.message}` : "Сообщение отправлено!"
     );
     setBusy(false);
+    await loadThread();
+  }
+
+  async function sendReplyAsFan() {
+    if (!userId || !participant || !messageText.trim()) return;
+    setBusy(true);
+    const { error } = await supabase.from("participant_messages").insert({
+      sender_id: userId,
+      recipient_id: participant.user_id,
+      participant_id: id,
+      body: messageText,
+      price: 0,
+    });
+    if (error) setNotice(`Ошибка: ${error.message}`);
+    setMessageText("");
+    setBusy(false);
+    await loadThread();
+  }
+
+  async function loadThread() {
+    if (!userId || !participant) return;
+    const { data } = await supabase
+      .from("participant_messages")
+      .select("id, sender_id, body, price, created_at")
+      .eq("participant_id", id)
+      .or(
+        `and(sender_id.eq.${userId},recipient_id.eq.${participant.user_id}),and(sender_id.eq.${participant.user_id},recipient_id.eq.${userId})`
+      )
+      .order("created_at", { ascending: true });
+    setThread((data as ThreadMessage[]) ?? []);
   }
 
   async function buyBoost() {
@@ -402,7 +453,24 @@ export default function ParticipantProfilePage() {
 
           {!isOwner && (
             <div className="bg-bgSurface border border-muted rounded-xl p-4 mb-3">
-              {!messageOpen ? (
+              {thread.length > 0 && (
+                <div className="flex flex-col gap-2 mb-3 max-h-64 overflow-y-auto">
+                  {thread.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+                        m.sender_id === userId
+                          ? "self-end bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
+                          : "self-start bg-bgPrimary text-offwhite"
+                      }`}
+                    >
+                      {m.body}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {thread.length === 0 && !messageOpen ? (
                 <button
                   onClick={() => setMessageOpen(true)}
                   disabled={!userId}
@@ -417,16 +485,18 @@ export default function ParticipantProfilePage() {
                   <textarea
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
-                    rows={3}
+                    rows={2}
                     placeholder="Ваше сообщение..."
                     className="bg-bgPrimary text-offwhite border border-muted rounded-lg px-3 py-2 text-sm"
                   />
                   <button
-                    onClick={sendMessage}
+                    onClick={thread.length > 0 ? sendReplyAsFan : sendMessage}
                     disabled={busy || !messageText.trim()}
                     className="bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
                   >
-                    Отправить за {MESSAGE_PRICE.toLocaleString("ru-RU")} ₽
+                    {thread.length > 0
+                      ? "Отправить"
+                      : `Отправить за ${MESSAGE_PRICE.toLocaleString("ru-RU")} ₽`}
                   </button>
                 </div>
               )}
