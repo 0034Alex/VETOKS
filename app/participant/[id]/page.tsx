@@ -16,6 +16,10 @@ type Participant = {
   user_id: string;
 };
 
+const MESSAGE_PRICE = 10000;
+const BOOST_PRICE = 100000;
+const BOOST_LIMIT = 3;
+
 export default function ParticipantProfilePage() {
   const params = useParams();
   const id = params.id as string;
@@ -28,8 +32,31 @@ export default function ParticipantProfilePage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [walletId, setWalletId] = useState<string | null>(null);
+  const [balance, setBalance] = useState(0);
+  const [boostCount, setBoostCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [messageOpen, setMessageOpen] = useState(false);
+  const [messageText, setMessageText] = useState("");
+
+  async function getOrCreateWallet(uid: string) {
+    let { data: wallet } = await supabase
+      .from("wallets")
+      .select("id, balance")
+      .eq("user_id", uid)
+      .maybeSingle();
+    if (!wallet) {
+      const { data: newWallet } = await supabase
+        .from("wallets")
+        .insert({ user_id: uid })
+        .select("id, balance")
+        .single();
+      wallet = newWallet;
+    }
+    return wallet;
+  }
 
   async function load() {
     setLoading(true);
@@ -70,6 +97,13 @@ export default function ParticipantProfilePage() {
       .eq("participant_id", id);
     setFollowerCount(followers ?? 0);
 
+    const { count: boosts } = await supabase
+      .from("boosts")
+      .select("id", { count: "exact", head: true })
+      .eq("participant_id", id)
+      .eq("boost_type", "rating_bump");
+    setBoostCount(boosts ?? 0);
+
     const u = await getCurrentUser();
     if (u) {
       setUserId(u.id);
@@ -86,6 +120,12 @@ export default function ParticipantProfilePage() {
         .eq("user_id", u.id)
         .maybeSingle();
       setIsFollowing(!!followRow);
+
+      const wallet = await getOrCreateWallet(u.id);
+      if (wallet) {
+        setWalletId(wallet.id);
+        setBalance(Number(wallet.balance));
+      }
     }
 
     setLoading(false);
@@ -133,6 +173,100 @@ export default function ParticipantProfilePage() {
     setBusy(false);
   }
 
+  async function sendMessage() {
+    if (!userId || !walletId || !messageText.trim()) return;
+    if (balance < MESSAGE_PRICE) {
+      setNotice("Недостаточно средств для платного сообщения.");
+      return;
+    }
+    setBusy(true);
+
+    await supabase.from("wallet_transactions").insert({
+      wallet_id: walletId,
+      type: "vote_purchase",
+      amount: -MESSAGE_PRICE,
+      related_participant_id: id,
+      metadata: { kind: "paid_message" },
+    });
+    await supabase
+      .from("wallets")
+      .update({ balance: balance - MESSAGE_PRICE })
+      .eq("id", walletId);
+
+    if (participant) {
+      const pWallet = await getOrCreateWallet(participant.user_id);
+      if (pWallet) {
+        const earning = MESSAGE_PRICE * 0.5;
+        await supabase.from("wallet_transactions").insert({
+          wallet_id: pWallet.id,
+          type: "gift_received",
+          amount: earning,
+          related_participant_id: id,
+          metadata: { kind: "paid_message" },
+        });
+        await supabase
+          .from("wallets")
+          .update({ balance: Number(pWallet.balance) + earning })
+          .eq("id", pWallet.id);
+      }
+    }
+
+    await supabase.from("participant_messages").insert({
+      sender_id: userId,
+      participant_id: id,
+      body: messageText,
+      price: MESSAGE_PRICE,
+    });
+
+    setBalance((b) => b - MESSAGE_PRICE);
+    setMessageText("");
+    setMessageOpen(false);
+    setNotice("Сообщение отправлено!");
+    setBusy(false);
+  }
+
+  async function buyBoost() {
+    if (!userId || !walletId) return;
+    if (boostCount >= BOOST_LIMIT) return;
+    if (balance < BOOST_PRICE) {
+      setNotice("Недостаточно средств для буста.");
+      return;
+    }
+    setBusy(true);
+
+    const { data: tx } = await supabase
+      .from("wallet_transactions")
+      .insert({
+        wallet_id: walletId,
+        type: "boost_purchase",
+        amount: -BOOST_PRICE,
+        related_participant_id: id,
+      })
+      .select("id")
+      .single();
+
+    await supabase
+      .from("wallets")
+      .update({ balance: balance - BOOST_PRICE })
+      .eq("id", walletId);
+
+    const endsAt = new Date();
+    endsAt.setDate(endsAt.getDate() + 7);
+
+    await supabase.from("boosts").insert({
+      participant_id: id,
+      boost_type: "rating_bump",
+      price: BOOST_PRICE,
+      ends_at: endsAt.toISOString(),
+      wallet_transaction_id: tx?.id ?? null,
+    });
+
+    setBalance((b) => b - BOOST_PRICE);
+    setNotice("Буст активирован на 7 дней!");
+    await load();
+    setBusy(false);
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center text-muted">
@@ -148,6 +282,9 @@ export default function ParticipantProfilePage() {
       </main>
     );
   }
+
+  const isOwner = userId === participant.user_id;
+  const boostsLeft = BOOST_LIMIT - boostCount;
 
   return (
     <main className="min-h-screen pb-28">
@@ -182,15 +319,17 @@ export default function ParticipantProfilePage() {
             <span className="text-muted">👥 {followerCount} подписчиков</span>
           </div>
 
-          {participant.bio && (
-            <p className="text-offwhite text-sm mb-6">{participant.bio}</p>
-          )}
-
-          {userId === participant.user_id && giftTotal > 0 && (
+          {isOwner && giftTotal > 0 && (
             <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
-              <p className="text-muted text-xs mb-1">Ваш заработок с подарков (видно только вам)</p>
+              <p className="text-muted text-xs mb-1">
+                Ваш заработок с подарков (видно только вам)
+              </p>
               <p className="text-gold text-xl font-semibold">{giftTotal} ₽</p>
             </div>
+          )}
+
+          {participant.bio && (
+            <p className="text-offwhite text-sm mb-6">{participant.bio}</p>
           )}
 
           <div className="flex gap-3 mb-3">
@@ -214,7 +353,7 @@ export default function ParticipantProfilePage() {
           <button
             onClick={toggleFollow}
             disabled={busy || !userId}
-            className={`w-full border font-semibold py-3 rounded-full text-sm disabled:opacity-40 ${
+            className={`w-full border font-semibold py-3 rounded-full text-sm disabled:opacity-40 mb-3 ${
               isFollowing
                 ? "border-muted text-muted"
                 : "border-gold text-gold"
@@ -222,6 +361,60 @@ export default function ParticipantProfilePage() {
           >
             {isFollowing ? "Вы подписаны" : "Подписаться"}
           </button>
+
+          {!isOwner && (
+            <div className="bg-bgSurface border border-muted rounded-xl p-4 mb-3">
+              {!messageOpen ? (
+                <button
+                  onClick={() => setMessageOpen(true)}
+                  disabled={!userId}
+                  className="w-full text-offwhite font-semibold text-sm disabled:opacity-40"
+                >
+                  ✉️ Написать участнице — от {MESSAGE_PRICE.toLocaleString(
+                    "ru-RU"
+                  )} ₽
+                </button>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <textarea
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    rows={3}
+                    placeholder="Ваше сообщение..."
+                    className="bg-bgPrimary text-offwhite border border-muted rounded-lg px-3 py-2 text-sm"
+                  />
+                  <button
+                    onClick={sendMessage}
+                    disabled={busy || !messageText.trim()}
+                    className="bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+                  >
+                    Отправить за {MESSAGE_PRICE.toLocaleString("ru-RU")} ₽
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+            <p className="text-offwhite text-sm font-semibold mb-1">
+              🚀 Продвинуть в топ — {BOOST_PRICE.toLocaleString("ru-RU")} ₽
+            </p>
+            <p className="text-muted text-xs mb-3">
+              Осталось {boostsLeft} из {BOOST_LIMIT} возможных бустов для этой
+              участницы
+            </p>
+            <button
+              onClick={buyBoost}
+              disabled={boostsLeft <= 0 || busy || !userId}
+              className="w-full bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+            >
+              {boostsLeft <= 0 ? "Лимит исчерпан" : "Продвинуть"}
+            </button>
+          </div>
+
+          {notice && (
+            <p className="text-gold text-sm text-center mb-4">{notice}</p>
+          )}
         </div>
       </div>
 
