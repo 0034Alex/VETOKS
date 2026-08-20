@@ -1,15 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 
-type Season = { id: string; title: string; status: string };
-
 export default function ApplyPage() {
-  const [seasons, setSeasons] = useState<Season[]>([]);
-  const [selectedSeason, setSelectedSeason] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [age, setAge] = useState("");
   const [city, setCity] = useState("");
@@ -20,19 +16,8 @@ export default function ApplyPage() {
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
-  useEffect(() => {
-    supabase
-      .from("seasons")
-      .select("id, title, status")
-      .eq("status", "registration")
-      .then(({ data }) => {
-        if (data) setSeasons(data as Season[]);
-      });
-  }, []);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedSeason) return;
 
     setStatus("loading");
     setErrorMessage("");
@@ -40,13 +25,31 @@ export default function ApplyPage() {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       setStatus("error");
-      setErrorMessage("Сначала пройдите регистрацию на главной странице.");
+      setErrorMessage("Сначала войдите в аккаунт.");
+      return;
+    }
+
+    // Сезон подбирается автоматически: активный сезон региона пользователя.
+    const { data: season } = await supabase
+      .from("seasons")
+      .select("id")
+      .eq("region_id", currentUser.region_id)
+      .eq("status", "registration")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (!season) {
+      setStatus("error");
+      setErrorMessage(
+        "В вашем регионе пока нет открытого сезона для регистрации."
+      );
       return;
     }
 
     const { error } = await supabase.from("applications").insert({
       user_id: currentUser.id,
-      season_id: selectedSeason,
+      season_id: season.id,
       status: "submitted",
       form_data: {
         display_name: displayName,
@@ -67,7 +70,7 @@ export default function ApplyPage() {
 
   if (status === "success") {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center pb-24">
+      <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center pb-28">
         <h1 className="text-3xl font-semibold text-gold mb-4">
           Анкета отправлена!
         </h1>
@@ -80,7 +83,7 @@ export default function ApplyPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center px-6 py-16 pb-24">
+    <main className="min-h-screen flex flex-col items-center px-6 py-16 pb-28">
       <h1 className="text-3xl font-semibold text-gold mb-8 text-center">
         Анкета участницы
       </h1>
@@ -89,25 +92,6 @@ export default function ApplyPage() {
         onSubmit={handleSubmit}
         className="w-full max-w-sm flex flex-col gap-4"
       >
-        <div className="flex flex-col gap-1">
-          <label className="text-left text-offwhite text-sm">Сезон</label>
-          <select
-            value={selectedSeason}
-            onChange={(e) => setSelectedSeason(e.target.value)}
-            className="bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3"
-            required
-          >
-            <option value="" disabled>
-              — выберите сезон —
-            </option>
-            {seasons.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.title}
-              </option>
-            ))}
-          </select>
-        </div>
-
         <div className="flex flex-col gap-1">
           <label className="text-left text-offwhite text-sm">Имя</label>
           <input
