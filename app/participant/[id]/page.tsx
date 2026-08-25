@@ -227,8 +227,16 @@ export default function ParticipantProfilePage() {
     setBusy(false);
   }
 
+  async function notify(recipientId: string, message: string, link?: string) {
+    await supabase.from("notifications").insert({
+      user_id: recipientId,
+      message,
+      link: link ?? null,
+    });
+  }
+
   async function toggleFollow() {
-    if (!userId) return;
+    if (!userId || !participant) return;
     setBusy(true);
     if (isFollowing) {
       const { error } = await supabase
@@ -242,6 +250,12 @@ export default function ParticipantProfilePage() {
         .from("participant_follows")
         .insert({ participant_id: id, user_id: userId });
       if (error) setNotice(`Ошибка: ${error.message}`);
+      else
+        await notify(
+          participant.user_id,
+          `👥 У вас новый подписчик`,
+          `/participant/${id}`
+        );
     }
     await load();
     setBusy(false);
@@ -294,6 +308,14 @@ export default function ParticipantProfilePage() {
         body: messageText,
         price: MESSAGE_PRICE,
       });
+
+    if (!msgError && participant) {
+      await notify(
+        participant.user_id,
+        `✉️ Новое платное сообщение (${MESSAGE_PRICE.toLocaleString("ru-RU")} ₽)`,
+        `/messages/${userId}`
+      );
+    }
 
     setBalance((b) => b - MESSAGE_PRICE);
     setMessageText("");
@@ -376,6 +398,14 @@ export default function ParticipantProfilePage() {
       .update({ status: "sold", buyer_id: userId, sold_at: new Date().toISOString() })
       .eq("id", card.id);
 
+    if (participant) {
+      await notify(
+        participant.user_id,
+        `🃏 Продана карточка «${STAGE_LABELS[card.stage]}» за ${CARD_PRICE.toLocaleString("ru-RU")} ₽`,
+        `/my-cards`
+      );
+    }
+
     setBalance((b) => b - CARD_PRICE);
     setNotice(`Карточка «${STAGE_LABELS[card.stage]}» ваша!`);
     await load();
@@ -447,6 +477,14 @@ export default function ParticipantProfilePage() {
       is_paid: true,
     }));
     await supabase.from("votes").insert(boostVotes);
+
+    if (participant) {
+      await notify(
+        participant.user_id,
+        `🚀 Ваш профиль продвинут — +${BOOST_VOTES} голосов`,
+        `/participant/${id}`
+      );
+    }
 
     setBalance((b) => b - BOOST_PRICE);
     setNotice("Буст активирован на 7 дней!");
