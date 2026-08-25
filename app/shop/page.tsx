@@ -88,6 +88,7 @@ function ShopContent() {
     "idle" | "sending" | "sent" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [section, setSection] = useState<"gifts" | "cards">("gifts");
 
   useEffect(() => {
     (async () => {
@@ -255,6 +256,33 @@ function ShopContent() {
     <main className="min-h-screen pb-28">
       <PageHeader />
 
+      <div className="px-6 mb-4 flex gap-2">
+        <button
+          onClick={() => setSection("gifts")}
+          className={`px-4 py-2 rounded-full text-sm font-medium ${
+            section === "gifts"
+              ? "bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
+              : "bg-bgSurface text-muted border border-muted"
+          }`}
+        >
+          Подарки
+        </button>
+        <button
+          onClick={() => setSection("cards")}
+          className={`px-4 py-2 rounded-full text-sm font-medium ${
+            section === "cards"
+              ? "bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
+              : "bg-bgSurface text-muted border border-muted"
+          }`}
+        >
+          🃏 Карточки
+        </button>
+      </div>
+
+      {section === "cards" ? (
+        <CardsSection />
+      ) : (
+        <>
       <div className="px-6 mb-4">
         <h1 className="text-2xl font-semibold text-offwhite mb-1">
           Подарки{participantName ? ` — ${participantName}` : ""}
@@ -403,11 +431,107 @@ function ShopContent() {
           Подарок отправлен! 🎉
         </p>
       )}
+        </>
+      )}
 
       <BottomNav />
     </main>
   );
 }
+
+function CardsSection() {
+  const [cards, setCards] = useState<
+    {
+      id: string;
+      stage: string;
+      final_image_url: string | null;
+      status: string;
+      participant_id: string;
+      participants: { display_name: string } | null;
+    }[]
+  >([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("collectible_cards")
+        .select(
+          "id, stage, final_image_url, status, participant_id, participants(display_name)"
+        )
+        .in("status", ["ready", "sold"]);
+      setCards((data as any) ?? []);
+      setLoading(false);
+    })();
+  }, []);
+
+  const filtered = cards.filter((c) =>
+    matchesSearch(c.participants?.display_name ?? "", search)
+  );
+
+  return (
+    <div className="px-6">
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Поиск участницы — рус. или англ."
+        className="w-full bg-bgSurface text-offwhite border border-muted rounded-full px-5 py-3 text-sm mb-4"
+      />
+
+      {loading && <p className="text-muted text-center">Загрузка...</p>}
+      {!loading && filtered.length === 0 && (
+        <p className="text-muted text-center">
+          Пока нет опубликованных карточек — они появятся, когда участницы
+          загрузят фото и мы их обработаем.
+        </p>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {filtered.map((c) => (
+          <a
+            key={c.id}
+            href={`/participant/${c.participant_id}`}
+            className="bg-bgSurface border border-muted rounded-xl overflow-hidden"
+          >
+            <div className="aspect-[3/4] bg-black/40">
+              {c.final_image_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={c.final_image_url}
+                  alt={STAGE_LABELS[c.stage] ?? c.stage}
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
+            <div className="p-2">
+              <p className="text-offwhite text-xs font-semibold truncate">
+                {c.participants?.display_name ?? "—"}
+              </p>
+              <p className="text-muted text-[10px]">
+                {STAGE_LABELS[c.stage] ?? c.stage}
+              </p>
+              <p
+                className={`text-xs font-semibold mt-1 ${
+                  c.status === "sold" ? "text-success" : "text-gold"
+                }`}
+              >
+                {c.status === "sold" ? "Продана" : "25 000 ₽"}
+              </p>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const STAGE_LABELS: Record<string, string> = {
+  casting: "Кастинг",
+  week2: "Неделя 2",
+  week3: "Неделя 3",
+  grand_final: "Гранд-финал",
+};
 
 export default function ShopPage() {
   return (
