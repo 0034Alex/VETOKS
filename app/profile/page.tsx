@@ -18,6 +18,8 @@ export default function ProfilePage() {
   const [giftCount, setGiftCount] = useState(0);
   const [referralCount, setReferralCount] = useState(0);
   const [balance, setBalance] = useState(0);
+  const [giftEarnings, setGiftEarnings] = useState(0);
+  const [taskEarnings, setTaskEarnings] = useState(0);
   const [tasksDone, setTasksDone] = useState(0);
   const TOTAL_TASKS = 3;
   const [loading, setLoading] = useState(true);
@@ -79,10 +81,27 @@ export default function ProfilePage() {
 
       const { data: wallet } = await supabase
         .from("wallets")
-        .select("balance")
+        .select("id, balance")
         .eq("user_id", u.id)
         .maybeSingle();
       setBalance(wallet ? Number(wallet.balance) : 0);
+
+      if (wallet) {
+        const { data: txs } = await supabase
+          .from("wallet_transactions")
+          .select("type, amount")
+          .eq("wallet_id", wallet.id)
+          .gt("amount", 0);
+
+        let gifts = 0;
+        let tasks = 0;
+        (txs ?? []).forEach((t: { type: string; amount: number }) => {
+          if (t.type === "gift_received") gifts += Number(t.amount);
+          if (t.type === "task_reward") tasks += Number(t.amount);
+        });
+        setGiftEarnings(gifts);
+        setTaskEarnings(tasks);
+      }
 
       setLoading(false);
     })();
@@ -126,14 +145,32 @@ export default function ProfilePage() {
             </p>
           </div>
 
-          <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4 flex items-center justify-between">
-            <div>
-              <p className="text-muted text-xs">Баланс</p>
-              <p className="text-gold text-xl font-semibold">{balance} ₽</p>
+          <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-muted text-xs">Баланс</p>
+                <p className="text-gold text-xl font-semibold">{balance} ₽</p>
+              </div>
+              <span className="text-muted text-xs max-w-[140px] text-right">
+                Вывод появится вместе с платёжной системой
+              </span>
             </div>
-            <span className="text-muted text-xs max-w-[140px] text-right">
-              Пополнение появится вместе с платёжной системой
-            </span>
+            {participant && (giftEarnings > 0 || taskEarnings > 0) && (
+              <div className="border-t border-muted mt-2 pt-2 flex flex-col gap-1">
+                {giftEarnings > 0 && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted">🎁 От подарков и сообщений</span>
+                    <span className="text-offwhite">{giftEarnings} ₽</span>
+                  </div>
+                )}
+                {taskEarnings > 0 && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted">⭐ От заданий</span>
+                    <span className="text-offwhite">{taskEarnings} ₽</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {participant && (
@@ -171,6 +208,17 @@ export default function ProfilePage() {
             >
               <span className="text-gold font-semibold text-sm">
                 📝 Моя анкета (редактировать)
+              </span>
+            </a>
+          )}
+
+          {participant && (
+            <a
+              href="/my-cards"
+              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
+            >
+              <span className="text-gold font-semibold text-sm">
+                🃏 Мои карточки
               </span>
             </a>
           )}
