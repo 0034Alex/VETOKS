@@ -203,5 +203,18 @@ export async function GET() {
     );
   }
 
+  // Снимок голосов каждой участницы за сегодня — нужен для стрелочек
+  // изменения позиции (↑/↓/NEW) на завтра.
+  for (const p of participants) {
+    await supabase.from("daily_vote_snapshots").upsert(
+      {
+        participant_id: p.id,
+        snapshot_date: today,
+        votes: totalVotes[p.id] ?? 0,
+      },
+      { onConflict: "participant_id,snapshot_date" }
+    );
+  }
+
   return NextResponse.json({ ok: true, count: results.length, date: today });
 }
