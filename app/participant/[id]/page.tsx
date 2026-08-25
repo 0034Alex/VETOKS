@@ -9,6 +9,13 @@ import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
 
+type CollectibleCard = {
+  id: string;
+  stage: string;
+  final_image_url: string | null;
+  status: string;
+};
+
 type ThreadMessage = {
   id: string;
   sender_id: string;
@@ -26,6 +33,13 @@ type Participant = {
 };
 
 const MESSAGE_PRICE = 10000;
+const CARD_PRICE = 25000;
+const STAGE_LABELS: Record<string, string> = {
+  casting: "Кастинг",
+  week2: "Неделя 2",
+  week3: "Неделя 3",
+  grand_final: "Гранд-финал",
+};
 const BOOST_PRICE = 100000;
 const BOOST_LIMIT = 3;
 const BOOST_VOTES = 1000;
@@ -39,12 +53,15 @@ export default function ParticipantProfilePage() {
   const [giftCount, setGiftCount] = useState(0);
   const [giftTotal, setGiftTotal] = useState(0);
   const [followerCount, setFollowerCount] = useState(0);
+  const [rankPosition, setRankPosition] = useState<number | null>(null);
+  const [votesToNextRank, setVotesToNextRank] = useState<number | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [walletId, setWalletId] = useState<string | null>(null);
   const [balance, setBalance] = useState(0);
   const [boostCount, setBoostCount] = useState(0);
+  const [cards, setCards] = useState<CollectibleCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -108,12 +125,44 @@ export default function ParticipantProfilePage() {
       .eq("participant_id", id);
     setFollowerCount(followers ?? 0);
 
+    // Позиция в общем рейтинге по голосам.
+    const { data: allParticipants } = await supabase
+      .from("participants")
+      .select("id")
+      .eq("is_eliminated", false);
+    if (allParticipants) {
+      const { data: allVotes } = await supabase.from("votes").select("participant_id");
+      const counts: Record<string, number> = {};
+      (allVotes ?? []).forEach((v: { participant_id: string }) => {
+        counts[v.participant_id] = (counts[v.participant_id] ?? 0) + 1;
+      });
+      const sorted = allParticipants
+        .map((p: { id: string }) => ({ id: p.id, votes: counts[p.id] ?? 0 }))
+        .sort((a, b) => b.votes - a.votes);
+      const idx = sorted.findIndex((p) => p.id === id);
+      if (idx !== -1) {
+        setRankPosition(idx + 1);
+        if (idx >= 25) {
+          const threshold = sorted[24]?.votes ?? 0;
+          setVotesToNextRank(threshold - sorted[idx].votes + 1);
+        } else {
+          setVotesToNextRank(null);
+        }
+      }
+    }
+
     const { count: boosts } = await supabase
       .from("boosts")
       .select("id", { count: "exact", head: true })
       .eq("participant_id", id)
       .eq("boost_type", "rating_bump");
     setBoostCount(boosts ?? 0);
+
+    const { data: cardsData } = await supabase
+      .from("collectible_cards")
+      .select("id, stage, final_image_url, status")
+      .eq("participant_id", id);
+    setCards((cardsData as CollectibleCard[]) ?? []);
 
     const u = await getCurrentUser();
     if (u) {
@@ -284,6 +333,55 @@ export default function ParticipantProfilePage() {
     setThread((data as ThreadMessage[]) ?? []);
   }
 
+  async function buyCard(card: CollectibleCard) {
+    if (!userId || !walletId || card.status !== "ready") return;
+    if (balance < CARD_PRICE) {
+      setNotice("Недостаточно средств для покупки карточки.");
+      return;
+    }
+    setBusy(true);
+
+    await supabase.from("wallet_transactions").insert({
+      wallet_id: walletId,
+      type: "gift_sent",
+      amount: -CARD_PRICE,
+      related_participant_id: id,
+      metadata: { kind: "collectible_card", stage: card.stage },
+    });
+    await supabase
+      .from("wallets")
+      .update({ balance: balance - CARD_PRICE })
+      .eq("id", walletId);
+
+    if (participant) {
+      const pWallet = await getOrCreateWallet(participant.user_id);
+      if (pWallet) {
+        const earning = CARD_PRICE * 0.5;
+        await supabase.from("wallet_transactions").insert({
+          wallet_id: pWallet.id,
+          type: "gift_received",
+          amount: earning,
+          related_participant_id: id,
+          metadata: { kind: "collectible_card", stage: card.stage },
+        });
+        await supabase
+          .from("wallets")
+          .update({ balance: Number(pWallet.balance) + earning })
+          .eq("id", pWallet.id);
+      }
+    }
+
+    await supabase
+      .from("collectible_cards")
+      .update({ status: "sold", buyer_id: userId, sold_at: new Date().toISOString() })
+      .eq("id", card.id);
+
+    setBalance((b) => b - CARD_PRICE);
+    setNotice(`Карточка «${STAGE_LABELS[card.stage]}» ваша!`);
+    await load();
+    setBusy(false);
+  }
+
   async function buyBoost() {
     if (!userId || !walletId) return;
     if (boostCount >= BOOST_LIMIT) return;
@@ -408,6 +506,15 @@ export default function ParticipantProfilePage() {
             <span className="text-muted">👥 {followerCount} подписчиков</span>
           </div>
 
+          {rankPosition !== null && (
+            <p className="text-muted text-sm mb-4">
+              #{rankPosition} в общем рейтинге
+              {votesToNextRank !== null && votesToNextRank > 0 && (
+                <> · до топ-25: +{votesToNextRank} голосов</>
+              )}
+            </p>
+          )}
+
           {isOwner && giftTotal > 0 && (
             <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
               <p className="text-muted text-xs mb-1">
@@ -438,6 +545,48 @@ export default function ParticipantProfilePage() {
               🎁 Подарить
             </Link>
           </div>
+
+          {cards.length > 0 && (
+            <div className="mb-4">
+              <p className="text-offwhite text-sm font-semibold mb-2">
+                🃏 Коллекционные карточки
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {cards.map((c) => (
+                  <div
+                    key={c.stage}
+                    className="bg-bgSurface border border-muted rounded-lg overflow-hidden"
+                  >
+                    <div className="aspect-[3/4] bg-black/40 flex items-center justify-center relative">
+                      {c.final_image_url && c.status !== "pending" ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={c.final_image_url}
+                          alt={STAGE_LABELS[c.stage]}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-muted text-[10px] text-center px-1">
+                          🔒
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => buyCard(c)}
+                      disabled={c.status !== "ready" || busy || !userId}
+                      className="w-full text-[10px] py-1.5 font-semibold disabled:opacity-40 bg-gold text-bgPrimary"
+                    >
+                      {c.status === "sold"
+                        ? "Продана"
+                        : c.status === "ready"
+                        ? "25 000 ₽"
+                        : "Скоро"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <button
             onClick={toggleFollow}
