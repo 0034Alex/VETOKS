@@ -253,10 +253,20 @@ export default function ProfilePage() {
               <span className="text-offwhite text-sm">Мои приглашения</span>
               <span className="text-gold text-sm">{referralCount}</span>
             </div>
-            <div className="p-4 flex items-center justify-between text-muted text-sm">
+            <a
+              href="/history"
+              className="p-4 flex items-center justify-between text-muted text-sm"
+            >
               <span>История операций</span>
               <span>→</span>
-            </div>
+            </a>
+            <a
+              href="/how-it-works"
+              className="p-4 flex items-center justify-between text-muted text-sm"
+            >
+              <span>Как это работает</span>
+              <span>→</span>
+            </a>
             <div className="p-4 flex items-center justify-between text-muted text-sm">
               <span>Настройки</span>
               <span>→</span>
