@@ -166,33 +166,18 @@ export default function ProfilePage() {
             </p>
           </div>
 
-          <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
-            <div className="flex items-center justify-between mb-2">
+          <Link
+            href="/history"
+            className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
+          >
+            <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted text-xs">Баланс</p>
                 <p className="text-gold text-xl font-semibold">{balance} ₽</p>
               </div>
-              <span className="text-muted text-xs max-w-[140px] text-right">
-                Вывод появится вместе с платёжной системой
-              </span>
+              <span className="text-gold text-xs">Подробнее →</span>
             </div>
-            {participant && (giftEarnings > 0 || taskEarnings > 0) && (
-              <div className="border-t border-muted mt-2 pt-2 flex flex-col gap-1">
-                {giftEarnings > 0 && (
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted">🎁 От подарков и сообщений</span>
-                    <span className="text-offwhite">{giftEarnings} ₽</span>
-                  </div>
-                )}
-                {taskEarnings > 0 && (
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted">⭐ От заданий</span>
-                    <span className="text-offwhite">{taskEarnings} ₽</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          </Link>
 
           {participant && (
             <div className="grid grid-cols-2 gap-3 mb-4">
@@ -202,12 +187,15 @@ export default function ProfilePage() {
                 </p>
                 <p className="text-muted text-xs">Голосов набрано</p>
               </div>
-              <div className="bg-bgSurface border border-muted rounded-xl p-4">
+              <Link
+                href={`/participant/${participant.id}/gifts`}
+                className="bg-bgSurface border border-muted rounded-xl p-4"
+              >
                 <p className="text-gold text-lg font-semibold">
                   {giftCount}
                 </p>
-                <p className="text-muted text-xs">Подарков получено</p>
-              </div>
+                <p className="text-muted text-xs">Подарков получено →</p>
+              </Link>
             </div>
           )}
 
