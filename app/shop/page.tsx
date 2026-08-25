@@ -227,6 +227,14 @@ function ShopContent() {
       wallet_transaction_id: senderTx?.id ?? null,
     });
 
+    if (participant) {
+      await supabase.from("notifications").insert({
+        user_id: participant.user_id,
+        message: `🎁 Вам подарили ${gift.name}${qty > 1 ? ` ×${qty}` : ""}`,
+        link: `/participant/${selectedParticipant}/gifts`,
+      });
+    }
+
     setBalance((b) => b - totalPrice);
     setQuantities((q) => ({ ...q, [gift.id]: 1 }));
     setStatus("sent");
