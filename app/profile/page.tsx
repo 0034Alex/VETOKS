@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser, signOutUser, CurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
-import PageHeader from "@/components/PageHeader";
 
 type Participant = { id: string; display_name: string };
 
@@ -18,6 +18,7 @@ export default function ProfilePage() {
   const [giftCount, setGiftCount] = useState(0);
   const [referralCount, setReferralCount] = useState(0);
   const [balance, setBalance] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [giftEarnings, setGiftEarnings] = useState(0);
   const [taskEarnings, setTaskEarnings] = useState(0);
   const [tasksDone, setTasksDone] = useState(0);
@@ -79,6 +80,13 @@ export default function ProfilePage() {
         .eq("referrer_id", u.id);
       setReferralCount(referrals ?? 0);
 
+      const { count: unread } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", u.id)
+        .eq("is_read", false);
+      setUnreadCount(unread ?? 0);
+
       const { data: wallet } = await supabase
         .from("wallets")
         .select("id, balance")
@@ -123,7 +131,20 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen pb-28">
       <div className="max-w-2xl mx-auto">
-        <PageHeader />
+        <div
+          className="flex items-center justify-between px-6 py-4"
+          style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
+        >
+          <Logo size={28} />
+          <Link href="/notifications" className="relative text-xl">
+            🔔
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-danger text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </Link>
+        </div>
 
         <div className="px-6">
           <div className="bg-bgSurface border border-muted rounded-xl p-5 mb-4">
