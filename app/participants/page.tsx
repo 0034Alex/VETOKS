@@ -23,6 +23,7 @@ export default function ParticipantsPage() {
   const [giftCounts, setGiftCounts] = useState<Record<string, number>>({});
   const [followerCounts, setFollowerCounts] = useState<Record<string, number>>({});
   const [boostedIds, setBoostedIds] = useState<Set<string>>(new Set());
+  const [rankMovement, setRankMovement] = useState<Record<string, number | "new">>({});
   const [loading, setLoading] = useState(true);
   const [votedIds, setVotedIds] = useState<string[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -81,6 +82,42 @@ export default function ParticipantsPage() {
       setBoostedIds(
         new Set((boostsData ?? []).map((b: { participant_id: string }) => b.participant_id))
       );
+
+      // Динамика позиции: сравниваем сегодняшний порядок с вчерашним снимком.
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+      const { data: snapshotData } = await supabase
+        .from("daily_vote_snapshots")
+        .select("participant_id, votes")
+        .eq("snapshot_date", yesterdayStr);
+
+      if (snapshotData && snapshotData.length > 0) {
+        const yesterdayVotes: Record<string, number> = {};
+        snapshotData.forEach((s: { participant_id: string; votes: number }) => {
+          yesterdayVotes[s.participant_id] = s.votes;
+        });
+        const yesterdaySorted = list
+          .map((p) => ({ id: p.id, votes: yesterdayVotes[p.id] ?? -1 }))
+          .filter((p) => p.votes >= 0)
+          .sort((a, b) => b.votes - a.votes);
+        const yesterdayRank: Record<string, number> = {};
+        yesterdaySorted.forEach((p, i) => {
+          yesterdayRank[p.id] = i + 1;
+        });
+
+        const todaySorted = [...list].sort(
+          (a, b) => (vCounts[b.id] ?? 0) - (vCounts[a.id] ?? 0)
+        );
+        const movement: Record<string, number | "new"> = {};
+        todaySorted.forEach((p, i) => {
+          const todayRank = i + 1;
+          const prevRank = yesterdayRank[p.id];
+          movement[p.id] = prevRank ? prevRank - todayRank : "new";
+        });
+        setRankMovement(movement);
+      }
     }
 
     setLoading(false);
@@ -212,9 +249,28 @@ export default function ParticipantsPage() {
                   )}
                 </div>
                 <div className="px-3 pt-3">
-                  <h2 className="text-sm text-offwhite font-semibold truncate">
-                    {p.display_name}
-                  </h2>
+                  <div className="flex items-center gap-1.5">
+                    <h2 className="text-sm text-offwhite font-semibold truncate">
+                      {p.display_name}
+                    </h2>
+                    {rankMovement[p.id] === "new" && (
+                      <span className="text-[9px] bg-gold text-bgPrimary px-1.5 py-0.5 rounded-full font-semibold">
+                        NEW
+                      </span>
+                    )}
+                    {typeof rankMovement[p.id] === "number" &&
+                      (rankMovement[p.id] as number) > 0 && (
+                        <span className="text-[10px] text-success">
+                          ↑{rankMovement[p.id]}
+                        </span>
+                      )}
+                    {typeof rankMovement[p.id] === "number" &&
+                      (rankMovement[p.id] as number) < 0 && (
+                        <span className="text-[10px] text-danger">
+                          ↓{Math.abs(rankMovement[p.id] as number)}
+                        </span>
+                      )}
+                  </div>
                   <div className="flex items-center gap-2 text-xs mt-1">
                     <span className="text-rose">♥ {voteCounts[p.id] ?? 0}</span>
                     <span className="text-gold">
