@@ -357,6 +357,17 @@ export default function ProfilePage() {
 
           {participant && (
             <a
+              href="/add-video"
+              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
+            >
+              <span className="text-gold font-semibold text-sm">
+                🎬 Добавить видео
+              </span>
+            </a>
+          )}
+
+          {participant && (
+            <a
               href="/my-cards"
               className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
             >
