@@ -13,6 +13,7 @@ type Conversation = {
   name: string;
   lastMessage: string;
   lastAt: string;
+  unread: number;
 };
 
 export default function MessagesPage() {
@@ -46,7 +47,7 @@ export default function MessagesPage() {
 
       const { data: msgs } = await supabase
         .from("participant_messages")
-        .select("id, sender_id, recipient_id, body, created_at")
+        .select("id, sender_id, recipient_id, body, created_at, is_read")
         .eq("participant_id", p.id)
         .order("created_at", { ascending: false });
 
@@ -57,15 +58,23 @@ export default function MessagesPage() {
           recipient_id: string | null;
           body: string;
           created_at: string;
+          is_read: boolean;
         }) => {
           const otherId = m.sender_id === u.id ? m.recipient_id : m.sender_id;
-          if (!otherId || map.has(otherId)) return;
-          map.set(otherId, {
-            userId: otherId,
-            name: "",
-            lastMessage: m.body,
-            lastAt: m.created_at,
-          });
+          if (!otherId) return;
+          if (!map.has(otherId)) {
+            map.set(otherId, {
+              userId: otherId,
+              name: "",
+              lastMessage: m.body,
+              lastAt: m.created_at,
+              unread: 0,
+            });
+          }
+          if (m.recipient_id === u.id && !m.is_read) {
+            const conv = map.get(otherId)!;
+            conv.unread += 1;
+          }
         }
       );
 
@@ -126,8 +135,13 @@ export default function MessagesPage() {
             className="bg-bgSurface border border-muted rounded-xl p-4 flex flex-col"
           >
             <div className="flex justify-between items-center mb-1">
-              <span className="text-offwhite text-sm font-semibold">
+              <span className="text-offwhite text-sm font-semibold flex items-center gap-2">
                 {c.name}
+                {c.unread > 0 && (
+                  <span className="bg-danger text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center">
+                    {c.unread > 9 ? "9+" : c.unread}
+                  </span>
+                )}
               </span>
               <span className="text-muted text-xs">
                 {new Date(c.lastAt).toLocaleDateString("ru-RU")}
