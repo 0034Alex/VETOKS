@@ -65,6 +65,10 @@ export default function ParticipantProfilePage() {
   const [goalText, setGoalText] = useState("");
   const [goalTarget, setGoalTarget] = useState(5000);
   const [goalCollected, setGoalCollected] = useState(0);
+  const [goalEnabled, setGoalEnabled] = useState(true);
+  const [goalDonors, setGoalDonors] = useState<
+    { name: string; amount: number; created_at: string }[]
+  >([]);
   const [donateAmount, setDonateAmount] = useState("100");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -172,13 +176,14 @@ export default function ParticipantProfilePage() {
     const { data: settingsData } = await supabase
       .from("platform_settings")
       .select("key, value")
-      .in("key", ["weekly_goal_text", "weekly_goal_target"]);
+      .in("key", ["weekly_goal_text", "weekly_goal_target", "weekly_goal_enabled"]);
     const settingsMap: Record<string, string> = {};
     (settingsData ?? []).forEach((s: { key: string; value: string }) => {
       settingsMap[s.key] = s.value;
     });
     setGoalText(settingsMap.weekly_goal_text ?? "");
     setGoalTarget(Number(settingsMap.weekly_goal_target ?? 5000));
+    setGoalEnabled(settingsMap.weekly_goal_enabled !== "false");
 
     const now = new Date();
     const monday = new Date(now);
@@ -190,15 +195,35 @@ export default function ParticipantProfilePage() {
 
     const { data: contribData } = await supabase
       .from("weekly_goal_contributions")
-      .select("amount")
+      .select("amount, user_id, created_at")
       .eq("participant_id", id)
-      .eq("week_start", weekStartStr);
+      .eq("week_start", weekStartStr)
+      .order("created_at", { ascending: false });
     setGoalCollected(
       (contribData ?? []).reduce(
         (sum: number, c: { amount: number }) => sum + Number(c.amount),
         0
       )
     );
+
+    if (p && u && u.id === (p as Participant).user_id && contribData && contribData.length > 0) {
+      const donorIds = [...new Set(contribData.map((c: { user_id: string }) => c.user_id))];
+      const { data: donorUsers } = await supabase
+        .from("users")
+        .select("id, first_name")
+        .in("id", donorIds);
+      const nameMap: Record<string, string> = {};
+      (donorUsers ?? []).forEach((u2: { id: string; first_name: string }) => {
+        nameMap[u2.id] = u2.first_name ?? "Гость";
+      });
+      setGoalDonors(
+        contribData.map((c: { user_id: string; amount: number; created_at: string }) => ({
+          name: nameMap[c.user_id] ?? "Гость",
+          amount: Number(c.amount),
+          created_at: c.created_at,
+        }))
+      );
+    }
 
     const u = await getCurrentUser();
     if (u) {
@@ -658,7 +683,7 @@ export default function ParticipantProfilePage() {
             </div>
           )}
 
-          {goalText && (
+          {goalText && goalEnabled && (
             <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
               <p className="text-offwhite text-sm font-semibold mb-1">
                 🎯 Цель недели
@@ -691,6 +716,20 @@ export default function ParticipantProfilePage() {
                   >
                     Задонатить
                   </button>
+                </div>
+              )}
+              {isOwner && goalDonors.length > 0 && (
+                <div className="border-t border-muted mt-3 pt-3 flex flex-col gap-2 max-h-48 overflow-y-auto">
+                  <p className="text-muted text-xs">
+                    Кто донатил на цель (видно только вам — чтобы могли
+                    записать благодарность):
+                  </p>
+                  {goalDonors.map((d, i) => (
+                    <div key={i} className="flex justify-between text-xs">
+                      <span className="text-offwhite">{d.name}</span>
+                      <span className="text-gold">{Math.round(d.amount)} ₽</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
