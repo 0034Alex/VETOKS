@@ -1300,6 +1300,15 @@ function StagesTab() {
     setUploadingId(null);
   }
 
+  async function deleteVideo(stageId: string) {
+    if (!confirm("Удалить промо-ролик этого этапа?")) return;
+    await supabase
+      .from("season_stages")
+      .update({ promo_video_url: null })
+      .eq("id", stageId);
+    await loadStages(selectedSeason);
+  }
+
   useEffect(() => {
     loadSeasons();
   }, []);
@@ -1401,6 +1410,14 @@ function StagesTab() {
                 }}
               />
             </label>
+            {s.promo_video_url && (
+              <button
+                onClick={() => deleteVideo(s.id)}
+                className="w-full text-center bg-danger text-bgPrimary text-xs font-semibold px-3 py-2 rounded-lg mt-2"
+              >
+                Удалить видео
+              </button>
+            )}
           </div>
         ))}
 
