@@ -62,6 +62,10 @@ export default function ParticipantProfilePage() {
   const [balance, setBalance] = useState(0);
   const [boostCount, setBoostCount] = useState(0);
   const [cards, setCards] = useState<CollectibleCard[]>([]);
+  const [goalText, setGoalText] = useState("");
+  const [goalTarget, setGoalTarget] = useState(5000);
+  const [goalCollected, setGoalCollected] = useState(0);
+  const [donateAmount, setDonateAmount] = useState("100");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -163,6 +167,38 @@ export default function ParticipantProfilePage() {
       .select("id, stage, final_image_url, status")
       .eq("participant_id", id);
     setCards((cardsData as CollectibleCard[]) ?? []);
+
+    // Еженедельная цель.
+    const { data: settingsData } = await supabase
+      .from("platform_settings")
+      .select("key, value")
+      .in("key", ["weekly_goal_text", "weekly_goal_target"]);
+    const settingsMap: Record<string, string> = {};
+    (settingsData ?? []).forEach((s: { key: string; value: string }) => {
+      settingsMap[s.key] = s.value;
+    });
+    setGoalText(settingsMap.weekly_goal_text ?? "");
+    setGoalTarget(Number(settingsMap.weekly_goal_target ?? 5000));
+
+    const now = new Date();
+    const monday = new Date(now);
+    const day = monday.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    monday.setDate(monday.getDate() - diff);
+    monday.setHours(0, 0, 0, 0);
+    const weekStartStr = monday.toISOString().slice(0, 10);
+
+    const { data: contribData } = await supabase
+      .from("weekly_goal_contributions")
+      .select("amount")
+      .eq("participant_id", id)
+      .eq("week_start", weekStartStr);
+    setGoalCollected(
+      (contribData ?? []).reduce(
+        (sum: number, c: { amount: number }) => sum + Number(c.amount),
+        0
+      )
+    );
 
     const u = await getCurrentUser();
     if (u) {
@@ -412,6 +448,66 @@ export default function ParticipantProfilePage() {
     setBusy(false);
   }
 
+  async function donateToGoal() {
+    if (!userId || !walletId || !participant) return;
+    const amount = Number(donateAmount);
+    if (!amount || amount <= 0) return;
+    if (balance < amount) {
+      setNotice("Недостаточно средств.");
+      return;
+    }
+    setBusy(true);
+
+    await supabase.from("wallet_transactions").insert({
+      wallet_id: walletId,
+      type: "gift_sent",
+      amount: -amount,
+      related_participant_id: id,
+      metadata: { kind: "weekly_goal" },
+    });
+    await supabase
+      .from("wallets")
+      .update({ balance: balance - amount })
+      .eq("id", walletId);
+
+    const earning = amount * 0.5;
+    const pWallet = await getOrCreateWallet(participant.user_id);
+    if (pWallet) {
+      await supabase.from("wallet_transactions").insert({
+        wallet_id: pWallet.id,
+        type: "gift_received",
+        amount: earning,
+        related_participant_id: id,
+        metadata: { kind: "weekly_goal" },
+      });
+      await supabase
+        .from("wallets")
+        .update({ balance: Number(pWallet.balance) + earning })
+        .eq("id", pWallet.id);
+    }
+
+    const now = new Date();
+    const monday = new Date(now);
+    const day = monday.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    monday.setDate(monday.getDate() - diff);
+    monday.setHours(0, 0, 0, 0);
+
+    await supabase.from("weekly_goal_contributions").insert({
+      participant_id: id,
+      user_id: userId,
+      amount,
+      week_start: monday.toISOString().slice(0, 10),
+    });
+
+    await notify(participant.user_id, `💝 Вам задонатили ${Math.round(amount)} ₽ на цель недели`, `/participant/${id}`);
+
+    setBalance((b) => b - amount);
+    setGoalCollected((g) => g + amount);
+    setNotice("Спасибо за поддержку!");
+    setBusy(false);
+  }
+
   async function buyBoost() {
     if (!userId || !walletId) return;
     if (boostCount >= BOOST_LIMIT) return;
@@ -559,6 +655,44 @@ export default function ParticipantProfilePage() {
                 Ваш заработок с подарков (видно только вам)
               </p>
               <p className="text-gold text-xl font-semibold">{Math.round(giftTotal)} ₽</p>
+            </div>
+          )}
+
+          {goalText && (
+            <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
+              <p className="text-offwhite text-sm font-semibold mb-1">
+                🎯 Цель недели
+              </p>
+              <p className="text-muted text-xs mb-3">{goalText}</p>
+              <div className="w-full bg-black/30 rounded-full h-2 mb-1">
+                <div
+                  className="bg-gold rounded-full h-2"
+                  style={{
+                    width: `${Math.min(100, (goalCollected / goalTarget) * 100)}%`,
+                  }}
+                />
+              </div>
+              <p className="text-muted text-xs mb-3">
+                Собрано {Math.round(goalCollected)} / {goalTarget} ₽
+              </p>
+              {!isOwner && (
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={donateAmount}
+                    onChange={(e) => setDonateAmount(e.target.value)}
+                    className="flex-1 bg-bgPrimary text-offwhite border border-muted rounded-lg px-3 py-2 text-sm"
+                    min={10}
+                  />
+                  <button
+                    onClick={donateToGoal}
+                    disabled={busy || !userId}
+                    className="bg-gold text-bgPrimary font-semibold px-4 py-2 rounded-full text-sm disabled:opacity-40"
+                  >
+                    Задонатить
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
