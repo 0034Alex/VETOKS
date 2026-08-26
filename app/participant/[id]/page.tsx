@@ -558,7 +558,7 @@ export default function ParticipantProfilePage() {
               <p className="text-muted text-xs mb-1">
                 Ваш заработок с подарков (видно только вам)
               </p>
-              <p className="text-gold text-xl font-semibold">{giftTotal} ₽</p>
+              <p className="text-gold text-xl font-semibold">{Math.round(giftTotal)} ₽</p>
             </div>
           )}
 
