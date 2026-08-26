@@ -266,7 +266,7 @@ export default function Home() {
                 : "bg-bgSurface text-muted border border-muted"
             }`}
           >
-            {user?.regions?.name ?? "Мой регион"}
+            Мой регион
           </button>
           <button
             onClick={() => setScope("country")}
@@ -281,10 +281,10 @@ export default function Home() {
         </div>
 
         <div
-          className="mx-6 mb-6 rounded-2xl overflow-hidden relative min-h-[280px] md:min-h-[340px] flex flex-col justify-end p-5 md:p-8"
+          className="mx-6 mb-6 rounded-2xl overflow-hidden flex flex-col justify-end p-5 md:p-8 min-h-[260px] md:min-h-[320px]"
           style={{
             backgroundImage: leaderPhoto
-              ? `linear-gradient(to top, rgba(11,11,13,0.95), rgba(11,11,13,0.3)), url(${leaderPhoto})`
+              ? `linear-gradient(to top, rgba(11,11,13,0.97), rgba(11,11,13,0.4))${leaderPhoto ? `, url(${leaderPhoto})` : ""}`
               : "linear-gradient(135deg, #2a1f3d, #0B0B0D)",
             backgroundSize: "cover",
             backgroundPosition: "center",
@@ -294,17 +294,17 @@ export default function Home() {
             VETOKS MISS
           </p>
           <h1 className="text-3xl md:text-5xl font-bold text-offwhite mb-1 leading-tight">
-            {user?.regions?.name ?? "Сезон скоро стартует"}
+            {scope === "country" ? "Россия" : user?.regions?.name ?? "Сезон скоро стартует"}
           </h1>
           <p className="text-muted text-sm mb-4">Красота. Харизма. Энергия.</p>
 
           {currentStage && totalStages > 0 ? (
-            <div className="bg-bgPrimary/70 backdrop-blur rounded-xl p-3 mb-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-offwhite text-xs font-semibold">
+            <div className="bg-bgPrimary/80 backdrop-blur rounded-xl p-3 mb-3">
+              <div className="flex items-center justify-between mb-2 gap-2">
+                <span className="text-offwhite text-xs font-semibold whitespace-nowrap">
                   Этап {currentStage.stage_number} из {totalStages}
                 </span>
-                <span className="text-muted text-xs">{currentStage.title}</span>
+                <span className="text-muted text-xs truncate">{currentStage.title}</span>
               </div>
               <div className="w-full bg-black/40 rounded-full h-2 mb-2">
                 <div
@@ -312,8 +312,8 @@ export default function Home() {
                   style={{ width: `${stageProgress}%` }}
                 />
               </div>
-              <p className="text-muted text-xs flex items-center gap-1">
-                🕐 До окончания этапа: {stageCountdown}
+              <p className="text-offwhite text-xs">
+                🕐 До окончания этапа: <span className="font-semibold">{stageCountdown}</span>
               </p>
             </div>
           ) : season?.status === "registration" ? (
@@ -331,15 +331,13 @@ export default function Home() {
 
           <Link
             href="/media"
-            className="absolute right-5 bottom-5 md:right-8 md:bottom-8 flex items-center gap-2 bg-bgPrimary/80 backdrop-blur rounded-full pl-2 pr-4 py-2"
+            className="flex items-center justify-center gap-2 bg-bgPrimary/80 rounded-full py-2.5 w-full"
           >
-            <span className="w-9 h-9 rounded-full bg-gold text-bgPrimary flex items-center justify-center text-sm">
+            <span className="w-7 h-7 rounded-full bg-gold text-bgPrimary flex items-center justify-center text-xs flex-shrink-0">
               ▶
             </span>
             <span className="text-offwhite text-xs font-semibold">
-              Смотреть
-              <br />
-              промо-ролик
+              Смотреть промо-ролик
             </span>
           </Link>
         </div>
