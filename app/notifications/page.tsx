@@ -6,7 +6,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
-import Logo from "@/components/Logo";
+import PageHeader from "@/components/PageHeader";
 
 type Notification = {
   id: string;
@@ -49,9 +49,7 @@ export default function NotificationsPage() {
 
   return (
     <main className="min-h-screen pb-28">
-      <div className="flex items-center justify-between px-6 py-4">
-        <Logo size={28} />
-      </div>
+      <PageHeader />
       <h1 className="text-2xl font-semibold text-offwhite mb-6 px-6">
         Уведомления
       </h1>
