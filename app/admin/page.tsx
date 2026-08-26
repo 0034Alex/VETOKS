@@ -12,8 +12,7 @@ type Tab =
   | "users"
   | "staff"
   | "partners"
-  | "support"
-  | "cards";
+  | "support";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -23,7 +22,6 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "staff", label: "Персонал" },
   { key: "partners", label: "Партнёры" },
   { key: "support", label: "Поддержка" },
-  { key: "cards", label: "Карточки" },
 ];
 
 export default function AdminPage() {
@@ -71,10 +69,7 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen bg-bgPrimary text-offwhite">
-      <div
-        className="flex items-center gap-3 px-4 py-4 border-b border-muted"
-        style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
-      >
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-muted">
         <button
           onClick={() => setMenuOpen(true)}
           className="text-2xl text-gold leading-none"
@@ -92,7 +87,6 @@ export default function AdminPage() {
         >
           <div
             className="bg-bgSurface w-72 h-full p-4 flex flex-col gap-1"
-            style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -132,7 +126,6 @@ export default function AdminPage() {
         {tab === "staff" && <StaffTab />}
         {tab === "partners" && <PartnersTab />}
         {tab === "support" && <SupportTab />}
-        {tab === "cards" && <CardsTab />}
       </div>
     </main>
   );
@@ -210,8 +203,8 @@ function Dashboard() {
     { label: "Участниц", value: stats.participants },
     { label: "Подарков подарено", value: stats.gifts },
     { label: "Заданий выполнено", value: stats.tasksCompleted },
-    { label: "Заработано участницами", value: `${stats.earnedByParticipants} ₽` },
-    { label: "Оборот покупок", value: `${stats.totalPurchases} ₽` },
+    { label: "Заработано участницами", value: `${Math.round(stats.earnedByParticipants)} ₽` },
+    { label: "Оборот покупок", value: `${Math.round(stats.totalPurchases)} ₽` },
   ];
 
   if (loading) return <p className="text-muted">Загрузка...</p>;
@@ -447,7 +440,7 @@ function ParticipantsTab() {
               : "—"}
           </p>
           <p className="text-sm mb-1">
-            Баланс: {balances[r.user_id] ?? 0} ₽
+            Баланс: {Math.round(balances[r.user_id] ?? 0)} ₽
           </p>
           <p className="text-sm mb-3">
             Подарков получено: {giftCounts[r.id] ?? 0}
@@ -907,166 +900,6 @@ function SupportTab() {
             >
               Отметить обработанным
             </button>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------
-// КАРТОЧКИ
-// ---------------------------------------------------------------------
-
-const CARD_STAGE_LABELS: Record<string, string> = {
-  casting: "Кастинг",
-  week2: "Неделя 2",
-  week3: "Неделя 3",
-  grand_final: "Гранд-финал",
-};
-
-type CardRow = {
-  id: string;
-  stage: string;
-  raw_photo_url: string | null;
-  final_image_url: string | null;
-  status: string;
-  participant_id: string;
-  participants: { display_name: string } | null;
-};
-
-function CardsTab() {
-  const [rows, setRows] = useState<CardRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [uploadingId, setUploadingId] = useState<string | null>(null);
-
-  async function load() {
-    setLoading(true);
-    const { data } = await supabase
-      .from("collectible_cards")
-      .select(
-        "id, stage, raw_photo_url, final_image_url, status, participant_id, participants(display_name)"
-      )
-      .order("created_at", { ascending: false });
-    setRows((data as unknown as CardRow[]) ?? []);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    load();
-  }, []);
-
-  async function uploadFinal(row: CardRow, file: File) {
-    setUploadingId(row.id);
-    const fileExt = file.name.split(".").pop();
-    const filePath = `final-${row.id}-${Date.now()}.${fileExt}`;
-
-    const { error } = await supabase.storage
-      .from("card-images")
-      .upload(filePath, file);
-
-    if (error) {
-      alert(`Ошибка загрузки: ${error.message}`);
-      setUploadingId(null);
-      return;
-    }
-
-    const { data: publicUrlData } = supabase.storage
-      .from("card-images")
-      .getPublicUrl(filePath);
-
-    await supabase
-      .from("collectible_cards")
-      .update({ final_image_url: publicUrlData.publicUrl, status: "ready" })
-      .eq("id", row.id);
-
-    await load();
-    setUploadingId(null);
-  }
-
-  if (loading) return <p className="text-muted">Загрузка...</p>;
-  if (rows.length === 0) return <p className="text-muted">Карточек пока нет.</p>;
-
-  return (
-    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {rows.map((r) => (
-        <div
-          key={r.id}
-          className="bg-bgSurface border border-muted rounded-xl p-5"
-        >
-          <div className="flex justify-between items-start mb-2">
-            <h2 className="text-lg text-gold font-semibold">
-              {r.participants?.display_name ?? "—"}
-            </h2>
-            <span className="text-muted text-xs">
-              {CARD_STAGE_LABELS[r.stage] ?? r.stage}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            <div>
-              <p className="text-muted text-xs mb-1">Сырое фото</p>
-              <div className="aspect-[3/4] bg-black/40 rounded-lg overflow-hidden">
-                {r.raw_photo_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={r.raw_photo_url}
-                    alt="raw"
-                    className="w-full h-full object-cover"
-                  />
-                )}
-              </div>
-            </div>
-            <div>
-              <p className="text-muted text-xs mb-1">Обработанная карточка</p>
-              <div className="aspect-[3/4] bg-black/40 rounded-lg overflow-hidden">
-                {r.final_image_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={r.final_image_url}
-                    alt="final"
-                    className="w-full h-full object-cover"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          <p className="text-sm mb-2">
-            Статус:{" "}
-            <span
-              className={
-                r.status === "sold"
-                  ? "text-success"
-                  : r.status === "ready"
-                  ? "text-gold"
-                  : "text-muted"
-              }
-            >
-              {r.status === "pending"
-                ? "На обработке"
-                : r.status === "ready"
-                ? "Опубликована"
-                : "Продана"}
-            </span>
-          </p>
-
-          {r.status !== "sold" && (
-            <label className="block w-full text-center bg-gold text-bgPrimary font-semibold py-2 rounded-full text-xs cursor-pointer">
-              {uploadingId === r.id
-                ? "Загрузка..."
-                : "Загрузить обработанную карточку"}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                disabled={uploadingId === r.id}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) uploadFinal(r, file);
-                }}
-              />
-            </label>
           )}
         </div>
       ))}
