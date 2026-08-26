@@ -53,6 +53,12 @@ function useSundayCountdown() {
 }
 
 type Season = { id: string; title: string; status: string };
+type Stage = {
+  stage_number: number;
+  title: string;
+  starts_at: string | null;
+  ends_at: string | null;
+};
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Скоро старт",
@@ -69,6 +75,8 @@ export default function Home() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [checked, setChecked] = useState(false);
   const [season, setSeason] = useState<Season | null>(null);
+  const [currentStage, setCurrentStage] = useState<Stage | null>(null);
+  const [totalStages, setTotalStages] = useState(0);
   const [allParticipants, setAllParticipants] = useState<Participant[]>([]);
   const [scope, setScope] = useState<"region" | "country">("region");
   const [activeUsersCount, setActiveUsersCount] = useState(0);
@@ -93,6 +101,20 @@ export default function Home() {
           .limit(1)
           .maybeSingle();
         setSeason(seasonData as Season | null);
+
+        if (seasonData) {
+          const { data: stagesData } = await supabase
+            .from("season_stages")
+            .select("stage_number, title, starts_at, ends_at")
+            .eq("season_id", (seasonData as Season).id)
+            .order("stage_number", { ascending: true });
+          setTotalStages((stagesData ?? []).length);
+          const now = new Date();
+          const current = (stagesData ?? []).find(
+            (s: Stage) => s.ends_at && new Date(s.ends_at) > now
+          );
+          setCurrentStage((current as Stage) ?? null);
+        }
       }
 
       const { data: participantsData } = await supabase
@@ -206,6 +228,19 @@ export default function Home() {
   const participants = [...filtered].sort((a, b) => b.votes - a.votes).slice(0, 5);
   const leaderPhoto = participants[0]?.photo_url;
 
+  let stageProgress = 0;
+  let stageCountdown = "—";
+  if (currentStage?.starts_at && currentStage?.ends_at) {
+    const start = new Date(currentStage.starts_at).getTime();
+    const end = new Date(currentStage.ends_at).getTime();
+    const now = Date.now();
+    stageProgress = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+    const diff = Math.max(0, end - now);
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    stageCountdown = days > 0 ? `${days} дня ${hours} часов` : `${hours} часов`;
+  }
+
   return (
     <main className="min-h-screen pb-28">
       <div
@@ -246,7 +281,7 @@ export default function Home() {
         </div>
 
         <div
-          className="mx-6 mb-6 rounded-2xl overflow-hidden relative min-h-[220px] md:min-h-[300px] flex flex-col justify-end p-5 md:p-8"
+          className="mx-6 mb-6 rounded-2xl overflow-hidden relative min-h-[280px] md:min-h-[340px] flex flex-col justify-end p-5 md:p-8"
           style={{
             backgroundImage: leaderPhoto
               ? `linear-gradient(to top, rgba(11,11,13,0.95), rgba(11,11,13,0.3)), url(${leaderPhoto})`
@@ -258,22 +293,55 @@ export default function Home() {
           <p className="text-goldSoft text-xs tracking-widest mb-1">
             VETOKS MISS
           </p>
-          <h1 className="text-2xl md:text-4xl font-semibold text-offwhite mb-1">
-            {season?.title ?? user?.regions?.name ?? "Сезон скоро стартует"}
+          <h1 className="text-3xl md:text-5xl font-bold text-offwhite mb-1 leading-tight">
+            {user?.regions?.name ?? "Сезон скоро стартует"}
           </h1>
-          <p className="text-muted text-sm mb-3">Красота. Харизма. Энергия.</p>
-          {season?.status === "registration" ? (
+          <p className="text-muted text-sm mb-4">Красота. Харизма. Энергия.</p>
+
+          {currentStage && totalStages > 0 ? (
+            <div className="bg-bgPrimary/70 backdrop-blur rounded-xl p-3 mb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-offwhite text-xs font-semibold">
+                  Этап {currentStage.stage_number} из {totalStages}
+                </span>
+                <span className="text-muted text-xs">{currentStage.title}</span>
+              </div>
+              <div className="w-full bg-black/40 rounded-full h-2 mb-2">
+                <div
+                  className="bg-gradient-to-r from-[#7C3AED] to-gold rounded-full h-2"
+                  style={{ width: `${stageProgress}%` }}
+                />
+              </div>
+              <p className="text-muted text-xs flex items-center gap-1">
+                🕐 До окончания этапа: {stageCountdown}
+              </p>
+            </div>
+          ) : season?.status === "registration" ? (
             <Link
               href="/apply"
-              className="inline-block w-fit bg-gold text-bgPrimary text-xs font-semibold px-4 py-2 rounded-full"
+              className="inline-block w-fit bg-gold text-bgPrimary text-xs font-semibold px-4 py-2 rounded-full mb-3"
             >
               Регистрация открыта — подать анкету
             </Link>
           ) : (
-            <span className="inline-block w-fit bg-bgSurface/80 text-gold text-xs px-3 py-1 rounded-full border border-gold/40">
+            <span className="inline-block w-fit bg-bgSurface/80 text-gold text-xs px-3 py-1 rounded-full border border-gold/40 mb-3">
               {season ? STATUS_LABELS[season.status] ?? season.status : "Скоро старт"}
             </span>
           )}
+
+          <Link
+            href="/media"
+            className="absolute right-5 bottom-5 md:right-8 md:bottom-8 flex items-center gap-2 bg-bgPrimary/80 backdrop-blur rounded-full pl-2 pr-4 py-2"
+          >
+            <span className="w-9 h-9 rounded-full bg-gold text-bgPrimary flex items-center justify-center text-sm">
+              ▶
+            </span>
+            <span className="text-offwhite text-xs font-semibold">
+              Смотреть
+              <br />
+              промо-ролик
+            </span>
+          </Link>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-6 mb-8">
