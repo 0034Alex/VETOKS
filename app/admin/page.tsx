@@ -14,7 +14,8 @@ type Tab =
   | "partners"
   | "support"
   | "cards"
-  | "goal";
+  | "goal"
+  | "stages";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -26,6 +27,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "support", label: "Поддержка" },
   { key: "cards", label: "Карточки" },
   { key: "goal", label: "Цель недели" },
+  { key: "stages", label: "Этапы сезона" },
 ];
 
 export default function AdminPage() {
@@ -136,6 +138,7 @@ export default function AdminPage() {
         {tab === "support" && <SupportTab />}
         {tab === "cards" && <CardsTab />}
         {tab === "goal" && <GoalTab />}
+        {tab === "stages" && <StagesTab />}
       </div>
     </main>
   );
@@ -1176,6 +1179,151 @@ function GoalTab() {
       >
         Сохранить
       </button>
+      {saved && <span className="text-success text-sm ml-3">Сохранено!</span>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// ЭТАПЫ СЕЗОНА
+// ---------------------------------------------------------------------
+
+type SeasonRow = { id: string; title: string };
+type StageRow = {
+  id: string;
+  stage_number: number;
+  title: string;
+  starts_at: string | null;
+  ends_at: string | null;
+};
+
+function toDatetimeLocal(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
+}
+
+function StagesTab() {
+  const [seasons, setSeasons] = useState<SeasonRow[]>([]);
+  const [selectedSeason, setSelectedSeason] = useState("");
+  const [stages, setStages] = useState<StageRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
+
+  async function loadSeasons() {
+    const { data } = await supabase.from("seasons").select("id, title");
+    setSeasons((data as SeasonRow[]) ?? []);
+    if (data && data.length > 0 && !selectedSeason) {
+      setSelectedSeason((data[0] as SeasonRow).id);
+    }
+  }
+
+  async function loadStages(seasonId: string) {
+    if (!seasonId) return;
+    setLoading(true);
+    const { data } = await supabase
+      .from("season_stages")
+      .select("id, stage_number, title, starts_at, ends_at")
+      .eq("season_id", seasonId)
+      .order("stage_number", { ascending: true });
+    setStages((data as StageRow[]) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadSeasons();
+  }, []);
+
+  useEffect(() => {
+    if (selectedSeason) loadStages(selectedSeason);
+  }, [selectedSeason]);
+
+  function updateStage(index: number, field: keyof StageRow, value: string) {
+    setStages((prev) =>
+      prev.map((s, i) => (i === index ? { ...s, [field]: value } : s))
+    );
+  }
+
+  async function save() {
+    for (const s of stages) {
+      await supabase
+        .from("season_stages")
+        .update({
+          title: s.title,
+          starts_at: s.starts_at ? new Date(s.starts_at).toISOString() : null,
+          ends_at: s.ends_at ? new Date(s.ends_at).toISOString() : null,
+        })
+        .eq("id", s.id);
+    }
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  return (
+    <div className="max-w-lg">
+      <p className="text-muted text-sm mb-4">
+        Здесь вы сами задаёте реальные даты старта и окончания каждого этапа —
+        на главной странице прогресс-бар и обратный отсчёт считаются по этим
+        датам автоматически.
+      </p>
+
+      <select
+        value={selectedSeason}
+        onChange={(e) => setSelectedSeason(e.target.value)}
+        className="w-full bg-bgSurface border border-muted rounded-lg px-3 py-2 text-sm mb-4"
+      >
+        {seasons.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.title}
+          </option>
+        ))}
+      </select>
+
+      {loading && <p className="text-muted">Загрузка...</p>}
+
+      {!loading &&
+        stages.map((s, i) => (
+          <div
+            key={s.id}
+            className="bg-bgSurface border border-muted rounded-xl p-4 mb-3"
+          >
+            <p className="text-gold text-sm font-semibold mb-2">
+              Этап {s.stage_number}
+            </p>
+            <label className="text-offwhite text-xs">Название</label>
+            <input
+              value={s.title}
+              onChange={(e) => updateStage(i, "title", e.target.value)}
+              className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mt-1 mb-2"
+            />
+            <label className="text-offwhite text-xs">Начало</label>
+            <input
+              type="datetime-local"
+              value={toDatetimeLocal(s.starts_at)}
+              onChange={(e) => updateStage(i, "starts_at", e.target.value)}
+              className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mt-1 mb-2"
+            />
+            <label className="text-offwhite text-xs">Окончание</label>
+            <input
+              type="datetime-local"
+              value={toDatetimeLocal(s.ends_at)}
+              onChange={(e) => updateStage(i, "ends_at", e.target.value)}
+              className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mt-1"
+            />
+          </div>
+        ))}
+
+      {!loading && stages.length > 0 && (
+        <button
+          onClick={save}
+          className="bg-gold text-bgPrimary font-semibold px-6 py-2 rounded-full text-sm"
+        >
+          Сохранить все даты
+        </button>
+      )}
       {saved && <span className="text-success text-sm ml-3">Сохранено!</span>}
     </div>
   );
