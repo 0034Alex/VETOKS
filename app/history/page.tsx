@@ -89,7 +89,7 @@ export default function HistoryPage() {
               }`}
             >
               {Number(t.amount) >= 0 ? "+" : ""}
-              {t.amount} ₽
+              {Math.round(t.amount)} ₽
             </span>
           </div>
         ))}
