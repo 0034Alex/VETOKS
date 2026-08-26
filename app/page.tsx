@@ -19,6 +19,39 @@ type Participant = {
   region_id: string | null;
 };
 
+function useSundayCountdown() {
+  const [inWindow, setInWindow] = useState(false);
+  const [timeLeft, setTimeLeft] = useState("");
+
+  useEffect(() => {
+    function update() {
+      const now = new Date();
+      const sunday = new Date(now);
+      const day = sunday.getDay();
+      const daysUntilSunday = (7 - day) % 7;
+      sunday.setDate(sunday.getDate() + daysUntilSunday);
+      sunday.setHours(23, 59, 59, 999);
+      if (daysUntilSunday === 0 && now > sunday) {
+        sunday.setDate(sunday.getDate() + 7);
+      }
+      const diff = sunday.getTime() - now.getTime();
+      const threeHours = 3 * 60 * 60 * 1000;
+      setInWindow(diff <= threeHours && diff > 0);
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(
+        `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+      );
+    }
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return { inWindow, timeLeft };
+}
+
 type Season = { id: string; title: string; status: string };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -130,6 +163,40 @@ export default function Home() {
     })();
   }, [router]);
 
+  const { inWindow, timeLeft } = useSundayCountdown();
+  const prevOrderRef = useState<string[]>([])[0];
+  const [risingIds, setRisingIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!inWindow || !checked) return;
+
+    const interval = setInterval(async () => {
+      const { data: votesData } = await supabase.from("votes").select("participant_id");
+      const counts: Record<string, number> = {};
+      (votesData ?? []).forEach((v: { participant_id: string }) => {
+        counts[v.participant_id] = (counts[v.participant_id] ?? 0) + 1;
+      });
+      setAllParticipants((prev) => {
+        const updated = prev.map((p) => ({ ...p, votes: counts[p.id] ?? p.votes }));
+        const newOrder = [...updated].sort((a, b) => b.votes - a.votes).map((p) => p.id);
+        const rising = new Set<string>();
+        newOrder.forEach((id, idx) => {
+          const oldIdx = prevOrderRef.indexOf(id);
+          if (oldIdx !== -1 && idx < oldIdx) rising.add(id);
+        });
+        if (rising.size > 0) {
+          setRisingIds(rising);
+          setTimeout(() => setRisingIds(new Set()), 2000);
+        }
+        prevOrderRef.length = 0;
+        prevOrderRef.push(...newOrder);
+        return updated;
+      });
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [inWindow, checked]);
+
   if (!checked) return <LoadingScreen />;
 
   const filtered =
@@ -232,6 +299,17 @@ export default function Home() {
           </div>
         </div>
 
+        {inWindow && (
+          <div className="mx-6 mb-4 bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 text-center animate-pulse">
+            <p className="text-white font-semibold text-sm">
+              🔥 До отсева недели: {timeLeft}
+            </p>
+            <p className="text-white/80 text-xs mt-1">
+              Рейтинг обновляется прямо сейчас — успейте поддержать!
+            </p>
+          </div>
+        )}
+
         <div className="px-6 mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-offwhite">
             🔥 ТОП участниц дня
@@ -251,19 +329,25 @@ export default function Home() {
               (p, slot) => {
                 if (!p) return <div key={slot} className="flex-1 max-w-[110px]" />;
                 const isFirst = slot === 1;
+                const isRising = risingIds.has(p.id);
                 return (
                   <Link
                     href={`/participant/${p.id}`}
                     key={p.id}
-                    className={`flex-1 max-w-[130px] bg-bgSurface border rounded-xl overflow-hidden ${
+                    className={`flex-1 max-w-[130px] bg-bgSurface border rounded-xl overflow-hidden transition-transform duration-500 ${
                       isFirst ? "border-gold" : "border-muted"
-                    }`}
+                    } ${isRising ? "scale-110 shadow-lg shadow-gold/50" : ""}`}
                     style={{ marginBottom: isFirst ? 0 : 16 }}
                   >
                     <div
                       className="bg-black/40 flex items-center justify-center relative aspect-[3/4]"
                       style={{ transform: isFirst ? "scale(1)" : "scale(0.92)" }}
                     >
+                      {isRising && (
+                        <span className="absolute -top-3 right-1 text-lg z-10">
+                          🚀
+                        </span>
+                      )}
                       <span className="absolute top-1.5 left-1.5 text-lg">
                         {isFirst ? "👑" : slot === 0 ? "🥈" : "🥉"}
                       </span>
