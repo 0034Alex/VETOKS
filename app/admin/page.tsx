@@ -1084,6 +1084,7 @@ function CardsTab() {
 function GoalTab() {
   const [text, setText] = useState("");
   const [target, setTarget] = useState("5000");
+  const [enabled, setEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
 
@@ -1092,10 +1093,11 @@ function GoalTab() {
     const { data } = await supabase
       .from("platform_settings")
       .select("key, value")
-      .in("key", ["weekly_goal_text", "weekly_goal_target"]);
+      .in("key", ["weekly_goal_text", "weekly_goal_target", "weekly_goal_enabled"]);
     (data ?? []).forEach((s: { key: string; value: string }) => {
       if (s.key === "weekly_goal_text") setText(s.value);
       if (s.key === "weekly_goal_target") setTarget(s.value);
+      if (s.key === "weekly_goal_enabled") setEnabled(s.value !== "false");
     });
     setLoading(false);
   }
@@ -1103,6 +1105,14 @@ function GoalTab() {
   useEffect(() => {
     load();
   }, []);
+
+  async function toggleEnabled() {
+    const newValue = !enabled;
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "weekly_goal_enabled", value: newValue ? "true" : "false" });
+    setEnabled(newValue);
+  }
 
   async function save() {
     await supabase
@@ -1119,6 +1129,29 @@ function GoalTab() {
 
   return (
     <div className="max-w-md">
+      <div className="bg-bgSurface border border-muted rounded-xl p-4 mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-offwhite text-sm font-semibold">
+            Донаты на цель недели
+          </p>
+          <p className="text-muted text-xs">
+            {enabled
+              ? "Сейчас включены у всех участниц"
+              : "Сейчас выключены у всех участниц"}
+          </p>
+        </div>
+        <button
+          onClick={toggleEnabled}
+          className={`px-4 py-2 rounded-full text-sm font-semibold ${
+            enabled
+              ? "bg-success text-bgPrimary"
+              : "bg-bgPrimary border border-muted text-muted"
+          }`}
+        >
+          {enabled ? "Включено" : "Выключено"}
+        </button>
+      </div>
+
       <p className="text-muted text-sm mb-4">
         Этот текст и сумма показываются одинаковыми у всех участниц на
         странице цели недели.
