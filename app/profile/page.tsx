@@ -34,6 +34,13 @@ export default function ProfilePage() {
   const [referralCount, setReferralCount] = useState(0);
   const [balance, setBalance] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [goalText, setGoalText] = useState("");
+  const [goalTarget, setGoalTarget] = useState(5000);
+  const [goalCollected, setGoalCollected] = useState(0);
+  const [goalEnabled, setGoalEnabled] = useState(true);
+  const [goalDonors, setGoalDonors] = useState<
+    { name: string; amount: number; created_at: string }[]
+  >([]);
   const [showPrivate, setShowPrivate] = useState(false);
   const [giftEarnings, setGiftEarnings] = useState(0);
   const [taskEarnings, setTaskEarnings] = useState(0);
@@ -87,6 +94,58 @@ export default function ProfilePage() {
             .eq("wallet_id", wallet.id)
             .eq("type", "task_reward");
           setTasksDone(doneTasks ?? 0);
+        }
+
+        // Цель недели — та же логика, что на публичной странице.
+        const { data: settingsData } = await supabase
+          .from("platform_settings")
+          .select("key, value")
+          .in("key", ["weekly_goal_text", "weekly_goal_target", "weekly_goal_enabled"]);
+        const settingsMap: Record<string, string> = {};
+        (settingsData ?? []).forEach((s: { key: string; value: string }) => {
+          settingsMap[s.key] = s.value;
+        });
+        setGoalText(settingsMap.weekly_goal_text ?? "");
+        setGoalTarget(Number(settingsMap.weekly_goal_target ?? 5000));
+        setGoalEnabled(settingsMap.weekly_goal_enabled !== "false");
+
+        const now = new Date();
+        const monday = new Date(now);
+        const day = monday.getDay();
+        const diffDays = day === 0 ? 6 : day - 1;
+        monday.setDate(monday.getDate() - diffDays);
+        monday.setHours(0, 0, 0, 0);
+        const weekStartStr = monday.toISOString().slice(0, 10);
+
+        const { data: contribData } = await supabase
+          .from("weekly_goal_contributions")
+          .select("amount, user_id, created_at")
+          .eq("participant_id", (p as Participant).id)
+          .eq("week_start", weekStartStr)
+          .order("created_at", { ascending: false });
+        setGoalCollected(
+          (contribData ?? []).reduce(
+            (sum: number, c: { amount: number }) => sum + Number(c.amount),
+            0
+          )
+        );
+        if (contribData && contribData.length > 0) {
+          const donorIds = [...new Set(contribData.map((c: { user_id: string }) => c.user_id))];
+          const { data: donorUsers } = await supabase
+            .from("users")
+            .select("id, first_name")
+            .in("id", donorIds);
+          const nameMap: Record<string, string> = {};
+          (donorUsers ?? []).forEach((du: { id: string; first_name: string }) => {
+            nameMap[du.id] = du.first_name ?? "Гость";
+          });
+          setGoalDonors(
+            contribData.map((c: { user_id: string; amount: number; created_at: string }) => ({
+              name: nameMap[c.user_id] ?? "Гость",
+              amount: Number(c.amount),
+              created_at: c.created_at,
+            }))
+          );
         }
       }
 
@@ -247,6 +306,39 @@ export default function ProfilePage() {
                 📝 Моя анкета (редактировать)
               </span>
             </a>
+          )}
+
+          {participant && goalText && goalEnabled && (
+            <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
+              <p className="text-offwhite text-sm font-semibold mb-1">
+                🎯 Цель недели
+              </p>
+              <p className="text-muted text-xs mb-3">{goalText}</p>
+              <div className="w-full bg-black/30 rounded-full h-2 mb-1">
+                <div
+                  className="bg-gold rounded-full h-2"
+                  style={{
+                    width: `${Math.min(100, (goalCollected / goalTarget) * 100)}%`,
+                  }}
+                />
+              </div>
+              <p className="text-muted text-xs mb-3">
+                Собрано {Math.round(goalCollected)} / {goalTarget} ₽
+              </p>
+              {goalDonors.length > 0 ? (
+                <div className="border-t border-muted pt-3 flex flex-col gap-2 max-h-48 overflow-y-auto">
+                  <p className="text-muted text-xs">Кто донатил на этой неделе:</p>
+                  {goalDonors.map((d, i) => (
+                    <div key={i} className="flex justify-between text-xs">
+                      <span className="text-offwhite">{d.name}</span>
+                      <span className="text-gold">{Math.round(d.amount)} ₽</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted text-xs">Пока никто не задонатил.</p>
+              )}
+            </div>
           )}
 
           {participant && (
