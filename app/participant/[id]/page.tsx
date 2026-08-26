@@ -172,6 +172,8 @@ export default function ParticipantProfilePage() {
       .eq("participant_id", id);
     setCards((cardsData as CollectibleCard[]) ?? []);
 
+    const u = await getCurrentUser();
+
     // Еженедельная цель.
     const { data: settingsData } = await supabase
       .from("platform_settings")
@@ -225,7 +227,6 @@ export default function ParticipantProfilePage() {
       );
     }
 
-    const u = await getCurrentUser();
     if (u) {
       setUserId(u.id);
 
