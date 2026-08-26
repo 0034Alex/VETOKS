@@ -16,7 +16,7 @@ type Gift = {
   participant_share_percent: number;
 };
 
-type Participant = { id: string; display_name: string; user_id: string };
+type Participant = { id: string; display_name: string; user_id: string; photo_url?: string | null };
 
 const TRANSLIT: Record<string, string> = {
   а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh",
@@ -80,6 +80,13 @@ function ShopContent() {
     participantId ?? ""
   );
   const [participantSearch, setParticipantSearch] = useState("");
+  const [followedParticipants, setFollowedParticipants] = useState<
+    (Participant & { photo_url: string | null })[]
+  >([]);
+  const [recentParticipants, setRecentParticipants] = useState<
+    (Participant & { photo_url: string | null })[]
+  >([]);
+  const [participantRegions, setParticipantRegions] = useState<Record<string, string>>({});
   const [walletId, setWalletId] = useState<string | null>(null);
   const [balance, setBalance] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
@@ -102,9 +109,26 @@ function ShopContent() {
       if (!participantId) {
         const { data: participantsData } = await supabase
           .from("participants")
-          .select("id, display_name, user_id")
+          .select("id, display_name, user_id, photo_url, season_id")
           .eq("is_eliminated", false);
         setParticipants((participantsData as Participant[]) ?? []);
+
+        const { data: seasonsData } = await supabase
+          .from("seasons")
+          .select("id, region_id, regions(name)");
+        const seasonToRegionName: Record<string, string> = {};
+        (seasonsData ?? []).forEach(
+          (s: { id: string; regions: { name: string } | null }) => {
+            if (s.regions) seasonToRegionName[s.id] = s.regions.name;
+          }
+        );
+        const regionMap: Record<string, string> = {};
+        (participantsData ?? []).forEach(
+          (p: { id: string; season_id: string }) => {
+            regionMap[p.id] = seasonToRegionName[p.season_id] ?? "";
+          }
+        );
+        setParticipantRegions(regionMap);
       }
 
       const u = await getCurrentUser();
@@ -130,6 +154,34 @@ function ShopContent() {
         setWalletId(wallet.id);
         setBalance(Number(wallet.balance));
       }
+
+      // Подписки пользователя — для блока «Ваши подписки».
+      const { data: followsData } = await supabase
+        .from("participant_follows")
+        .select("participant_id, participants(id, display_name, user_id, photo_url)")
+        .eq("user_id", u.id);
+      setFollowedParticipants(
+        (followsData ?? [])
+          .map((f: { participants: any }) => f.participants)
+          .filter(Boolean)
+      );
+
+      // Недавние получатели подарков от этого пользователя.
+      const { data: recentGifts } = await supabase
+        .from("gifts")
+        .select("participant_id, created_at, participants(id, display_name, user_id, photo_url)")
+        .eq("sender_id", u.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      const seen = new Set<string>();
+      const recents: (Participant & { photo_url: string | null })[] = [];
+      (recentGifts ?? []).forEach((g: { participant_id: string; participants: any }) => {
+        if (g.participants && !seen.has(g.participant_id)) {
+          seen.add(g.participant_id);
+          recents.push(g.participants);
+        }
+      });
+      setRecentParticipants(recents.slice(0, 10));
     })();
   }, [participantId]);
 
@@ -295,7 +347,7 @@ function ShopContent() {
       <div className="px-6 mb-4 bg-bgSurface border border-gold/40 rounded-xl p-4 flex items-center justify-between">
         <div>
           <p className="text-muted text-xs">Ваш баланс</p>
-          <p className="text-gold text-xl font-semibold">{balance} ₽</p>
+          <p className="text-gold text-xl font-semibold">{Math.round(balance)} ₽</p>
         </div>
         <button
           onClick={testTopUp}
@@ -326,14 +378,72 @@ function ShopContent() {
             </div>
           ) : (
             <>
+              {followedParticipants.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-muted text-xs mb-2">Ваши подписки</p>
+                  <div className="flex gap-3 overflow-x-auto pb-1">
+                    {followedParticipants.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => setSelectedParticipant(p.id)}
+                        className="flex flex-col items-center gap-1 flex-shrink-0"
+                      >
+                        <div className="w-14 h-14 rounded-full bg-black/40 overflow-hidden border-2 border-gold">
+                          {p.photo_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={p.photo_url}
+                              alt={p.display_name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : null}
+                        </div>
+                        <span className="text-offwhite text-[10px] max-w-[60px] truncate">
+                          {p.display_name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {recentParticipants.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-muted text-xs mb-2">Вы недавно дарили</p>
+                  <div className="flex gap-3 overflow-x-auto pb-1">
+                    {recentParticipants.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => setSelectedParticipant(p.id)}
+                        className="flex flex-col items-center gap-1 flex-shrink-0"
+                      >
+                        <div className="w-14 h-14 rounded-full bg-black/40 overflow-hidden border border-muted">
+                          {p.photo_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={p.photo_url}
+                              alt={p.display_name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : null}
+                        </div>
+                        <span className="text-offwhite text-[10px] max-w-[60px] truncate">
+                          {p.display_name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <input
                 value={participantSearch}
                 onChange={(e) => setParticipantSearch(e.target.value)}
                 placeholder="Введите имя или ник — рус. или англ."
-                className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
+                className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-4"
               />
               {participantSearch && (
-                <div className="max-h-48 overflow-y-auto mt-2 flex flex-col gap-1">
+                <div className="max-h-56 overflow-y-auto mt-2 flex flex-col gap-1">
                   {participants
                     .filter((p) => matchesSearch(p.display_name, participantSearch))
                     .slice(0, 20)
@@ -344,9 +454,26 @@ function ShopContent() {
                           setSelectedParticipant(p.id);
                           setParticipantSearch("");
                         }}
-                        className="text-left bg-bgSurface border border-muted rounded-lg px-4 py-2 text-sm text-offwhite"
+                        className="flex items-center gap-3 text-left bg-bgSurface border border-muted rounded-lg px-3 py-2"
                       >
-                        {p.display_name}
+                        <div className="w-9 h-9 rounded-full bg-black/40 overflow-hidden flex-shrink-0">
+                          {p.photo_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={p.photo_url}
+                              alt={p.display_name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : null}
+                        </div>
+                        <div>
+                          <p className="text-offwhite text-sm">{p.display_name}</p>
+                          {participantRegions[p.id] && (
+                            <p className="text-muted text-xs">
+                              Регион: {participantRegions[p.id]}
+                            </p>
+                          )}
+                        </div>
                       </button>
                     ))}
                   {participants.filter((p) =>
