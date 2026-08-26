@@ -16,6 +16,7 @@ type Participant = {
   votes: number;
   gifts: number;
   followers: number;
+  region_id: string | null;
 };
 
 type Season = { id: string; title: string; status: string };
@@ -35,8 +36,8 @@ export default function Home() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [checked, setChecked] = useState(false);
   const [season, setSeason] = useState<Season | null>(null);
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  const [participantCount, setParticipantCount] = useState(0);
+  const [allParticipants, setAllParticipants] = useState<Participant[]>([]);
+  const [scope, setScope] = useState<"region" | "country">("region");
   const [activeUsersCount, setActiveUsersCount] = useState(0);
   const [contentCount, setContentCount] = useState(0);
 
@@ -61,10 +62,18 @@ export default function Home() {
         setSeason(seasonData as Season | null);
       }
 
-      const { data: participantsData, count: pCount } = await supabase
+      const { data: participantsData } = await supabase
         .from("participants")
-        .select("id, display_name, photo_url", { count: "exact" })
+        .select("id, display_name, photo_url, season_id")
         .eq("is_eliminated", false);
+
+      const { data: seasonsData } = await supabase
+        .from("seasons")
+        .select("id, region_id");
+      const seasonToRegion: Record<string, string> = {};
+      (seasonsData ?? []).forEach((s: { id: string; region_id: string }) => {
+        seasonToRegion[s.id] = s.region_id;
+      });
 
       const { data: votesData } = await supabase.from("votes").select("participant_id");
       const counts: Record<string, number> = {};
@@ -92,16 +101,22 @@ export default function Home() {
       });
 
       const list = (participantsData ?? []).map(
-        (p: { id: string; display_name: string; photo_url: string | null }) => ({
-          ...p,
+        (p: {
+          id: string;
+          display_name: string;
+          photo_url: string | null;
+          season_id: string;
+        }) => ({
+          id: p.id,
+          display_name: p.display_name,
+          photo_url: p.photo_url,
           votes: counts[p.id] ?? 0,
           gifts: giftCounts[p.id] ?? 0,
           followers: followCounts[p.id] ?? 0,
+          region_id: seasonToRegion[p.season_id] ?? null,
         })
       );
-      list.sort((a, b) => b.votes - a.votes);
-      setParticipants(list.slice(0, 5));
-      setParticipantCount(pCount ?? 0);
+      setAllParticipants(list);
 
       const { count: usersCount } = await supabase
         .from("users")
@@ -117,6 +132,11 @@ export default function Home() {
 
   if (!checked) return <LoadingScreen />;
 
+  const filtered =
+    scope === "region" && user?.region_id
+      ? allParticipants.filter((p) => p.region_id === user.region_id)
+      : allParticipants;
+  const participants = [...filtered].sort((a, b) => b.votes - a.votes).slice(0, 5);
   const leaderPhoto = participants[0]?.photo_url;
 
   return (
@@ -135,6 +155,29 @@ export default function Home() {
       </div>
 
       <div className="max-w-5xl mx-auto">
+        <div className="px-6 mb-4 flex gap-2">
+          <button
+            onClick={() => setScope("region")}
+            className={`px-4 py-2 rounded-full text-sm font-medium ${
+              scope === "region"
+                ? "bg-gold text-bgPrimary"
+                : "bg-bgSurface text-muted border border-muted"
+            }`}
+          >
+            {user?.regions?.name ?? "Мой регион"}
+          </button>
+          <button
+            onClick={() => setScope("country")}
+            className={`px-4 py-2 rounded-full text-sm font-medium ${
+              scope === "country"
+                ? "bg-gold text-bgPrimary"
+                : "bg-bgSurface text-muted border border-muted"
+            }`}
+          >
+            Вся страна
+          </button>
+        </div>
+
         <div
           className="mx-6 mb-6 rounded-2xl overflow-hidden relative min-h-[220px] md:min-h-[300px] flex flex-col justify-end p-5 md:p-8"
           style={{
@@ -169,7 +212,7 @@ export default function Home() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-6 mb-8">
           <div className="bg-bgSurface border border-muted rounded-xl p-4">
             <p className="text-gold text-xl font-semibold">
-              👑 {participantCount}
+              👑 {filtered.length}
             </p>
             <p className="text-muted text-xs">Участниц сезона</p>
           </div>
@@ -218,9 +261,7 @@ export default function Home() {
                     style={{ marginBottom: isFirst ? 0 : 16 }}
                   >
                     <div
-                      className={`bg-black/40 flex items-center justify-center relative ${
-                        isFirst ? "aspect-[3/4]" : "aspect-[3/4]"
-                      }`}
+                      className="bg-black/40 flex items-center justify-center relative aspect-[3/4]"
                       style={{ transform: isFirst ? "scale(1)" : "scale(0.92)" }}
                     >
                       <span className="absolute top-1.5 left-1.5 text-lg">
