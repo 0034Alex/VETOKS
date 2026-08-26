@@ -64,6 +64,15 @@ export default function ThreadPage() {
       .order("created_at", { ascending: true });
 
     setMessages((msgs as Message[]) ?? []);
+
+    await supabase
+      .from("participant_messages")
+      .update({ is_read: true })
+      .eq("participant_id", p.id)
+      .eq("recipient_id", u.id)
+      .eq("sender_id", otherUserId)
+      .eq("is_read", false);
+
     setLoading(false);
   }
 
