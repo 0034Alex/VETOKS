@@ -330,7 +330,7 @@ export default function Home() {
           )}
 
           <Link
-            href="/media"
+            href="/promo"
             className="flex items-center justify-center gap-2 bg-bgPrimary/80 rounded-full py-2.5 w-full"
           >
             <span className="w-7 h-7 rounded-full bg-gold text-bgPrimary flex items-center justify-center text-xs flex-shrink-0">
