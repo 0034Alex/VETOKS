@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { getCurrentUser } from "@/lib/currentUser";
+import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
@@ -13,11 +13,15 @@ type Participant = {
   bio: string | null;
   photo_url: string | null;
   created_at: string;
+  season_id: string;
 };
 
 type Filter = "all" | "top" | "new";
 
 export default function ParticipantsPage() {
+  const [me, setMe] = useState<CurrentUser | null>(null);
+  const [scope, setScope] = useState<"region" | "country">("region");
+  const [seasonToRegion, setSeasonToRegion] = useState<Record<string, string>>({});
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
   const [giftCounts, setGiftCounts] = useState<Record<string, number>>({});
@@ -35,11 +39,20 @@ export default function ParticipantsPage() {
 
     const { data: participantsData } = await supabase
       .from("participants")
-      .select("id, display_name, bio, photo_url, created_at")
+      .select("id, display_name, bio, photo_url, created_at, season_id")
       .eq("is_eliminated", false);
 
     const list = (participantsData as Participant[]) ?? [];
     setParticipants(list);
+
+    const { data: seasonsData } = await supabase
+      .from("seasons")
+      .select("id, region_id");
+    const map: Record<string, string> = {};
+    (seasonsData ?? []).forEach((s: { id: string; region_id: string }) => {
+      map[s.id] = s.region_id;
+    });
+    setSeasonToRegion(map);
 
     if (list.length > 0) {
       const { data: votesData } = await supabase
@@ -125,6 +138,7 @@ export default function ParticipantsPage() {
 
   useEffect(() => {
     loadData();
+    getCurrentUser().then(setMe);
     const stored = localStorage.getItem("vetoks_voted_ids");
     if (stored) setVotedIds(JSON.parse(stored));
   }, []);
@@ -158,6 +172,11 @@ export default function ParticipantsPage() {
     .filter((p) =>
       p.display_name.toLowerCase().includes(search.toLowerCase())
     )
+    .filter((p) =>
+      scope === "country" || !me?.region_id
+        ? true
+        : seasonToRegion[p.season_id] === me.region_id
+    )
     .sort((a, b) => {
       if (filter === "new") {
         return (
@@ -182,7 +201,30 @@ export default function ParticipantsPage() {
           <h1 className="text-2xl font-semibold text-offwhite mb-1">
             Участницы
           </h1>
-          <p className="text-muted text-sm">MISS · {participants.length} анкет</p>
+          <p className="text-muted text-sm">MISS · {filtered.length} анкет</p>
+        </div>
+
+        <div className="px-6 mb-4 flex gap-2">
+          <button
+            onClick={() => setScope("region")}
+            className={`px-4 py-2 rounded-full text-sm font-medium ${
+              scope === "region"
+                ? "bg-gold text-bgPrimary"
+                : "bg-bgSurface text-muted border border-muted"
+            }`}
+          >
+            {me?.regions?.name ?? "Мой регион"}
+          </button>
+          <button
+            onClick={() => setScope("country")}
+            className={`px-4 py-2 rounded-full text-sm font-medium ${
+              scope === "country"
+                ? "bg-gold text-bgPrimary"
+                : "bg-bgSurface text-muted border border-muted"
+            }`}
+          >
+            Вся страна
+          </button>
         </div>
 
         <div className="px-6 mb-4">
