@@ -34,6 +34,7 @@ export default function ProfilePage() {
   const [referralCount, setReferralCount] = useState(0);
   const [balance, setBalance] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [goalText, setGoalText] = useState("");
   const [goalTarget, setGoalTarget] = useState(5000);
   const [goalCollected, setGoalCollected] = useState(0);
@@ -95,6 +96,14 @@ export default function ProfilePage() {
             .eq("type", "task_reward");
           setTasksDone(doneTasks ?? 0);
         }
+
+        const { count: unreadMsgs } = await supabase
+          .from("participant_messages")
+          .select("id", { count: "exact", head: true })
+          .eq("participant_id", (p as Participant).id)
+          .eq("recipient_id", u.id)
+          .eq("is_read", false);
+        setUnreadMessages(unreadMsgs ?? 0);
 
         // Цель недели — та же логика, что на публичной странице.
         const { data: settingsData } = await supabase
@@ -286,28 +295,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {participant && (
-            <a
-              href="/messages"
-              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
-            >
-              <span className="text-gold font-semibold text-sm">
-                ✉️ Сообщения от зрителей
-              </span>
-            </a>
-          )}
-
-          {participant && (
-            <a
-              href="/my-application"
-              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
-            >
-              <span className="text-gold font-semibold text-sm">
-                📝 Моя анкета (редактировать)
-              </span>
-            </a>
-          )}
-
           {participant && goalText && goalEnabled && (
             <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
               <p className="text-offwhite text-sm font-semibold mb-1">
@@ -339,6 +326,33 @@ export default function ProfilePage() {
                 <p className="text-muted text-xs">Пока никто не задонатил.</p>
               )}
             </div>
+          )}
+
+          {participant && (
+            <a
+              href="/messages"
+              className="flex items-center justify-between bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
+            >
+              <span className="text-gold font-semibold text-sm">
+                ✉️ Сообщения от зрителей
+              </span>
+              {unreadMessages > 0 && (
+                <span className="bg-danger text-white text-xs w-6 h-6 rounded-full flex items-center justify-center">
+                  {unreadMessages > 9 ? "9+" : unreadMessages}
+                </span>
+              )}
+            </a>
+          )}
+
+          {participant && (
+            <a
+              href="/my-application"
+              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
+            >
+              <span className="text-gold font-semibold text-sm">
+                📝 Моя анкета (редактировать)
+              </span>
+            </a>
           )}
 
           {participant && (
