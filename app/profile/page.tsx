@@ -10,6 +10,21 @@ import Logo from "@/components/Logo";
 
 type Participant = { id: string; display_name: string };
 
+function maskPhone(phone: string | null | undefined): string {
+  if (!phone) return "—";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 4) return "***";
+  return phone.slice(0, 3) + "*** ** " + digits.slice(-2);
+}
+
+function maskEmail(email: string | null | undefined): string {
+  if (!email) return "—";
+  const [name, domain] = email.split("@");
+  if (!domain) return "***";
+  const visible = name.slice(0, 1);
+  return `${visible}***@${domain}`;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -19,6 +34,7 @@ export default function ProfilePage() {
   const [referralCount, setReferralCount] = useState(0);
   const [balance, setBalance] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showPrivate, setShowPrivate] = useState(false);
   const [giftEarnings, setGiftEarnings] = useState(0);
   const [taskEarnings, setTaskEarnings] = useState(0);
   const [tasksDone, setTasksDone] = useState(0);
@@ -148,16 +164,28 @@ export default function ProfilePage() {
 
         <div className="px-6">
           <div className="bg-bgSurface border border-muted rounded-xl p-5 mb-4">
-            <h1 className="text-xl text-offwhite font-semibold mb-1">
-              {user?.first_name}
-              {participant && (
-                <span className="ml-2 text-xs bg-gold text-bgPrimary px-2 py-0.5 rounded-full align-middle">
-                  Участница
-                </span>
-              )}
-            </h1>
-            <p className="text-muted text-sm">{user?.phone}</p>
-            <p className="text-muted text-sm">{user?.email}</p>
+            <div className="flex items-center justify-between mb-1">
+              <h1 className="text-xl text-offwhite font-semibold">
+                {user?.first_name}
+                {participant && (
+                  <span className="ml-2 text-xs bg-gold text-bgPrimary px-2 py-0.5 rounded-full align-middle">
+                    Участница
+                  </span>
+                )}
+              </h1>
+              <button
+                onClick={() => setShowPrivate((v) => !v)}
+                className="text-muted text-xs whitespace-nowrap"
+              >
+                {showPrivate ? "🙈 Скрыть" : "👁 Показать данные"}
+              </button>
+            </div>
+            <p className="text-muted text-sm">
+              {showPrivate ? user?.phone : maskPhone(user?.phone)}
+            </p>
+            <p className="text-muted text-sm">
+              {showPrivate ? user?.email : maskEmail(user?.email)}
+            </p>
             <p className="text-muted text-sm">
               Регион: {user?.regions?.name ?? "—"}
             </p>
@@ -173,7 +201,7 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted text-xs">Баланс</p>
-                <p className="text-gold text-xl font-semibold">{balance} ₽</p>
+                <p className="text-gold text-xl font-semibold">{Math.round(balance)} ₽</p>
               </div>
               <span className="text-gold text-xs">Подробнее →</span>
             </div>
