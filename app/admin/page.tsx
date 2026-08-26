@@ -30,6 +30,27 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "stages", label: "Этапы сезона" },
 ];
 
+// Каждая галочка в «Персонал» открывает свой набор разделов.
+// Владелец (super_admin) видит всё независимо от галочек.
+const PERMISSION_TABS: Record<string, Tab[]> = {
+  moderation: ["applications", "participants", "cards"],
+  finance: ["dashboard", "goal"],
+  partners: ["partners"],
+  staff: ["staff", "users"],
+};
+
+function getAllowedTabs(user: CurrentUser): Tab[] {
+  if (user.role === "super_admin") return TABS.map((t) => t.key);
+  const perms = user.permissions ?? {};
+  const allowed = new Set<Tab>();
+  Object.entries(perms).forEach(([key, value]) => {
+    if (value && PERMISSION_TABS[key]) {
+      PERMISSION_TABS[key].forEach((t) => allowed.add(t));
+    }
+  });
+  return [...allowed];
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("dashboard");
@@ -37,6 +58,7 @@ export default function AdminPage() {
   const [checking, setChecking] = useState(true);
   const [allowed, setAllowed] = useState(false);
   const [me, setMe] = useState<CurrentUser | null>(null);
+  const [allowedTabs, setAllowedTabs] = useState<Tab[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -46,7 +68,13 @@ export default function AdminPage() {
         return;
       }
       setMe(u);
-      setAllowed(isStaff(u));
+      const staffOk = isStaff(u);
+      setAllowed(staffOk);
+      if (staffOk) {
+        const tabs = getAllowedTabs(u);
+        setAllowedTabs(tabs);
+        if (tabs.length > 0) setTab(tabs[0]);
+      }
       setChecking(false);
     })();
   }, [router]);
@@ -68,6 +96,20 @@ export default function AdminPage() {
         <p className="text-muted text-sm">
           Аккаунт {me?.email} не имеет прав на вход в CRM. Если это ошибка —
           обратитесь к владельцу проекта.
+        </p>
+      </main>
+    );
+  }
+
+  if (allowedTabs.length === 0) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center text-center px-6">
+        <h1 className="text-2xl font-semibold text-gold mb-3">
+          Пока нет доступных разделов
+        </h1>
+        <p className="text-muted text-sm">
+          Владелец ещё не назначил вам ни одной зоны ответственности в
+          разделе «Персонал».
         </p>
       </main>
     );
@@ -108,7 +150,7 @@ export default function AdminPage() {
                 ✕
               </button>
             </div>
-            {TABS.map((t) => (
+            {TABS.filter((t) => allowedTabs.includes(t.key)).map((t) => (
               <button
                 key={t.key}
                 onClick={() => {
@@ -1195,6 +1237,7 @@ type StageRow = {
   title: string;
   starts_at: string | null;
   ends_at: string | null;
+  promo_video_url: string | null;
 };
 
 function toDatetimeLocal(iso: string | null): string {
@@ -1212,6 +1255,7 @@ function StagesTab() {
   const [stages, setStages] = useState<StageRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
 
   async function loadSeasons() {
     const { data } = await supabase.from("seasons").select("id, title");
@@ -1226,11 +1270,34 @@ function StagesTab() {
     setLoading(true);
     const { data } = await supabase
       .from("season_stages")
-      .select("id, stage_number, title, starts_at, ends_at")
+      .select("id, stage_number, title, starts_at, ends_at, promo_video_url")
       .eq("season_id", seasonId)
       .order("stage_number", { ascending: true });
     setStages((data as StageRow[]) ?? []);
     setLoading(false);
+  }
+
+  async function uploadVideo(stageId: string, file: File) {
+    setUploadingId(stageId);
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${stageId}-${Date.now()}.${fileExt}`;
+    const { error } = await supabase.storage
+      .from("promo-videos")
+      .upload(filePath, file);
+    if (error) {
+      alert(`Ошибка загрузки: ${error.message}`);
+      setUploadingId(null);
+      return;
+    }
+    const { data: publicUrlData } = supabase.storage
+      .from("promo-videos")
+      .getPublicUrl(filePath);
+    await supabase
+      .from("season_stages")
+      .update({ promo_video_url: publicUrlData.publicUrl })
+      .eq("id", stageId);
+    await loadStages(selectedSeason);
+    setUploadingId(null);
   }
 
   useEffect(() => {
@@ -1311,8 +1378,29 @@ function StagesTab() {
               type="datetime-local"
               value={toDatetimeLocal(s.ends_at)}
               onChange={(e) => updateStage(i, "ends_at", e.target.value)}
-              className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mt-1"
+              className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mt-1 mb-2"
             />
+            <label className="text-offwhite text-xs">Промо-ролик этапа</label>
+            {s.promo_video_url && (
+              <p className="text-success text-xs mt-1 mb-1">Видео загружено ✓</p>
+            )}
+            <label className="block w-full text-center bg-bgPrimary border border-gold text-gold text-xs font-semibold px-3 py-2 rounded-lg mt-1 cursor-pointer">
+              {uploadingId === s.id
+                ? "Загрузка..."
+                : s.promo_video_url
+                ? "Заменить видео"
+                : "Загрузить видео"}
+              <input
+                type="file"
+                accept="video/*"
+                className="hidden"
+                disabled={uploadingId === s.id}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadVideo(s.id, file);
+                }}
+              />
+            </label>
           </div>
         ))}
 
