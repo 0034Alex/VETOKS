@@ -117,11 +117,12 @@ function ShopContent() {
           .from("seasons")
           .select("id, region_id, regions(name)");
         const seasonToRegionName: Record<string, string> = {};
-        (seasonsData ?? []).forEach(
-          (s: { id: string; regions: { name: string } | null }) => {
-            if (s.regions) seasonToRegionName[s.id] = s.regions.name;
-          }
-        );
+        (seasonsData as any[] ?? []).forEach((s) => {
+          const regionName = Array.isArray(s.regions)
+            ? s.regions[0]?.name
+            : s.regions?.name;
+          if (regionName) seasonToRegionName[s.id] = regionName;
+        });
         const regionMap: Record<string, string> = {};
         (participantsData ?? []).forEach(
           (p: { id: string; season_id: string }) => {
