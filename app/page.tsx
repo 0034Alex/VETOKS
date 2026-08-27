@@ -70,6 +70,253 @@ const STATUS_LABELS: Record<string, string> = {
   archived: "Сезон завершён",
 };
 
+type MagazinePage = {
+  kind: "participant";
+  id: string;
+  display_name: string;
+  photo_url: string | null;
+  dream: string | null;
+  motto: string | null;
+  fun_fact: string | null;
+} | {
+  kind: "ad";
+  id: string;
+  image_url: string;
+  button_text: string;
+  button_link: string;
+};
+
+function Magazine() {
+  const [pages, setPages] = useState<MagazinePage[]>([]);
+  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
+  const [userId, setUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data: participantsData } = await supabase
+        .from("participants")
+        .select("id, display_name, photo_url, magazine_answers(dream, motto, fun_fact)")
+        .eq("is_eliminated", false);
+
+      const { data: adsData } = await supabase
+        .from("magazine_ads")
+        .select("id, image_url, button_text, button_link")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+
+      const participantPages: MagazinePage[] = (participantsData ?? []).map(
+        (p: any) => ({
+          kind: "participant",
+          id: p.id,
+          display_name: p.display_name,
+          photo_url: p.photo_url,
+          dream: p.magazine_answers?.[0]?.dream ?? p.magazine_answers?.dream ?? null,
+          motto: p.magazine_answers?.[0]?.motto ?? p.magazine_answers?.motto ?? null,
+          fun_fact: p.magazine_answers?.[0]?.fun_fact ?? p.magazine_answers?.fun_fact ?? null,
+        })
+      );
+
+      const ads: MagazinePage[] = (adsData ?? []).map((a: any) => ({
+        kind: "ad",
+        id: a.id,
+        image_url: a.image_url,
+        button_text: a.button_text,
+        button_link: a.button_link,
+      }));
+
+      // Каждая 10-я страница — реклама (по кругу, если реклам несколько).
+      const merged: MagazinePage[] = [];
+      let adIndex = 0;
+      participantPages.forEach((p, i) => {
+        merged.push(p);
+        if ((i + 1) % 10 === 0 && ads.length > 0) {
+          merged.push(ads[adIndex % ads.length]);
+          adIndex++;
+        }
+      });
+      setPages(merged);
+
+      const u = await getCurrentUser();
+      if (u) {
+        setUserId(u.id);
+        const { data: followsData } = await supabase
+          .from("participant_follows")
+          .select("participant_id")
+          .eq("user_id", u.id);
+        setFollowedIds(
+          new Set((followsData ?? []).map((f: { participant_id: string }) => f.participant_id))
+        );
+      }
+
+      setLoading(false);
+    })();
+  }, []);
+
+  async function toggleFollow(participantId: string) {
+    if (!userId) return;
+    if (followedIds.has(participantId)) {
+      await supabase
+        .from("participant_follows")
+        .delete()
+        .eq("participant_id", participantId)
+        .eq("user_id", userId);
+      setFollowedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(participantId);
+        return next;
+      });
+    } else {
+      await supabase.from("participant_follows").insert({ participant_id: participantId, user_id: userId });
+      setFollowedIds((prev) => new Set(prev).add(participantId));
+    }
+  }
+
+  if (loading || pages.length === 0) return null;
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-lg font-semibold text-offwhite px-6 mb-3">
+        📖 Журнал VETOKS
+      </h2>
+      <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory px-6 pb-2">
+        {pages.map((page) => (
+          <div
+            key={`${page.kind}-${page.id}`}
+            className="snap-center flex-shrink-0 w-[260px] bg-bgSurface border border-gold/30 rounded-2xl overflow-hidden"
+            style={{ boxShadow: "0 8px 30px rgba(0,0,0,0.4)" }}
+          >
+            {page.kind === "ad" ? (
+              <a href={page.button_link} target="_blank" rel="noopener noreferrer">
+                <div className="aspect-[3/4] bg-black/40">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={page.image_url} alt="" className="w-full h-full object-cover" />
+                </div>
+                <div className="p-4">
+                  <span className="block text-center bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm">
+                    {page.button_text}
+                  </span>
+                </div>
+              </a>
+            ) : (
+              <>
+                <div className="aspect-[3/4] bg-black/40">
+                  {page.photo_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={page.photo_url} alt={page.display_name} className="w-full h-full object-cover" />
+                  )}
+                </div>
+                <div className="p-4">
+                  <p className="text-gold font-semibold mb-2">{page.display_name}</p>
+                  {page.dream && (
+                    <p className="text-offwhite text-xs mb-1">
+                      <span className="text-muted">Мечта: </span>
+                      {page.dream}
+                    </p>
+                  )}
+                  {page.motto && (
+                    <p className="text-offwhite text-xs mb-1">
+                      <span className="text-muted">Девиз: </span>
+                      {page.motto}
+                    </p>
+                  )}
+                  {page.fun_fact && (
+                    <p className="text-offwhite text-xs mb-3">
+                      <span className="text-muted">Факт: </span>
+                      {page.fun_fact}
+                    </p>
+                  )}
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => toggleFollow(page.id)}
+                      disabled={!userId}
+                      className={`flex-1 text-xs font-semibold py-2 rounded-full ${
+                        followedIds.has(page.id)
+                          ? "bg-bgPrimary border border-muted text-muted"
+                          : "bg-gold text-bgPrimary"
+                      }`}
+                    >
+                      {followedIds.has(page.id) ? "Вы подписаны" : "Подписаться"}
+                    </button>
+                    <Link
+                      href={`/participant/${page.id}`}
+                      className="flex-1 text-xs font-semibold py-2 rounded-full bg-bgPrimary border border-gold text-gold text-center"
+                    >
+                      Профиль
+                    </Link>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Survey() {
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("platform_settings")
+        .select("value")
+        .eq("key", "survey_question")
+        .maybeSingle();
+      setQuestion(data?.value ?? "");
+      setLoading(false);
+    })();
+  }, []);
+
+  async function submit() {
+    if (!answer.trim()) return;
+    const u = await getCurrentUser();
+    if (!u) return;
+    await supabase.from("survey_answers").insert({
+      user_id: u.id,
+      question,
+      answer,
+    });
+    setSent(true);
+  }
+
+  if (loading || !question) return null;
+
+  return (
+    <div className="px-6 mb-8">
+      <div className="bg-gradient-to-br from-[#7C3AED]/20 to-[#EC4899]/20 border border-gold/30 rounded-2xl p-5">
+        <p className="text-gold text-xs tracking-widest mb-2">ОПРОС</p>
+        <h3 className="text-offwhite font-semibold text-lg mb-4">{question}</h3>
+        {sent ? (
+          <p className="text-success text-sm">Спасибо за ответ!</p>
+        ) : (
+          <>
+            <textarea
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              rows={3}
+              placeholder="Ваш ответ..."
+              className="w-full bg-bgPrimary text-offwhite border border-muted rounded-lg px-4 py-3 mb-3"
+            />
+            <button
+              onClick={submit}
+              disabled={!answer.trim()}
+              className="bg-gold text-bgPrimary font-semibold px-6 py-2 rounded-full text-sm disabled:opacity-40"
+            >
+              Отправить
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const router = useRouter();
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -248,21 +495,12 @@ export default function Home() {
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
       >
         <Logo size={32} />
-        <div className="flex items-center gap-2">
-          <Link
-            href="/promo"
-            className="text-gold text-xs font-semibold border border-gold/50 rounded-full w-9 h-9 flex items-center justify-center"
-            aria-label="Смотреть промо-ролик"
-          >
-            ▶
-          </Link>
-          <Link
-            href="/hall-of-fame"
-            className="text-gold text-xs font-semibold border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap"
-          >
-            🏆 Зал славы
-          </Link>
-        </div>
+        <Link
+          href="/hall-of-fame"
+          className="text-gold text-xs font-semibold border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap"
+        >
+          🏆 Зал славы
+        </Link>
       </div>
 
       <div className="max-w-5xl mx-auto">
@@ -290,15 +528,25 @@ export default function Home() {
         </div>
 
         <div
-          className="mx-6 mb-6 rounded-2xl overflow-hidden flex flex-col justify-end p-5 md:p-8 min-h-[260px] md:min-h-[320px]"
+          className="mx-6 mb-6 rounded-2xl overflow-hidden relative flex flex-col justify-end p-5 md:p-8 min-h-[260px] md:min-h-[320px]"
           style={{
             backgroundImage: leaderPhoto
-              ? `linear-gradient(to top, rgba(11,11,13,0.97), rgba(11,11,13,0.4))${leaderPhoto ? `, url(${leaderPhoto})` : ""}`
+              ? `linear-gradient(to top, rgba(11,11,13,0.97), rgba(11,11,13,0.4)), url(${leaderPhoto})`
               : "linear-gradient(135deg, #2a1f3d, #0B0B0D)",
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
         >
+          <Link
+            href="/promo"
+            className="absolute top-4 right-4 flex items-center gap-2 bg-bgPrimary/80 rounded-full pl-2 pr-3 py-1.5"
+          >
+            <span className="w-6 h-6 rounded-full bg-gold text-bgPrimary flex items-center justify-center text-[10px]">
+              ▶
+            </span>
+            <span className="text-offwhite text-xs font-semibold">Промо</span>
+          </Link>
+
           <p className="text-goldSoft text-xs tracking-widest mb-1">
             VETOKS MISS
           </p>
@@ -308,7 +556,7 @@ export default function Home() {
           <p className="text-muted text-sm mb-4">Красота. Харизма. Энергия.</p>
 
           {currentStage && totalStages > 0 ? (
-            <div className="bg-bgPrimary/80 backdrop-blur rounded-xl p-3 mb-3">
+            <div className="bg-bgPrimary/80 backdrop-blur rounded-xl p-3">
               <div className="flex items-center justify-between mb-2 gap-2">
                 <span className="text-offwhite text-xs font-semibold whitespace-nowrap">
                   Этап {currentStage.stage_number} из {totalStages}
@@ -325,48 +573,11 @@ export default function Home() {
                 🕐 До окончания этапа: <span className="font-semibold">{stageCountdown}</span>
               </p>
             </div>
-          ) : season?.status === "registration" ? (
-            <Link
-              href="/apply"
-              className="inline-block w-fit bg-gold text-bgPrimary text-xs font-semibold px-4 py-2 rounded-full mb-3"
-            >
-              Регистрация открыта — подать анкету
-            </Link>
           ) : (
-            <span className="inline-block w-fit bg-bgSurface/80 text-gold text-xs px-3 py-1 rounded-full border border-gold/40 mb-3">
+            <span className="inline-block w-fit bg-bgSurface/80 text-gold text-xs px-3 py-1 rounded-full border border-gold/40">
               {season ? STATUS_LABELS[season.status] ?? season.status : "Скоро старт"}
             </span>
           )}
-
-          <Link
-            href="/apply"
-            className="flex items-center justify-center gap-2 bg-gold text-bgPrimary rounded-full py-2.5 w-full font-semibold text-sm"
-          >
-            📝 Подать заявку на участие
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-6 mb-8">
-          <div className="bg-bgSurface border border-muted rounded-xl p-4">
-            <p className="text-gold text-xl font-semibold">
-              👑 {filtered.length}
-            </p>
-            <p className="text-muted text-xs">Участниц сезона</p>
-          </div>
-          <div className="bg-bgSurface border border-muted rounded-xl p-4">
-            <p className="text-gold text-xl font-semibold">
-              👥 {activeUsersCount}
-            </p>
-            <p className="text-muted text-xs">Пользователей</p>
-          </div>
-          <div className="bg-bgSurface border border-muted rounded-xl p-4">
-            <p className="text-gold text-xl font-semibold">🎁 0</p>
-            <p className="text-muted text-xs">Подарков сегодня</p>
-          </div>
-          <div className="bg-bgSurface border border-muted rounded-xl p-4">
-            <p className="text-gold text-xl font-semibold">🔥 {contentCount}</p>
-            <p className="text-muted text-xs">Роликов в соцсетях</p>
-          </div>
         </div>
 
         {inWindow && (
@@ -449,7 +660,20 @@ export default function Home() {
           </div>
         )}
 
-        <div className="px-6 grid md:grid-cols-3 gap-3">
+        <Magazine />
+
+        {season?.status === "registration" && (
+          <div className="px-6 mb-8">
+            <Link
+              href="/apply"
+              className="flex items-center justify-center gap-2 bg-gold text-bgPrimary rounded-full py-3 w-full font-semibold text-sm"
+            >
+              📝 Подать заявку на участие
+            </Link>
+          </div>
+        )}
+
+        <div className="px-6 grid md:grid-cols-2 gap-3 mb-8">
           <Link
             href="/media"
             className="bg-bgSurface border border-muted rounded-xl p-4 flex items-center justify-between"
@@ -470,13 +694,9 @@ export default function Home() {
             </div>
             <span className="text-gold">→</span>
           </Link>
-          <Link
-            href="/apply"
-            className="border border-gold text-gold font-semibold px-8 py-3 rounded-full text-center hover:bg-bgSurface transition-colors flex items-center justify-center"
-          >
-            Подать анкету на участие
-          </Link>
         </div>
+
+        <Survey />
       </div>
 
       <BottomNav />
