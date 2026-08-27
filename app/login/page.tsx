@@ -10,7 +10,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/";
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -20,6 +20,24 @@ function LoginForm() {
     setStatus("loading");
     setErrorMessage("");
 
+    let email = identifier.trim();
+
+    if (!email.includes("@")) {
+      // Похоже на телефон — ищем почту по номеру.
+      const { data: userRow } = await supabase
+        .from("users")
+        .select("email")
+        .eq("phone", identifier.trim())
+        .maybeSingle();
+
+      if (!userRow?.email) {
+        setStatus("error");
+        setErrorMessage("Аккаунт с таким телефоном не найден.");
+        return;
+      }
+      email = userRow.email;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -27,7 +45,7 @@ function LoginForm() {
 
     if (error) {
       setStatus("error");
-      setErrorMessage("Неверная почта или пароль.");
+      setErrorMessage("Неверные данные для входа или пароль.");
       return;
     }
 
@@ -49,11 +67,10 @@ function LoginForm() {
         className="w-full max-w-sm flex flex-col gap-3 text-left"
       >
         <div>
-          <label className="text-offwhite text-sm">Почта</label>
+          <label className="text-offwhite text-sm">Почта или телефон</label>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
             required
           />
@@ -68,6 +85,10 @@ function LoginForm() {
             required
           />
         </div>
+
+        <Link href="/forgot-password" className="text-gold text-xs text-right">
+          Забыли пароль?
+        </Link>
 
         <button
           type="submit"
