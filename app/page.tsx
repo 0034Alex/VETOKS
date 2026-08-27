@@ -248,12 +248,21 @@ export default function Home() {
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
       >
         <Logo size={32} />
-        <Link
-          href="/hall-of-fame"
-          className="text-gold text-xs font-semibold border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap"
-        >
-          🏆 Зал славы
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/promo"
+            className="text-gold text-xs font-semibold border border-gold/50 rounded-full w-9 h-9 flex items-center justify-center"
+            aria-label="Смотреть промо-ролик"
+          >
+            ▶
+          </Link>
+          <Link
+            href="/hall-of-fame"
+            className="text-gold text-xs font-semibold border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap"
+          >
+            🏆 Зал славы
+          </Link>
+        </div>
       </div>
 
       <div className="max-w-5xl mx-auto">
@@ -330,15 +339,10 @@ export default function Home() {
           )}
 
           <Link
-            href="/promo"
-            className="flex items-center justify-center gap-2 bg-bgPrimary/80 rounded-full py-2.5 w-full"
+            href="/apply"
+            className="flex items-center justify-center gap-2 bg-gold text-bgPrimary rounded-full py-2.5 w-full font-semibold text-sm"
           >
-            <span className="w-7 h-7 rounded-full bg-gold text-bgPrimary flex items-center justify-center text-xs flex-shrink-0">
-              ▶
-            </span>
-            <span className="text-offwhite text-xs font-semibold">
-              Смотреть промо-ролик
-            </span>
+            📝 Подать заявку на участие
           </Link>
         </div>
 
