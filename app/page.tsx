@@ -189,25 +189,39 @@ function Magazine() {
       <h2 className="text-lg font-semibold text-offwhite px-6 mb-3">
         📖 Журнал VETOKS
       </h2>
-      <div className="flex justify-center px-4 relative">
-        <div className="relative" style={{ width: 300 }}>
-          {/* Статичная тень в месте сгиба страниц */}
+      <div className="flex justify-center px-4">
+        <div className="relative" style={{ width: "100%", maxWidth: 360 }}>
+          {/* Кулисы «толщины» книги — каскад слоёв позади разворота */}
           <div
-            className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-4 z-20 pointer-events-none"
+            className="absolute rounded-lg"
             style={{
-              background:
-                "linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.28) 50%, rgba(0,0,0,0) 100%)",
+              inset: "10px -6px -10px -6px",
+              background: "#e4ddc9",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.35)",
             }}
           />
+          <div
+            className="absolute rounded-lg"
+            style={{
+              inset: "6px -3px -6px -3px",
+              background: "#eee6d2",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
+            }}
+          />
+
           <HTMLFlipBook
-            width={150}
-            height={230}
-            size="fixed"
+            width={200}
+            height={300}
+            size="stretch"
+            minWidth={200}
+            maxWidth={360}
+            minHeight={280}
+            maxHeight={500}
             showCover={false}
             drawShadow={true}
-            maxShadowOpacity={0.5}
+            maxShadowOpacity={0.4}
             mobileScrollSupport={true}
-            className="vetoks-magazine"
+            className="vetoks-magazine relative"
             style={{ margin: "0 auto" }}
           >
             {pages.map((page) => {
@@ -232,40 +246,47 @@ function Magazine() {
 
             if (page.kind === "photo") {
               return (
-                <div key={`photo-${page.id}`} className="relative bg-black overflow-hidden">
-                  {page.photo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={page.photo_url}
-                      alt={page.display_name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div
-                      className="w-full h-full flex items-center justify-center relative"
-                      style={{
-                        background:
-                          "radial-gradient(circle at 50% 40%, #2a1f3d 0%, #0B0B0D 75%)",
-                      }}
-                    >
-                      <span
-                        className="text-gold/25 select-none"
-                        style={{
-                          fontFamily: "Georgia, 'Times New Roman', serif",
-                          fontSize: 96,
-                          lineHeight: 1,
-                        }}
+                <div
+                  key={`photo-${page.id}`}
+                  className="relative overflow-hidden flex flex-col rounded-r-lg"
+                  style={{
+                    backgroundColor: "#F0EBDD",
+                    boxShadow: "inset 15px 0 15px -15px rgba(0,0,0,0.35)",
+                  }}
+                >
+                  <div className="flex-1 relative overflow-hidden">
+                    {page.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={page.photo_url}
+                        alt={page.display_name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="w-full h-full flex items-center justify-center"
+                        style={{ backgroundColor: "#F0EBDD" }}
                       >
-                        V
-                      </span>
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
-                  <div className="absolute bottom-3 left-0 right-0 text-center px-2">
-                    <span
-                      className="text-white/90 text-xs font-light tracking-[0.3em]"
-                      style={{ textShadow: "0 1px 8px rgba(0,0,0,0.7)" }}
-                    >
+                        <span
+                          className="select-none"
+                          style={{
+                            fontFamily: "Georgia, 'Times New Roman', serif",
+                            fontSize: 88,
+                            lineHeight: 1,
+                            color: "#C9A227",
+                            opacity: 0.35,
+                          }}
+                        >
+                          V
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div
+                    className="text-center py-2 flex-shrink-0"
+                    style={{ backgroundColor: "#F0EBDD" }}
+                  >
+                    <span className="text-[#8a7f5f] text-xs font-light tracking-[0.3em]">
                       VETOKS · 2026
                     </span>
                   </div>
@@ -281,8 +302,11 @@ function Magazine() {
             return (
               <div
                 key={`text-${page.id}`}
-                className="h-full overflow-y-auto px-4 pt-4 pb-8 flex flex-col"
-                style={{ backgroundColor: "#FCFAF6" }}
+                className="h-full overflow-y-auto px-4 pt-4 pb-8 flex flex-col rounded-l-lg"
+                style={{
+                  backgroundColor: "#F0EBDD",
+                  boxShadow: "inset -15px 0 15px -15px rgba(0,0,0,0.35)",
+                }}
               >
                 <p
                   className="text-[#B23A5C] text-[8px] tracking-[0.25em] font-semibold mb-2"
