@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import PageHeader from "@/components/PageHeader";
 
 // Замените на юзернейм вашего Telegram-бота (без @).
-const BOT_USERNAME = "your_bot_username";
+const BOT_USERNAME = "VETOKS_bot";
 
 export default function ForgotPasswordPage() {
   const [identifier, setIdentifier] = useState("");
@@ -88,12 +88,12 @@ export default function ForgotPasswordPage() {
           <p className="text-muted text-sm">Ваш код:</p>
           <p className="text-4xl font-bold text-gold tracking-widest">{code}</p>
           <p className="text-muted text-sm">
-            Откройте нашего Telegram-бота и отправьте ему этот код. Бот
-            попросит ввести новый пароль — после этого возвращайтесь сюда и
+            Нажмите кнопку ниже — бот откроется автоматически с этим кодом и
+            попросит ввести новый пароль. После этого возвращайтесь сюда и
             входите с новым паролем. Код действует 10 минут.
           </p>
           <a
-            href={`https://t.me/${BOT_USERNAME}`}
+            href={`https://t.me/${BOT_USERNAME}?start=${code}`}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full text-center"
