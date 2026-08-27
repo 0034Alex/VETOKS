@@ -296,7 +296,10 @@ export default function ProfilePage() {
           )}
 
           {participant && goalText && goalEnabled && (
-            <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
+            <a
+              href="/goal-donors"
+              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
+            >
               <p className="text-offwhite text-sm font-semibold mb-1">
                 🎯 Цель недели
               </p>
@@ -309,23 +312,24 @@ export default function ProfilePage() {
                   }}
                 />
               </div>
-              <p className="text-muted text-xs mb-3">
-                Собрано {Math.round(goalCollected)} / {goalTarget} ₽
-              </p>
-              {goalDonors.length > 0 ? (
-                <div className="border-t border-muted pt-3 flex flex-col gap-2 max-h-48 overflow-y-auto">
-                  <p className="text-muted text-xs">Кто донатил на этой неделе:</p>
-                  {goalDonors.map((d, i) => (
-                    <div key={i} className="flex justify-between text-xs">
-                      <span className="text-offwhite">{d.name}</span>
-                      <span className="text-gold">{Math.round(d.amount)} ₽</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted text-xs">Пока никто не задонатил.</p>
-              )}
-            </div>
+              <div className="flex items-center justify-between">
+                <p className="text-muted text-xs">
+                  Собрано {Math.round(goalCollected)} / {goalTarget} ₽
+                </p>
+                <span className="text-gold text-xs">Кто донатил ▾</span>
+              </div>
+            </a>
+          )}
+
+          {participant && (
+            <a
+              href="/add-video"
+              className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mb-4"
+            >
+              <span className="text-white font-semibold text-sm">
+                🎬 Добавить видео
+              </span>
+            </a>
           )}
 
           {participant && (
@@ -351,17 +355,6 @@ export default function ProfilePage() {
             >
               <span className="text-gold font-semibold text-sm">
                 📝 Моя анкета (редактировать)
-              </span>
-            </a>
-          )}
-
-          {participant && (
-            <a
-              href="/add-video"
-              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
-            >
-              <span className="text-gold font-semibold text-sm">
-                🎬 Добавить видео
               </span>
             </a>
           )}
@@ -419,6 +412,13 @@ export default function ProfilePage() {
               className="p-4 flex items-center justify-between text-muted text-sm"
             >
               <span>Как это работает</span>
+              <span>→</span>
+            </a>
+            <a
+              href="/install"
+              className="p-4 flex items-center justify-between text-muted text-sm"
+            >
+              <span>Установить приложение</span>
               <span>→</span>
             </a>
             <div className="p-4 flex items-center justify-between text-muted text-sm">
