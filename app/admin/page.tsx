@@ -37,6 +37,7 @@ const PERMISSION_TABS: Record<string, Tab[]> = {
   finance: ["dashboard", "goal"],
   partners: ["partners"],
   staff: ["staff", "users"],
+  support: ["support"],
 };
 
 function getAllowedTabs(user: CurrentUser): Tab[] {
@@ -198,6 +199,8 @@ function Dashboard() {
     tasksCompleted: 0,
     earnedByParticipants: 0,
     totalPurchases: 0,
+    companyEarnings: 0,
+    pwaInstalls: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -241,6 +244,19 @@ function Dashboard() {
         0
       );
 
+      const { data: receivedData } = await supabase
+        .from("wallet_transactions")
+        .select("amount")
+        .eq("type", "gift_received");
+      const totalReceivedByParticipants = (receivedData ?? []).reduce(
+        (sum: number, t: { amount: number }) => sum + Number(t.amount),
+        0
+      );
+
+      const { count: pwaCount } = await supabase
+        .from("pwa_installs")
+        .select("id", { count: "exact", head: true });
+
       setStats({
         users: usersCount ?? 0,
         participants: participantsCount ?? 0,
@@ -248,6 +264,8 @@ function Dashboard() {
         tasksCompleted: tasksCount ?? 0,
         earnedByParticipants: totalBalance,
         totalPurchases,
+        companyEarnings: totalPurchases - totalReceivedByParticipants,
+        pwaInstalls: pwaCount ?? 0,
       });
       setLoading(false);
     })();
@@ -260,6 +278,8 @@ function Dashboard() {
     { label: "Заданий выполнено", value: stats.tasksCompleted },
     { label: "Заработано участницами", value: `${Math.round(stats.earnedByParticipants)} ₽` },
     { label: "Оборот покупок", value: `${Math.round(stats.totalPurchases)} ₽` },
+    { label: "Доход компании", value: `${Math.round(stats.companyEarnings)} ₽` },
+    { label: "Установок PWA (Android — точно, iOS может недосчитывать)", value: stats.pwaInstalls },
   ];
 
   if (loading) return <p className="text-muted">Загрузка...</p>;
@@ -469,6 +489,11 @@ function ParticipantsTab() {
     await load();
   }
 
+  async function clearEditorsChoice() {
+    await supabase.from("participants").update({ is_editors_choice: false }).eq("is_editors_choice", true);
+    await load();
+  }
+
   async function remove(participantId: string) {
     if (!confirm("Удалить эту участницу из конкурса?")) return;
     await supabase.from("participants").delete().eq("id", participantId);
@@ -514,11 +539,16 @@ function ParticipantsTab() {
               Удалить
             </button>
             <button
-              onClick={() => setEditorsChoice(r.id)}
-              disabled={r.is_editors_choice}
-              className="bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white px-3 py-1.5 rounded-full text-xs font-semibold disabled:opacity-40"
+              onClick={() =>
+                r.is_editors_choice ? clearEditorsChoice() : setEditorsChoice(r.id)
+              }
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
+                r.is_editors_choice
+                  ? "bg-bgPrimary border border-danger text-danger"
+                  : "bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
+              }`}
             >
-              {r.is_editors_choice ? "🌟 Выбор редакции" : "Назначить выбор редакции"}
+              {r.is_editors_choice ? "✕ Убрать выбор редакции" : "Назначить выбор редакции"}
             </button>
           </div>
         </div>
@@ -651,6 +681,7 @@ const PERMISSION_KEYS = [
   { key: "finance", label: "Финансы и выплаты" },
   { key: "partners", label: "Партнёры" },
   { key: "staff", label: "Управление персоналом" },
+  { key: "support", label: "Помощь и поддержка" },
 ];
 
 type StaffRow = {
