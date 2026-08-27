@@ -70,21 +70,28 @@ const STATUS_LABELS: Record<string, string> = {
   archived: "Сезон завершён",
 };
 
-type MagazinePage = {
-  kind: "participant";
-  id: string;
-  display_name: string;
-  photo_url: string | null;
-  dream: string | null;
-  motto: string | null;
-  fun_fact: string | null;
-} | {
-  kind: "ad";
-  id: string;
-  image_url: string;
-  button_text: string;
-  button_link: string;
-};
+type MagazinePage =
+  | {
+      kind: "photo";
+      id: string;
+      display_name: string;
+      photo_url: string | null;
+    }
+  | {
+      kind: "text";
+      id: string;
+      display_name: string;
+      dream: string | null;
+      motto: string | null;
+      fun_fact: string | null;
+    }
+  | {
+      kind: "ad";
+      id: string;
+      image_url: string;
+      button_text: string;
+      button_link: string;
+    };
 
 function Magazine() {
   const [pages, setPages] = useState<MagazinePage[]>([]);
@@ -105,18 +112,6 @@ function Magazine() {
         .eq("is_active", true)
         .order("sort_order", { ascending: true });
 
-      const participantPages: MagazinePage[] = (participantsData ?? []).map(
-        (p: any) => ({
-          kind: "participant",
-          id: p.id,
-          display_name: p.display_name,
-          photo_url: p.photo_url,
-          dream: p.magazine_answers?.[0]?.dream ?? p.magazine_answers?.dream ?? null,
-          motto: p.magazine_answers?.[0]?.motto ?? p.magazine_answers?.motto ?? null,
-          fun_fact: p.magazine_answers?.[0]?.fun_fact ?? p.magazine_answers?.fun_fact ?? null,
-        })
-      );
-
       const ads: MagazinePage[] = (adsData ?? []).map((a: any) => ({
         kind: "ad",
         id: a.id,
@@ -125,12 +120,22 @@ function Magazine() {
         button_link: a.button_link,
       }));
 
-      // Каждая 10-я страница — реклама (по кругу, если реклам несколько).
+      // Каждая участница — разворот из двух страниц: фото, затем текст.
+      // Каждая 10-я итоговая страница — реклама (по кругу).
       const merged: MagazinePage[] = [];
       let adIndex = 0;
-      participantPages.forEach((p, i) => {
-        merged.push(p);
-        if ((i + 1) % 10 === 0 && ads.length > 0) {
+      (participantsData ?? []).forEach((p: any) => {
+        const dream = p.magazine_answers?.[0]?.dream ?? p.magazine_answers?.dream ?? null;
+        const motto = p.magazine_answers?.[0]?.motto ?? p.magazine_answers?.motto ?? null;
+        const funFact = p.magazine_answers?.[0]?.fun_fact ?? p.magazine_answers?.fun_fact ?? null;
+
+        merged.push({ kind: "photo", id: p.id, display_name: p.display_name, photo_url: p.photo_url });
+        if ((merged.length) % 10 === 0 && ads.length > 0) {
+          merged.push(ads[adIndex % ads.length]);
+          adIndex++;
+        }
+        merged.push({ kind: "text", id: p.id, display_name: p.display_name, dream, motto, fun_fact: funFact });
+        if ((merged.length) % 10 === 0 && ads.length > 0) {
           merged.push(ads[adIndex % ads.length]);
           adIndex++;
         }
@@ -179,77 +184,157 @@ function Magazine() {
       <h2 className="text-lg font-semibold text-offwhite px-6 mb-3">
         📖 Журнал VETOKS
       </h2>
-      <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory px-6 pb-2">
-        {pages.map((page) => (
-          <div
-            key={`${page.kind}-${page.id}`}
-            className="snap-center flex-shrink-0 w-[260px] bg-bgSurface border border-gold/30 rounded-2xl overflow-hidden"
-            style={{ boxShadow: "0 8px 30px rgba(0,0,0,0.4)" }}
-          >
-            {page.kind === "ad" ? (
-              <a href={page.button_link} target="_blank" rel="noopener noreferrer">
-                <div className="aspect-[3/4] bg-black/40">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={page.image_url} alt="" className="w-full h-full object-cover" />
-                </div>
-                <div className="p-4">
-                  <span className="block text-center bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm">
+      <div className="flex overflow-x-auto snap-x snap-mandatory px-6 pb-3 gap-3">
+        {pages.map((page) => {
+          if (page.kind === "ad") {
+            return (
+              <a
+                key={`ad-${page.id}`}
+                href={page.button_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="snap-center flex-shrink-0 w-[300px] aspect-[3/4] rounded-sm overflow-hidden relative"
+                style={{ boxShadow: "0 12px 40px rgba(0,0,0,0.55)" }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={page.image_url} alt="" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-5">
+                  <span className="text-white/60 text-[10px] tracking-widest mb-2">
+                    РЕКЛАМА
+                  </span>
+                  <span className="inline-block text-center bg-gold text-bgPrimary font-semibold py-2.5 rounded-full text-sm">
                     {page.button_text}
                   </span>
                 </div>
               </a>
-            ) : (
-              <>
-                <div className="aspect-[3/4] bg-black/40">
-                  {page.photo_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={page.photo_url} alt={page.display_name} className="w-full h-full object-cover" />
-                  )}
-                </div>
-                <div className="p-4">
-                  <p className="text-gold font-semibold mb-2">{page.display_name}</p>
-                  {page.dream && (
-                    <p className="text-offwhite text-xs mb-1">
-                      <span className="text-muted">Мечта: </span>
-                      {page.dream}
-                    </p>
-                  )}
-                  {page.motto && (
-                    <p className="text-offwhite text-xs mb-1">
-                      <span className="text-muted">Девиз: </span>
-                      {page.motto}
-                    </p>
-                  )}
-                  {page.fun_fact && (
-                    <p className="text-offwhite text-xs mb-3">
-                      <span className="text-muted">Факт: </span>
-                      {page.fun_fact}
-                    </p>
-                  )}
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      onClick={() => toggleFollow(page.id)}
-                      disabled={!userId}
-                      className={`flex-1 text-xs font-semibold py-2 rounded-full ${
-                        followedIds.has(page.id)
-                          ? "bg-bgPrimary border border-muted text-muted"
-                          : "bg-gold text-bgPrimary"
-                      }`}
-                    >
-                      {followedIds.has(page.id) ? "Вы подписаны" : "Подписаться"}
-                    </button>
-                    <Link
-                      href={`/participant/${page.id}`}
-                      className="flex-1 text-xs font-semibold py-2 rounded-full bg-bgPrimary border border-gold text-gold text-center"
-                    >
-                      Профиль
-                    </Link>
+            );
+          }
+
+          if (page.kind === "photo") {
+            return (
+              <div
+                key={`photo-${page.id}`}
+                className="snap-center flex-shrink-0 w-[300px] aspect-[3/4] rounded-sm overflow-hidden relative bg-black"
+                style={{ boxShadow: "0 12px 40px rgba(0,0,0,0.55)" }}
+              >
+                {page.photo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={page.photo_url}
+                    alt={page.display_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted text-sm">
+                    Нет фото
                   </div>
+                )}
+                {/* Тень корешка, будто это разворот книги */}
+                <div className="absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-black/50 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent flex flex-col justify-end p-6">
+                  <span
+                    className="text-goldSoft text-[10px] tracking-[0.3em] mb-1"
+                  >
+                    VETOKS · ГЕРОИНЯ НОМЕРА
+                  </span>
+                  <h3
+                    className="text-white text-3xl leading-none"
+                    style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+                  >
+                    {page.display_name}
+                  </h3>
                 </div>
-              </>
-            )}
-          </div>
-        ))}
+              </div>
+            );
+          }
+
+          // Текстовая страница — светлая «бумага», буквица, редакционный стиль
+          const firstAnswer = page.dream || page.motto || page.fun_fact || "";
+          const dropCap = firstAnswer.charAt(0);
+          const restOfFirst = firstAnswer.slice(1);
+
+          return (
+            <div
+              key={`text-${page.id}`}
+              className="snap-center flex-shrink-0 w-[300px] aspect-[3/4] rounded-sm overflow-hidden relative"
+              style={{
+                backgroundColor: "#F3EEE4",
+                boxShadow: "0 12px 40px rgba(0,0,0,0.55)",
+              }}
+            >
+              {/* Тень корешка слева */}
+              <div className="absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-black/15 to-transparent pointer-events-none" />
+
+              <div className="p-6 h-full overflow-y-auto">
+                <p
+                  className="text-[#C9A227] text-[10px] tracking-[0.3em] mb-1"
+                >
+                  ИНТЕРВЬЮ НОМЕРА
+                </p>
+                <h3
+                  className="text-[#1a1520] text-2xl mb-4 leading-tight"
+                  style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+                >
+                  {page.display_name}
+                </h3>
+
+                {firstAnswer && (
+                  <p
+                    className="text-[#2b2530] text-sm leading-relaxed mb-3"
+                    style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+                  >
+                    <span
+                      className="float-left text-6xl leading-[0.8] pr-2 pt-1"
+                      style={{
+                        fontFamily: "Georgia, 'Times New Roman', serif",
+                        color: "#7C3AED",
+                      }}
+                    >
+                      {dropCap}
+                    </span>
+                    {restOfFirst}
+                  </p>
+                )}
+
+                {page.motto && firstAnswer !== page.motto && (
+                  <p className="text-[#5a5260] text-xs mb-2 italic">
+                    «{page.motto}»
+                  </p>
+                )}
+                {page.fun_fact && firstAnswer !== page.fun_fact && (
+                  <p className="text-[#2b2530] text-xs leading-relaxed">
+                    {page.fun_fact}
+                  </p>
+                )}
+                {!firstAnswer && (
+                  <p className="text-[#8a8290] text-xs italic">
+                    Участница ещё не заполнила свою страницу журнала.
+                  </p>
+                )}
+
+                <div className="flex gap-2 mt-6">
+                  <button
+                    onClick={() => toggleFollow(page.id)}
+                    disabled={!userId}
+                    className={`flex-1 text-xs font-semibold py-2 rounded-full ${
+                      followedIds.has(page.id)
+                        ? "bg-white border border-[#c9c2b4] text-[#5a5260]"
+                        : "bg-[#1a1520] text-[#F3EEE4]"
+                    }`}
+                  >
+                    {followedIds.has(page.id) ? "Вы подписаны" : "Подписаться"}
+                  </button>
+                  <Link
+                    href={`/participant/${page.id}`}
+                    className="flex-1 text-xs font-semibold py-2 rounded-full border border-[#1a1520] text-[#1a1520] text-center"
+                  >
+                    Профиль
+                  </Link>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -578,6 +663,15 @@ export default function Home() {
               {season ? STATUS_LABELS[season.status] ?? season.status : "Скоро старт"}
             </span>
           )}
+
+          {season?.status === "registration" && (
+            <Link
+              href="/apply"
+              className="flex items-center justify-center gap-2 bg-gold text-bgPrimary rounded-full py-2.5 w-full font-semibold text-sm mt-3"
+            >
+              📝 Подать заявку на участие
+            </Link>
+          )}
         </div>
 
         {inWindow && (
@@ -672,29 +766,6 @@ export default function Home() {
             </Link>
           </div>
         )}
-
-        <div className="px-6 grid md:grid-cols-2 gap-3 mb-8">
-          <Link
-            href="/media"
-            className="bg-bgSurface border border-muted rounded-xl p-4 flex items-center justify-between"
-          >
-            <div>
-              <p className="text-offwhite font-semibold">Смотри контент участниц</p>
-              <p className="text-muted text-xs">Лучшие видео и закулисье сезона</p>
-            </div>
-            <span className="text-gold">→</span>
-          </Link>
-          <Link
-            href="/shop"
-            className="bg-bgSurface border border-muted rounded-xl p-4 flex items-center justify-between"
-          >
-            <div>
-              <p className="text-offwhite font-semibold">Подарки участницам</p>
-              <p className="text-muted text-xs">Поддержи любимую участницу</p>
-            </div>
-            <span className="text-gold">→</span>
-          </Link>
-        </div>
 
         <Survey />
       </div>
