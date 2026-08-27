@@ -125,9 +125,9 @@ function Magazine() {
         button_link: a.button_link,
       }));
 
-      // Каждая участница — разворот из двух страниц (фото + текст) —
-      // библиотека сама покажет их рядом и анимирует переворот.
-      // Каждая 10-я итоговая страница — реклама (по кругу).
+      // Каждая участница — разворот: текст (левая страница) + фото (правая).
+      // Каждый 10-й разворот — реклама, целиком на обе страницы (чтобы не
+      // сбивать чередование текст/фото у следующих участниц).
       const merged: MagazinePage[] = [];
       let adIndex = 0;
       (participantsData ?? []).forEach((p: any) => {
@@ -135,10 +135,13 @@ function Magazine() {
         const motto = p.magazine_answers?.[0]?.motto ?? p.magazine_answers?.motto ?? null;
         const funFact = p.magazine_answers?.[0]?.fun_fact ?? p.magazine_answers?.fun_fact ?? null;
 
-        merged.push({ kind: "photo", id: p.id, display_name: p.display_name, photo_url: p.photo_url });
         merged.push({ kind: "text", id: p.id, display_name: p.display_name, dream, motto, fun_fact: funFact });
-        if (merged.length % 10 === 0 && ads.length > 0) {
-          merged.push(ads[adIndex % ads.length]);
+        merged.push({ kind: "photo", id: p.id, display_name: p.display_name, photo_url: p.photo_url });
+
+        if (merged.length % 20 === 0 && ads.length > 0) {
+          const ad = ads[adIndex % ads.length];
+          merged.push({ ...ad, id: `${ad.id}-l` });
+          merged.push({ ...ad, id: `${ad.id}-r` });
           adIndex++;
         }
       });
@@ -186,55 +189,26 @@ function Magazine() {
       <h2 className="text-lg font-semibold text-offwhite px-6 mb-3">
         📖 Журнал VETOKS
       </h2>
-      <div
-        className="mx-6 rounded-2xl p-5 relative overflow-hidden"
-        style={{
-          background: "linear-gradient(180deg, #FAF5E8 0%, #EDE0C0 100%)",
-          boxShadow:
-            "0 22px 50px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(201,162,39,0.25)",
-        }}
-      >
-        {/* Тонкая золотая лента сверху — фирменная деталь */}
-        <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-3 rounded-b-sm"
-          style={{
-            background: "linear-gradient(180deg, #C9A227, #8f7218)",
-          }}
-        />
-
-        {/* Имитация обреза страниц слева и справа — как у закрытой книги */}
-        <div
-          className="absolute left-1 top-8 bottom-8 w-2 rounded-sm opacity-80"
-          style={{
-            background:
-              "repeating-linear-gradient(0deg, #d8cba0, #d8cba0 2px, #f2e8cf 2px, #f2e8cf 4px)",
-            boxShadow: "1px 0 3px rgba(0,0,0,0.2)",
-          }}
-        />
-        <div
-          className="absolute right-1 top-8 bottom-8 w-2 rounded-sm opacity-80"
-          style={{
-            background:
-              "repeating-linear-gradient(0deg, #d8cba0, #d8cba0 2px, #f2e8cf 2px, #f2e8cf 4px)",
-            boxShadow: "-1px 0 3px rgba(0,0,0,0.2)",
-          }}
-        />
-
-        <div className="flex justify-center relative z-10">
+      <div className="flex justify-center px-4 relative">
+        <div className="relative" style={{ width: 300 }}>
+          {/* Статичная тень в месте сгиба страниц */}
+          <div
+            className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-4 z-20 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.28) 50%, rgba(0,0,0,0) 100%)",
+            }}
+          />
           <HTMLFlipBook
-            width={220}
-            height={320}
-            size="stretch"
-            minWidth={180}
-            maxWidth={320}
-            minHeight={260}
-            maxHeight={460}
+            width={150}
+            height={230}
+            size="fixed"
             showCover={false}
             drawShadow={true}
-            maxShadowOpacity={0.6}
+            maxShadowOpacity={0.5}
             mobileScrollSupport={true}
             className="vetoks-magazine"
-            style={{ margin: "0 auto", boxShadow: "0 8px 24px rgba(0,0,0,0.35)" }}
+            style={{ margin: "0 auto" }}
           >
             {pages.map((page) => {
             if (page.kind === "ad") {
@@ -267,28 +241,32 @@ function Magazine() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted text-xs px-2 text-center">
-                      Нет фото
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-                  <div className="absolute inset-0 flex flex-col items-center justify-end pb-10 px-3">
-                    <h3
-                      className="text-white text-2xl tracking-wide text-center"
+                    <div
+                      className="w-full h-full flex items-center justify-center relative"
                       style={{
-                        fontFamily: "Georgia, 'Times New Roman', serif",
-                        textShadow: "0 2px 12px rgba(0,0,0,0.6)",
+                        background:
+                          "radial-gradient(circle at 50% 40%, #2a1f3d 0%, #0B0B0D 75%)",
                       }}
                     >
-                      {page.display_name.toUpperCase()}
-                    </h3>
-                  </div>
-                  <div className="absolute bottom-2 left-0 right-0 flex justify-between px-3">
-                    <span className="text-white/70 text-[7px] tracking-[0.2em]">
-                      VETOKS.APP
-                    </span>
-                    <span className="text-white/70 text-[7px] tracking-[0.2em]">
-                      2026
+                      <span
+                        className="text-gold/25 select-none"
+                        style={{
+                          fontFamily: "Georgia, 'Times New Roman', serif",
+                          fontSize: 96,
+                          lineHeight: 1,
+                        }}
+                      >
+                        V
+                      </span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+                  <div className="absolute bottom-3 left-0 right-0 text-center px-2">
+                    <span
+                      className="text-white/90 text-xs font-light tracking-[0.3em]"
+                      style={{ textShadow: "0 1px 8px rgba(0,0,0,0.7)" }}
+                    >
+                      VETOKS · 2026
                     </span>
                   </div>
                 </div>
@@ -312,7 +290,7 @@ function Magazine() {
                   ИНТЕРВЬЮ НОМЕРА
                 </p>
                 <h4
-                  className="text-[#1a1520] text-base mb-3 pb-2"
+                  className="text-[#1a1520] text-2xl italic mb-3 pb-2"
                   style={{
                     fontFamily: "Georgia, 'Times New Roman', serif",
                     borderBottom: "1px solid #ddd6c8",
@@ -341,9 +319,15 @@ function Magazine() {
                     {restOfFirst}
                   </p>
                 ) : (
-                  <p className="text-[#8a8290] text-[11px] italic mb-2">
-                    Участница ещё не заполнила свою страницу журнала.
-                  </p>
+                  <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
+                    <span className="text-[#C9A227] text-lg mb-2">✦</span>
+                    <p
+                      className="text-[#5a5260] text-xs italic"
+                      style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+                    >
+                      Страница в процессе наполнения...
+                    </p>
+                  </div>
                 )}
 
                 {page.motto && firstAnswer !== page.motto && (
