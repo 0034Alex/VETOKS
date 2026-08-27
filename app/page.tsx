@@ -237,22 +237,31 @@ function Magazine() {
                       Нет фото
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent flex flex-col justify-end p-4">
-                    <span className="text-goldSoft text-[8px] tracking-[0.25em] mb-1">
-                      ГЕРОИНЯ НОМЕРА
-                    </span>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-end pb-10 px-3">
                     <h3
-                      className="text-white text-lg leading-tight"
-                      style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+                      className="text-white text-2xl tracking-wide text-center"
+                      style={{
+                        fontFamily: "Georgia, 'Times New Roman', serif",
+                        textShadow: "0 2px 12px rgba(0,0,0,0.6)",
+                      }}
                     >
-                      {page.display_name}
+                      {page.display_name.toUpperCase()}
                     </h3>
+                  </div>
+                  <div className="absolute bottom-2 left-0 right-0 flex justify-between px-3">
+                    <span className="text-white/70 text-[7px] tracking-[0.2em]">
+                      VETOKS.APP
+                    </span>
+                    <span className="text-white/70 text-[7px] tracking-[0.2em]">
+                      2026
+                    </span>
                   </div>
                 </div>
               );
             }
 
-            // Текстовая страница
+            // Текстовая страница — редакционный стиль, как разворот глянца
             const firstAnswer = page.dream || page.motto || page.fun_fact || "";
             const dropCap = firstAnswer.charAt(0);
             const restOfFirst = firstAnswer.slice(1);
@@ -260,16 +269,31 @@ function Magazine() {
             return (
               <div
                 key={`text-${page.id}`}
-                className="h-full overflow-y-auto p-4"
-                style={{ backgroundColor: "#F3EEE4" }}
+                className="h-full overflow-y-auto px-4 pt-4 pb-8 flex flex-col"
+                style={{ backgroundColor: "#FCFAF6" }}
               >
-                <p className="text-[#C9A227] text-[8px] tracking-[0.25em] mb-1">
-                  ИНТЕРВЬЮ
+                <p
+                  className="text-[#B23A5C] text-[8px] tracking-[0.25em] font-semibold mb-2"
+                >
+                  ИНТЕРВЬЮ НОМЕРА
                 </p>
+                <h4
+                  className="text-[#1a1520] text-base mb-3 pb-2"
+                  style={{
+                    fontFamily: "Georgia, 'Times New Roman', serif",
+                    borderBottom: "1px solid #ddd6c8",
+                  }}
+                >
+                  {page.display_name}
+                </h4>
+
                 {firstAnswer ? (
                   <p
-                    className="text-[#2b2530] text-xs leading-relaxed mb-2"
-                    style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+                    className="text-[#2b2530] text-[11px] leading-[1.6] mb-2"
+                    style={{
+                      fontFamily: "Georgia, 'Times New Roman', serif",
+                      textAlign: "justify",
+                    }}
                   >
                     <span
                       className="float-left text-4xl leading-[0.75] pr-1.5 pt-0.5"
@@ -289,17 +313,25 @@ function Magazine() {
                 )}
 
                 {page.motto && firstAnswer !== page.motto && (
-                  <p className="text-[#5a5260] text-[11px] mb-1 italic">
+                  <p
+                    className="text-[#5a5260] text-[11px] mb-2 italic"
+                    style={{ textAlign: "justify" }}
+                  >
                     «{page.motto}»
                   </p>
                 )}
                 {page.fun_fact && firstAnswer !== page.fun_fact && (
-                  <p className="text-[#2b2530] text-[11px] leading-relaxed">
+                  <p
+                    className="text-[#2b2530] text-[11px] leading-[1.6]"
+                    style={{ textAlign: "justify" }}
+                  >
                     {page.fun_fact}
                   </p>
                 )}
 
-                <div className="flex gap-2 mt-3">
+                <div className="flex-1" />
+
+                <div className="flex gap-2 mb-2">
                   <button
                     onClick={() => toggleFollow(page.id)}
                     disabled={!userId}
@@ -317,6 +349,15 @@ function Magazine() {
                   >
                     Профиль
                   </Link>
+                </div>
+
+                <div className="flex justify-between border-t pt-1" style={{ borderColor: "#ddd6c8" }}>
+                  <span className="text-[#a89f8f] text-[7px] tracking-[0.2em]">
+                    VETOKS.APP
+                  </span>
+                  <span className="text-[#a89f8f] text-[7px] tracking-[0.2em]">
+                    2026 СЕЗОН
+                  </span>
                 </div>
               </div>
             );
