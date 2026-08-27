@@ -15,7 +15,9 @@ type Tab =
   | "support"
   | "cards"
   | "goal"
-  | "stages";
+  | "stages"
+  | "magazine-ads"
+  | "survey";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -28,6 +30,8 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "cards", label: "Карточки" },
   { key: "goal", label: "Цель недели" },
   { key: "stages", label: "Этапы сезона" },
+  { key: "magazine-ads", label: "Реклама в журнале" },
+  { key: "survey", label: "Опрос" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
@@ -35,9 +39,9 @@ const TABS: { key: Tab; label: string }[] = [
 const PERMISSION_TABS: Record<string, Tab[]> = {
   moderation: ["applications", "participants", "cards"],
   finance: ["dashboard", "goal"],
-  partners: ["partners"],
+  partners: ["partners", "magazine-ads"],
   staff: ["staff", "users"],
-  support: ["support"],
+  support: ["support", "survey"],
 };
 
 function getAllowedTabs(user: CurrentUser): Tab[] {
@@ -182,6 +186,8 @@ export default function AdminPage() {
         {tab === "cards" && <CardsTab />}
         {tab === "goal" && <GoalTab />}
         {tab === "stages" && <StagesTab />}
+        {tab === "magazine-ads" && <MagazineAdsTab />}
+        {tab === "survey" && <SurveyTab />}
       </div>
     </main>
   );
@@ -1461,6 +1467,224 @@ function StagesTab() {
         </button>
       )}
       {saved && <span className="text-success text-sm ml-3">Сохранено!</span>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// РЕКЛАМА В ЖУРНАЛЕ
+// ---------------------------------------------------------------------
+
+type AdRow = {
+  id: string;
+  image_url: string;
+  button_text: string;
+  button_link: string;
+  is_active: boolean;
+};
+
+function MagazineAdsTab() {
+  const [ads, setAds] = useState<AdRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [buttonText, setButtonText] = useState("");
+  const [buttonLink, setButtonLink] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("magazine_ads")
+      .select("id, image_url, button_text, button_link, is_active")
+      .order("created_at", { ascending: false });
+    setAds((data as AdRow[]) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function createAd() {
+    if (!file || !buttonText || !buttonLink) return;
+    setUploading(true);
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${Date.now()}.${fileExt}`;
+    const { error } = await supabase.storage.from("magazine-ads").upload(filePath, file);
+    if (error) {
+      alert(`Ошибка загрузки: ${error.message}`);
+      setUploading(false);
+      return;
+    }
+    const { data: publicUrlData } = supabase.storage.from("magazine-ads").getPublicUrl(filePath);
+    await supabase.from("magazine_ads").insert({
+      image_url: publicUrlData.publicUrl,
+      button_text: buttonText,
+      button_link: buttonLink,
+    });
+    setButtonText("");
+    setButtonLink("");
+    setFile(null);
+    await load();
+    setUploading(false);
+  }
+
+  async function toggleActive(ad: AdRow) {
+    await supabase.from("magazine_ads").update({ is_active: !ad.is_active }).eq("id", ad.id);
+    await load();
+  }
+
+  async function removeAd(id: string) {
+    if (!confirm("Удалить эту рекламу?")) return;
+    await supabase.from("magazine_ads").delete().eq("id", id);
+    await load();
+  }
+
+  return (
+    <div className="max-w-lg">
+      <p className="text-muted text-sm mb-4">
+        Рекламный блок появляется каждой 10-й страницей в глянцевом журнале
+        на главной. Можно добавить несколько — они будут чередоваться.
+      </p>
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+        <p className="text-offwhite text-sm font-semibold mb-2">Новая реклама</p>
+        <label className="block w-full text-center bg-bgPrimary border border-muted text-offwhite text-xs py-2 rounded-lg mb-2 cursor-pointer">
+          {file ? file.name : "Выбрать изображение"}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        <input
+          value={buttonText}
+          onChange={(e) => setButtonText(e.target.value)}
+          placeholder="Текст кнопки, напр. «Узнать больше»"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        />
+        <input
+          value={buttonLink}
+          onChange={(e) => setButtonLink(e.target.value)}
+          placeholder="Ссылка (https://... или /shop и т.п.)"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        />
+        <button
+          onClick={createAd}
+          disabled={uploading || !file || !buttonText || !buttonLink}
+          className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+        >
+          {uploading ? "Загрузка..." : "Добавить рекламу"}
+        </button>
+      </div>
+
+      {loading && <p className="text-muted">Загрузка...</p>}
+
+      <div className="flex flex-col gap-3">
+        {ads.map((ad) => (
+          <div key={ad.id} className="bg-bgSurface border border-muted rounded-xl p-3 flex gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={ad.image_url} alt="" className="w-16 h-20 object-cover rounded-lg" />
+            <div className="flex-1">
+              <p className="text-offwhite text-sm">{ad.button_text}</p>
+              <p className="text-muted text-xs truncate">{ad.button_link}</p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => toggleActive(ad)}
+                  className={`text-xs px-3 py-1 rounded-full ${
+                    ad.is_active ? "bg-success text-bgPrimary" : "bg-bgPrimary border border-muted text-muted"
+                  }`}
+                >
+                  {ad.is_active ? "Активна" : "Выключена"}
+                </button>
+                <button
+                  onClick={() => removeAd(ad.id)}
+                  className="text-xs px-3 py-1 rounded-full bg-danger text-bgPrimary"
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// ОПРОС
+// ---------------------------------------------------------------------
+
+function SurveyTab() {
+  const [question, setQuestion] = useState("");
+  const [answers, setAnswers] = useState<
+    { answer: string; created_at: string; users: { first_name: string } | null }[]
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    const { data: settingRow } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "survey_question")
+      .maybeSingle();
+    setQuestion(settingRow?.value ?? "");
+
+    const { data } = await supabase
+      .from("survey_answers")
+      .select("answer, created_at, users(first_name)")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    setAnswers((data as unknown as typeof answers) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function saveQuestion() {
+    await supabase.from("platform_settings").upsert({ key: "survey_question", value: question });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  return (
+    <div className="max-w-lg">
+      <label className="text-offwhite text-sm">Текущий вопрос опроса</label>
+      <textarea
+        value={question}
+        onChange={(e) => setQuestion(e.target.value)}
+        rows={2}
+        className="w-full bg-bgSurface border border-muted rounded-lg px-3 py-2 text-sm mt-1 mb-3"
+      />
+      <button
+        onClick={saveQuestion}
+        className="bg-gold text-bgPrimary font-semibold px-6 py-2 rounded-full text-sm mb-6"
+      >
+        Сохранить вопрос
+      </button>
+      {saved && <span className="text-success text-sm ml-3">Сохранено!</span>}
+
+      <p className="text-offwhite text-sm font-semibold mb-2">
+        Ответы пользователей ({answers.length})
+      </p>
+      {loading && <p className="text-muted">Загрузка...</p>}
+      <div className="flex flex-col gap-2">
+        {answers.map((a, i) => (
+          <div key={i} className="bg-bgSurface border border-muted rounded-lg p-3">
+            <p className="text-offwhite text-sm">{a.answer}</p>
+            <p className="text-muted text-xs mt-1">
+              {a.users?.first_name ?? "Гость"} ·{" "}
+              {new Date(a.created_at).toLocaleDateString("ru-RU")}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
