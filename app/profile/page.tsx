@@ -361,6 +361,17 @@ export default function ProfilePage() {
 
           {participant && (
             <a
+              href="/my-magazine"
+              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
+            >
+              <span className="text-gold font-semibold text-sm">
+                📖 Моя страница в журнале
+              </span>
+            </a>
+          )}
+
+          {participant && (
+            <a
               href="/my-cards"
               className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
             >
