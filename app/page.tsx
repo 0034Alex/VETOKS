@@ -2,12 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import LoadingScreen from "@/components/LoadingScreen";
+
+// Настоящий 3D-переворот страниц — библиотека работает только в браузере,
+// поэтому подключаем её динамически, без серверной отрисовки.
+const HTMLFlipBook = dynamic(() => import("react-pageflip"), { ssr: false }) as any;
 
 type Participant = {
   id: string;
@@ -70,12 +75,17 @@ const STATUS_LABELS: Record<string, string> = {
   archived: "Сезон завершён",
 };
 
-type MagazineSpread =
+type MagazinePage =
   | {
-      kind: "participant";
+      kind: "photo";
       id: string;
       display_name: string;
       photo_url: string | null;
+    }
+  | {
+      kind: "text";
+      id: string;
+      display_name: string;
       dream: string | null;
       motto: string | null;
       fun_fact: string | null;
@@ -89,7 +99,7 @@ type MagazineSpread =
     };
 
 function Magazine() {
-  const [pages, setPages] = useState<MagazineSpread[]>([]);
+  const [pages, setPages] = useState<MagazinePage[]>([]);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -107,7 +117,7 @@ function Magazine() {
         .eq("is_active", true)
         .order("sort_order", { ascending: true });
 
-      const ads: MagazineSpread[] = (adsData ?? []).map((a: any) => ({
+      const ads: MagazinePage[] = (adsData ?? []).map((a: any) => ({
         kind: "ad",
         id: a.id,
         image_url: a.image_url,
@@ -115,24 +125,18 @@ function Magazine() {
         button_link: a.button_link,
       }));
 
-      // Каждая участница — один разворот (фото + текст рядом).
-      // Каждый 10-й разворот — реклама (по кругу, если реклам несколько).
-      const merged: MagazineSpread[] = [];
+      // Каждая участница — разворот из двух страниц (фото + текст) —
+      // библиотека сама покажет их рядом и анимирует переворот.
+      // Каждая 10-я итоговая страница — реклама (по кругу).
+      const merged: MagazinePage[] = [];
       let adIndex = 0;
       (participantsData ?? []).forEach((p: any) => {
         const dream = p.magazine_answers?.[0]?.dream ?? p.magazine_answers?.dream ?? null;
         const motto = p.magazine_answers?.[0]?.motto ?? p.magazine_answers?.motto ?? null;
         const funFact = p.magazine_answers?.[0]?.fun_fact ?? p.magazine_answers?.fun_fact ?? null;
 
-        merged.push({
-          kind: "participant",
-          id: p.id,
-          display_name: p.display_name,
-          photo_url: p.photo_url,
-          dream,
-          motto,
-          fun_fact: funFact,
-        });
+        merged.push({ kind: "photo", id: p.id, display_name: p.display_name, photo_url: p.photo_url });
+        merged.push({ kind: "text", id: p.id, display_name: p.display_name, dream, motto, fun_fact: funFact });
         if (merged.length % 10 === 0 && ads.length > 0) {
           merged.push(ads[adIndex % ads.length]);
           adIndex++;
@@ -182,80 +186,81 @@ function Magazine() {
       <h2 className="text-lg font-semibold text-offwhite px-6 mb-3">
         📖 Журнал VETOKS
       </h2>
-      <div className="flex overflow-x-auto snap-x snap-mandatory px-6 pb-3 gap-4">
-        {pages.map((page) => {
-          if (page.kind === "ad") {
-            return (
-              <a
-                key={`ad-${page.id}`}
-                href={page.button_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="snap-center flex-shrink-0 w-[85vw] max-w-[480px] aspect-[3/2] rounded-sm overflow-hidden relative"
-                style={{ boxShadow: "0 12px 40px rgba(0,0,0,0.55)" }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={page.image_url} alt="" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-5">
-                  <span className="text-white/60 text-[10px] tracking-widest mb-2">
-                    РЕКЛАМА
-                  </span>
-                  <span className="inline-block w-fit bg-gold text-bgPrimary font-semibold py-2.5 px-6 rounded-full text-sm">
-                    {page.button_text}
-                  </span>
+      <div className="flex justify-center px-4">
+        <HTMLFlipBook
+          width={220}
+          height={320}
+          size="stretch"
+          minWidth={180}
+          maxWidth={320}
+          minHeight={260}
+          maxHeight={460}
+          showCover={false}
+          drawShadow={true}
+          maxShadowOpacity={0.5}
+          mobileScrollSupport={true}
+          className="vetoks-magazine"
+          style={{ margin: "0 auto" }}
+        >
+          {pages.map((page) => {
+            if (page.kind === "ad") {
+              return (
+                <div key={`ad-${page.id}`} className="relative bg-black overflow-hidden">
+                  <a href={page.button_link} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={page.image_url} alt="" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent flex flex-col justify-end p-4">
+                      <span className="text-white/60 text-[8px] tracking-widest mb-2">
+                        РЕКЛАМА
+                      </span>
+                      <span className="inline-block w-fit bg-gold text-bgPrimary font-semibold py-2 px-4 rounded-full text-xs">
+                        {page.button_text}
+                      </span>
+                    </div>
+                  </a>
                 </div>
-              </a>
-            );
-          }
+              );
+            }
 
-          // Разворот участницы: фото-страница и текст-страница рядом,
-          // как настоящий открытый журнал.
-          const firstAnswer = page.dream || page.motto || page.fun_fact || "";
-          const dropCap = firstAnswer.charAt(0);
-          const restOfFirst = firstAnswer.slice(1);
-
-          return (
-            <div
-              key={`spread-${page.id}`}
-              className="snap-center flex-shrink-0 w-[88vw] max-w-[520px] aspect-[3/2] flex rounded-sm overflow-hidden relative"
-              style={{ boxShadow: "0 12px 40px rgba(0,0,0,0.55)" }}
-            >
-              {/* Левая страница — фото */}
-              <div className="w-1/2 h-full relative bg-black flex-shrink-0">
-                {page.photo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={page.photo_url}
-                    alt={page.display_name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted text-xs px-2 text-center">
-                    Нет фото
+            if (page.kind === "photo") {
+              return (
+                <div key={`photo-${page.id}`} className="relative bg-black overflow-hidden">
+                  {page.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={page.photo_url}
+                      alt={page.display_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted text-xs px-2 text-center">
+                      Нет фото
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent flex flex-col justify-end p-4">
+                    <span className="text-goldSoft text-[8px] tracking-[0.25em] mb-1">
+                      ГЕРОИНЯ НОМЕРА
+                    </span>
+                    <h3
+                      className="text-white text-lg leading-tight"
+                      style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+                    >
+                      {page.display_name}
+                    </h3>
                   </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent flex flex-col justify-end p-4">
-                  <span className="text-goldSoft text-[8px] tracking-[0.25em] mb-1">
-                    ГЕРОИНЯ НОМЕРА
-                  </span>
-                  <h3
-                    className="text-white text-lg leading-tight"
-                    style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-                  >
-                    {page.display_name}
-                  </h3>
                 </div>
-              </div>
+              );
+            }
 
-              {/* Корешок — тень посередине разворота */}
-              <div className="w-3 h-full flex-shrink-0 bg-[#F3EEE4] relative">
-                <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-r from-black/40 to-transparent" />
-                <div className="absolute inset-y-0 right-0 w-1.5 bg-gradient-to-l from-black/25 to-transparent" />
-              </div>
+            // Текстовая страница
+            const firstAnswer = page.dream || page.motto || page.fun_fact || "";
+            const dropCap = firstAnswer.charAt(0);
+            const restOfFirst = firstAnswer.slice(1);
 
-              {/* Правая страница — текст */}
+            return (
               <div
-                className="flex-1 h-full overflow-y-auto p-4"
+                key={`text-${page.id}`}
+                className="h-full overflow-y-auto p-4"
                 style={{ backgroundColor: "#F3EEE4" }}
               >
                 <p className="text-[#C9A227] text-[8px] tracking-[0.25em] mb-1">
@@ -314,10 +319,13 @@ function Magazine() {
                   </Link>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </HTMLFlipBook>
       </div>
+      <p className="text-muted text-xs text-center mt-2">
+        Потяните за угол страницы, чтобы перелистнуть
+      </p>
     </div>
   );
 }
