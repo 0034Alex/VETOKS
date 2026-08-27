@@ -248,48 +248,58 @@ function Magazine() {
               return (
                 <div
                   key={`photo-${page.id}`}
-                  className="relative overflow-hidden rounded-r-lg"
+                  className="relative rounded-r-lg"
                   style={{
                     width: "100%",
                     height: "100%",
                     backgroundColor: "#F0EBDD",
                     boxShadow: "inset 18px 0 18px -18px rgba(0,0,0,0.5)",
                     borderLeft: "2px solid rgba(0,0,0,0.3)",
-                    WebkitMaskImage: "-webkit-radial-gradient(white, black)",
-                    transform: "translateZ(0)",
                   }}
                 >
-                  {page.photo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={page.photo_url}
-                      alt={page.display_name}
-                      style={{
-                        display: "block",
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  ) : (
-                    <div
-                      className="flex items-center justify-center"
-                      style={{ width: "100%", height: "100%", backgroundColor: "#F0EBDD" }}
-                    >
-                      <span
-                        className="select-none"
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 14,
+                      right: 12,
+                      bottom: 14,
+                      left: 12,
+                      border: "1px solid #C9A227",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {page.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={page.photo_url}
+                        alt={page.display_name}
                         style={{
-                          fontFamily: "Georgia, 'Times New Roman', serif",
-                          fontSize: 48,
-                          lineHeight: 1,
-                          color: "#C9A227",
-                          opacity: 0.35,
+                          display: "block",
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
                         }}
+                      />
+                    ) : (
+                      <div
+                        className="flex items-center justify-center"
+                        style={{ width: "100%", height: "100%", backgroundColor: "#F0EBDD" }}
                       >
-                        V
-                      </span>
-                    </div>
-                  )}
+                        <span
+                          className="select-none"
+                          style={{
+                            fontFamily: "Georgia, 'Times New Roman', serif",
+                            fontSize: 40,
+                            lineHeight: 1,
+                            color: "#C9A227",
+                            opacity: 0.35,
+                          }}
+                        >
+                          V
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             }
