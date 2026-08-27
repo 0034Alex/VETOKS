@@ -186,23 +186,57 @@ function Magazine() {
       <h2 className="text-lg font-semibold text-offwhite px-6 mb-3">
         📖 Журнал VETOKS
       </h2>
-      <div className="flex justify-center px-4">
-        <HTMLFlipBook
-          width={220}
-          height={320}
-          size="stretch"
-          minWidth={180}
-          maxWidth={320}
-          minHeight={260}
-          maxHeight={460}
-          showCover={false}
-          drawShadow={true}
-          maxShadowOpacity={0.5}
-          mobileScrollSupport={true}
-          className="vetoks-magazine"
-          style={{ margin: "0 auto" }}
-        >
-          {pages.map((page) => {
+      <div
+        className="mx-6 rounded-2xl p-5 relative overflow-hidden"
+        style={{
+          background: "linear-gradient(180deg, #FAF5E8 0%, #EDE0C0 100%)",
+          boxShadow:
+            "0 22px 50px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(201,162,39,0.25)",
+        }}
+      >
+        {/* Тонкая золотая лента сверху — фирменная деталь */}
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-3 rounded-b-sm"
+          style={{
+            background: "linear-gradient(180deg, #C9A227, #8f7218)",
+          }}
+        />
+
+        {/* Имитация обреза страниц слева и справа — как у закрытой книги */}
+        <div
+          className="absolute left-1 top-8 bottom-8 w-2 rounded-sm opacity-80"
+          style={{
+            background:
+              "repeating-linear-gradient(0deg, #d8cba0, #d8cba0 2px, #f2e8cf 2px, #f2e8cf 4px)",
+            boxShadow: "1px 0 3px rgba(0,0,0,0.2)",
+          }}
+        />
+        <div
+          className="absolute right-1 top-8 bottom-8 w-2 rounded-sm opacity-80"
+          style={{
+            background:
+              "repeating-linear-gradient(0deg, #d8cba0, #d8cba0 2px, #f2e8cf 2px, #f2e8cf 4px)",
+            boxShadow: "-1px 0 3px rgba(0,0,0,0.2)",
+          }}
+        />
+
+        <div className="flex justify-center relative z-10">
+          <HTMLFlipBook
+            width={220}
+            height={320}
+            size="stretch"
+            minWidth={180}
+            maxWidth={320}
+            minHeight={260}
+            maxHeight={460}
+            showCover={false}
+            drawShadow={true}
+            maxShadowOpacity={0.6}
+            mobileScrollSupport={true}
+            className="vetoks-magazine"
+            style={{ margin: "0 auto", boxShadow: "0 8px 24px rgba(0,0,0,0.35)" }}
+          >
+            {pages.map((page) => {
             if (page.kind === "ad") {
               return (
                 <div key={`ad-${page.id}`} className="relative bg-black overflow-hidden">
@@ -363,6 +397,7 @@ function Magazine() {
             );
           })}
         </HTMLFlipBook>
+        </div>
       </div>
       <p className="text-muted text-xs text-center mt-2">
         Потяните за угол страницы, чтобы перелистнуть
