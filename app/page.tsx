@@ -210,13 +210,13 @@ function Magazine() {
           />
 
           <HTMLFlipBook
-            width={200}
-            height={300}
+            width={150}
+            height={230}
             size="stretch"
-            minWidth={200}
-            maxWidth={360}
-            minHeight={280}
-            maxHeight={500}
+            minWidth={140}
+            maxWidth={220}
+            minHeight={210}
+            maxHeight={340}
             showCover={false}
             drawShadow={true}
             maxShadowOpacity={0.4}
