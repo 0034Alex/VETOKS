@@ -248,48 +248,38 @@ function Magazine() {
               return (
                 <div
                   key={`photo-${page.id}`}
-                  className="relative overflow-hidden flex flex-col rounded-r-lg"
+                  className="relative overflow-hidden h-full w-full rounded-r-lg"
                   style={{
                     backgroundColor: "#F0EBDD",
-                    boxShadow: "inset 15px 0 15px -15px rgba(0,0,0,0.35)",
+                    boxShadow: "inset 18px 0 18px -18px rgba(0,0,0,0.5)",
                   }}
                 >
-                  <div className="flex-1 relative overflow-hidden">
-                    {page.photo_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={page.photo_url}
-                        alt={page.display_name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div
-                        className="w-full h-full flex items-center justify-center"
-                        style={{ backgroundColor: "#F0EBDD" }}
+                  {page.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={page.photo_url}
+                      alt={page.display_name}
+                      className="w-full h-full object-cover block"
+                    />
+                  ) : (
+                    <div
+                      className="w-full h-full flex items-center justify-center"
+                      style={{ backgroundColor: "#F0EBDD" }}
+                    >
+                      <span
+                        className="select-none"
+                        style={{
+                          fontFamily: "Georgia, 'Times New Roman', serif",
+                          fontSize: 88,
+                          lineHeight: 1,
+                          color: "#C9A227",
+                          opacity: 0.35,
+                        }}
                       >
-                        <span
-                          className="select-none"
-                          style={{
-                            fontFamily: "Georgia, 'Times New Roman', serif",
-                            fontSize: 88,
-                            lineHeight: 1,
-                            color: "#C9A227",
-                            opacity: 0.35,
-                          }}
-                        >
-                          V
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div
-                    className="text-center py-2 flex-shrink-0"
-                    style={{ backgroundColor: "#F0EBDD" }}
-                  >
-                    <span className="text-[#8a7f5f] text-xs font-light tracking-[0.3em]">
-                      VETOKS · 2026
-                    </span>
-                  </div>
+                        V
+                      </span>
+                    </div>
+                  )}
                 </div>
               );
             }
@@ -302,19 +292,17 @@ function Magazine() {
             return (
               <div
                 key={`text-${page.id}`}
-                className="h-full overflow-y-auto px-4 pt-4 pb-8 flex flex-col rounded-l-lg"
+                className="h-full overflow-y-auto px-3.5 pt-3.5 pb-6 flex flex-col rounded-l-lg"
                 style={{
                   backgroundColor: "#F0EBDD",
-                  boxShadow: "inset -15px 0 15px -15px rgba(0,0,0,0.35)",
+                  boxShadow: "inset -18px 0 18px -18px rgba(0,0,0,0.5)",
                 }}
               >
-                <p
-                  className="text-[#B23A5C] text-[8px] tracking-[0.25em] font-semibold mb-2"
-                >
+                <p className="text-[#B23A5C] text-[7px] tracking-[0.2em] font-semibold mb-1.5">
                   ИНТЕРВЬЮ НОМЕРА
                 </p>
                 <h4
-                  className="text-[#1a1520] text-2xl italic mb-3 pb-2"
+                  className="text-[#1a1520] text-lg italic mb-2 pb-1.5"
                   style={{
                     fontFamily: "Georgia, 'Times New Roman', serif",
                     borderBottom: "1px solid #ddd6c8",
@@ -325,14 +313,14 @@ function Magazine() {
 
                 {firstAnswer ? (
                   <p
-                    className="text-[#2b2530] text-[11px] leading-[1.6] mb-2"
+                    className="text-[#2b2530] text-[10px] leading-[1.5] mb-1.5"
                     style={{
                       fontFamily: "Georgia, 'Times New Roman', serif",
                       textAlign: "justify",
                     }}
                   >
                     <span
-                      className="float-left text-4xl leading-[0.75] pr-1.5 pt-0.5"
+                      className="float-left text-3xl leading-[0.7] pr-1 pt-0.5"
                       style={{
                         fontFamily: "Georgia, 'Times New Roman', serif",
                         color: "#7C3AED",
@@ -343,10 +331,10 @@ function Magazine() {
                     {restOfFirst}
                   </p>
                 ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
-                    <span className="text-[#C9A227] text-lg mb-2">✦</span>
+                  <div className="flex-1 flex flex-col items-center justify-center text-center py-4">
+                    <span className="text-[#C9A227] text-base mb-1.5">✦</span>
                     <p
-                      className="text-[#5a5260] text-xs italic"
+                      className="text-[#5a5260] text-[11px] italic"
                       style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
                     >
                       Страница в процессе наполнения...
@@ -356,7 +344,7 @@ function Magazine() {
 
                 {page.motto && firstAnswer !== page.motto && (
                   <p
-                    className="text-[#5a5260] text-[11px] mb-2 italic"
+                    className="text-[#5a5260] text-[10px] mb-1.5 italic"
                     style={{ textAlign: "justify" }}
                   >
                     «{page.motto}»
@@ -364,7 +352,7 @@ function Magazine() {
                 )}
                 {page.fun_fact && firstAnswer !== page.fun_fact && (
                   <p
-                    className="text-[#2b2530] text-[11px] leading-[1.6]"
+                    className="text-[#2b2530] text-[10px] leading-[1.5]"
                     style={{ textAlign: "justify" }}
                   >
                     {page.fun_fact}
@@ -373,11 +361,11 @@ function Magazine() {
 
                 <div className="flex-1" />
 
-                <div className="flex gap-2 mb-2">
+                <div className="flex gap-1.5 mb-2">
                   <button
                     onClick={() => toggleFollow(page.id)}
                     disabled={!userId}
-                    className={`flex-1 text-[10px] font-semibold py-1.5 rounded-full ${
+                    className={`flex-1 text-[8px] font-semibold py-1.5 px-1 rounded-full leading-tight ${
                       followedIds.has(page.id)
                         ? "bg-white border border-[#c9c2b4] text-[#5a5260]"
                         : "bg-[#1a1520] text-[#F3EEE4]"
@@ -387,7 +375,7 @@ function Magazine() {
                   </button>
                   <Link
                     href={`/participant/${page.id}`}
-                    className="flex-1 text-[10px] font-semibold py-1.5 rounded-full border border-[#1a1520] text-[#1a1520] text-center"
+                    className="flex-1 text-[8px] font-semibold py-1.5 px-1 rounded-full border border-[#1a1520] text-[#1a1520] text-center leading-tight"
                   >
                     Профиль
                   </Link>
