@@ -252,6 +252,7 @@ function Magazine() {
                   style={{
                     backgroundColor: "#F0EBDD",
                     boxShadow: "inset 18px 0 18px -18px rgba(0,0,0,0.5)",
+                    borderLeft: "2px solid rgba(0,0,0,0.3)",
                   }}
                 >
                   {page.photo_url ? (
@@ -263,14 +264,14 @@ function Magazine() {
                     />
                   ) : (
                     <div
-                      className="w-full h-full flex items-center justify-center"
+                      className="w-full h-full flex items-center justify-center overflow-hidden"
                       style={{ backgroundColor: "#F0EBDD" }}
                     >
                       <span
                         className="select-none"
                         style={{
                           fontFamily: "Georgia, 'Times New Roman', serif",
-                          fontSize: 88,
+                          fontSize: 48,
                           lineHeight: 1,
                           color: "#C9A227",
                           opacity: 0.35,
@@ -296,10 +297,11 @@ function Magazine() {
                 style={{
                   backgroundColor: "#F0EBDD",
                   boxShadow: "inset -18px 0 18px -18px rgba(0,0,0,0.5)",
+                  borderRight: "2px solid rgba(0,0,0,0.3)",
                 }}
               >
                 <p className="text-[#B23A5C] text-[7px] tracking-[0.2em] font-semibold mb-1.5">
-                  ИНТЕРВЬЮ НОМЕРА
+                  ИНТЕРВЬЮ
                 </p>
                 <h4
                   className="text-[#1a1520] text-lg italic mb-2 pb-1.5"
@@ -359,9 +361,7 @@ function Magazine() {
                   </p>
                 )}
 
-                <div className="flex-1" />
-
-                <div className="flex gap-1.5 mb-2">
+                <div className="mt-auto flex gap-1.5">
                   <button
                     onClick={() => toggleFollow(page.id)}
                     disabled={!userId}
@@ -379,15 +379,6 @@ function Magazine() {
                   >
                     Профиль
                   </Link>
-                </div>
-
-                <div className="flex justify-between border-t pt-1" style={{ borderColor: "#ddd6c8" }}>
-                  <span className="text-[#a89f8f] text-[7px] tracking-[0.2em]">
-                    VETOKS.APP
-                  </span>
-                  <span className="text-[#a89f8f] text-[7px] tracking-[0.2em]">
-                    2026 СЕЗОН
-                  </span>
                 </div>
               </div>
             );
