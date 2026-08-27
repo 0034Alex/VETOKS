@@ -16,9 +16,37 @@ async function sendMessage(chatId: string | number, text: string) {
   });
 }
 
+async function handleCode(chatId: string, code: string, username: string | undefined) {
+  const { data: codeRow } = await supabaseAdmin
+    .from("password_reset_codes")
+    .select("id, user_id, expires_at, used")
+    .eq("code", code)
+    .maybeSingle();
+
+  if (!codeRow || codeRow.used || new Date(codeRow.expires_at) < new Date()) {
+    await sendMessage(chatId, "Код неверный или уже истёк. Запросите новый код в приложении.");
+    return;
+  }
+
+  await supabaseAdmin.from("password_reset_codes").update({ used: true }).eq("id", codeRow.id);
+  await supabaseAdmin.from("telegram_reset_sessions").upsert({
+    chat_id: chatId,
+    user_id: codeRow.user_id,
+    step: "awaiting_password",
+  });
+
+  // Запоминаем привязку telegram-аккаунта к пользователю на будущее.
+  await supabaseAdmin.from("telegram_links").upsert({
+    user_id: codeRow.user_id,
+    chat_id: chatId,
+    telegram_username: username ?? null,
+    linked_at: new Date().toISOString(),
+  });
+
+  await sendMessage(chatId, "Код подтверждён! Введите новый пароль (минимум 6 символов):");
+}
+
 export async function POST(req: Request) {
-  // Простая защита: Telegram присылает секретный заголовок, если мы его
-  // задали при регистрации вебхука — сверяем, если он настроен.
   const secretHeader = req.headers.get("x-telegram-bot-api-secret-token");
   if (
     process.env.TELEGRAM_WEBHOOK_SECRET &&
@@ -35,8 +63,23 @@ export async function POST(req: Request) {
 
   const chatId = String(message.chat.id);
   const text = String(message.text).trim();
+  const username: string | undefined = message.from?.username;
 
-  // Есть ли уже активная сессия сброса для этого чата?
+  // /start — либо простое приветствие, либо /start КОД (deep-link из приложения).
+  if (text.startsWith("/start")) {
+    const param = text.split(" ")[1];
+    if (param && /^\d{6}$/.test(param)) {
+      await handleCode(chatId, param, username);
+      return NextResponse.json({ ok: true });
+    }
+
+    await sendMessage(
+      chatId,
+      "👑 Добро пожаловать в VETOKS!\n\nЭто официальный бот платформы VETOKS — конкурса красоты. Здесь можно восстановить пароль, если забыли его в приложении.\n\nЧтобы открыть само приложение, нажмите кнопку меню внизу слева (☰ или «Открыть VETOKS»)."
+    );
+    return NextResponse.json({ ok: true });
+  }
+
   const { data: session } = await supabaseAdmin
     .from("telegram_reset_sessions")
     .select("user_id, step")
@@ -66,33 +109,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Иначе ждём 6-значный код из приложения.
   if (/^\d{6}$/.test(text)) {
-    const { data: codeRow } = await supabaseAdmin
-      .from("password_reset_codes")
-      .select("id, user_id, expires_at, used")
-      .eq("code", text)
-      .maybeSingle();
-
-    if (!codeRow || codeRow.used || new Date(codeRow.expires_at) < new Date()) {
-      await sendMessage(chatId, "Код неверный или уже истёк. Запросите новый код в приложении.");
-      return NextResponse.json({ ok: true });
-    }
-
-    await supabaseAdmin.from("password_reset_codes").update({ used: true }).eq("id", codeRow.id);
-    await supabaseAdmin.from("telegram_reset_sessions").upsert({
-      chat_id: chatId,
-      user_id: codeRow.user_id,
-      step: "awaiting_password",
-    });
-
-    await sendMessage(chatId, "Код подтверждён! Введите новый пароль (минимум 6 символов):");
+    await handleCode(chatId, text, username);
     return NextResponse.json({ ok: true });
   }
 
   await sendMessage(
     chatId,
-    "Здравствуйте! Чтобы сбросить пароль, сначала запросите код в приложении VETOKS (кнопка «Забыли пароль?»), затем пришлите его сюда."
+    "Чтобы сбросить пароль, запросите код в приложении VETOKS (кнопка «Забыли пароль?»), затем пришлите его сюда."
   );
   return NextResponse.json({ ok: true });
 }
