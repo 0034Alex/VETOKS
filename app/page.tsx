@@ -70,17 +70,12 @@ const STATUS_LABELS: Record<string, string> = {
   archived: "Сезон завершён",
 };
 
-type MagazinePage =
+type MagazineSpread =
   | {
-      kind: "photo";
+      kind: "participant";
       id: string;
       display_name: string;
       photo_url: string | null;
-    }
-  | {
-      kind: "text";
-      id: string;
-      display_name: string;
       dream: string | null;
       motto: string | null;
       fun_fact: string | null;
@@ -94,7 +89,7 @@ type MagazinePage =
     };
 
 function Magazine() {
-  const [pages, setPages] = useState<MagazinePage[]>([]);
+  const [pages, setPages] = useState<MagazineSpread[]>([]);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,7 +107,7 @@ function Magazine() {
         .eq("is_active", true)
         .order("sort_order", { ascending: true });
 
-      const ads: MagazinePage[] = (adsData ?? []).map((a: any) => ({
+      const ads: MagazineSpread[] = (adsData ?? []).map((a: any) => ({
         kind: "ad",
         id: a.id,
         image_url: a.image_url,
@@ -120,22 +115,25 @@ function Magazine() {
         button_link: a.button_link,
       }));
 
-      // Каждая участница — разворот из двух страниц: фото, затем текст.
-      // Каждая 10-я итоговая страница — реклама (по кругу).
-      const merged: MagazinePage[] = [];
+      // Каждая участница — один разворот (фото + текст рядом).
+      // Каждый 10-й разворот — реклама (по кругу, если реклам несколько).
+      const merged: MagazineSpread[] = [];
       let adIndex = 0;
       (participantsData ?? []).forEach((p: any) => {
         const dream = p.magazine_answers?.[0]?.dream ?? p.magazine_answers?.dream ?? null;
         const motto = p.magazine_answers?.[0]?.motto ?? p.magazine_answers?.motto ?? null;
         const funFact = p.magazine_answers?.[0]?.fun_fact ?? p.magazine_answers?.fun_fact ?? null;
 
-        merged.push({ kind: "photo", id: p.id, display_name: p.display_name, photo_url: p.photo_url });
-        if ((merged.length) % 10 === 0 && ads.length > 0) {
-          merged.push(ads[adIndex % ads.length]);
-          adIndex++;
-        }
-        merged.push({ kind: "text", id: p.id, display_name: p.display_name, dream, motto, fun_fact: funFact });
-        if ((merged.length) % 10 === 0 && ads.length > 0) {
+        merged.push({
+          kind: "participant",
+          id: p.id,
+          display_name: p.display_name,
+          photo_url: p.photo_url,
+          dream,
+          motto,
+          fun_fact: funFact,
+        });
+        if (merged.length % 10 === 0 && ads.length > 0) {
           merged.push(ads[adIndex % ads.length]);
           adIndex++;
         }
@@ -184,7 +182,7 @@ function Magazine() {
       <h2 className="text-lg font-semibold text-offwhite px-6 mb-3">
         📖 Журнал VETOKS
       </h2>
-      <div className="flex overflow-x-auto snap-x snap-mandatory px-6 pb-3 gap-3">
+      <div className="flex overflow-x-auto snap-x snap-mandatory px-6 pb-3 gap-4">
         {pages.map((page) => {
           if (page.kind === "ad") {
             return (
@@ -193,7 +191,7 @@ function Magazine() {
                 href={page.button_link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="snap-center flex-shrink-0 w-[300px] aspect-[3/4] rounded-sm overflow-hidden relative"
+                className="snap-center flex-shrink-0 w-[85vw] max-w-[480px] aspect-[3/2] rounded-sm overflow-hidden relative"
                 style={{ boxShadow: "0 12px 40px rgba(0,0,0,0.55)" }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -202,7 +200,7 @@ function Magazine() {
                   <span className="text-white/60 text-[10px] tracking-widest mb-2">
                     РЕКЛАМА
                   </span>
-                  <span className="inline-block text-center bg-gold text-bgPrimary font-semibold py-2.5 rounded-full text-sm">
+                  <span className="inline-block w-fit bg-gold text-bgPrimary font-semibold py-2.5 px-6 rounded-full text-sm">
                     {page.button_text}
                   </span>
                 </div>
@@ -210,13 +208,20 @@ function Magazine() {
             );
           }
 
-          if (page.kind === "photo") {
-            return (
-              <div
-                key={`photo-${page.id}`}
-                className="snap-center flex-shrink-0 w-[300px] aspect-[3/4] rounded-sm overflow-hidden relative bg-black"
-                style={{ boxShadow: "0 12px 40px rgba(0,0,0,0.55)" }}
-              >
+          // Разворот участницы: фото-страница и текст-страница рядом,
+          // как настоящий открытый журнал.
+          const firstAnswer = page.dream || page.motto || page.fun_fact || "";
+          const dropCap = firstAnswer.charAt(0);
+          const restOfFirst = firstAnswer.slice(1);
+
+          return (
+            <div
+              key={`spread-${page.id}`}
+              className="snap-center flex-shrink-0 w-[88vw] max-w-[520px] aspect-[3/2] flex rounded-sm overflow-hidden relative"
+              style={{ boxShadow: "0 12px 40px rgba(0,0,0,0.55)" }}
+            >
+              {/* Левая страница — фото */}
+              <div className="w-1/2 h-full relative bg-black flex-shrink-0">
                 {page.photo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -225,66 +230,44 @@ function Magazine() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted text-sm">
+                  <div className="w-full h-full flex items-center justify-center text-muted text-xs px-2 text-center">
                     Нет фото
                   </div>
                 )}
-                {/* Тень корешка, будто это разворот книги */}
-                <div className="absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-black/50 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent flex flex-col justify-end p-6">
-                  <span
-                    className="text-goldSoft text-[10px] tracking-[0.3em] mb-1"
-                  >
-                    VETOKS · ГЕРОИНЯ НОМЕРА
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent flex flex-col justify-end p-4">
+                  <span className="text-goldSoft text-[8px] tracking-[0.25em] mb-1">
+                    ГЕРОИНЯ НОМЕРА
                   </span>
                   <h3
-                    className="text-white text-3xl leading-none"
+                    className="text-white text-lg leading-tight"
                     style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
                   >
                     {page.display_name}
                   </h3>
                 </div>
               </div>
-            );
-          }
 
-          // Текстовая страница — светлая «бумага», буквица, редакционный стиль
-          const firstAnswer = page.dream || page.motto || page.fun_fact || "";
-          const dropCap = firstAnswer.charAt(0);
-          const restOfFirst = firstAnswer.slice(1);
+              {/* Корешок — тень посередине разворота */}
+              <div className="w-3 h-full flex-shrink-0 bg-[#F3EEE4] relative">
+                <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-r from-black/40 to-transparent" />
+                <div className="absolute inset-y-0 right-0 w-1.5 bg-gradient-to-l from-black/25 to-transparent" />
+              </div>
 
-          return (
-            <div
-              key={`text-${page.id}`}
-              className="snap-center flex-shrink-0 w-[300px] aspect-[3/4] rounded-sm overflow-hidden relative"
-              style={{
-                backgroundColor: "#F3EEE4",
-                boxShadow: "0 12px 40px rgba(0,0,0,0.55)",
-              }}
-            >
-              {/* Тень корешка слева */}
-              <div className="absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-black/15 to-transparent pointer-events-none" />
-
-              <div className="p-6 h-full overflow-y-auto">
-                <p
-                  className="text-[#C9A227] text-[10px] tracking-[0.3em] mb-1"
-                >
-                  ИНТЕРВЬЮ НОМЕРА
+              {/* Правая страница — текст */}
+              <div
+                className="flex-1 h-full overflow-y-auto p-4"
+                style={{ backgroundColor: "#F3EEE4" }}
+              >
+                <p className="text-[#C9A227] text-[8px] tracking-[0.25em] mb-1">
+                  ИНТЕРВЬЮ
                 </p>
-                <h3
-                  className="text-[#1a1520] text-2xl mb-4 leading-tight"
-                  style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-                >
-                  {page.display_name}
-                </h3>
-
-                {firstAnswer && (
+                {firstAnswer ? (
                   <p
-                    className="text-[#2b2530] text-sm leading-relaxed mb-3"
+                    className="text-[#2b2530] text-xs leading-relaxed mb-2"
                     style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
                   >
                     <span
-                      className="float-left text-6xl leading-[0.8] pr-2 pt-1"
+                      className="float-left text-4xl leading-[0.75] pr-1.5 pt-0.5"
                       style={{
                         fontFamily: "Georgia, 'Times New Roman', serif",
                         color: "#7C3AED",
@@ -294,39 +277,38 @@ function Magazine() {
                     </span>
                     {restOfFirst}
                   </p>
-                )}
-
-                {page.motto && firstAnswer !== page.motto && (
-                  <p className="text-[#5a5260] text-xs mb-2 italic">
-                    «{page.motto}»
-                  </p>
-                )}
-                {page.fun_fact && firstAnswer !== page.fun_fact && (
-                  <p className="text-[#2b2530] text-xs leading-relaxed">
-                    {page.fun_fact}
-                  </p>
-                )}
-                {!firstAnswer && (
-                  <p className="text-[#8a8290] text-xs italic">
+                ) : (
+                  <p className="text-[#8a8290] text-[11px] italic mb-2">
                     Участница ещё не заполнила свою страницу журнала.
                   </p>
                 )}
 
-                <div className="flex gap-2 mt-6">
+                {page.motto && firstAnswer !== page.motto && (
+                  <p className="text-[#5a5260] text-[11px] mb-1 italic">
+                    «{page.motto}»
+                  </p>
+                )}
+                {page.fun_fact && firstAnswer !== page.fun_fact && (
+                  <p className="text-[#2b2530] text-[11px] leading-relaxed">
+                    {page.fun_fact}
+                  </p>
+                )}
+
+                <div className="flex gap-2 mt-3">
                   <button
                     onClick={() => toggleFollow(page.id)}
                     disabled={!userId}
-                    className={`flex-1 text-xs font-semibold py-2 rounded-full ${
+                    className={`flex-1 text-[10px] font-semibold py-1.5 rounded-full ${
                       followedIds.has(page.id)
                         ? "bg-white border border-[#c9c2b4] text-[#5a5260]"
                         : "bg-[#1a1520] text-[#F3EEE4]"
                     }`}
                   >
-                    {followedIds.has(page.id) ? "Вы подписаны" : "Подписаться"}
+                    {followedIds.has(page.id) ? "Подписаны" : "Подписаться"}
                   </button>
                   <Link
                     href={`/participant/${page.id}`}
-                    className="flex-1 text-xs font-semibold py-2 rounded-full border border-[#1a1520] text-[#1a1520] text-center"
+                    className="flex-1 text-[10px] font-semibold py-1.5 rounded-full border border-[#1a1520] text-[#1a1520] text-center"
                   >
                     Профиль
                   </Link>
