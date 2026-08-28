@@ -1307,6 +1307,49 @@ function StagesTab() {
   const [saved, setSaved] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
 
+  const [regions, setRegions] = useState<{ id: string; name: string }[]>([]);
+  const [newSeasonRegion, setNewSeasonRegion] = useState("");
+  const [newSeasonTitle, setNewSeasonTitle] = useState("");
+  const [creatingSeason, setCreatingSeason] = useState(false);
+
+  async function loadRegions() {
+    const { data } = await supabase.from("regions").select("id, name").order("name");
+    setRegions(data ?? []);
+  }
+
+  async function createSeason() {
+    if (!newSeasonRegion || !newSeasonTitle) return;
+    setCreatingSeason(true);
+    const { data, error } = await supabase
+      .from("seasons")
+      .insert({
+        region_id: newSeasonRegion,
+        title: newSeasonTitle,
+        status: "registration",
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      alert(`Ошибка создания сезона: ${error.message}`);
+      setCreatingSeason(false);
+      return;
+    }
+
+    // Сразу создаём первый этап «Отбор», чтобы регистрация заработала.
+    await supabase.from("season_stages").insert({
+      season_id: data.id,
+      stage_number: 1,
+      title: "Отбор",
+    });
+
+    setNewSeasonTitle("");
+    setNewSeasonRegion("");
+    await loadSeasons();
+    setSelectedSeason(data.id);
+    setCreatingSeason(false);
+  }
+
   async function loadSeasons() {
     const { data } = await supabase.from("seasons").select("id, title");
     setSeasons((data as SeasonRow[]) ?? []);
@@ -1393,6 +1436,7 @@ function StagesTab() {
 
   useEffect(() => {
     loadSeasons();
+    loadRegions();
   }, []);
 
   useEffect(() => {
@@ -1438,6 +1482,42 @@ function StagesTab() {
 
   return (
     <div className="max-w-lg">
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+        <p className="text-offwhite text-sm font-semibold mb-2">
+          🆕 Открыть новый регион
+        </p>
+        <p className="text-muted text-xs mb-3">
+          Пока у региона нет своего сезона — участницы не могут подать
+          заявку из этого региона. Создайте сезон один раз, и «Отбор»
+          добавится автоматически.
+        </p>
+        <select
+          value={newSeasonRegion}
+          onChange={(e) => setNewSeasonRegion(e.target.value)}
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        >
+          <option value="">— выберите регион —</option>
+          {regions.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+        <input
+          value={newSeasonTitle}
+          onChange={(e) => setNewSeasonTitle(e.target.value)}
+          placeholder="Название сезона, напр. «VETOKS Miss — Ростовская область 2026»"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        />
+        <button
+          onClick={createSeason}
+          disabled={!newSeasonRegion || !newSeasonTitle || creatingSeason}
+          className="bg-gold text-bgPrimary font-semibold px-4 py-2 rounded-full text-sm disabled:opacity-40"
+        >
+          {creatingSeason ? "Создаём..." : "Создать сезон"}
+        </button>
+      </div>
+
       <p className="text-muted text-sm mb-4">
         Здесь вы сами задаёте реальные даты старта и окончания каждого этапа —
         на главной странице прогресс-бар и обратный отсчёт считаются по этим
