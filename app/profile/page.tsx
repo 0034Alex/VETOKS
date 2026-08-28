@@ -432,6 +432,13 @@ export default function ProfilePage() {
               <span>Установить приложение</span>
               <span>→</span>
             </a>
+            <a
+              href="/edit-profile"
+              className="p-4 flex items-center justify-between text-muted text-sm"
+            >
+              <span>Редактировать профиль</span>
+              <span>→</span>
+            </a>
             <div className="p-4 flex items-center justify-between text-muted text-sm">
               <span>Настройки</span>
               <span>→</span>
