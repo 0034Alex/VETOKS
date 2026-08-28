@@ -102,7 +102,7 @@ type MagazinePage =
       button_link: string;
     };
 
-function Magazine() {
+function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRegionId: string | null }) {
   const [pages, setPages] = useState<MagazinePage[]>([]);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
@@ -113,9 +113,14 @@ function Magazine() {
       const { data: participantsData } = await supabase
         .from("participants")
         .select(
-          "id, display_name, photo_url, magazine_answers(q1_question, q1_answer, q2_question, q2_answer, q3_question, q3_answer)"
+          "id, display_name, photo_url, region_id, magazine_answers(q1_question, q1_answer, q2_question, q2_answer, q3_question, q3_answer)"
         )
         .eq("is_eliminated", false);
+
+      const filteredParticipants =
+        scope === "region" && userRegionId
+          ? (participantsData ?? []).filter((p: any) => p.region_id === userRegionId)
+          : participantsData ?? [];
 
       const { data: adsData } = await supabase
         .from("magazine_ads")
@@ -133,10 +138,11 @@ function Magazine() {
 
       // Каждая участница — разворот: текст (левая страница) + фото (правая).
       // Каждый 10-й разворот — реклама, целиком на обе страницы (чтобы не
-      // сбивать чередование текст/фото у следующих участниц).
+      // сбивать чередование текст/фото у следующих участниц). Если реклам
+      // нет — просто идут дальше участницы без пропусков.
       const merged: MagazinePage[] = [];
       let adIndex = 0;
-      (participantsData ?? []).forEach((p: any) => {
+      filteredParticipants.forEach((p: any) => {
         const ans = Array.isArray(p.magazine_answers)
           ? p.magazine_answers[0]
           : p.magazine_answers;
@@ -177,7 +183,7 @@ function Magazine() {
 
       setLoading(false);
     })();
-  }, []);
+  }, [scope, userRegionId]);
 
   async function toggleFollow(participantId: string) {
     if (!userId) return;
@@ -853,7 +859,7 @@ export default function Home() {
           </div>
         )}
 
-        <Magazine />
+        <Magazine scope={scope} userRegionId={user?.region_id ?? null} />
 
         {season?.status === "registration" && (
           <div className="px-6 mb-8">
