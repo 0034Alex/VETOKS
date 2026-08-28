@@ -12,6 +12,7 @@ type Tab =
   | "users"
   | "staff"
   | "partners"
+  | "partner-logos"
   | "support"
   | "cards"
   | "goal"
@@ -27,6 +28,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "users", label: "Пользователи" },
   { key: "staff", label: "Персонал" },
   { key: "partners", label: "Партнёры" },
+  { key: "partner-logos", label: "Витрина партнёров" },
   { key: "support", label: "Поддержка" },
   { key: "cards", label: "Карточки" },
   { key: "goal", label: "Цель недели" },
@@ -41,7 +43,7 @@ const TABS: { key: Tab; label: string }[] = [
 const PERMISSION_TABS: Record<string, Tab[]> = {
   moderation: ["applications", "participants", "cards", "calendar"],
   finance: ["dashboard", "goal"],
-  partners: ["partners", "banners"],
+  partners: ["partners", "partner-logos", "banners"],
   staff: ["staff", "users"],
   support: ["support", "documents"],
 };
@@ -184,6 +186,7 @@ export default function AdminPage() {
         {tab === "users" && <UsersTab />}
         {tab === "staff" && <StaffTab />}
         {tab === "partners" && <PartnersTab />}
+        {tab === "partner-logos" && <PartnerLogosTab />}
         {tab === "support" && <SupportTab />}
         {tab === "cards" && <CardsTab />}
         {tab === "goal" && <GoalTab />}
@@ -2021,6 +2024,153 @@ function CalendarTab() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// ВИТРИНА ПАРТНЁРОВ
+// ---------------------------------------------------------------------
+
+type PartnerLogoRow = {
+  id: string;
+  name: string;
+  logo_url: string;
+  link_url: string | null;
+  is_active: boolean;
+};
+
+function PartnerLogosTab() {
+  const [rows, setRows] = useState<PartnerLogoRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [name, setName] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("partner_logos")
+      .select("id, name, logo_url, link_url, is_active")
+      .order("sort_order", { ascending: true });
+    setRows((data as PartnerLogoRow[]) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function createLogo() {
+    if (!file || !name) return;
+    setUploading(true);
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${Date.now()}.${fileExt}`;
+    const { error } = await supabase.storage.from("partner-logos").upload(filePath, file);
+    if (error) {
+      alert(`Ошибка загрузки: ${error.message}`);
+      setUploading(false);
+      return;
+    }
+    const { data: publicUrlData } = supabase.storage.from("partner-logos").getPublicUrl(filePath);
+    await supabase.from("partner_logos").insert({
+      name,
+      logo_url: publicUrlData.publicUrl,
+      link_url: linkUrl || null,
+      sort_order: rows.length,
+    });
+    setName("");
+    setLinkUrl("");
+    setFile(null);
+    await load();
+    setUploading(false);
+  }
+
+  async function toggleActive(r: PartnerLogoRow) {
+    await supabase.from("partner_logos").update({ is_active: !r.is_active }).eq("id", r.id);
+    await load();
+  }
+
+  async function removeLogo(id: string) {
+    if (!confirm("Удалить этого партнёра из витрины?")) return;
+    await supabase.from("partner_logos").delete().eq("id", id);
+    await load();
+  }
+
+  return (
+    <div className="max-w-lg">
+      <p className="text-muted text-sm mb-4">
+        Это карусель логотипов внизу главной страницы. Отдельно от вкладки
+        «Партнёры» (там ведутся сделки/заявки) — здесь только витрина.
+      </p>
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Название партнёра"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        />
+        <label className="block w-full text-center bg-bgPrimary border border-muted text-offwhite text-xs py-2 rounded-lg mb-2 cursor-pointer">
+          {file ? file.name : "Выбрать логотип"}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        <input
+          value={linkUrl}
+          onChange={(e) => setLinkUrl(e.target.value)}
+          placeholder="Ссылка на партнёра, напр. https://..."
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        />
+        <button
+          onClick={createLogo}
+          disabled={uploading || !file || !name}
+          className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+        >
+          {uploading ? "Загрузка..." : "Добавить в витрину"}
+        </button>
+      </div>
+
+      {loading && <p className="text-muted">Загрузка...</p>}
+
+      <div className="flex flex-col gap-3">
+        {rows.map((r) => (
+          <div key={r.id} className="bg-bgSurface border border-muted rounded-xl p-3 flex gap-3">
+            <div
+              className="w-16 h-16 flex-shrink-0 rounded-lg flex items-center justify-center p-2"
+              style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.25), rgba(11,11,13,0.9))" }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={r.logo_url} alt="" className="max-w-full max-h-full object-contain" />
+            </div>
+            <div className="flex-1">
+              <p className="text-offwhite text-sm font-semibold">{r.name}</p>
+              <p className="text-muted text-xs truncate">{r.link_url || "без ссылки"}</p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => toggleActive(r)}
+                  className={`text-xs px-3 py-1 rounded-full ${
+                    r.is_active ? "bg-success text-bgPrimary" : "bg-bgPrimary border border-muted text-muted"
+                  }`}
+                >
+                  {r.is_active ? "Активен" : "Выключен"}
+                </button>
+                <button
+                  onClick={() => removeLogo(r.id)}
+                  className="text-xs px-3 py-1 rounded-full bg-danger text-bgPrimary"
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
