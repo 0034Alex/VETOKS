@@ -342,14 +342,21 @@ function Magazine() {
                 }}
               >
                 <div
-                  className="overflow-y-auto px-3.5 pt-3.5"
-                  style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 56 }}
+                  className="overflow-y-auto px-3.5 pt-3"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 56,
+                    touchAction: "pan-y",
+                  }}
                 >
-                  <p className="text-[#B23A5C] text-[7px] tracking-[0.2em] font-semibold mb-1.5">
+                  <p className="text-[#B23A5C] text-[6px] tracking-[0.2em] font-semibold mb-1">
                     ИНТЕРВЬЮ
                   </p>
                   <h4
-                    className="text-[#1a1520] text-lg italic mb-2 pb-1.5"
+                    className="text-[#1a1520] text-sm italic mb-1.5 pb-1"
                     style={{
                       fontFamily: "Georgia, 'Times New Roman', serif",
                       borderBottom: "1px solid #ddd6c8",
@@ -359,19 +366,19 @@ function Magazine() {
                   </h4>
 
                   {qaList.length > 0 ? (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-1.5">
                       {qaList.map((qa, i) => (
                         <p
                           key={i}
-                          className="text-[#2b2530] text-[10px] leading-[1.5]"
+                          className="text-[#2b2530] text-[9px] leading-[1.3]"
                           style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
                         >
-                          <span className="text-[#B23A5C] text-[8px] tracking-[0.1em] font-bold uppercase">
+                          <span className="text-[#B23A5C] text-[7px] tracking-[0.1em] font-bold uppercase">
                             В:{" "}
                           </span>
-                          <span className="italic text-[#5a5260]">{qa.q}</span>
+                          <span className="italic text-[#5a5260] text-[8px]">{qa.q}</span>
                           <br />
-                          <span className="text-[#7C3AED] text-[8px] tracking-[0.1em] font-bold uppercase">
+                          <span className="text-[#7C3AED] text-[7px] tracking-[0.1em] font-bold uppercase">
                             О:{" "}
                           </span>
                           {qa.a}
@@ -715,21 +722,23 @@ export default function Home() {
             backgroundPosition: "center",
           }}
         >
-          <p className="text-goldSoft text-xs tracking-widest mb-1">
-            VETOKS MISS
-          </p>
-          <h1 className="text-3xl md:text-5xl font-bold text-offwhite mb-1 leading-tight">
-            {scope === "country" ? "Россия" : user?.regions?.name ?? "Сезон скоро стартует"}
-          </h1>
-          <p className="text-muted text-sm mb-4">Красота. Харизма. Энергия.</p>
+          <div className="w-1/2">
+            <p className="text-goldSoft text-xs tracking-widest mb-1">
+              VETOKS MISS
+            </p>
+            <h1 className="text-2xl md:text-4xl font-bold text-offwhite mb-1 leading-tight">
+              {scope === "country" ? "Россия" : user?.regions?.name ?? "Сезон скоро стартует"}
+            </h1>
+            <p className="text-muted text-xs mb-4">Красота. Харизма. Энергия.</p>
+          </div>
 
           {currentStage && totalStages > 0 ? (
-            <div className="bg-bgPrimary/80 backdrop-blur rounded-xl p-3">
+            <div className="w-1/2 bg-bgPrimary/80 backdrop-blur rounded-xl p-3">
               <div className="flex items-center justify-between mb-2 gap-2">
                 <span className="text-offwhite text-xs font-semibold whitespace-nowrap">
                   Этап {currentStage.stage_number} из {totalStages}
                 </span>
-                <span className="text-muted text-xs truncate">{currentStage.title}</span>
+                <span className="text-muted text-[10px] truncate">{currentStage.title}</span>
               </div>
               <div className="w-full bg-black/40 rounded-full h-2 mb-2">
                 <div
@@ -737,8 +746,8 @@ export default function Home() {
                   style={{ width: `${stageProgress}%` }}
                 />
               </div>
-              <p className="text-offwhite text-xs">
-                🕐 До окончания этапа: <span className="font-semibold">{stageCountdown}</span>
+              <p className="text-offwhite text-[10px]">
+                🕐 До конца: <span className="font-semibold">{stageCountdown}</span>
               </p>
             </div>
           ) : (
@@ -747,28 +756,22 @@ export default function Home() {
             </span>
           )}
 
-          {season?.status === "registration" && (
+          <div className="flex gap-2 mt-3">
+            {season?.status === "registration" && (
+              <Link
+                href="/apply"
+                className="flex-1 flex items-center justify-center gap-1.5 bg-gold text-bgPrimary rounded-full py-2.5 font-semibold text-xs"
+              >
+                📝 Подать заявку
+              </Link>
+            )}
             <Link
-              href="/apply"
-              className="flex items-center justify-center gap-2 bg-gold text-bgPrimary rounded-full py-2.5 w-full font-semibold text-sm mt-3"
+              href="/promo"
+              className="flex-1 flex items-center justify-center gap-1.5 bg-bgPrimary/80 border border-gold/50 text-offwhite rounded-full py-2.5 font-semibold text-xs"
             >
-              📝 Подать заявку на участие
+              ▶ Промо-ролик
             </Link>
-          )}
-
-          <Link
-            href="/promo"
-            className="absolute bottom-5 right-5 md:bottom-8 md:right-8 flex items-center gap-2"
-          >
-            <span className="w-11 h-11 rounded-full bg-bgPrimary/70 border border-gold/50 text-gold flex items-center justify-center text-base">
-              ▶
-            </span>
-            <span className="text-offwhite text-xs font-medium leading-tight">
-              Смотреть
-              <br />
-              промо-ролик
-            </span>
-          </Link>
+          </div>
         </div>
 
         {inWindow && (
