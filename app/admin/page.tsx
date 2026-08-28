@@ -15,7 +15,10 @@ type Tab =
   | "support"
   | "cards"
   | "goal"
-  | "stages";
+  | "stages"
+  | "banners"
+  | "documents"
+  | "calendar";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -28,16 +31,19 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "cards", label: "Карточки" },
   { key: "goal", label: "Цель недели" },
   { key: "stages", label: "Этапы сезона" },
+  { key: "banners", label: "Баннеры" },
+  { key: "documents", label: "Документы" },
+  { key: "calendar", label: "Календарь контента" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
 // Владелец (super_admin) видит всё независимо от галочек.
 const PERMISSION_TABS: Record<string, Tab[]> = {
-  moderation: ["applications", "participants", "cards"],
+  moderation: ["applications", "participants", "cards", "calendar"],
   finance: ["dashboard", "goal"],
-  partners: ["partners"],
+  partners: ["partners", "banners"],
   staff: ["staff", "users"],
-  support: ["support"],
+  support: ["support", "documents"],
 };
 
 function getAllowedTabs(user: CurrentUser): Tab[] {
@@ -182,6 +188,9 @@ export default function AdminPage() {
         {tab === "cards" && <CardsTab />}
         {tab === "goal" && <GoalTab />}
         {tab === "stages" && <StagesTab />}
+        {tab === "banners" && <BannersTab />}
+        {tab === "documents" && <DocumentsTab />}
+        {tab === "calendar" && <CalendarTab />}
       </div>
     </main>
   );
@@ -1598,6 +1607,420 @@ function StagesTab() {
         </button>
       )}
       {saved && <span className="text-success text-sm ml-3">Сохранено!</span>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// БАННЕРЫ
+// ---------------------------------------------------------------------
+
+type BannerRow = {
+  id: string;
+  image_url: string;
+  link_url: string | null;
+  is_active: boolean;
+  sort_order: number;
+};
+
+function BannersTab() {
+  const [banners, setBanners] = useState<BannerRow[]>([]);
+  const [enabled, setEnabled] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+
+  async function load() {
+    setLoading(true);
+    const { data: settingRow } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "banners_enabled")
+      .maybeSingle();
+    setEnabled(settingRow?.value !== "false");
+
+    const { data } = await supabase
+      .from("promo_banners")
+      .select("id, image_url, link_url, is_active, sort_order")
+      .order("sort_order", { ascending: true });
+    setBanners((data as BannerRow[]) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function toggleEnabled() {
+    const newValue = !enabled;
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "banners_enabled", value: newValue ? "true" : "false" });
+    setEnabled(newValue);
+  }
+
+  async function createBanner() {
+    if (!file) return;
+    setUploading(true);
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${Date.now()}.${fileExt}`;
+    const { error } = await supabase.storage.from("promo-banners").upload(filePath, file);
+    if (error) {
+      alert(`Ошибка загрузки: ${error.message}`);
+      setUploading(false);
+      return;
+    }
+    const { data: publicUrlData } = supabase.storage.from("promo-banners").getPublicUrl(filePath);
+    await supabase.from("promo_banners").insert({
+      image_url: publicUrlData.publicUrl,
+      link_url: linkUrl || null,
+      sort_order: banners.length,
+    });
+    setLinkUrl("");
+    setFile(null);
+    await load();
+    setUploading(false);
+  }
+
+  async function toggleActive(b: BannerRow) {
+    await supabase.from("promo_banners").update({ is_active: !b.is_active }).eq("id", b.id);
+    await load();
+  }
+
+  async function removeBanner(id: string) {
+    if (!confirm("Удалить этот баннер?")) return;
+    await supabase.from("promo_banners").delete().eq("id", id);
+    await load();
+  }
+
+  return (
+    <div className="max-w-lg">
+      <div className="bg-bgSurface border border-muted rounded-xl p-4 mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-offwhite text-sm font-semibold">Раздел баннеров</p>
+          <p className="text-muted text-xs">
+            {enabled ? "Показывается на «Участницах» и «Рейтинге»" : "Выключен полностью"}
+          </p>
+        </div>
+        <button
+          onClick={toggleEnabled}
+          className={`px-4 py-2 rounded-full text-sm font-semibold ${
+            enabled ? "bg-success text-bgPrimary" : "bg-bgPrimary border border-muted text-muted"
+          }`}
+        >
+          {enabled ? "Включено" : "Выключено"}
+        </button>
+      </div>
+
+      <p className="text-muted text-sm mb-3">
+        До 5 баннеров, показываются по кругу с автопрокруткой.
+      </p>
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+        <label className="block w-full text-center bg-bgPrimary border border-muted text-offwhite text-xs py-2 rounded-lg mb-2 cursor-pointer">
+          {file ? file.name : "Выбрать изображение"}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        <input
+          value={linkUrl}
+          onChange={(e) => setLinkUrl(e.target.value)}
+          placeholder="Ссылка при клике (необязательно)"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        />
+        <button
+          onClick={createBanner}
+          disabled={uploading || !file || banners.length >= 5}
+          className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+        >
+          {uploading ? "Загрузка..." : banners.length >= 5 ? "Уже 5 баннеров" : "Добавить баннер"}
+        </button>
+      </div>
+
+      {loading && <p className="text-muted">Загрузка...</p>}
+
+      <div className="flex flex-col gap-3">
+        {banners.map((b) => (
+          <div key={b.id} className="bg-bgSurface border border-muted rounded-xl p-3 flex gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={b.image_url} alt="" className="w-20 h-12 object-cover rounded-lg" />
+            <div className="flex-1">
+              <p className="text-muted text-xs truncate">{b.link_url || "без ссылки"}</p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => toggleActive(b)}
+                  className={`text-xs px-3 py-1 rounded-full ${
+                    b.is_active ? "bg-success text-bgPrimary" : "bg-bgPrimary border border-muted text-muted"
+                  }`}
+                >
+                  {b.is_active ? "Активен" : "Выключен"}
+                </button>
+                <button
+                  onClick={() => removeBanner(b.id)}
+                  className="text-xs px-3 py-1 rounded-full bg-danger text-bgPrimary"
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// ДОКУМЕНТЫ
+// ---------------------------------------------------------------------
+
+type DocumentRow = {
+  id: string;
+  title: string;
+  content: string;
+  audience: string;
+  is_active: boolean;
+};
+
+function DocumentsTab() {
+  const [docs, setDocs] = useState<DocumentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [audience, setAudience] = useState("all");
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("documents")
+      .select("id, title, content, audience, is_active")
+      .order("sort_order", { ascending: true });
+    setDocs((data as DocumentRow[]) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function createDoc() {
+    if (!title || !content) return;
+    await supabase.from("documents").insert({
+      title,
+      content,
+      audience,
+      sort_order: docs.length,
+    });
+    setTitle("");
+    setContent("");
+    setAudience("all");
+    await load();
+  }
+
+  async function toggleActive(d: DocumentRow) {
+    await supabase.from("documents").update({ is_active: !d.is_active }).eq("id", d.id);
+    await load();
+  }
+
+  async function removeDoc(id: string) {
+    if (!confirm("Удалить этот документ?")) return;
+    await supabase.from("documents").delete().eq("id", id);
+    await load();
+  }
+
+  return (
+    <div className="max-w-lg">
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+        <p className="text-offwhite text-sm font-semibold mb-2">Новый документ</p>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Название, напр. «Политика конфиденциальности»"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        />
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          rows={5}
+          placeholder="Текст документа"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        />
+        <select
+          value={audience}
+          onChange={(e) => setAudience(e.target.value)}
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        >
+          <option value="all">Все пользователи</option>
+          <option value="participants">Только участницы</option>
+        </select>
+        <button
+          onClick={createDoc}
+          disabled={!title || !content}
+          className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+        >
+          Добавить документ
+        </button>
+      </div>
+
+      {loading && <p className="text-muted">Загрузка...</p>}
+
+      <div className="flex flex-col gap-3">
+        {docs.map((d) => (
+          <div key={d.id} className="bg-bgSurface border border-muted rounded-xl p-4">
+            <div className="flex justify-between items-start mb-1">
+              <p className="text-offwhite text-sm font-semibold">{d.title}</p>
+              <span className="text-muted text-[10px]">
+                {d.audience === "participants" ? "участницы" : "все"}
+              </span>
+            </div>
+            <p className="text-muted text-xs mb-2 line-clamp-2">{d.content}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => toggleActive(d)}
+                className={`text-xs px-3 py-1 rounded-full ${
+                  d.is_active ? "bg-success text-bgPrimary" : "bg-bgPrimary border border-muted text-muted"
+                }`}
+              >
+                {d.is_active ? "Активен" : "Выключен"}
+              </button>
+              <button
+                onClick={() => removeDoc(d.id)}
+                className="text-xs px-3 py-1 rounded-full bg-danger text-bgPrimary"
+              >
+                Удалить
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// КАЛЕНДАРЬ КОНТЕНТА
+// ---------------------------------------------------------------------
+
+type SuggestionRow = { id: string; target: string; text: string };
+
+function CalendarTab() {
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [items, setItems] = useState<SuggestionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newText, setNewText] = useState("");
+  const [newTarget, setNewTarget] = useState("vetoks");
+
+  async function load(d: string) {
+    setLoading(true);
+    const { data } = await supabase
+      .from("content_suggestions")
+      .select("id, target, text")
+      .eq("suggestion_date", d)
+      .order("sort_order", { ascending: true });
+    setItems((data as SuggestionRow[]) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load(date);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date]);
+
+  async function addItem() {
+    if (!newText) return;
+    await supabase.from("content_suggestions").insert({
+      suggestion_date: date,
+      target: newTarget,
+      text: newText,
+      sort_order: items.length,
+    });
+    setNewText("");
+    await load(date);
+  }
+
+  async function removeItem(id: string) {
+    await supabase.from("content_suggestions").delete().eq("id", id);
+    await load(date);
+  }
+
+  const vetoksItems = items.filter((i) => i.target === "vetoks");
+  const socialItems = items.filter((i) => i.target === "social");
+
+  return (
+    <div className="max-w-lg">
+      <p className="text-muted text-sm mb-4">
+        Идеи для контента на конкретный день — участницы видят их у себя в
+        профиле по выбранной дате. Обычно 3–5 вариантов на блок достаточно.
+      </p>
+
+      <input
+        type="date"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+        className="w-full bg-bgSurface border border-muted rounded-lg px-3 py-2 text-sm mb-4"
+      />
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+        <select
+          value={newTarget}
+          onChange={(e) => setNewTarget(e.target.value)}
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        >
+          <option value="vetoks">Для VETOKS</option>
+          <option value="social">Для соцсетей участницы</option>
+        </select>
+        <textarea
+          value={newText}
+          onChange={(e) => setNewText(e.target.value)}
+          rows={2}
+          placeholder="Текст идеи"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        />
+        <button
+          onClick={addItem}
+          disabled={!newText}
+          className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+        >
+          Добавить
+        </button>
+      </div>
+
+      {loading && <p className="text-muted">Загрузка...</p>}
+
+      {!loading && (
+        <>
+          <p className="text-offwhite text-sm font-semibold mb-2">👑 Для VETOKS</p>
+          <div className="flex flex-col gap-2 mb-6">
+            {vetoksItems.length === 0 && <p className="text-muted text-xs">Пусто</p>}
+            {vetoksItems.map((i) => (
+              <div key={i.id} className="bg-bgSurface border border-muted rounded-lg p-3 flex justify-between gap-2">
+                <span className="text-offwhite text-sm">{i.text}</span>
+                <button onClick={() => removeItem(i.id)} className="text-danger text-xs flex-shrink-0">
+                  Удалить
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-offwhite text-sm font-semibold mb-2">📱 Для соцсетей</p>
+          <div className="flex flex-col gap-2">
+            {socialItems.length === 0 && <p className="text-muted text-xs">Пусто</p>}
+            {socialItems.map((i) => (
+              <div key={i.id} className="bg-bgSurface border border-muted rounded-lg p-3 flex justify-between gap-2">
+                <span className="text-offwhite text-sm">{i.text}</span>
+                <button onClick={() => removeItem(i.id)} className="text-danger text-xs flex-shrink-0">
+                  Удалить
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
