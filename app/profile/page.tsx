@@ -334,6 +334,17 @@ export default function ProfilePage() {
 
           {participant && (
             <a
+              href="/content-ideas"
+              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
+            >
+              <span className="text-gold font-semibold text-sm">
+                💡 Идеи для контента на сегодня
+              </span>
+            </a>
+          )}
+
+          {participant && (
+            <a
               href="/messages"
               className="flex items-center justify-between bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
             >
@@ -437,6 +448,13 @@ export default function ProfilePage() {
               className="p-4 flex items-center justify-between text-muted text-sm"
             >
               <span>Редактировать профиль</span>
+              <span>→</span>
+            </a>
+            <a
+              href="/documents"
+              className="p-4 flex items-center justify-between text-muted text-sm"
+            >
+              <span>Документы</span>
               <span>→</span>
             </a>
             <div className="p-4 flex items-center justify-between text-muted text-sm">
