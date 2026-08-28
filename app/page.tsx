@@ -724,16 +724,23 @@ export default function Home() {
         >
           <div className="w-1/2">
             <p className="text-goldSoft text-xs tracking-widest mb-1">
-              VETOKS MISS
+              MISS
             </p>
             <h1 className="text-2xl md:text-4xl font-bold text-offwhite mb-1 leading-tight">
               {scope === "country" ? "Россия" : user?.regions?.name ?? "Сезон скоро стартует"}
             </h1>
-            <p className="text-muted text-xs mb-4">Красота. Харизма. Энергия.</p>
+            <p className="text-muted text-[10px] mb-4 whitespace-nowrap">Красота. Харизма. Энергия.</p>
           </div>
 
           {currentStage && totalStages > 0 ? (
-            <div className="w-1/2 bg-bgPrimary/80 backdrop-blur rounded-xl p-3">
+            <div
+              className="w-1/2 rounded-xl p-3"
+              style={{
+                background: "linear-gradient(135deg, rgba(124,58,237,0.35), rgba(236,72,153,0.25))",
+                backdropFilter: "blur(6px)",
+                border: "1px solid rgba(201,162,39,0.35)",
+              }}
+            >
               <div className="flex items-center justify-between mb-2 gap-2">
                 <span className="text-offwhite text-xs font-semibold whitespace-nowrap">
                   Этап {currentStage.stage_number} из {totalStages}
@@ -858,12 +865,31 @@ export default function Home() {
 
         {season?.status === "registration" && (
           <div className="px-6 mb-8">
-            <Link
-              href="/apply"
-              className="flex items-center justify-center gap-2 bg-gold text-bgPrimary rounded-full py-3 w-full font-semibold text-sm"
+            <div
+              className="relative rounded-full p-[2px]"
+              style={{
+                background:
+                  "conic-gradient(from var(--vetoks-angle, 0deg), transparent 0%, #C9A227 12%, #F5E6A8 18%, #C9A227 24%, transparent 36%)",
+                animation: "vetoks-border-spin 3s linear infinite",
+              }}
             >
-              📝 Подать заявку на участие
-            </Link>
+              <Link
+                href="/apply"
+                className="flex items-center justify-center gap-2 bg-gold text-bgPrimary rounded-full py-3 w-full font-semibold text-sm"
+              >
+                📝 Подать заявку на участие
+              </Link>
+            </div>
+            <style>{`
+              @property --vetoks-angle {
+                syntax: '<angle>';
+                initial-value: 0deg;
+                inherits: false;
+              }
+              @keyframes vetoks-border-spin {
+                to { --vetoks-angle: 360deg; }
+              }
+            `}</style>
           </div>
         )}
 
