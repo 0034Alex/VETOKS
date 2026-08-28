@@ -63,6 +63,7 @@ type Stage = {
   title: string;
   starts_at: string | null;
   ends_at: string | null;
+  banner_image_url: string | null;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -86,9 +87,12 @@ type MagazinePage =
       kind: "text";
       id: string;
       display_name: string;
-      dream: string | null;
-      motto: string | null;
-      fun_fact: string | null;
+      q1_question: string | null;
+      q1_answer: string | null;
+      q2_question: string | null;
+      q2_answer: string | null;
+      q3_question: string | null;
+      q3_answer: string | null;
     }
   | {
       kind: "ad";
@@ -108,7 +112,9 @@ function Magazine() {
     (async () => {
       const { data: participantsData } = await supabase
         .from("participants")
-        .select("id, display_name, photo_url, magazine_answers(dream, motto, fun_fact)")
+        .select(
+          "id, display_name, photo_url, magazine_answers(q1_question, q1_answer, q2_question, q2_answer, q3_question, q3_answer)"
+        )
         .eq("is_eliminated", false);
 
       const { data: adsData } = await supabase
@@ -131,11 +137,21 @@ function Magazine() {
       const merged: MagazinePage[] = [];
       let adIndex = 0;
       (participantsData ?? []).forEach((p: any) => {
-        const dream = p.magazine_answers?.[0]?.dream ?? p.magazine_answers?.dream ?? null;
-        const motto = p.magazine_answers?.[0]?.motto ?? p.magazine_answers?.motto ?? null;
-        const funFact = p.magazine_answers?.[0]?.fun_fact ?? p.magazine_answers?.fun_fact ?? null;
+        const ans = Array.isArray(p.magazine_answers)
+          ? p.magazine_answers[0]
+          : p.magazine_answers;
 
-        merged.push({ kind: "text", id: p.id, display_name: p.display_name, dream, motto, fun_fact: funFact });
+        merged.push({
+          kind: "text",
+          id: p.id,
+          display_name: p.display_name,
+          q1_question: ans?.q1_question ?? null,
+          q1_answer: ans?.q1_answer ?? null,
+          q2_question: ans?.q2_question ?? null,
+          q2_answer: ans?.q2_answer ?? null,
+          q3_question: ans?.q3_question ?? null,
+          q3_answer: ans?.q3_answer ?? null,
+        });
         merged.push({ kind: "photo", id: p.id, display_name: p.display_name, photo_url: p.photo_url });
 
         if (merged.length % 20 === 0 && ads.length > 0) {
@@ -304,10 +320,12 @@ function Magazine() {
               );
             }
 
-            // Текстовая страница — редакционный стиль, как разворот глянца
-            const firstAnswer = page.dream || page.motto || page.fun_fact || "";
-            const dropCap = firstAnswer.charAt(0);
-            const restOfFirst = firstAnswer.slice(1);
+            // Текстовая страница — журнальный диалог «В: / О:»
+            const qaList = [
+              { q: page.q1_question, a: page.q1_answer },
+              { q: page.q2_question, a: page.q2_answer },
+              { q: page.q3_question, a: page.q3_answer },
+            ].filter((qa) => qa.q && qa.a);
 
             return (
               <div
@@ -333,60 +351,44 @@ function Magazine() {
                   <h4
                     className="text-[#1a1520] text-lg italic mb-2 pb-1.5"
                     style={{
-                    fontFamily: "Georgia, 'Times New Roman', serif",
-                    borderBottom: "1px solid #ddd6c8",
-                  }}
-                >
-                  {page.display_name}
-                </h4>
-
-                {firstAnswer ? (
-                  <p
-                    className="text-[#2b2530] text-[10px] leading-[1.5] mb-1.5"
-                    style={{
                       fontFamily: "Georgia, 'Times New Roman', serif",
-                      textAlign: "justify",
+                      borderBottom: "1px solid #ddd6c8",
                     }}
                   >
-                    <span
-                      className="float-left text-3xl leading-[0.7] pr-1 pt-0.5"
-                      style={{
-                        fontFamily: "Georgia, 'Times New Roman', serif",
-                        color: "#7C3AED",
-                      }}
-                    >
-                      {dropCap}
-                    </span>
-                    {restOfFirst}
-                  </p>
-                ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center py-4">
-                    <span className="text-[#C9A227] text-base mb-1.5">✦</span>
-                    <p
-                      className="text-[#5a5260] text-[11px] italic"
-                      style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-                    >
-                      Страница в процессе наполнения...
-                    </p>
-                  </div>
-                )}
+                    {page.display_name}
+                  </h4>
 
-                {page.motto && firstAnswer !== page.motto && (
-                  <p
-                    className="text-[#5a5260] text-[10px] mb-1.5 italic"
-                    style={{ textAlign: "justify" }}
-                  >
-                    «{page.motto}»
-                  </p>
-                )}
-                {page.fun_fact && firstAnswer !== page.fun_fact && (
-                  <p
-                    className="text-[#2b2530] text-[10px] leading-[1.5]"
-                    style={{ textAlign: "justify" }}
-                  >
-                    {page.fun_fact}
-                  </p>
-                )}
+                  {qaList.length > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      {qaList.map((qa, i) => (
+                        <p
+                          key={i}
+                          className="text-[#2b2530] text-[10px] leading-[1.5]"
+                          style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+                        >
+                          <span className="text-[#B23A5C] text-[8px] tracking-[0.1em] font-bold uppercase">
+                            В:{" "}
+                          </span>
+                          <span className="italic text-[#5a5260]">{qa.q}</span>
+                          <br />
+                          <span className="text-[#7C3AED] text-[8px] tracking-[0.1em] font-bold uppercase">
+                            О:{" "}
+                          </span>
+                          {qa.a}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-center py-4">
+                      <span className="text-[#C9A227] text-base mb-1.5">✦</span>
+                      <p
+                        className="text-[#5a5260] text-[11px] italic"
+                        style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+                      >
+                        Страница в процессе наполнения...
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div
@@ -528,7 +530,7 @@ export default function Home() {
         if (seasonData) {
           const { data: stagesData } = await supabase
             .from("season_stages")
-            .select("stage_number, title, starts_at, ends_at")
+            .select("stage_number, title, starts_at, ends_at, banner_image_url")
             .eq("season_id", (seasonData as Season).id)
             .order("stage_number", { ascending: true });
           setTotalStages((stagesData ?? []).length);
@@ -706,23 +708,13 @@ export default function Home() {
         <div
           className="mx-6 mb-6 rounded-2xl overflow-hidden relative flex flex-col justify-end p-5 md:p-8 min-h-[260px] md:min-h-[320px]"
           style={{
-            backgroundImage: leaderPhoto
-              ? `linear-gradient(to top, rgba(11,11,13,0.97), rgba(11,11,13,0.4)), url(${leaderPhoto})`
-              : "linear-gradient(135deg, #2a1f3d, #0B0B0D)",
+            backgroundImage: currentStage?.banner_image_url
+              ? `linear-gradient(to top, rgba(11,11,13,0.97), rgba(11,11,13,0.4)), url(${currentStage.banner_image_url})`
+              : "linear-gradient(135deg, #2a1f3d 0%, #0B0B0D 55%, #3d1f30 100%)",
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
         >
-          <Link
-            href="/promo"
-            className="absolute top-4 right-4 flex items-center gap-2 bg-bgPrimary/80 rounded-full pl-2 pr-3 py-1.5"
-          >
-            <span className="w-6 h-6 rounded-full bg-gold text-bgPrimary flex items-center justify-center text-[10px]">
-              ▶
-            </span>
-            <span className="text-offwhite text-xs font-semibold">Промо</span>
-          </Link>
-
           <p className="text-goldSoft text-xs tracking-widest mb-1">
             VETOKS MISS
           </p>
@@ -763,6 +755,20 @@ export default function Home() {
               📝 Подать заявку на участие
             </Link>
           )}
+
+          <Link
+            href="/promo"
+            className="absolute bottom-5 right-5 md:bottom-8 md:right-8 flex items-center gap-2"
+          >
+            <span className="w-11 h-11 rounded-full bg-bgPrimary/70 border border-gold/50 text-gold flex items-center justify-center text-base">
+              ▶
+            </span>
+            <span className="text-offwhite text-xs font-medium leading-tight">
+              Смотреть
+              <br />
+              промо-ролик
+            </span>
+          </Link>
         </div>
 
         {inWindow && (
