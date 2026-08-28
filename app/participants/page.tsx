@@ -14,6 +14,7 @@ type Participant = {
   photo_url: string | null;
   created_at: string;
   season_id: string;
+  region_id: string | null;
 };
 
 type Filter = "all" | "top" | "new";
@@ -21,7 +22,6 @@ type Filter = "all" | "top" | "new";
 export default function ParticipantsPage() {
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [scope, setScope] = useState<"region" | "country">("region");
-  const [seasonToRegion, setSeasonToRegion] = useState<Record<string, string>>({});
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
   const [giftCounts, setGiftCounts] = useState<Record<string, number>>({});
@@ -39,20 +39,11 @@ export default function ParticipantsPage() {
 
     const { data: participantsData } = await supabase
       .from("participants")
-      .select("id, display_name, bio, photo_url, created_at, season_id")
+      .select("id, display_name, bio, photo_url, created_at, season_id, region_id")
       .eq("is_eliminated", false);
 
     const list = (participantsData as Participant[]) ?? [];
     setParticipants(list);
-
-    const { data: seasonsData } = await supabase
-      .from("seasons")
-      .select("id, region_id");
-    const map: Record<string, string> = {};
-    (seasonsData ?? []).forEach((s: { id: string; region_id: string }) => {
-      map[s.id] = s.region_id;
-    });
-    setSeasonToRegion(map);
 
     if (list.length > 0) {
       const { data: votesData } = await supabase
@@ -175,7 +166,7 @@ export default function ParticipantsPage() {
     .filter((p) =>
       scope === "country" || !me?.region_id
         ? true
-        : seasonToRegion[p.season_id] === me.region_id
+        : p.region_id === me.region_id
     )
     .sort((a, b) => {
       if (filter === "new") {
