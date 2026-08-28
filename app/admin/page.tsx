@@ -570,7 +570,7 @@ type UserRow = {
   photo_url: string | null;
   phone: string | null;
   email: string | null;
-  regions: { name: string } | null;
+  regions: { name: string }[] | { name: string } | null;
 };
 
 function UsersTab() {
@@ -585,7 +585,7 @@ function UsersTab() {
       .from("users")
       .select("id, first_name, username, is_banned, last_login_at, photo_url, phone, email, regions(name)")
       .order("created_at", { ascending: false });
-    setRows((data as UserRow[]) ?? []);
+    setRows((data as unknown as UserRow[]) ?? []);
 
     const { data: giftsData } = await supabase
       .from("gifts")
@@ -645,7 +645,7 @@ function UsersTab() {
             {u.phone ?? "—"} · {u.email ?? "—"}
           </p>
           <p className="text-sm mb-1">
-            Регион: {u.regions?.name ?? "—"}
+            Регион: {(Array.isArray(u.regions) ? u.regions[0]?.name : u.regions?.name) ?? "—"}
           </p>
           <p className="text-sm mb-1">
             Последний вход:{" "}
