@@ -8,6 +8,7 @@ import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
+import PartnersShowcase from "@/components/PartnersShowcase";
 import LoadingScreen from "@/components/LoadingScreen";
 
 // Настоящий 3D-переворот страниц — библиотека работает только в браузере,
@@ -892,6 +893,8 @@ export default function Home() {
         )}
 
         <Survey />
+
+        <PartnersShowcase />
       </div>
 
       <BottomNav />
