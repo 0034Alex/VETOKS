@@ -48,7 +48,7 @@ export default function PartnersShowcase() {
     <div className="mb-8">
       <div className="px-6 mb-3 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-offwhite">Партнёры</h2>
-        <Link href="/partner" className="text-gold text-sm flex items-center gap-1">
+        <Link href="/partners-directory" className="text-gold text-sm flex items-center gap-1">
           Все <span>→</span>
         </Link>
       </div>
