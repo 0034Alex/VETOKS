@@ -6,7 +6,10 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export async function GET() {
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const regionId = searchParams.get("region");
+
   const today = new Date().toISOString().slice(0, 10);
   const results: {
     title_key: string;
@@ -14,13 +17,19 @@ export async function GET() {
     metric_value: number;
   }[] = [];
 
-  const { data: participants } = await supabase
+  let participantsQuery = supabase
     .from("participants")
-    .select("id, user_id, created_at")
+    .select("id, user_id, created_at, region_id")
     .eq("is_eliminated", false);
 
+  if (regionId) {
+    participantsQuery = participantsQuery.eq("region_id", regionId);
+  }
+
+  const { data: participants } = await participantsQuery;
+
   if (!participants || participants.length === 0) {
-    return NextResponse.json({ ok: true, message: "no participants" });
+    return NextResponse.json({ ok: true, message: "no participants", results: [] });
   }
 
   const { data: votes } = await supabase
@@ -189,6 +198,13 @@ export async function GET() {
         metric_value: bestVal,
       });
     }
+  }
+
+  // Если считаем для конкретного региона — просто отдаём результат сразу,
+  // не трогая общий национальный снимок (тот считается только по стране
+  // целиком, раз в сутки, через cron).
+  if (regionId) {
+    return NextResponse.json({ ok: true, count: results.length, date: today, results });
   }
 
   for (const r of results) {
