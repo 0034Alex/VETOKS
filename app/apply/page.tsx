@@ -60,10 +60,12 @@ export default function ApplyPage() {
       photoUrl = publicUrlData.publicUrl;
     }
 
+    // Один общий национальный сезон — идёт одновременно во всех регионах,
+    // регион не влияет на выбор сезона, только на то, где участница
+    // отображается в списках/рейтинге.
     const { data: season } = await supabase
       .from("seasons")
       .select("id")
-      .eq("region_id", currentUser.region_id)
       .eq("status", "registration")
       .order("created_at", { ascending: true })
       .limit(1)
@@ -72,7 +74,7 @@ export default function ApplyPage() {
     if (!season) {
       setStatus("error");
       setErrorMessage(
-        "В вашем регионе пока нет открытого сезона для регистрации."
+        "Сейчас регистрация закрыта — сезон ещё не открыт."
       );
       return;
     }
