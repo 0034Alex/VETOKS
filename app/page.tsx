@@ -524,43 +524,34 @@ export default function Home() {
       setUser(u);
       setChecked(true);
 
-      if (u.region_id) {
-        const { data: seasonData } = await supabase
-          .from("seasons")
-          .select("id, title, status")
-          .eq("region_id", u.region_id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        setSeason(seasonData as Season | null);
+      // Один общий национальный сезон и общие этапы — одинаковые для всей
+      // страны одновременно, регион здесь ни на что не влияет.
+      const { data: seasonData } = await supabase
+        .from("seasons")
+        .select("id, title, status")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setSeason(seasonData as Season | null);
 
-        if (seasonData) {
-          const { data: stagesData } = await supabase
-            .from("season_stages")
-            .select("stage_number, title, starts_at, ends_at, banner_image_url")
-            .eq("season_id", (seasonData as Season).id)
-            .order("stage_number", { ascending: true });
-          setTotalStages((stagesData ?? []).length);
-          const now = new Date();
-          const current = (stagesData ?? []).find(
-            (s: Stage) => s.ends_at && new Date(s.ends_at) > now
-          );
-          setCurrentStage((current as Stage) ?? null);
-        }
+      if (seasonData) {
+        const { data: stagesData } = await supabase
+          .from("season_stages")
+          .select("stage_number, title, starts_at, ends_at, banner_image_url")
+          .eq("season_id", (seasonData as Season).id)
+          .order("stage_number", { ascending: true });
+        setTotalStages((stagesData ?? []).length);
+        const now = new Date();
+        const current = (stagesData ?? []).find(
+          (s: Stage) => s.ends_at && new Date(s.ends_at) > now
+        );
+        setCurrentStage((current as Stage) ?? null);
       }
 
       const { data: participantsData } = await supabase
         .from("participants")
-        .select("id, display_name, photo_url, season_id")
+        .select("id, display_name, photo_url, season_id, region_id")
         .eq("is_eliminated", false);
-
-      const { data: seasonsData } = await supabase
-        .from("seasons")
-        .select("id, region_id");
-      const seasonToRegion: Record<string, string> = {};
-      (seasonsData ?? []).forEach((s: { id: string; region_id: string }) => {
-        seasonToRegion[s.id] = s.region_id;
-      });
 
       const { data: votesData } = await supabase.from("votes").select("participant_id");
       const counts: Record<string, number> = {};
@@ -593,6 +584,7 @@ export default function Home() {
           display_name: string;
           photo_url: string | null;
           season_id: string;
+          region_id: string | null;
         }) => ({
           id: p.id,
           display_name: p.display_name,
@@ -600,7 +592,7 @@ export default function Home() {
           votes: counts[p.id] ?? 0,
           gifts: giftCounts[p.id] ?? 0,
           followers: followCounts[p.id] ?? 0,
-          region_id: seasonToRegion[p.season_id] ?? null,
+          region_id: p.region_id,
         })
       );
       setAllParticipants(list);
