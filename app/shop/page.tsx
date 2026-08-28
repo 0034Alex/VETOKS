@@ -109,26 +109,15 @@ function ShopContent() {
       if (!participantId) {
         const { data: participantsData } = await supabase
           .from("participants")
-          .select("id, display_name, user_id, photo_url, season_id")
+          .select("id, display_name, user_id, photo_url, season_id, region_id, regions(name)")
           .eq("is_eliminated", false);
-        setParticipants((participantsData as Participant[]) ?? []);
+        setParticipants((participantsData as unknown as Participant[]) ?? []);
 
-        const { data: seasonsData } = await supabase
-          .from("seasons")
-          .select("id, region_id, regions(name)");
-        const seasonToRegionName: Record<string, string> = {};
-        (seasonsData as any[] ?? []).forEach((s) => {
-          const regionName = Array.isArray(s.regions)
-            ? s.regions[0]?.name
-            : s.regions?.name;
-          if (regionName) seasonToRegionName[s.id] = regionName;
-        });
         const regionMap: Record<string, string> = {};
-        (participantsData ?? []).forEach(
-          (p: { id: string; season_id: string }) => {
-            regionMap[p.id] = seasonToRegionName[p.season_id] ?? "";
-          }
-        );
+        (participantsData as any[] ?? []).forEach((p) => {
+          const regionName = Array.isArray(p.regions) ? p.regions[0]?.name : p.regions?.name;
+          regionMap[p.id] = regionName ?? "";
+        });
         setParticipantRegions(regionMap);
       }
 
