@@ -6,6 +6,7 @@ import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
+import PromoBannerCarousel from "@/components/PromoBannerCarousel";
 
 type Participant = {
   id: string;
@@ -187,6 +188,7 @@ export default function ParticipantsPage() {
     <main className="min-h-screen pb-28">
       <div className="max-w-5xl mx-auto">
         <PageHeader />
+        <PromoBannerCarousel />
 
         <div className="px-6 mb-4">
           <h1 className="text-2xl font-semibold text-offwhite mb-1">
