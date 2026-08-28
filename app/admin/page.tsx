@@ -567,6 +567,10 @@ type UserRow = {
   username: string | null;
   is_banned: boolean;
   last_login_at: string | null;
+  photo_url: string | null;
+  phone: string | null;
+  email: string | null;
+  regions: { name: string } | null;
 };
 
 function UsersTab() {
@@ -579,7 +583,7 @@ function UsersTab() {
     setLoading(true);
     const { data } = await supabase
       .from("users")
-      .select("id, first_name, username, is_banned, last_login_at")
+      .select("id, first_name, username, is_banned, last_login_at, photo_url, phone, email, regions(name)")
       .order("created_at", { ascending: false });
     setRows((data as UserRow[]) ?? []);
 
@@ -623,12 +627,26 @@ function UsersTab() {
           key={u.id}
           className="bg-bgSurface border border-muted rounded-xl p-5"
         >
-          <h2 className="text-lg text-offwhite font-semibold mb-2">
+          <h2 className="text-lg text-offwhite font-semibold mb-2 flex items-center gap-2">
+            {u.photo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={u.photo_url}
+                alt=""
+                className="w-8 h-8 rounded-full object-cover"
+              />
+            )}
             {u.first_name ?? "Без имени"}{" "}
             {u.username && (
               <span className="text-muted text-sm">@{u.username}</span>
             )}
           </h2>
+          <p className="text-sm mb-1">
+            {u.phone ?? "—"} · {u.email ?? "—"}
+          </p>
+          <p className="text-sm mb-1">
+            Регион: {u.regions?.name ?? "—"}
+          </p>
           <p className="text-sm mb-1">
             Последний вход:{" "}
             {u.last_login_at
@@ -1402,6 +1420,22 @@ function StagesTab() {
     setTimeout(() => setSaved(false), 2000);
   }
 
+  async function addStage() {
+    const nextNumber = stages.length > 0 ? Math.max(...stages.map((s) => s.stage_number)) + 1 : 1;
+    await supabase.from("season_stages").insert({
+      season_id: selectedSeason,
+      stage_number: nextNumber,
+      title: `Этап ${nextNumber}`,
+    });
+    await loadStages(selectedSeason);
+  }
+
+  async function removeStage(stageId: string) {
+    if (!confirm("Удалить этот этап? Даты и видео/баннер этапа удалятся.")) return;
+    await supabase.from("season_stages").delete().eq("id", stageId);
+    await loadStages(selectedSeason);
+  }
+
   return (
     <div className="max-w-lg">
       <p className="text-muted text-sm mb-4">
@@ -1422,6 +1456,15 @@ function StagesTab() {
         ))}
       </select>
 
+      {selectedSeason && (
+        <button
+          onClick={addStage}
+          className="mb-4 bg-gold text-bgPrimary font-semibold px-4 py-2 rounded-full text-sm"
+        >
+          + Добавить этап
+        </button>
+      )}
+
       {loading && <p className="text-muted">Загрузка...</p>}
 
       {!loading &&
@@ -1430,9 +1473,17 @@ function StagesTab() {
             key={s.id}
             className="bg-bgSurface border border-muted rounded-xl p-4 mb-3"
           >
-            <p className="text-gold text-sm font-semibold mb-2">
-              Этап {s.stage_number}
-            </p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-gold text-sm font-semibold">
+                Этап {s.stage_number}
+              </p>
+              <button
+                onClick={() => removeStage(s.id)}
+                className="text-danger text-xs"
+              >
+                Удалить этап
+              </button>
+            </div>
             <label className="text-offwhite text-xs">Название</label>
             <input
               value={s.title}
