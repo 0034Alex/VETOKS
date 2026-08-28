@@ -764,12 +764,21 @@ export default function Home() {
 
           <div className="flex gap-2 mt-3">
             {season?.status === "registration" && (
-              <Link
-                href="/apply"
-                className="flex-1 flex items-center justify-center gap-1.5 bg-gold text-bgPrimary rounded-full py-2.5 font-semibold text-xs"
+              <div
+                className="flex-1 rounded-full p-[2px]"
+                style={{
+                  background:
+                    "conic-gradient(from var(--vetoks-angle-2, 0deg), transparent 0%, #C9A227 12%, #F5E6A8 18%, #C9A227 24%, transparent 36%)",
+                  animation: "vetoks-border-spin-2 3s linear infinite",
+                }}
               >
-                📝 Подать заявку
-              </Link>
+                <Link
+                  href="/apply"
+                  className="flex items-center justify-center gap-1.5 bg-gold text-bgPrimary rounded-full py-2.5 font-semibold text-xs"
+                >
+                  📝 Подать анкету
+                </Link>
+              </div>
             )}
             <Link
               href="/promo"
@@ -778,6 +787,16 @@ export default function Home() {
               ▶ Промо-ролик
             </Link>
           </div>
+          <style>{`
+            @property --vetoks-angle-2 {
+              syntax: '<angle>';
+              initial-value: 0deg;
+              inherits: false;
+            }
+            @keyframes vetoks-border-spin-2 {
+              to { --vetoks-angle-2: 360deg; }
+            }
+          `}</style>
         </div>
 
         {inWindow && (
@@ -876,7 +895,7 @@ export default function Home() {
                 href="/apply"
                 className="flex items-center justify-center gap-2 bg-gold text-bgPrimary rounded-full py-3 w-full font-semibold text-sm"
               >
-                📝 Подать заявку на участие
+                📝 Подать анкету на участие
               </Link>
             </div>
             <style>{`
