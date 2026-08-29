@@ -2193,6 +2193,8 @@ type AdSlotRow = {
   presale_until: string | null;
   duration: string;
   status: string;
+  capacity: number | null;
+  sold_count: number;
 };
 
 type AdSlotRequestRow = {
@@ -2205,14 +2207,29 @@ type AdSlotRequestRow = {
   created_at: string;
 };
 
-const AD_CATEGORIES: { key: string; label: string }[] = [
-  { key: "magazine", label: "Журнал" },
-  { key: "homepage", label: "Главная (партнёры)" },
-  { key: "banner_participants", label: "Баннер — Участницы" },
-  { key: "banner_rating", label: "Баннер — Рейтинг" },
-  { key: "jury", label: "Место в жюри" },
-  { key: "grand_final", label: "Гранд-финал" },
+type AdMode = "tiers" | "capacity" | "seats";
+
+const AD_CATEGORIES: { key: string; label: string; mode: AdMode }[] = [
+  { key: "magazine", label: "Журнал", mode: "tiers" },
+  { key: "homepage", label: "Главная (партнёры)", mode: "capacity" },
+  { key: "banner_participants", label: "Баннер — Участницы", mode: "capacity" },
+  { key: "banner_rating", label: "Баннер — Рейтинг", mode: "capacity" },
+  { key: "jury", label: "Место в жюри", mode: "seats" },
+  { key: "magazine_gf", label: "Гранд-финал · Журнал", mode: "tiers" },
+  { key: "homepage_gf", label: "Гранд-финал · Главная", mode: "capacity" },
+  { key: "banner_participants_gf", label: "Гранд-финал · Баннер Участницы", mode: "capacity" },
+  { key: "banner_rating_gf", label: "Гранд-финал · Баннер Рейтинг", mode: "capacity" },
+  { key: "jury_gf", label: "Гранд-финал · Жюри", mode: "seats" },
 ];
+
+const DEFAULT_CAPACITY: Record<string, number> = {
+  homepage: 20,
+  homepage_gf: 20,
+  banner_participants: 5,
+  banner_participants_gf: 5,
+  banner_rating: 5,
+  banner_rating_gf: 5,
+};
 
 function AdSpaceTab() {
   const [subTab, setSubTab] = useState<"slots" | "requests">("slots");
@@ -2225,6 +2242,7 @@ function AdSpaceTab() {
   const [addCategory, setAddCategory] = useState("magazine");
   const [title, setTitle] = useState("");
   const [slotNumber, setSlotNumber] = useState("");
+  const [capacity, setCapacity] = useState("");
   const [fullPrice, setFullPrice] = useState("");
   const [presalePrice, setPresalePrice] = useState("");
   const [presaleUntil, setPresaleUntil] = useState("");
@@ -2239,13 +2257,16 @@ function AdSpaceTab() {
   const [editPresaleUntil, setEditPresaleUntil] = useState("");
   const [editDuration, setEditDuration] = useState("season");
   const [editSlotNumber, setEditSlotNumber] = useState("");
+  const [editCapacity, setEditCapacity] = useState("");
+
+  const addMode = AD_CATEGORIES.find((c) => c.key === addCategory)?.mode ?? "seats";
 
   async function loadSlots() {
     setLoading(true);
     const { data } = await supabase
       .from("ad_slots")
       .select(
-        "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status"
+        "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status, capacity, sold_count"
       )
       .order("category", { ascending: true })
       .order("slot_number", { ascending: true });
@@ -2279,19 +2300,25 @@ function AdSpaceTab() {
   }, [subTab]);
 
   async function createSlot() {
-    if (!title || !slotNumber || !fullPrice) return;
+    if (!title || !fullPrice) return;
+    if (addMode !== "capacity" && !slotNumber) return;
     await supabase.from("ad_slots").insert({
       category: addCategory,
-      slot_number: Number(slotNumber),
+      slot_number: addMode === "capacity" ? 1 : Number(slotNumber),
       title,
       description: description || null,
       full_price: Number(fullPrice),
       presale_price: presalePrice ? Number(presalePrice) : null,
       presale_until: presaleUntil ? new Date(presaleUntil).toISOString() : null,
       duration,
+      capacity:
+        addMode === "capacity"
+          ? Number(capacity || DEFAULT_CAPACITY[addCategory] || 20)
+          : null,
     });
     setTitle("");
     setSlotNumber("");
+    setCapacity("");
     setFullPrice("");
     setPresalePrice("");
     setPresaleUntil("");
@@ -2310,6 +2337,12 @@ function AdSpaceTab() {
     await loadSlots();
   }
 
+  async function bumpSold(s: AdSlotRow, delta: number) {
+    const next = Math.max(0, Math.min(s.capacity ?? 0, s.sold_count + delta));
+    await supabase.from("ad_slots").update({ sold_count: next }).eq("id", s.id);
+    await loadSlots();
+  }
+
   async function removeSlot(id: string) {
     if (!confirm("Удалить это место?")) return;
     await supabase.from("ad_slots").delete().eq("id", id);
@@ -2325,9 +2358,10 @@ function AdSpaceTab() {
     setEditPresaleUntil(s.presale_until ? s.presale_until.slice(0, 10) : "");
     setEditDuration(s.duration);
     setEditSlotNumber(String(s.slot_number));
+    setEditCapacity(s.capacity != null ? String(s.capacity) : "");
   }
 
-  async function saveEdit(id: string) {
+  async function saveEdit(id: string, mode: AdMode) {
     await supabase
       .from("ad_slots")
       .update({
@@ -2337,6 +2371,8 @@ function AdSpaceTab() {
         presale_price: editPresalePrice ? Number(editPresalePrice) : null,
         presale_until: editPresaleUntil ? new Date(editPresaleUntil).toISOString() : null,
         duration: editDuration,
+        slot_number: mode === "capacity" ? 1 : Number(editSlotNumber),
+        capacity: mode === "capacity" ? Number(editCapacity || 20) : null,
         slot_number: Number(editSlotNumber),
       })
       .eq("id", id);
@@ -2385,13 +2421,40 @@ function AdSpaceTab() {
                 </option>
               ))}
             </select>
-            <input
-              value={slotNumber}
-              onChange={(e) => setSlotNumber(e.target.value)}
-              placeholder="Номер места (напр. 1, 2, 3...)"
-              type="number"
-              className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
-            />
+
+            {addMode === "seats" && (
+              <input
+                value={slotNumber}
+                onChange={(e) => setSlotNumber(e.target.value)}
+                placeholder="Номер места (напр. 1, 2, 3...)"
+                type="number"
+                className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+              />
+            )}
+
+            {addMode === "tiers" && (
+              <select
+                value={slotNumber}
+                onChange={(e) => setSlotNumber(e.target.value)}
+                className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+              >
+                <option value="">— сколько показов —</option>
+                <option value="3">3 раза</option>
+                <option value="5">5 раз</option>
+                <option value="7">7 раз</option>
+              </select>
+            )}
+
+            {addMode === "capacity" && (
+              <input
+                value={capacity}
+                onChange={(e) => setCapacity(e.target.value)}
+                placeholder={`Максимум мест (по умолчанию ${DEFAULT_CAPACITY[addCategory] ?? 20})`}
+                type="number"
+                className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+              />
+            )}
+
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -2440,7 +2503,7 @@ function AdSpaceTab() {
             </div>
             <button
               onClick={createSlot}
-              disabled={!title || !slotNumber || !fullPrice}
+              disabled={!title || !fullPrice || (addMode !== "capacity" && !slotNumber)}
               className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
             >
               Добавить место
@@ -2461,13 +2524,35 @@ function AdSpaceTab() {
                       <div key={s.id} className="bg-bgSurface border border-muted rounded-xl p-3">
                         {editingId === s.id ? (
                           <div className="flex flex-col gap-2">
-                            <input
-                              value={editSlotNumber}
-                              onChange={(e) => setEditSlotNumber(e.target.value)}
-                              type="number"
-                              placeholder="Номер места"
-                              className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
-                            />
+                            {cat.mode === "seats" && (
+                              <input
+                                value={editSlotNumber}
+                                onChange={(e) => setEditSlotNumber(e.target.value)}
+                                type="number"
+                                placeholder="Номер места"
+                                className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+                              />
+                            )}
+                            {cat.mode === "tiers" && (
+                              <select
+                                value={editSlotNumber}
+                                onChange={(e) => setEditSlotNumber(e.target.value)}
+                                className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+                              >
+                                <option value="3">3 раза</option>
+                                <option value="5">5 раз</option>
+                                <option value="7">7 раз</option>
+                              </select>
+                            )}
+                            {cat.mode === "capacity" && (
+                              <input
+                                value={editCapacity}
+                                onChange={(e) => setEditCapacity(e.target.value)}
+                                type="number"
+                                placeholder="Максимум мест"
+                                className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+                              />
+                            )}
                             <input
                               value={editTitle}
                               onChange={(e) => setEditTitle(e.target.value)}
@@ -2515,7 +2600,7 @@ function AdSpaceTab() {
                             </div>
                             <div className="flex gap-2">
                               <button
-                                onClick={() => saveEdit(s.id)}
+                                onClick={() => saveEdit(s.id, cat.mode)}
                                 className="flex-1 bg-gold text-bgPrimary font-semibold py-2 rounded-full text-xs"
                               >
                                 Сохранить
@@ -2532,17 +2617,21 @@ function AdSpaceTab() {
                           <>
                             <div className="flex justify-between items-start mb-1">
                               <p className="text-offwhite text-sm font-semibold">
-                                #{s.slot_number} · {s.title}
+                                {cat.mode === "seats" && `#${s.slot_number} · `}
+                                {cat.mode === "tiers" && `${s.slot_number} раз · `}
+                                {s.title}
                               </p>
-                              <span
-                                className={`text-[10px] px-2 py-0.5 rounded-full flex-shrink-0 ${
-                                  s.status === "sold"
-                                    ? "bg-danger/20 text-danger"
-                                    : "bg-success/20 text-success"
-                                }`}
-                              >
-                                {s.status === "sold" ? "Занято" : "Свободно"}
-                              </span>
+                              {cat.mode !== "capacity" && (
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded-full flex-shrink-0 ${
+                                    s.status === "sold"
+                                      ? "bg-danger/20 text-danger"
+                                      : "bg-success/20 text-success"
+                                  }`}
+                                >
+                                  {s.status === "sold" ? "Занято" : "Свободно"}
+                                </span>
+                              )}
                             </div>
                             <p className="text-muted text-xs mb-2">
                               {Math.round(s.full_price)} ₽
@@ -2556,6 +2645,9 @@ function AdSpaceTab() {
                               )}
                               {" · "}
                               {s.duration === "week" ? "на неделю" : "на сезон"}
+                              {cat.mode === "capacity" && (
+                                <> · занято {s.sold_count} из {s.capacity ?? 0}</>
+                              )}
                             </p>
                             <div className="flex gap-2 flex-wrap">
                               <button
@@ -2564,16 +2656,33 @@ function AdSpaceTab() {
                               >
                                 Редактировать
                               </button>
-                              <button
-                                onClick={() => toggleSold(s)}
-                                className={`text-xs px-3 py-1 rounded-full ${
-                                  s.status === "sold"
-                                    ? "bg-bgPrimary border border-muted text-muted"
-                                    : "bg-danger text-bgPrimary"
-                                }`}
-                              >
-                                {s.status === "sold" ? "Освободить" : "Отметить проданным"}
-                              </button>
+                              {cat.mode === "capacity" ? (
+                                <>
+                                  <button
+                                    onClick={() => bumpSold(s, 1)}
+                                    className="text-xs px-3 py-1 rounded-full bg-danger text-bgPrimary"
+                                  >
+                                    +1 продано
+                                  </button>
+                                  <button
+                                    onClick={() => bumpSold(s, -1)}
+                                    className="text-xs px-3 py-1 rounded-full bg-bgPrimary border border-muted text-muted"
+                                  >
+                                    −1
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => toggleSold(s)}
+                                  className={`text-xs px-3 py-1 rounded-full ${
+                                    s.status === "sold"
+                                      ? "bg-bgPrimary border border-muted text-muted"
+                                      : "bg-danger text-bgPrimary"
+                                  }`}
+                                >
+                                  {s.status === "sold" ? "Освободить" : "Отметить проданным"}
+                                </button>
+                              )}
                               <button
                                 onClick={() => removeSlot(s.id)}
                                 className="text-xs px-3 py-1 rounded-full bg-bgPrimary border border-danger text-danger"
