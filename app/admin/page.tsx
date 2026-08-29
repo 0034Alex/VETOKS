@@ -21,7 +21,8 @@ type Tab =
   | "banners"
   | "documents"
   | "calendar"
-  | "social";
+  | "social"
+  | "media";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -40,12 +41,13 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "documents", label: "Документы" },
   { key: "calendar", label: "Календарь контента" },
   { key: "social", label: "Соцсети" },
+  { key: "media", label: "Материалы" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
 // Владелец (super_admin) видит всё независимо от галочек.
 const PERMISSION_TABS: Record<string, Tab[]> = {
-  moderation: ["applications", "participants", "cards", "calendar"],
+  moderation: ["applications", "participants", "cards", "calendar", "media"],
   finance: ["dashboard", "goal"],
   partners: ["partners", "partner-logos", "banners", "ad-space", "social"],
   staff: ["staff", "users"],
@@ -200,6 +202,7 @@ export default function AdminPage() {
         {tab === "documents" && <DocumentsTab />}
         {tab === "calendar" && <CalendarTab />}
         {tab === "social" && <SocialLinksTab />}
+        {tab === "media" && <MediaMaterialsTab />}
       </div>
     </main>
   );
@@ -857,6 +860,8 @@ type Sponsor = {
   amount: number | null;
   status: string;
   package_type: string | null;
+  user_id: string | null;
+  contact_info: any;
 };
 
 function PartnersTab() {
@@ -865,12 +870,16 @@ function PartnersTab() {
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [packageType, setPackageType] = useState("");
+  const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [linkQuery, setLinkQuery] = useState("");
+  const [linkResult, setLinkResult] = useState<{ id: string; first_name: string | null } | null>(null);
+  const [linkSearching, setLinkSearching] = useState(false);
 
   async function load() {
     setLoading(true);
     const { data } = await supabase
       .from("sponsors")
-      .select("id, name, amount, status, package_type")
+      .select("id, name, amount, status, package_type, user_id, contact_info")
       .order("created_at", { ascending: false });
     setRows((data as Sponsor[]) ?? []);
     setLoading(false);
@@ -892,6 +901,36 @@ function PartnersTab() {
     setName("");
     setAmount("");
     setPackageType("");
+    await load();
+  }
+
+  async function searchUser() {
+    if (!linkQuery) return;
+    setLinkSearching(true);
+    const isEmail = linkQuery.includes("@");
+    const { data } = await supabase
+      .from("users")
+      .select("id, first_name")
+      .eq(isEmail ? "email" : "phone", linkQuery.trim())
+      .maybeSingle();
+    setLinkResult(data ?? null);
+    setLinkSearching(false);
+  }
+
+  async function confirmLink(sponsorId: string) {
+    if (!linkResult) return;
+    await supabase
+      .from("sponsors")
+      .update({ user_id: linkResult.id, status: "approved" })
+      .eq("id", sponsorId);
+    setLinkingId(null);
+    setLinkQuery("");
+    setLinkResult(null);
+    await load();
+  }
+
+  async function unlinkPartner(sponsorId: string) {
+    await supabase.from("sponsors").update({ user_id: null, status: "active" }).eq("id", sponsorId);
     await load();
   }
 
@@ -945,7 +984,66 @@ function PartnersTab() {
               Пакет: {s.package_type ?? "—"}
             </p>
             <p className="text-sm mb-1">Внесено: {s.amount ?? 0} ₽</p>
-            <p className="text-sm text-muted">Статус: {s.status}</p>
+            <p className="text-sm text-muted mb-1">
+              Контакты: {s.contact_info?.phone ?? "—"} / {s.contact_info?.email ?? "—"}
+            </p>
+            <p className="text-sm text-muted mb-3">
+              Статус: {s.status === "approved" ? "✅ Одобрен, кабинет открыт" : s.status}
+            </p>
+
+            {s.user_id ? (
+              <button
+                onClick={() => unlinkPartner(s.id)}
+                className="text-xs px-3 py-1.5 rounded-full bg-bgPrimary border border-danger text-danger"
+              >
+                Отвязать кабинет
+              </button>
+            ) : linkingId === s.id ? (
+              <div className="flex flex-col gap-2">
+                <input
+                  value={linkQuery}
+                  onChange={(e) => setLinkQuery(e.target.value)}
+                  placeholder="Телефон или почта аккаунта партнёра"
+                  className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-xs"
+                />
+                <button
+                  onClick={searchUser}
+                  disabled={linkSearching}
+                  className="text-xs px-3 py-1.5 rounded-full bg-bgPrimary border border-gold text-gold"
+                >
+                  {linkSearching ? "Ищем..." : "Найти"}
+                </button>
+                {linkResult && (
+                  <div className="bg-bgPrimary rounded-lg p-2 flex items-center justify-between">
+                    <span className="text-xs text-offwhite">
+                      Найден: {linkResult.first_name ?? "Без имени"}
+                    </span>
+                    <button
+                      onClick={() => confirmLink(s.id)}
+                      className="text-xs px-3 py-1 rounded-full bg-success text-bgPrimary"
+                    >
+                      Привязать
+                    </button>
+                  </div>
+                )}
+                <button
+                  onClick={() => {
+                    setLinkingId(null);
+                    setLinkResult(null);
+                  }}
+                  className="text-xs text-muted"
+                >
+                  Отмена
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setLinkingId(s.id)}
+                className="text-xs px-3 py-1.5 rounded-full bg-gold text-bgPrimary font-semibold"
+              >
+                Одобрить и открыть кабинет
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -1868,6 +1966,7 @@ function DocumentsTab() {
         >
           <option value="all">Все пользователи</option>
           <option value="participants">Только участницы</option>
+          <option value="partner">Только партнёры</option>
         </select>
         <button
           onClick={createDoc}
@@ -1886,7 +1985,7 @@ function DocumentsTab() {
             <div className="flex justify-between items-start mb-1">
               <p className="text-offwhite text-sm font-semibold">{d.title}</p>
               <span className="text-muted text-[10px]">
-                {d.audience === "participants" ? "участницы" : "все"}
+                {d.audience === "participants" ? "участницы" : d.audience === "partner" ? "партнёры" : "все"}
               </span>
             </div>
             <p className="text-muted text-xs mb-2 line-clamp-2">{d.content}</p>
@@ -2266,6 +2365,21 @@ function AdSpaceTab() {
 
   const addMode = AD_CATEGORIES.find((c) => c.key === addCategory)?.mode ?? "seats";
 
+  const [approvedPartners, setApprovedPartners] = useState<
+    { user_id: string; name: string }[]
+  >([]);
+  const [sellingSlotId, setSellingSlotId] = useState<string | null>(null);
+  const [sellPartnerId, setSellPartnerId] = useState("");
+
+  async function loadPartners() {
+    const { data } = await supabase
+      .from("sponsors")
+      .select("user_id, name")
+      .eq("status", "approved")
+      .not("user_id", "is", null);
+    setApprovedPartners((data as any[]) ?? []);
+  }
+
   async function loadSlots() {
     setLoading(true);
     const { data } = await supabase
@@ -2299,8 +2413,10 @@ function AdSpaceTab() {
   }
 
   useEffect(() => {
-    if (subTab === "slots") loadSlots();
-    else loadRequests();
+    if (subTab === "slots") {
+      loadSlots();
+      loadPartners();
+    } else loadRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subTab]);
 
@@ -2332,19 +2448,46 @@ function AdSpaceTab() {
   }
 
   async function toggleSold(s: AdSlotRow) {
+    if (s.status === "sold") {
+      await supabase
+        .from("ad_slots")
+        .update({ status: "available", sold_at: null })
+        .eq("id", s.id);
+      await supabase.from("ad_slot_purchases").delete().eq("slot_id", s.id);
+      await loadSlots();
+      return;
+    }
+    setSellingSlotId(s.id);
+    setSellPartnerId("");
+  }
+
+  async function confirmSell(s: AdSlotRow) {
     await supabase
       .from("ad_slots")
-      .update({
-        status: s.status === "sold" ? "available" : "sold",
-        sold_at: s.status === "sold" ? null : new Date().toISOString(),
-      })
+      .update({ status: "sold", sold_at: new Date().toISOString() })
       .eq("id", s.id);
+    if (sellPartnerId) {
+      await supabase.from("ad_slot_purchases").insert({
+        slot_id: s.id,
+        owner_user_id: sellPartnerId,
+      });
+    }
+    setSellingSlotId(null);
+    setSellPartnerId("");
     await loadSlots();
   }
 
   async function bumpSold(s: AdSlotRow, delta: number) {
     const next = Math.max(0, Math.min(s.capacity ?? 0, s.sold_count + delta));
     await supabase.from("ad_slots").update({ sold_count: next }).eq("id", s.id);
+    if (delta > 0 && sellPartnerId && sellingSlotId === s.id) {
+      await supabase.from("ad_slot_purchases").insert({
+        slot_id: s.id,
+        owner_user_id: sellPartnerId,
+      });
+      setSellingSlotId(null);
+      setSellPartnerId("");
+    }
     await loadSlots();
   }
 
@@ -2653,6 +2796,32 @@ function AdSpaceTab() {
                                 <> · занято {s.sold_count} из {s.capacity ?? 0}</>
                               )}
                             </p>
+
+                            {sellingSlotId === s.id && (
+                              <div className="mb-2 flex gap-2 items-center">
+                                <select
+                                  value={sellPartnerId}
+                                  onChange={(e) => setSellPartnerId(e.target.value)}
+                                  className="flex-1 bg-bgPrimary border border-gold rounded-lg px-2 py-1 text-xs"
+                                >
+                                  <option value="">— без привязки к партнёру —</option>
+                                  {approvedPartners.map((p) => (
+                                    <option key={p.user_id} value={p.user_id}>
+                                      {p.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                {cat.mode !== "capacity" && (
+                                  <button
+                                    onClick={() => confirmSell(s)}
+                                    className="text-xs px-3 py-1 rounded-full bg-gold text-bgPrimary font-semibold"
+                                  >
+                                    OK
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
                             <div className="flex gap-2 flex-wrap">
                               <button
                                 onClick={() => startEdit(s)}
@@ -2663,7 +2832,10 @@ function AdSpaceTab() {
                               {cat.mode === "capacity" ? (
                                 <>
                                   <button
-                                    onClick={() => bumpSold(s, 1)}
+                                    onClick={() => {
+                                      if (sellingSlotId !== s.id) setSellingSlotId(s.id);
+                                      else bumpSold(s, 1);
+                                    }}
                                     className="text-xs px-3 py-1 rounded-full bg-danger text-bgPrimary"
                                   >
                                     +1 продано
@@ -2824,6 +2996,127 @@ function SocialLinksTab() {
           {saved && <span className="text-success text-sm">Сохранено!</span>}
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// МАТЕРИАЛЫ ДЛЯ УЧАСТНИЦ
+// ---------------------------------------------------------------------
+
+type MaterialRow = { id: string; type: string; file_url: string; title: string | null };
+
+function MediaMaterialsTab() {
+  const [rows, setRows] = useState<MaterialRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [type, setType] = useState("photo");
+  const [title, setTitle] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("media_materials")
+      .select("id, type, file_url, title")
+      .order("created_at", { ascending: false });
+    setRows((data as MaterialRow[]) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function upload() {
+    if (!file) return;
+    setUploading(true);
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${Date.now()}.${fileExt}`;
+    const { error } = await supabase.storage.from("media-materials").upload(filePath, file);
+    if (error) {
+      alert(`Ошибка загрузки: ${error.message}`);
+      setUploading(false);
+      return;
+    }
+    const { data: publicUrlData } = supabase.storage.from("media-materials").getPublicUrl(filePath);
+    await supabase.from("media_materials").insert({
+      type,
+      file_url: publicUrlData.publicUrl,
+      title: title || null,
+    });
+    setTitle("");
+    setFile(null);
+    await load();
+    setUploading(false);
+  }
+
+  async function remove(id: string) {
+    if (!confirm("Удалить этот материал?")) return;
+    await supabase.from("media_materials").delete().eq("id", id);
+    await load();
+  }
+
+  return (
+    <div className="max-w-lg">
+      <p className="text-muted text-sm mb-4">
+        Фото и короткие видео, которые участницы смогут скачать для монтажа
+        своих роликов. Загружайте сколько нужно.
+      </p>
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        >
+          <option value="photo">Фото</option>
+          <option value="video">Видео</option>
+        </select>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Название (необязательно)"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        />
+        <label className="block w-full text-center bg-bgPrimary border border-muted text-offwhite text-xs py-2 rounded-lg mb-2 cursor-pointer">
+          {file ? file.name : "Выбрать файл"}
+          <input
+            type="file"
+            accept={type === "photo" ? "image/*" : "video/*"}
+            className="hidden"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        <button
+          onClick={upload}
+          disabled={uploading || !file}
+          className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+        >
+          {uploading ? "Загрузка..." : "Загрузить"}
+        </button>
+      </div>
+
+      {loading && <p className="text-muted">Загрузка...</p>}
+
+      <div className="grid grid-cols-3 gap-3">
+        {rows.map((m) => (
+          <div key={m.id} className="bg-bgSurface border border-muted rounded-xl overflow-hidden">
+            {m.type === "photo" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={m.file_url} alt="" className="w-full aspect-square object-cover" />
+            ) : (
+              <video src={m.file_url} className="w-full aspect-square object-cover" muted />
+            )}
+            <button
+              onClick={() => remove(m.id)}
+              className="w-full text-danger text-xs py-1"
+            >
+              Удалить
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
