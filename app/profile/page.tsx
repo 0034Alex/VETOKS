@@ -7,6 +7,7 @@ import { getCurrentUser, signOutUser, CurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
+import SocialLinksBar from "@/components/SocialLinksBar";
 
 type Participant = { id: string; display_name: string };
 
@@ -39,15 +40,31 @@ export default function ProfilePage() {
   const [goalTarget, setGoalTarget] = useState(5000);
   const [goalCollected, setGoalCollected] = useState(0);
   const [goalEnabled, setGoalEnabled] = useState(true);
-  const [goalDonors, setGoalDonors] = useState<
-    { name: string; amount: number; created_at: string }[]
-  >([]);
   const [showPrivate, setShowPrivate] = useState(false);
-  const [giftEarnings, setGiftEarnings] = useState(0);
-  const [taskEarnings, setTaskEarnings] = useState(0);
   const [tasksDone, setTasksDone] = useState(0);
   const TOTAL_TASKS = 3;
   const [loading, setLoading] = useState(true);
+
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  async function installAndroid() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      setDeferredPrompt(null);
+    } else {
+      router.push("/install");
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -105,7 +122,6 @@ export default function ProfilePage() {
           .eq("is_read", false);
         setUnreadMessages(unreadMsgs ?? 0);
 
-        // Цель недели — та же логика, что на публичной странице.
         const { data: settingsData } = await supabase
           .from("platform_settings")
           .select("key, value")
@@ -128,34 +144,15 @@ export default function ProfilePage() {
 
         const { data: contribData } = await supabase
           .from("weekly_goal_contributions")
-          .select("amount, user_id, created_at")
+          .select("amount")
           .eq("participant_id", (p as Participant).id)
-          .eq("week_start", weekStartStr)
-          .order("created_at", { ascending: false });
+          .eq("week_start", weekStartStr);
         setGoalCollected(
           (contribData ?? []).reduce(
             (sum: number, c: { amount: number }) => sum + Number(c.amount),
             0
           )
         );
-        if (contribData && contribData.length > 0) {
-          const donorIds = [...new Set(contribData.map((c: { user_id: string }) => c.user_id))];
-          const { data: donorUsers } = await supabase
-            .from("users")
-            .select("id, first_name")
-            .in("id", donorIds);
-          const nameMap: Record<string, string> = {};
-          (donorUsers ?? []).forEach((du: { id: string; first_name: string }) => {
-            nameMap[du.id] = du.first_name ?? "Гость";
-          });
-          setGoalDonors(
-            contribData.map((c: { user_id: string; amount: number; created_at: string }) => ({
-              name: nameMap[c.user_id] ?? "Гость",
-              amount: Number(c.amount),
-              created_at: c.created_at,
-            }))
-          );
-        }
       }
 
       const { count: referrals } = await supabase
@@ -177,23 +174,6 @@ export default function ProfilePage() {
         .eq("user_id", u.id)
         .maybeSingle();
       setBalance(wallet ? Number(wallet.balance) : 0);
-
-      if (wallet) {
-        const { data: txs } = await supabase
-          .from("wallet_transactions")
-          .select("type, amount")
-          .eq("wallet_id", wallet.id)
-          .gt("amount", 0);
-
-        let gifts = 0;
-        let tasks = 0;
-        (txs ?? []).forEach((t: { type: string; amount: number }) => {
-          if (t.type === "gift_received") gifts += Number(t.amount);
-          if (t.type === "task_reward") tasks += Number(t.amount);
-        });
-        setGiftEarnings(gifts);
-        setTaskEarnings(tasks);
-      }
 
       setLoading(false);
     })();
@@ -220,14 +200,31 @@ export default function ProfilePage() {
           style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
         >
           <Logo size={28} />
-          <Link href="/notifications" className="relative text-xl">
-            🔔
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-danger text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
+          <div className="flex items-center gap-4">
+            {participant && (
+              <Link href="/add-video" className="text-2xl leading-none text-gold">
+                +
+              </Link>
             )}
-          </Link>
+            {participant && (
+              <Link href="/messages" className="relative text-xl">
+                ✉️
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-danger text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
+                    {unreadMessages > 9 ? "9+" : unreadMessages}
+                  </span>
+                )}
+              </Link>
+            )}
+            <Link href="/notifications" className="relative text-xl">
+              🔔
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-danger text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
+          </div>
         </div>
 
         <div className="px-6">
@@ -323,71 +320,11 @@ export default function ProfilePage() {
 
           {participant && (
             <a
-              href="/add-video"
+              href="/content-ideas"
               className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mb-4"
             >
               <span className="text-white font-semibold text-sm">
-                🎬 Добавить видео
-              </span>
-            </a>
-          )}
-
-          {participant && (
-            <a
-              href="/content-ideas"
-              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
-            >
-              <span className="text-gold font-semibold text-sm">
                 💡 Идеи для контента на сегодня
-              </span>
-            </a>
-          )}
-
-          {participant && (
-            <a
-              href="/messages"
-              className="flex items-center justify-between bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
-            >
-              <span className="text-gold font-semibold text-sm">
-                ✉️ Сообщения от зрителей
-              </span>
-              {unreadMessages > 0 && (
-                <span className="bg-danger text-white text-xs w-6 h-6 rounded-full flex items-center justify-center">
-                  {unreadMessages > 9 ? "9+" : unreadMessages}
-                </span>
-              )}
-            </a>
-          )}
-
-          {participant && (
-            <a
-              href="/my-application"
-              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
-            >
-              <span className="text-gold font-semibold text-sm">
-                📝 Моя анкета (редактировать)
-              </span>
-            </a>
-          )}
-
-          {participant && (
-            <a
-              href="/my-magazine"
-              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
-            >
-              <span className="text-gold font-semibold text-sm">
-                📖 Моя страница в журнале
-              </span>
-            </a>
-          )}
-
-          {participant && (
-            <a
-              href="/my-cards"
-              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
-            >
-              <span className="text-gold font-semibold text-sm">
-                🃏 Мои карточки
               </span>
             </a>
           )}
@@ -422,27 +359,6 @@ export default function ProfilePage() {
               <span className="text-offwhite text-sm">Мои приглашения</span>
               <span className="text-gold text-sm">{referralCount}</span>
             </div>
-            <a
-              href="/history"
-              className="p-4 flex items-center justify-between text-muted text-sm"
-            >
-              <span>История операций</span>
-              <span>→</span>
-            </a>
-            <a
-              href="/how-it-works"
-              className="p-4 flex items-center justify-between text-muted text-sm"
-            >
-              <span>Как это работает</span>
-              <span>→</span>
-            </a>
-            <a
-              href="/install"
-              className="p-4 flex items-center justify-between text-muted text-sm"
-            >
-              <span>Установить приложение</span>
-              <span>→</span>
-            </a>
             <a
               href="/edit-profile"
               className="p-4 flex items-center justify-between text-muted text-sm"
@@ -486,9 +402,43 @@ export default function ProfilePage() {
             </span>
           </a>
 
+          <div className="flex gap-3 mb-2">
+            <a
+              href="/install"
+              className="flex-1 flex items-center justify-center gap-2 bg-black border border-white/20 rounded-xl py-2.5"
+            >
+              <svg viewBox="0 0 384 512" width="20" height="20" fill="#fff">
+                <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141 4 184.8 4 273.9c0 26.2 4.8 53.3 14.4 81.2 12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-92.3zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
+              </svg>
+              <span className="text-white text-xs font-semibold leading-tight text-left">
+                Загрузить в
+                <br />
+                App Store
+              </span>
+            </a>
+            <button
+              onClick={installAndroid}
+              className="flex-1 flex items-center justify-center gap-2 bg-black border border-white/20 rounded-xl py-2.5"
+            >
+              <svg viewBox="0 0 512 512" width="20" height="20">
+                <path fill="#00D9FF" d="M47 25c-9 5-15 15-15 27v408c0 12 6 22 15 27l231-231z" />
+                <path fill="#FFBC00" d="M47 25l231 231-96 96-159-83c-14-8-22-23-22-38V52c0-12 5-22 13-27z" />
+                <path fill="#FF3A44" d="M182 352l96-96-231-231c-7 4-12 10-13 17z" />
+                <path fill="#00F076" d="M278 256l96 55c17 10 17 34 0 44l-96 55-96-96z" />
+              </svg>
+              <span className="text-white text-xs font-semibold leading-tight text-left">
+                Загрузить в
+                <br />
+                Google Play
+              </span>
+            </button>
+          </div>
+
+          <SocialLinksBar />
+
           <button
             onClick={handleLogout}
-            className="w-full border border-danger text-danger font-semibold py-3 rounded-full text-sm"
+            className="w-full border border-danger text-danger font-semibold py-3 rounded-full text-sm mt-6"
           >
             Выйти
           </button>
