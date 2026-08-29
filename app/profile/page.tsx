@@ -457,6 +457,13 @@ export default function ProfilePage() {
               <span>Документы</span>
               <span>→</span>
             </a>
+            <a
+              href="/ad-space"
+              className="p-4 flex items-center justify-between text-muted text-sm"
+            >
+              <span>Рекламный кабинет</span>
+              <span>→</span>
+            </a>
             <div className="p-4 flex items-center justify-between text-muted text-sm">
               <span>Настройки</span>
               <span>→</span>
