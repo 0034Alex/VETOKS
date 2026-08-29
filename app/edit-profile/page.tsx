@@ -12,6 +12,7 @@ type Region = { id: string; name: string };
 export default function EditProfilePage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
+  const [isParticipant, setIsParticipant] = useState(false);
 
   const [firstName, setFirstName] = useState("");
   const [phone, setPhone] = useState("");
@@ -34,6 +35,13 @@ export default function EditProfilePage() {
         return;
       }
       setUserId(u.id);
+
+      const { data: p } = await supabase
+        .from("participants")
+        .select("id")
+        .eq("user_id", u.id)
+        .maybeSingle();
+      setIsParticipant(!!p);
 
       const { data: regionsData } = await supabase
         .from("regions")
@@ -207,6 +215,32 @@ export default function EditProfilePage() {
           </button>
           {notice && (
             <p className="text-gold text-sm text-center">{notice}</p>
+          )}
+
+          {isParticipant && (
+            <div className="bg-bgSurface border border-muted rounded-xl divide-y divide-muted mt-6">
+              <a
+                href="/my-application"
+                className="p-4 flex items-center justify-between text-muted text-sm"
+              >
+                <span>📝 Моя анкета</span>
+                <span>→</span>
+              </a>
+              <a
+                href="/my-magazine"
+                className="p-4 flex items-center justify-between text-muted text-sm"
+              >
+                <span>📖 Моя страница в журнале</span>
+                <span>→</span>
+              </a>
+              <a
+                href="/my-cards"
+                className="p-4 flex items-center justify-between text-muted text-sm"
+              >
+                <span>🃏 Мои карточки</span>
+                <span>→</span>
+              </a>
+            </div>
           )}
         </div>
       </div>
