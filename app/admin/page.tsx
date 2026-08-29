@@ -2373,7 +2373,6 @@ function AdSpaceTab() {
         duration: editDuration,
         slot_number: mode === "capacity" ? 1 : Number(editSlotNumber),
         capacity: mode === "capacity" ? Number(editCapacity || 20) : null,
-        slot_number: Number(editSlotNumber),
       })
       .eq("id", id);
     setEditingId(null);
