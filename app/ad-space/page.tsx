@@ -16,15 +16,23 @@ type Slot = {
   presale_until: string | null;
   duration: string;
   status: string;
+  capacity: number | null;
+  sold_count: number;
 };
 
-const CATEGORIES: { key: string; label: string }[] = [
-  { key: "magazine", label: "Журнал" },
-  { key: "homepage", label: "Главная (партнёры)" },
-  { key: "banner_participants", label: "Баннер — Участницы" },
-  { key: "banner_rating", label: "Баннер — Рейтинг" },
-  { key: "jury", label: "Место в жюри" },
-  { key: "grand_final", label: "Гранд-финал" },
+type Mode = "tiers" | "capacity" | "seats";
+
+const CATEGORIES: { key: string; label: string; mode: Mode }[] = [
+  { key: "magazine", label: "Журнал", mode: "tiers" },
+  { key: "homepage", label: "Главная (партнёры)", mode: "capacity" },
+  { key: "banner_participants", label: "Баннер — Участницы", mode: "capacity" },
+  { key: "banner_rating", label: "Баннер — Рейтинг", mode: "capacity" },
+  { key: "jury", label: "Место в жюри", mode: "seats" },
+  { key: "magazine_gf", label: "Гранд-финал · Журнал", mode: "tiers" },
+  { key: "homepage_gf", label: "Гранд-финал · Главная", mode: "capacity" },
+  { key: "banner_participants_gf", label: "Гранд-финал · Баннер Участницы", mode: "capacity" },
+  { key: "banner_rating_gf", label: "Гранд-финал · Баннер Рейтинг", mode: "capacity" },
+  { key: "jury_gf", label: "Гранд-финал · Жюри", mode: "seats" },
 ];
 
 const DURATION_LABELS: Record<string, string> = {
@@ -38,6 +46,25 @@ function isPresaleActive(slot: Slot) {
     slot.presale_until != null &&
     new Date(slot.presale_until) > new Date()
   );
+}
+
+function PriceBlock({ slot }: { slot: Slot }) {
+  if (isPresaleActive(slot)) {
+    return (
+      <div>
+        <span className="text-muted text-sm line-through mr-2">
+          {Math.round(slot.full_price)} ₽
+        </span>
+        <span className="text-gold text-xl font-bold">
+          {Math.round(slot.presale_price!)} ₽
+        </span>
+        <p className="text-muted text-[11px] mt-1">
+          Предпродажа до {new Date(slot.presale_until!).toLocaleDateString("ru-RU")}
+        </p>
+      </div>
+    );
+  }
+  return <span className="text-gold text-xl font-bold">{Math.round(slot.full_price)} ₽</span>;
 }
 
 export default function AdSpacePage() {
@@ -56,7 +83,7 @@ export default function AdSpacePage() {
       const { data } = await supabase
         .from("ad_slots")
         .select(
-          "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status"
+          "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status, capacity, sold_count"
         )
         .order("category", { ascending: true })
         .order("slot_number", { ascending: true });
@@ -65,8 +92,12 @@ export default function AdSpacePage() {
     })();
   }, []);
 
+  function isFull(s: Slot) {
+    return s.capacity != null && s.sold_count >= s.capacity;
+  }
+
   function openSlot(slot: Slot) {
-    if (slot.status === "sold") return;
+    if (slot.status === "sold" || isFull(slot)) return;
     setSelected(slot);
     setName("");
     setPhone("");
@@ -94,7 +125,7 @@ export default function AdSpacePage() {
         Рекламный кабинет
       </h1>
       <p className="text-muted text-sm mb-6 px-6">
-        Все разделы сразу — свободные места светятся золотым, занятые тёмные.
+        Все разделы сразу — выберите подходящее место или формат.
       </p>
 
       {loading && <p className="text-muted text-center">Загрузка...</p>}
@@ -103,40 +134,114 @@ export default function AdSpacePage() {
         CATEGORIES.map((cat) => {
           const catSlots = slots.filter((s) => s.category === cat.key);
           if (catSlots.length === 0) return null;
+
           return (
             <div key={cat.key} className="mb-8">
               <h2 className="text-lg font-semibold text-gold mb-3 px-6">
                 {cat.label}
               </h2>
-              <div className="px-6 grid grid-cols-3 md:grid-cols-4 gap-3">
-                {catSlots.map((s) => {
-                  const sold = s.status === "sold";
+
+              {cat.mode === "seats" && (
+                <div className="px-6 grid grid-cols-3 md:grid-cols-4 gap-3">
+                  {catSlots.map((s) => {
+                    const sold = s.status === "sold";
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => openSlot(s)}
+                        disabled={sold}
+                        className={`aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-semibold p-2 ${
+                          sold
+                            ? "bg-danger/20 border border-danger/40 text-danger/70 cursor-not-allowed"
+                            : "bg-bgSurface border border-gold text-gold"
+                        }`}
+                      >
+                        <span className="text-lg mb-1">{sold ? "✕" : "✦"}</span>
+                        <span className="text-center leading-tight">Место {s.slot_number}</span>
+                        {sold && <span className="text-[10px] mt-1">Занято</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {cat.mode === "tiers" && (
+                <div className="px-6 flex gap-3 overflow-x-auto">
+                  {catSlots.map((s) => {
+                    const sold = s.status === "sold";
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => openSlot(s)}
+                        disabled={sold}
+                        className={`flex-shrink-0 w-40 rounded-xl p-4 text-left ${
+                          sold
+                            ? "bg-danger/10 border border-danger/30"
+                            : "bg-bgSurface border border-gold"
+                        }`}
+                      >
+                        <p className="text-offwhite text-sm font-semibold mb-1">
+                          Показ {s.slot_number} раз{s.slot_number === 1 ? "" : "а"}
+                        </p>
+                        {sold ? (
+                          <p className="text-danger text-xs">Занято</p>
+                        ) : (
+                          <PriceBlock slot={s} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {cat.mode === "capacity" &&
+                catSlots.map((s) => {
+                  const full = isFull(s);
+                  const cap = s.capacity ?? 0;
                   return (
                     <button
                       key={s.id}
                       onClick={() => openSlot(s)}
-                      disabled={sold}
-                      className={`aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-semibold p-2 ${
-                        sold
-                          ? "bg-danger/20 border border-danger/40 text-danger/70 cursor-not-allowed"
-                          : "bg-bgSurface border border-gold text-gold"
+                      disabled={full}
+                      className={`mx-6 w-[calc(100%-3rem)] rounded-xl p-4 text-left ${
+                        full
+                          ? "bg-danger/10 border border-danger/30"
+                          : "bg-bgSurface border border-gold"
                       }`}
                     >
-                      <span className="text-lg mb-1">{sold ? "✕" : "✦"}</span>
-                      <span className="text-center leading-tight">Место {s.slot_number}</span>
-                      {sold && <span className="text-[10px] mt-1">Занято</span>}
+                      <p className="text-offwhite text-sm font-semibold mb-1">{s.title}</p>
+                      {s.description && (
+                        <p className="text-muted text-xs mb-2">{s.description}</p>
+                      )}
+                      {full ? (
+                        <p className="text-danger text-xs mb-2">
+                          Все места выкуплены ({s.sold_count} из {cap})
+                        </p>
+                      ) : (
+                        <>
+                          <div className="mb-2">
+                            <PriceBlock slot={s} />
+                          </div>
+                          <div className="w-full bg-black/40 rounded-full h-1.5 mb-1">
+                            <div
+                              className="bg-gold rounded-full h-1.5"
+                              style={{ width: `${cap ? (s.sold_count / cap) * 100 : 0}%` }}
+                            />
+                          </div>
+                          <p className="text-muted text-[11px]">
+                            Занято {s.sold_count} из {cap}
+                          </p>
+                        </>
+                      )}
                     </button>
                   );
                 })}
-              </div>
             </div>
           );
         })}
 
       {!loading && slots.length === 0 && (
-        <p className="text-muted text-center px-6">
-          Мест пока не выставлено.
-        </p>
+        <p className="text-muted text-center px-6">Мест пока не выставлено.</p>
       )}
 
       {selected && (
@@ -162,24 +267,7 @@ export default function AdSpacePage() {
             )}
 
             <div className="mb-4">
-              {isPresaleActive(selected) ? (
-                <div>
-                  <span className="text-muted text-sm line-through mr-2">
-                    {Math.round(selected.full_price)} ₽
-                  </span>
-                  <span className="text-gold text-xl font-bold">
-                    {Math.round(selected.presale_price!)} ₽
-                  </span>
-                  <p className="text-muted text-[11px] mt-1">
-                    Предпродажа до{" "}
-                    {new Date(selected.presale_until!).toLocaleDateString("ru-RU")}
-                  </p>
-                </div>
-              ) : (
-                <span className="text-gold text-xl font-bold">
-                  {Math.round(selected.full_price)} ₽
-                </span>
-              )}
+              <PriceBlock slot={selected} />
             </div>
 
             {sent ? (
