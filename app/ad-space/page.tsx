@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 
@@ -68,9 +70,11 @@ function PriceBlock({ slot }: { slot: Slot }) {
 }
 
 export default function AdSpacePage() {
+  const router = useRouter();
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Slot | null>(null);
+  const [allowed, setAllowed] = useState(false);
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -80,6 +84,25 @@ export default function AdSpacePage() {
 
   useEffect(() => {
     (async () => {
+      const u = await getCurrentUser();
+      if (!u) {
+        router.push("/login?redirect=/ad-space");
+        return;
+      }
+
+      const { data: sponsor } = await supabase
+        .from("sponsors")
+        .select("id")
+        .eq("user_id", u.id)
+        .eq("status", "approved")
+        .maybeSingle();
+
+      if (!sponsor) {
+        setLoading(false);
+        return;
+      }
+      setAllowed(true);
+
       const { data } = await supabase
         .from("ad_slots")
         .select(
@@ -90,7 +113,7 @@ export default function AdSpacePage() {
       setSlots((data as Slot[]) ?? []);
       setLoading(false);
     })();
-  }, []);
+  }, [router]);
 
   function isFull(s: Slot) {
     return s.capacity != null && s.sold_count >= s.capacity;
@@ -118,6 +141,29 @@ export default function AdSpacePage() {
     setSending(false);
   }
 
+  if (loading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center text-muted">
+        Загрузка...
+      </main>
+    );
+  }
+
+  if (!allowed) {
+    return (
+      <main className="min-h-screen px-6 py-12 pb-28 flex flex-col items-center justify-center text-center">
+        <PageHeader />
+        <h1 className="text-2xl font-semibold text-gold mb-4">Рекламный кабинет</h1>
+        <p className="text-muted max-w-sm">
+          Этот раздел доступен только одобренным партнёрам VETOKS. Если вы
+          хотите разместить рекламу — оставьте заявку на странице «Стать
+          партнёром», и мы откроем вам доступ.
+        </p>
+        <BottomNav />
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
@@ -127,8 +173,6 @@ export default function AdSpacePage() {
       <p className="text-muted text-sm mb-6 px-6">
         Все разделы сразу — выберите подходящее место или формат.
       </p>
-
-      {loading && <p className="text-muted text-center">Загрузка...</p>}
 
       {!loading &&
         CATEGORIES.map((cat) => {
