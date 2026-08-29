@@ -30,6 +30,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [participant, setParticipant] = useState<Participant | null>(null);
+  const [isPartner, setIsPartner] = useState(false);
   const [voteCount, setVoteCount] = useState(0);
   const [giftCount, setGiftCount] = useState(0);
   const [referralCount, setReferralCount] = useState(0);
@@ -81,6 +82,14 @@ export default function ProfilePage() {
         .eq("user_id", u.id)
         .maybeSingle();
       setParticipant(p as Participant | null);
+
+      const { data: sponsorRow } = await supabase
+        .from("sponsors")
+        .select("id")
+        .eq("user_id", u.id)
+        .eq("status", "approved")
+        .maybeSingle();
+      setIsPartner(!!sponsorRow);
 
       if (p) {
         const { count: votes } = await supabase
@@ -331,6 +340,17 @@ export default function ProfilePage() {
 
           {participant && (
             <a
+              href="/media-materials"
+              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
+            >
+              <span className="text-gold font-semibold text-sm">
+                🎬 Материалы для монтажа
+              </span>
+            </a>
+          )}
+
+          {participant && (
+            <a
               href="/tasks"
               className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mb-4"
             >
@@ -393,14 +413,25 @@ export default function ProfilePage() {
             </a>
           </div>
 
-          <a
-            href="/partner"
-            className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mb-6 text-center"
-          >
-            <span className="text-white font-semibold text-sm">
-              🤝 Стать партнёром
-            </span>
-          </a>
+          {isPartner ? (
+            <a
+              href="/partner-cabinet"
+              className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mb-6 text-center"
+            >
+              <span className="text-white font-semibold text-sm">
+                🏢 Кабинет партнёра
+              </span>
+            </a>
+          ) : (
+            <a
+              href="/partner"
+              className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mb-6 text-center"
+            >
+              <span className="text-white font-semibold text-sm">
+                🤝 Стать партнёром
+              </span>
+            </a>
+          )}
 
           <div className="flex gap-3 mb-2">
             <a
