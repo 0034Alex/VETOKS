@@ -177,16 +177,16 @@ export default function EditProfilePage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-offwhite text-sm">Почта для связи</label>
+            <label className="text-offwhite text-sm">Почта (для входа)</label>
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3"
+              disabled
+              className="bg-bgPrimary text-muted border border-muted rounded-lg px-4 py-3 cursor-not-allowed"
             />
             <p className="text-muted text-[11px]">
-              Это контактная почта в профиле. Почту, которой вы входите в
-              аккаунт, эта форма не меняет — для этого обратитесь в поддержку.
+              Почту для входа сейчас изменить нельзя — обратитесь в поддержку,
+              если нужно её сменить.
             </p>
           </div>
 
