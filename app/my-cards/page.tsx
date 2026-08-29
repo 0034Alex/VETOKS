@@ -17,9 +17,11 @@ type Card = {
 };
 
 const STAGES = [
-  { key: "casting", label: "Кастинг" },
+  { key: "casting", label: "Отбор" },
   { key: "week2", label: "Неделя 2" },
   { key: "week3", label: "Неделя 3" },
+  { key: "week4", label: "Неделя 4" },
+  { key: "week5", label: "Неделя 5" },
   { key: "grand_final", label: "Гранд-финал" },
 ];
 
