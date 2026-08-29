@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
@@ -48,7 +47,7 @@ export default function PartnerPage() {
     <main className="min-h-screen pb-28">
       <PageHeader />
       <div className="px-6 flex flex-col items-center">
-        <div className="w-full max-w-sm bg-gradient-to-br from-[#7C3AED] to-[#EC4899] rounded-2xl p-6 mb-4 text-center">
+        <div className="w-full max-w-sm bg-gradient-to-br from-[#7C3AED] to-[#EC4899] rounded-2xl p-6 mb-6 text-center">
           <h1 className="text-2xl font-bold text-white mb-2">
             🤝 Стать партнёром VETOKS
           </h1>
@@ -58,15 +57,8 @@ export default function PartnerPage() {
           </p>
         </div>
 
-        <Link
-          href="/ad-space"
-          className="w-full max-w-sm bg-bgSurface border border-gold text-gold font-semibold text-center py-3 rounded-full mb-6"
-        >
-          🎬 Выбрать рекламное место
-        </Link>
-
         <p className="text-muted text-xs text-center max-w-sm mb-2">
-          Или напишите нам напрямую, если хотите обсудить условия:
+          Оставьте заявку, и мы свяжемся с вами, чтобы обсудить условия:
         </p>
 
         <form
