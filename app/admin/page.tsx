@@ -2216,11 +2216,13 @@ const AD_CATEGORIES: { key: string; label: string }[] = [
 
 function AdSpaceTab() {
   const [subTab, setSubTab] = useState<"slots" | "requests">("slots");
-  const [category, setCategory] = useState("magazine");
   const [slots, setSlots] = useState<AdSlotRow[]>([]);
-  const [requests, setRequests] = useState<AdSlotRequestRow[]>([]);
+  const [requests, setRequests] = useState<
+    (AdSlotRequestRow & { slot_title?: string; slot_category?: string; slot_number?: number })[]
+  >([]);
   const [loading, setLoading] = useState(true);
 
+  const [addCategory, setAddCategory] = useState("magazine");
   const [title, setTitle] = useState("");
   const [slotNumber, setSlotNumber] = useState("");
   const [fullPrice, setFullPrice] = useState("");
@@ -2229,6 +2231,15 @@ function AdSpaceTab() {
   const [duration, setDuration] = useState("season");
   const [description, setDescription] = useState("");
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editFullPrice, setEditFullPrice] = useState("");
+  const [editPresalePrice, setEditPresalePrice] = useState("");
+  const [editPresaleUntil, setEditPresaleUntil] = useState("");
+  const [editDuration, setEditDuration] = useState("season");
+  const [editSlotNumber, setEditSlotNumber] = useState("");
+
   async function loadSlots() {
     setLoading(true);
     const { data } = await supabase
@@ -2236,7 +2247,7 @@ function AdSpaceTab() {
       .select(
         "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status"
       )
-      .eq("category", category)
+      .order("category", { ascending: true })
       .order("slot_number", { ascending: true });
     setSlots((data as AdSlotRow[]) ?? []);
     setLoading(false);
@@ -2246,9 +2257,18 @@ function AdSpaceTab() {
     setLoading(true);
     const { data } = await supabase
       .from("ad_slot_requests")
-      .select("id, slot_id, name, phone, message, status, created_at")
+      .select("id, slot_id, name, phone, message, status, created_at, ad_slots(title, category, slot_number)")
       .order("created_at", { ascending: false });
-    setRequests((data as AdSlotRequestRow[]) ?? []);
+    const mapped = (data as any[] ?? []).map((r) => {
+      const slotInfo = Array.isArray(r.ad_slots) ? r.ad_slots[0] : r.ad_slots;
+      return {
+        ...r,
+        slot_title: slotInfo?.title,
+        slot_category: slotInfo?.category,
+        slot_number: slotInfo?.slot_number,
+      };
+    });
+    setRequests(mapped);
     setLoading(false);
   }
 
@@ -2256,12 +2276,12 @@ function AdSpaceTab() {
     if (subTab === "slots") loadSlots();
     else loadRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subTab, category]);
+  }, [subTab]);
 
   async function createSlot() {
     if (!title || !slotNumber || !fullPrice) return;
     await supabase.from("ad_slots").insert({
-      category,
+      category: addCategory,
       slot_number: Number(slotNumber),
       title,
       description: description || null,
@@ -2296,6 +2316,34 @@ function AdSpaceTab() {
     await loadSlots();
   }
 
+  function startEdit(s: AdSlotRow) {
+    setEditingId(s.id);
+    setEditTitle(s.title);
+    setEditDescription(s.description ?? "");
+    setEditFullPrice(String(s.full_price));
+    setEditPresalePrice(s.presale_price != null ? String(s.presale_price) : "");
+    setEditPresaleUntil(s.presale_until ? s.presale_until.slice(0, 10) : "");
+    setEditDuration(s.duration);
+    setEditSlotNumber(String(s.slot_number));
+  }
+
+  async function saveEdit(id: string) {
+    await supabase
+      .from("ad_slots")
+      .update({
+        title: editTitle,
+        description: editDescription || null,
+        full_price: Number(editFullPrice),
+        presale_price: editPresalePrice ? Number(editPresalePrice) : null,
+        presale_until: editPresaleUntil ? new Date(editPresaleUntil).toISOString() : null,
+        duration: editDuration,
+        slot_number: Number(editSlotNumber),
+      })
+      .eq("id", id);
+    setEditingId(null);
+    await loadSlots();
+  }
+
   async function markRequestStatus(id: string, status: string) {
     await supabase.from("ad_slot_requests").update({ status }).eq("id", id);
     await loadRequests();
@@ -2324,26 +2372,19 @@ function AdSpaceTab() {
 
       {subTab === "slots" && (
         <>
-          <div className="flex overflow-x-auto gap-2 mb-4 pb-1">
-            {AD_CATEGORIES.map((c) => (
-              <button
-                key={c.key}
-                onClick={() => setCategory(c.key)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
-                  category === c.key
-                    ? "bg-gold text-bgPrimary"
-                    : "bg-bgSurface text-muted border border-muted"
-                }`}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-
           <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
-            <p className="text-offwhite text-sm font-semibold mb-2">
-              Новое место — {AD_CATEGORIES.find((c) => c.key === category)?.label}
-            </p>
+            <p className="text-offwhite text-sm font-semibold mb-2">Новое место</p>
+            <select
+              value={addCategory}
+              onChange={(e) => setAddCategory(e.target.value)}
+              className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+            >
+              {AD_CATEGORIES.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
             <input
               value={slotNumber}
               onChange={(e) => setSlotNumber(e.target.value)}
@@ -2408,56 +2449,150 @@ function AdSpaceTab() {
 
           {loading && <p className="text-muted">Загрузка...</p>}
 
-          <div className="flex flex-col gap-3">
-            {slots.map((s) => (
-              <div key={s.id} className="bg-bgSurface border border-muted rounded-xl p-3">
-                <div className="flex justify-between items-start mb-1">
-                  <p className="text-offwhite text-sm font-semibold">
-                    #{s.slot_number} · {s.title}
-                  </p>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full ${
-                      s.status === "sold"
-                        ? "bg-danger/20 text-danger"
-                        : "bg-success/20 text-success"
-                    }`}
-                  >
-                    {s.status === "sold" ? "Занято" : "Свободно"}
-                  </span>
+          {!loading &&
+            AD_CATEGORIES.map((cat) => {
+              const catSlots = slots.filter((s) => s.category === cat.key);
+              if (catSlots.length === 0) return null;
+              return (
+                <div key={cat.key} className="mb-6">
+                  <p className="text-gold text-sm font-semibold mb-2">{cat.label}</p>
+                  <div className="flex flex-col gap-3">
+                    {catSlots.map((s) => (
+                      <div key={s.id} className="bg-bgSurface border border-muted rounded-xl p-3">
+                        {editingId === s.id ? (
+                          <div className="flex flex-col gap-2">
+                            <input
+                              value={editSlotNumber}
+                              onChange={(e) => setEditSlotNumber(e.target.value)}
+                              type="number"
+                              placeholder="Номер места"
+                              className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+                            />
+                            <input
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              placeholder="Название"
+                              className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+                            />
+                            <textarea
+                              value={editDescription}
+                              onChange={(e) => setEditDescription(e.target.value)}
+                              rows={2}
+                              placeholder="Описание"
+                              className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+                            />
+                            <div className="flex gap-2">
+                              <input
+                                value={editFullPrice}
+                                onChange={(e) => setEditFullPrice(e.target.value)}
+                                type="number"
+                                placeholder="Полная цена"
+                                className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+                              />
+                              <select
+                                value={editDuration}
+                                onChange={(e) => setEditDuration(e.target.value)}
+                                className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+                              >
+                                <option value="week">На неделю</option>
+                                <option value="season">На весь сезон</option>
+                              </select>
+                            </div>
+                            <div className="flex gap-2">
+                              <input
+                                value={editPresalePrice}
+                                onChange={(e) => setEditPresalePrice(e.target.value)}
+                                type="number"
+                                placeholder="Цена предпродажи"
+                                className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+                              />
+                              <input
+                                value={editPresaleUntil}
+                                onChange={(e) => setEditPresaleUntil(e.target.value)}
+                                type="date"
+                                className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => saveEdit(s.id)}
+                                className="flex-1 bg-gold text-bgPrimary font-semibold py-2 rounded-full text-xs"
+                              >
+                                Сохранить
+                              </button>
+                              <button
+                                onClick={() => setEditingId(null)}
+                                className="flex-1 bg-bgPrimary border border-muted text-muted py-2 rounded-full text-xs"
+                              >
+                                Отмена
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-start mb-1">
+                              <p className="text-offwhite text-sm font-semibold">
+                                #{s.slot_number} · {s.title}
+                              </p>
+                              <span
+                                className={`text-[10px] px-2 py-0.5 rounded-full flex-shrink-0 ${
+                                  s.status === "sold"
+                                    ? "bg-danger/20 text-danger"
+                                    : "bg-success/20 text-success"
+                                }`}
+                              >
+                                {s.status === "sold" ? "Занято" : "Свободно"}
+                              </span>
+                            </div>
+                            <p className="text-muted text-xs mb-2">
+                              {Math.round(s.full_price)} ₽
+                              {s.presale_price && (
+                                <>
+                                  {" "}
+                                  · предпродажа {Math.round(s.presale_price)} ₽ до{" "}
+                                  {s.presale_until &&
+                                    new Date(s.presale_until).toLocaleDateString("ru-RU")}
+                                </>
+                              )}
+                              {" · "}
+                              {s.duration === "week" ? "на неделю" : "на сезон"}
+                            </p>
+                            <div className="flex gap-2 flex-wrap">
+                              <button
+                                onClick={() => startEdit(s)}
+                                className="text-xs px-3 py-1 rounded-full bg-bgPrimary border border-gold text-gold"
+                              >
+                                Редактировать
+                              </button>
+                              <button
+                                onClick={() => toggleSold(s)}
+                                className={`text-xs px-3 py-1 rounded-full ${
+                                  s.status === "sold"
+                                    ? "bg-bgPrimary border border-muted text-muted"
+                                    : "bg-danger text-bgPrimary"
+                                }`}
+                              >
+                                {s.status === "sold" ? "Освободить" : "Отметить проданным"}
+                              </button>
+                              <button
+                                onClick={() => removeSlot(s.id)}
+                                className="text-xs px-3 py-1 rounded-full bg-bgPrimary border border-danger text-danger"
+                              >
+                                Удалить
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <p className="text-muted text-xs mb-2">
-                  {Math.round(s.full_price)} ₽
-                  {s.presale_price && (
-                    <>
-                      {" "}
-                      · предпродажа {Math.round(s.presale_price)} ₽ до{" "}
-                      {s.presale_until && new Date(s.presale_until).toLocaleDateString("ru-RU")}
-                    </>
-                  )}
-                  {" · "}
-                  {s.duration === "week" ? "на неделю" : "на сезон"}
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => toggleSold(s)}
-                    className={`text-xs px-3 py-1 rounded-full ${
-                      s.status === "sold"
-                        ? "bg-bgPrimary border border-muted text-muted"
-                        : "bg-danger text-bgPrimary"
-                    }`}
-                  >
-                    {s.status === "sold" ? "Освободить" : "Отметить проданным"}
-                  </button>
-                  <button
-                    onClick={() => removeSlot(s.id)}
-                    className="text-xs px-3 py-1 rounded-full bg-bgPrimary border border-danger text-danger"
-                  >
-                    Удалить
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              );
+            })}
+
+          {!loading && slots.length === 0 && (
+            <p className="text-muted text-sm">Мест пока не выставлено.</p>
+          )}
         </>
       )}
 
@@ -2469,6 +2604,11 @@ function AdSpaceTab() {
           )}
           {requests.map((r) => (
             <div key={r.id} className="bg-bgSurface border border-muted rounded-xl p-4">
+              <p className="text-gold text-xs font-semibold mb-1">
+                {AD_CATEGORIES.find((c) => c.key === r.slot_category)?.label ?? "—"}
+                {r.slot_number != null && ` · место ${r.slot_number}`}
+              </p>
+              <p className="text-muted text-xs mb-2">{r.slot_title ?? "Место удалено"}</p>
               <p className="text-offwhite text-sm font-semibold mb-1">{r.name}</p>
               <p className="text-muted text-xs mb-1">{r.phone ?? "телефон не указан"}</p>
               {r.message && <p className="text-muted text-sm mb-2">{r.message}</p>}
