@@ -20,7 +20,8 @@ type Tab =
   | "stages"
   | "banners"
   | "documents"
-  | "calendar";
+  | "calendar"
+  | "social";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -38,6 +39,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "banners", label: "Баннеры" },
   { key: "documents", label: "Документы" },
   { key: "calendar", label: "Календарь контента" },
+  { key: "social", label: "Соцсети" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
@@ -45,7 +47,7 @@ const TABS: { key: Tab; label: string }[] = [
 const PERMISSION_TABS: Record<string, Tab[]> = {
   moderation: ["applications", "participants", "cards", "calendar"],
   finance: ["dashboard", "goal"],
-  partners: ["partners", "partner-logos", "banners", "ad-space"],
+  partners: ["partners", "partner-logos", "banners", "ad-space", "social"],
   staff: ["staff", "users"],
   support: ["support", "documents"],
 };
@@ -197,6 +199,7 @@ export default function AdminPage() {
         {tab === "banners" && <BannersTab />}
         {tab === "documents" && <DocumentsTab />}
         {tab === "calendar" && <CalendarTab />}
+        {tab === "social" && <SocialLinksTab />}
       </div>
     </main>
   );
@@ -1039,9 +1042,11 @@ function SupportTab() {
 // ---------------------------------------------------------------------
 
 const CARD_STAGE_LABELS: Record<string, string> = {
-  casting: "Кастинг",
+  casting: "Отбор",
   week2: "Неделя 2",
   week3: "Неделя 3",
+  week4: "Неделя 4",
+  week5: "Неделя 5",
   grand_final: "Гранд-финал",
 };
 
@@ -2734,6 +2739,89 @@ function AdSpaceTab() {
               </select>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// СОЦСЕТИ
+// ---------------------------------------------------------------------
+
+function SocialLinksTab() {
+  const [telegram, setTelegram] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [tiktok, setTiktok] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase.from("social_links").select("key, url");
+    (data ?? []).forEach((row: { key: string; url: string | null }) => {
+      if (row.key === "telegram") setTelegram(row.url ?? "");
+      if (row.key === "instagram") setInstagram(row.url ?? "");
+      if (row.key === "tiktok") setTiktok(row.url ?? "");
+    });
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function save() {
+    await supabase.from("social_links").upsert({ key: "telegram", url: telegram || null });
+    await supabase.from("social_links").upsert({ key: "instagram", url: instagram || null });
+    await supabase.from("social_links").upsert({ key: "tiktok", url: tiktok || null });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  return (
+    <div className="max-w-lg">
+      <p className="text-muted text-sm mb-4">
+        Ссылки на официальные соцсети VETOKS — показываются в профиле у всех
+        пользователей внизу, под кнопками установки приложения.
+      </p>
+      {loading && <p className="text-muted">Загрузка...</p>}
+      {!loading && (
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="text-offwhite text-sm">Telegram</label>
+            <input
+              value={telegram}
+              onChange={(e) => setTelegram(e.target.value)}
+              placeholder="https://t.me/..."
+              className="w-full bg-bgSurface border border-muted rounded-lg px-3 py-2 text-sm mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-offwhite text-sm">Instagram</label>
+            <input
+              value={instagram}
+              onChange={(e) => setInstagram(e.target.value)}
+              placeholder="https://instagram.com/..."
+              className="w-full bg-bgSurface border border-muted rounded-lg px-3 py-2 text-sm mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-offwhite text-sm">TikTok</label>
+            <input
+              value={tiktok}
+              onChange={(e) => setTiktok(e.target.value)}
+              placeholder="https://tiktok.com/@..."
+              className="w-full bg-bgSurface border border-muted rounded-lg px-3 py-2 text-sm mt-1"
+            />
+          </div>
+          <button
+            onClick={save}
+            className="bg-gold text-bgPrimary font-semibold px-6 py-2 rounded-full text-sm w-fit"
+          >
+            Сохранить
+          </button>
+          {saved && <span className="text-success text-sm">Сохранено!</span>}
         </div>
       )}
     </div>
