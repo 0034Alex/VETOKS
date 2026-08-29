@@ -150,7 +150,7 @@ export default function AdminPage() {
           onClick={() => setMenuOpen(false)}
         >
           <div
-            className="bg-bgSurface w-72 h-full p-4 flex flex-col gap-1"
+            className="bg-bgSurface w-72 h-full p-4 flex flex-col gap-1 overflow-y-auto"
             style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
             onClick={(e) => e.stopPropagation()}
           >
