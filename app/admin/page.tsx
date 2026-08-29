@@ -13,6 +13,7 @@ type Tab =
   | "staff"
   | "partners"
   | "partner-logos"
+  | "ad-space"
   | "support"
   | "cards"
   | "goal"
@@ -29,6 +30,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "staff", label: "Персонал" },
   { key: "partners", label: "Партнёры" },
   { key: "partner-logos", label: "Витрина партнёров" },
+  { key: "ad-space", label: "Рекламный кабинет" },
   { key: "support", label: "Поддержка" },
   { key: "cards", label: "Карточки" },
   { key: "goal", label: "Цель недели" },
@@ -43,7 +45,7 @@ const TABS: { key: Tab; label: string }[] = [
 const PERMISSION_TABS: Record<string, Tab[]> = {
   moderation: ["applications", "participants", "cards", "calendar"],
   finance: ["dashboard", "goal"],
-  partners: ["partners", "partner-logos", "banners"],
+  partners: ["partners", "partner-logos", "banners", "ad-space"],
   staff: ["staff", "users"],
   support: ["support", "documents"],
 };
@@ -187,6 +189,7 @@ export default function AdminPage() {
         {tab === "staff" && <StaffTab />}
         {tab === "partners" && <PartnersTab />}
         {tab === "partner-logos" && <PartnerLogosTab />}
+        {tab === "ad-space" && <AdSpaceTab />}
         {tab === "support" && <SupportTab />}
         {tab === "cards" && <CardsTab />}
         {tab === "goal" && <GoalTab />}
@@ -2171,6 +2174,320 @@ function PartnerLogosTab() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// РЕКЛАМНЫЙ КАБИНЕТ
+// ---------------------------------------------------------------------
+
+type AdSlotRow = {
+  id: string;
+  category: string;
+  slot_number: number;
+  title: string;
+  description: string | null;
+  full_price: number;
+  presale_price: number | null;
+  presale_until: string | null;
+  duration: string;
+  status: string;
+};
+
+type AdSlotRequestRow = {
+  id: string;
+  slot_id: string;
+  name: string;
+  phone: string | null;
+  message: string | null;
+  status: string;
+  created_at: string;
+};
+
+const AD_CATEGORIES: { key: string; label: string }[] = [
+  { key: "magazine", label: "Журнал" },
+  { key: "homepage", label: "Главная (партнёры)" },
+  { key: "banner_participants", label: "Баннер — Участницы" },
+  { key: "banner_rating", label: "Баннер — Рейтинг" },
+  { key: "jury", label: "Место в жюри" },
+  { key: "grand_final", label: "Гранд-финал" },
+];
+
+function AdSpaceTab() {
+  const [subTab, setSubTab] = useState<"slots" | "requests">("slots");
+  const [category, setCategory] = useState("magazine");
+  const [slots, setSlots] = useState<AdSlotRow[]>([]);
+  const [requests, setRequests] = useState<AdSlotRequestRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [title, setTitle] = useState("");
+  const [slotNumber, setSlotNumber] = useState("");
+  const [fullPrice, setFullPrice] = useState("");
+  const [presalePrice, setPresalePrice] = useState("");
+  const [presaleUntil, setPresaleUntil] = useState("");
+  const [duration, setDuration] = useState("season");
+  const [description, setDescription] = useState("");
+
+  async function loadSlots() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("ad_slots")
+      .select(
+        "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status"
+      )
+      .eq("category", category)
+      .order("slot_number", { ascending: true });
+    setSlots((data as AdSlotRow[]) ?? []);
+    setLoading(false);
+  }
+
+  async function loadRequests() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("ad_slot_requests")
+      .select("id, slot_id, name, phone, message, status, created_at")
+      .order("created_at", { ascending: false });
+    setRequests((data as AdSlotRequestRow[]) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    if (subTab === "slots") loadSlots();
+    else loadRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subTab, category]);
+
+  async function createSlot() {
+    if (!title || !slotNumber || !fullPrice) return;
+    await supabase.from("ad_slots").insert({
+      category,
+      slot_number: Number(slotNumber),
+      title,
+      description: description || null,
+      full_price: Number(fullPrice),
+      presale_price: presalePrice ? Number(presalePrice) : null,
+      presale_until: presaleUntil ? new Date(presaleUntil).toISOString() : null,
+      duration,
+    });
+    setTitle("");
+    setSlotNumber("");
+    setFullPrice("");
+    setPresalePrice("");
+    setPresaleUntil("");
+    setDescription("");
+    await loadSlots();
+  }
+
+  async function toggleSold(s: AdSlotRow) {
+    await supabase
+      .from("ad_slots")
+      .update({
+        status: s.status === "sold" ? "available" : "sold",
+        sold_at: s.status === "sold" ? null : new Date().toISOString(),
+      })
+      .eq("id", s.id);
+    await loadSlots();
+  }
+
+  async function removeSlot(id: string) {
+    if (!confirm("Удалить это место?")) return;
+    await supabase.from("ad_slots").delete().eq("id", id);
+    await loadSlots();
+  }
+
+  async function markRequestStatus(id: string, status: string) {
+    await supabase.from("ad_slot_requests").update({ status }).eq("id", id);
+    await loadRequests();
+  }
+
+  return (
+    <div className="max-w-lg">
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setSubTab("slots")}
+          className={`px-4 py-2 rounded-full text-sm font-medium ${
+            subTab === "slots" ? "bg-gold text-bgPrimary" : "bg-bgSurface text-muted border border-muted"
+          }`}
+        >
+          Места
+        </button>
+        <button
+          onClick={() => setSubTab("requests")}
+          className={`px-4 py-2 rounded-full text-sm font-medium ${
+            subTab === "requests" ? "bg-gold text-bgPrimary" : "bg-bgSurface text-muted border border-muted"
+          }`}
+        >
+          Заявки на покупку
+        </button>
+      </div>
+
+      {subTab === "slots" && (
+        <>
+          <div className="flex overflow-x-auto gap-2 mb-4 pb-1">
+            {AD_CATEGORIES.map((c) => (
+              <button
+                key={c.key}
+                onClick={() => setCategory(c.key)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
+                  category === c.key
+                    ? "bg-gold text-bgPrimary"
+                    : "bg-bgSurface text-muted border border-muted"
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+            <p className="text-offwhite text-sm font-semibold mb-2">
+              Новое место — {AD_CATEGORIES.find((c) => c.key === category)?.label}
+            </p>
+            <input
+              value={slotNumber}
+              onChange={(e) => setSlotNumber(e.target.value)}
+              placeholder="Номер места (напр. 1, 2, 3...)"
+              type="number"
+              className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+            />
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Название, напр. «Реклама в журнале — место 1»"
+              className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+            />
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Описание (необязательно)"
+              rows={2}
+              className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+            />
+            <div className="flex gap-2 mb-2">
+              <input
+                value={fullPrice}
+                onChange={(e) => setFullPrice(e.target.value)}
+                placeholder="Полная цена, ₽"
+                type="number"
+                className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+              />
+              <select
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="week">На неделю</option>
+                <option value="season">На весь сезон</option>
+              </select>
+            </div>
+            <p className="text-muted text-xs mb-1">Предпродажа (необязательно):</p>
+            <div className="flex gap-2 mb-3">
+              <input
+                value={presalePrice}
+                onChange={(e) => setPresalePrice(e.target.value)}
+                placeholder="Цена предпродажи, ₽"
+                type="number"
+                className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+              />
+              <input
+                value={presaleUntil}
+                onChange={(e) => setPresaleUntil(e.target.value)}
+                type="date"
+                className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+            <button
+              onClick={createSlot}
+              disabled={!title || !slotNumber || !fullPrice}
+              className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+            >
+              Добавить место
+            </button>
+          </div>
+
+          {loading && <p className="text-muted">Загрузка...</p>}
+
+          <div className="flex flex-col gap-3">
+            {slots.map((s) => (
+              <div key={s.id} className="bg-bgSurface border border-muted rounded-xl p-3">
+                <div className="flex justify-between items-start mb-1">
+                  <p className="text-offwhite text-sm font-semibold">
+                    #{s.slot_number} · {s.title}
+                  </p>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full ${
+                      s.status === "sold"
+                        ? "bg-danger/20 text-danger"
+                        : "bg-success/20 text-success"
+                    }`}
+                  >
+                    {s.status === "sold" ? "Занято" : "Свободно"}
+                  </span>
+                </div>
+                <p className="text-muted text-xs mb-2">
+                  {Math.round(s.full_price)} ₽
+                  {s.presale_price && (
+                    <>
+                      {" "}
+                      · предпродажа {Math.round(s.presale_price)} ₽ до{" "}
+                      {s.presale_until && new Date(s.presale_until).toLocaleDateString("ru-RU")}
+                    </>
+                  )}
+                  {" · "}
+                  {s.duration === "week" ? "на неделю" : "на сезон"}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => toggleSold(s)}
+                    className={`text-xs px-3 py-1 rounded-full ${
+                      s.status === "sold"
+                        ? "bg-bgPrimary border border-muted text-muted"
+                        : "bg-danger text-bgPrimary"
+                    }`}
+                  >
+                    {s.status === "sold" ? "Освободить" : "Отметить проданным"}
+                  </button>
+                  <button
+                    onClick={() => removeSlot(s.id)}
+                    className="text-xs px-3 py-1 rounded-full bg-bgPrimary border border-danger text-danger"
+                  >
+                    Удалить
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {subTab === "requests" && (
+        <div className="flex flex-col gap-3">
+          {loading && <p className="text-muted">Загрузка...</p>}
+          {!loading && requests.length === 0 && (
+            <p className="text-muted text-sm">Заявок пока нет.</p>
+          )}
+          {requests.map((r) => (
+            <div key={r.id} className="bg-bgSurface border border-muted rounded-xl p-4">
+              <p className="text-offwhite text-sm font-semibold mb-1">{r.name}</p>
+              <p className="text-muted text-xs mb-1">{r.phone ?? "телефон не указан"}</p>
+              {r.message && <p className="text-muted text-sm mb-2">{r.message}</p>}
+              <p className="text-muted text-[10px] mb-2">
+                {new Date(r.created_at).toLocaleString("ru-RU")}
+              </p>
+              <select
+                value={r.status}
+                onChange={(e) => markRequestStatus(r.id, e.target.value)}
+                className="bg-bgPrimary border border-muted rounded-lg px-3 py-1 text-xs"
+              >
+                <option value="new">Новая</option>
+                <option value="contacted">Связались</option>
+                <option value="closed">Закрыта</option>
+              </select>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
