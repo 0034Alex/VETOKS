@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 
@@ -19,10 +20,13 @@ export default function PartnerPage() {
     e.preventDefault();
     setStatus("loading");
 
+    const u = await getCurrentUser();
+
     const { error } = await supabase.from("sponsors").insert({
       name,
       status: "lead",
       contact_info: { phone, email, message },
+      user_id: u?.id ?? null,
     });
 
     setStatus(error ? "error" : "sent");
