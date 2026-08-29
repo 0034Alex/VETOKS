@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
@@ -31,9 +32,16 @@ export default function PartnersDirectoryPage() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
-      <h1 className="text-2xl font-semibold text-offwhite mb-6 px-6">
+      <h1 className="text-2xl font-semibold text-offwhite mb-3 px-6">
         Партнёры
       </h1>
+
+      <Link
+        href="/ad-space"
+        className="mx-6 mb-6 flex items-center justify-center gap-2 bg-bgSurface border border-gold text-gold font-semibold text-sm py-3 rounded-full"
+      >
+        🎬 Хотите стать партнёром? Выбрать место
+      </Link>
 
       {loading && <p className="text-muted text-center">Загрузка...</p>}
       {!loading && partners.length === 0 && (
