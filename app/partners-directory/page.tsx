@@ -37,10 +37,10 @@ export default function PartnersDirectoryPage() {
       </h1>
 
       <Link
-        href="/ad-space"
+        href="/partner"
         className="mx-6 mb-6 flex items-center justify-center gap-2 bg-bgSurface border border-gold text-gold font-semibold text-sm py-3 rounded-full"
       >
-        🎬 Хотите стать партнёром? Выбрать место
+        🤝 Хотите стать партнёром? Оставить заявку
       </Link>
 
       {loading && <p className="text-muted text-center">Загрузка...</p>}
