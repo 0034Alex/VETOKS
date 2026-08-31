@@ -57,6 +57,7 @@ export default function PromoPage() {
 
   return (
     <main className="min-h-screen pb-28">
+      <div className="max-w-3xl mx-auto">
       <PageHeader />
       <div className="px-6">
         <h1 className="text-2xl font-semibold text-offwhite mb-1">
@@ -84,6 +85,8 @@ export default function PromoPage() {
           )
         )}
       </div>
+      </div>
+
       <BottomNav />
     </main>
   );
