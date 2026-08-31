@@ -22,7 +22,8 @@ type Tab =
   | "documents"
   | "calendar"
   | "social"
-  | "media";
+  | "media"
+  | "magazine-ads";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -38,6 +39,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "goal", label: "Цель недели" },
   { key: "stages", label: "Этапы сезона" },
   { key: "banners", label: "Баннеры" },
+  { key: "magazine-ads", label: "Реклама в журнале" },
   { key: "documents", label: "Документы" },
   { key: "calendar", label: "Календарь контента" },
   { key: "social", label: "Соцсети" },
@@ -49,7 +51,7 @@ const TABS: { key: Tab; label: string }[] = [
 const PERMISSION_TABS: Record<string, Tab[]> = {
   moderation: ["applications", "participants", "cards", "calendar", "media"],
   finance: ["dashboard", "goal"],
-  partners: ["partners", "partner-logos", "banners", "ad-space", "social"],
+  partners: ["partners", "partner-logos", "banners", "magazine-ads", "ad-space", "social"],
   staff: ["staff", "users"],
   support: ["support", "documents"],
 };
@@ -199,6 +201,7 @@ export default function AdminPage() {
         {tab === "goal" && <GoalTab />}
         {tab === "stages" && <StagesTab />}
         {tab === "banners" && <BannersTab />}
+        {tab === "magazine-ads" && <MagazineAdsTab />}
         {tab === "documents" && <DocumentsTab />}
         {tab === "calendar" && <CalendarTab />}
         {tab === "social" && <SocialLinksTab />}
@@ -3262,6 +3265,202 @@ function MediaMaterialsTab() {
             >
               Удалить
             </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// РЕКЛАМА В ЖУРНАЛЕ
+// ---------------------------------------------------------------------
+
+type MagazineAdRow = {
+  id: string;
+  image_url: string;
+  button_text: string;
+  button_link: string;
+  is_active: boolean;
+  sort_order: number;
+  all_regions: boolean;
+  region_names: string[];
+};
+
+function MagazineAdsTab() {
+  const [ads, setAds] = useState<MagazineAdRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [buttonText, setButtonText] = useState("");
+  const [buttonLink, setButtonLink] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [regions, setRegions] = useState<RegionOption[]>([]);
+  const [allRegions, setAllRegions] = useState(true);
+  const [selectedRegionIds, setSelectedRegionIds] = useState<string[]>([]);
+
+  async function loadRegions() {
+    const { data } = await supabase.from("regions").select("id, name").order("name");
+    setRegions((data as RegionOption[]) ?? []);
+  }
+
+  function toggleRegionSelection(id: string) {
+    setSelectedRegionIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("magazine_ads")
+      .select(
+        "id, image_url, button_text, button_link, is_active, sort_order, all_regions, magazine_ad_regions(regions(name))"
+      )
+      .order("sort_order", { ascending: true });
+
+    const mapped = (data as any[] ?? []).map((a) => ({
+      ...a,
+      region_names: (a.magazine_ad_regions ?? [])
+        .map((r: any) => (Array.isArray(r.regions) ? r.regions[0]?.name : r.regions?.name))
+        .filter(Boolean),
+    }));
+    setAds(mapped);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+    loadRegions();
+  }, []);
+
+  async function createAd() {
+    if (!file || !buttonText || !buttonLink) return;
+    setUploading(true);
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${Date.now()}.${fileExt}`;
+    const { error } = await supabase.storage.from("magazine-ads").upload(filePath, file);
+    if (error) {
+      alert(`Ошибка загрузки: ${error.message}`);
+      setUploading(false);
+      return;
+    }
+    const { data: publicUrlData } = supabase.storage.from("magazine-ads").getPublicUrl(filePath);
+    const { data: inserted, error: insertError } = await supabase
+      .from("magazine_ads")
+      .insert({
+        image_url: publicUrlData.publicUrl,
+        button_text: buttonText,
+        button_link: buttonLink,
+        sort_order: ads.length,
+        all_regions: allRegions,
+      })
+      .select("id")
+      .single();
+
+    if (!insertError && inserted && !allRegions && selectedRegionIds.length > 0) {
+      await supabase.from("magazine_ad_regions").insert(
+        selectedRegionIds.map((region_id) => ({ ad_id: inserted.id, region_id }))
+      );
+    }
+
+    setButtonText("");
+    setButtonLink("");
+    setFile(null);
+    setAllRegions(true);
+    setSelectedRegionIds([]);
+    await load();
+    setUploading(false);
+  }
+
+  async function toggleActive(ad: MagazineAdRow) {
+    await supabase.from("magazine_ads").update({ is_active: !ad.is_active }).eq("id", ad.id);
+    await load();
+  }
+
+  async function removeAd(id: string) {
+    if (!confirm("Удалить эту рекламу?")) return;
+    await supabase.from("magazine_ads").delete().eq("id", id);
+    await load();
+  }
+
+  return (
+    <div className="max-w-lg">
+      <p className="text-muted text-sm mb-4">
+        Рекламный блок появляется каждой 10-й страницей в журнале на главной.
+        Зритель видит только рекламу своего региона + общероссийскую.
+      </p>
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+        <p className="text-offwhite text-sm font-semibold mb-2">Новая реклама</p>
+        <label className="block w-full text-center bg-bgPrimary border border-muted text-offwhite text-xs py-2 rounded-lg mb-2 cursor-pointer">
+          {file ? file.name : "Выбрать изображение"}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        <input
+          value={buttonText}
+          onChange={(e) => setButtonText(e.target.value)}
+          placeholder="Текст кнопки, напр. «Узнать больше»"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        />
+        <input
+          value={buttonLink}
+          onChange={(e) => setButtonLink(e.target.value)}
+          placeholder="Ссылка (https://... или /shop и т.п.)"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        />
+
+        <RegionPicker
+          regions={regions}
+          allRegions={allRegions}
+          selectedIds={selectedRegionIds}
+          onToggleAll={() => setAllRegions((v) => !v)}
+          onToggleRegion={toggleRegionSelection}
+        />
+
+        <button
+          onClick={createAd}
+          disabled={uploading || !file || !buttonText || !buttonLink}
+          className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+        >
+          {uploading ? "Загрузка..." : "Добавить рекламу"}
+        </button>
+      </div>
+
+      {loading && <p className="text-muted">Загрузка...</p>}
+
+      <div className="flex flex-col gap-3">
+        {ads.map((ad) => (
+          <div key={ad.id} className="bg-bgSurface border border-muted rounded-xl p-3 flex gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={ad.image_url} alt="" className="w-16 h-20 object-cover rounded-lg" />
+            <div className="flex-1">
+              <p className="text-offwhite text-sm">{ad.button_text}</p>
+              <p className="text-muted text-xs truncate">{ad.button_link}</p>
+              <p className="text-gold text-[10px] mt-1">
+                {ad.all_regions ? "Все регионы" : ad.region_names.join(", ") || "регион не выбран"}
+              </p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => toggleActive(ad)}
+                  className={`text-xs px-3 py-1 rounded-full ${
+                    ad.is_active ? "bg-success text-bgPrimary" : "bg-bgPrimary border border-muted text-muted"
+                  }`}
+                >
+                  {ad.is_active ? "Активна" : "Выключена"}
+                </button>
+                <button
+                  onClick={() => removeAd(ad.id)}
+                  className="text-xs px-3 py-1 rounded-full bg-danger text-bgPrimary"
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
           </div>
         ))}
       </div>
