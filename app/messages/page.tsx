@@ -119,6 +119,7 @@ export default function MessagesPage() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
+      <div className="max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold text-offwhite mb-6 px-6">
         Сообщения
       </h1>
@@ -152,6 +153,7 @@ export default function MessagesPage() {
         ))}
       </div>
 
+      </div>
       <BottomNav />
     </main>
   );
