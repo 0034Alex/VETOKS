@@ -15,6 +15,8 @@ type Purchase = {
     category: string;
     slot_number: number;
     duration: string;
+    all_regions: boolean;
+    ad_slot_regions: { regions: { name: string } | { name: string }[] | null }[] | null;
   } | null;
 };
 
@@ -71,7 +73,9 @@ export default function PartnerCabinetPage() {
 
       const { data: purchasesData } = await supabase
         .from("ad_slot_purchases")
-        .select("id, created_at, ad_slots(title, category, slot_number, duration)")
+        .select(
+          "id, created_at, ad_slots(title, category, slot_number, duration, all_regions, ad_slot_regions(regions(name)))"
+        )
         .eq("owner_user_id", u.id)
         .order("created_at", { ascending: false });
       setPurchases((purchasesData as unknown as Purchase[]) ?? []);
@@ -150,7 +154,7 @@ export default function PartnerCabinetPage() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
-      <div className="px-6 max-w-3xl mx-auto">
+      <div className="px-6">
         <h1 className="text-2xl font-semibold text-offwhite mb-1">
           Кабинет партнёра
         </h1>
@@ -181,6 +185,15 @@ export default function PartnerCabinetPage() {
                 </p>
                 <p className="text-muted text-xs">
                   {pu.ad_slots?.title} · {pu.ad_slots?.duration === "week" ? "на неделю" : "на сезон"}
+                </p>
+                <p className="text-gold text-[11px] mt-1">
+                  📍{" "}
+                  {pu.ad_slots?.all_regions
+                    ? "Все регионы"
+                    : (pu.ad_slots?.ad_slot_regions ?? [])
+                        .map((r) => (Array.isArray(r.regions) ? r.regions[0]?.name : r.regions?.name))
+                        .filter(Boolean)
+                        .join(", ") || "регион не указан"}
                 </p>
                 <p className="text-muted text-[10px] mt-1">
                   Оформлено {new Date(pu.created_at).toLocaleDateString("ru-RU")}
