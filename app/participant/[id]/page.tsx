@@ -653,7 +653,7 @@ export default function ParticipantProfilePage() {
           )}
         </div>
 
-        <div className="px-6">
+        <div className="px-6 max-w-3xl mx-auto">
           <h1 className="text-2xl text-offwhite font-semibold mb-2">
             {participant.display_name}
           </h1>
