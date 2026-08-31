@@ -488,12 +488,11 @@ function Survey() {
           <p className="text-success text-sm">Спасибо за ответ!</p>
         ) : (
           <>
-            <textarea
+            <input
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
-              rows={3}
               placeholder="Ваш ответ..."
-              className="w-full bg-bgPrimary text-offwhite border border-muted rounded-lg px-4 py-3 mb-3"
+              className="w-full bg-bgPrimary text-offwhite border border-muted rounded-lg px-4 py-2.5 mb-3"
             />
             <button
               onClick={submit}
@@ -512,6 +511,7 @@ function Survey() {
 export default function Home() {
   const router = useRouter();
   const [user, setUser] = useState<CurrentUser | null>(null);
+  const [isParticipant, setIsParticipant] = useState(false);
   const [checked, setChecked] = useState(false);
   const [season, setSeason] = useState<Season | null>(null);
   const [currentStage, setCurrentStage] = useState<Stage | null>(null);
@@ -531,6 +531,13 @@ export default function Home() {
       setUser(u);
       setChecked(true);
 
+      const { data: myParticipant } = await supabase
+        .from("participants")
+        .select("id")
+        .eq("user_id", u.id)
+        .maybeSingle();
+      setIsParticipant(!!myParticipant);
+
       // Один общий национальный сезон и общие этапы — одинаковые для всей
       // страны одновременно, регион здесь ни на что не влияет.
       const { data: seasonData } = await supabase
@@ -549,9 +556,12 @@ export default function Home() {
           .order("stage_number", { ascending: true });
         setTotalStages((stagesData ?? []).length);
         const now = new Date();
-        const current = (stagesData ?? []).find(
-          (s: Stage) => s.ends_at && new Date(s.ends_at) > now
-        );
+        // Этап без даты окончания или с датой в будущем считается текущим —
+        // иначе, если дату не заполнили, баннер вообще ничего не покажет.
+        const current =
+          (stagesData ?? []).find(
+            (s: Stage) => s.ends_at && new Date(s.ends_at) > now
+          ) ?? (stagesData ?? []).find((s: Stage) => !s.ends_at) ?? (stagesData ?? [])[0];
         setCurrentStage((current as Stage) ?? null);
       }
 
@@ -763,7 +773,7 @@ export default function Home() {
           )}
 
           <div className="flex gap-2 mt-3">
-            {season?.status === "registration" && (
+            {season?.status === "registration" && !isParticipant && (
               <div
                 className="flex-1 rounded-full p-[2px]"
                 style={{
@@ -881,7 +891,7 @@ export default function Home() {
 
         <Magazine scope={scope} userRegionId={user?.region_id ?? null} />
 
-        {season?.status === "registration" && (
+        {season?.status === "registration" && !isParticipant && (
           <div className="px-6 mb-8">
             <div
               className="relative rounded-full p-[2px]"
