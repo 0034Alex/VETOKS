@@ -59,7 +59,7 @@ export default function MediaMaterialsPage() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
-      <div className="px-6">
+      <div className="px-6 max-w-3xl mx-auto">
         <h1 className="text-2xl font-semibold text-offwhite mb-2">
           Материалы для монтажа
         </h1>
@@ -73,7 +73,7 @@ export default function MediaMaterialsPage() {
         {!loading && videos.length > 0 && (
           <div className="mb-8">
             <h2 className="text-gold font-semibold text-sm mb-3">🎬 Видео</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {videos.map((m) => (
                 <a
                   key={m.id}
@@ -96,7 +96,7 @@ export default function MediaMaterialsPage() {
         {!loading && photos.length > 0 && (
           <div>
             <h2 className="text-gold font-semibold text-sm mb-3">📸 Фото</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {photos.map((m) => (
                 <a
                   key={m.id}
