@@ -233,6 +233,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
           />
 
           <HTMLFlipBook
+            key={`${scope}-${pages.length}-${pages[0]?.id ?? "x"}`}
             width={150}
             height={230}
             size="stretch"
@@ -843,7 +844,7 @@ export default function Home() {
                 return (
                   <Link
                     href={`/participant/${p.id}`}
-                    key={p.id}
+                    key={slot}
                     className={`flex-1 max-w-[130px] bg-bgSurface border rounded-xl overflow-hidden transition-transform duration-500 ${
                       isFirst ? "border-gold" : "border-muted"
                     } ${isRising ? "scale-110 shadow-lg shadow-gold/50" : ""}`}
