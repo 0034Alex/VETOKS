@@ -1724,12 +1724,53 @@ function StagesTab() {
 // БАННЕРЫ
 // ---------------------------------------------------------------------
 
+type RegionOption = { id: string; name: string };
+
+function RegionPicker({
+  regions,
+  allRegions,
+  selectedIds,
+  onToggleAll,
+  onToggleRegion,
+}: {
+  regions: RegionOption[];
+  allRegions: boolean;
+  selectedIds: string[];
+  onToggleAll: () => void;
+  onToggleRegion: (id: string) => void;
+}) {
+  return (
+    <div className="mb-3">
+      <label className="flex items-center gap-2 text-sm text-offwhite mb-2">
+        <input type="checkbox" checked={allRegions} onChange={onToggleAll} />
+        Все регионы
+      </label>
+      {!allRegions && (
+        <div className="max-h-40 overflow-y-auto bg-bgPrimary border border-muted rounded-lg p-2 flex flex-col gap-1">
+          {regions.map((r) => (
+            <label key={r.id} className="flex items-center gap-2 text-xs text-muted">
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(r.id)}
+                onChange={() => onToggleRegion(r.id)}
+              />
+              {r.name}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 type BannerRow = {
   id: string;
   image_url: string;
   link_url: string | null;
   is_active: boolean;
   sort_order: number;
+  all_regions: boolean;
+  region_names: string[];
 };
 
 function BannersTab() {
@@ -1739,6 +1780,14 @@ function BannersTab() {
   const [uploading, setUploading] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [regions, setRegions] = useState<RegionOption[]>([]);
+  const [allRegions, setAllRegions] = useState(true);
+  const [selectedRegionIds, setSelectedRegionIds] = useState<string[]>([]);
+
+  async function loadRegions() {
+    const { data } = await supabase.from("regions").select("id, name").order("name");
+    setRegions((data as RegionOption[]) ?? []);
+  }
 
   async function load() {
     setLoading(true);
@@ -1751,15 +1800,34 @@ function BannersTab() {
 
     const { data } = await supabase
       .from("promo_banners")
-      .select("id, image_url, link_url, is_active, sort_order")
+      .select("id, image_url, link_url, is_active, sort_order, all_regions, promo_banner_regions(regions(name))")
       .order("sort_order", { ascending: true });
-    setBanners((data as BannerRow[]) ?? []);
+
+    const mapped = (data as any[] ?? []).map((b) => ({
+      id: b.id,
+      image_url: b.image_url,
+      link_url: b.link_url,
+      is_active: b.is_active,
+      sort_order: b.sort_order,
+      all_regions: b.all_regions,
+      region_names: (b.promo_banner_regions ?? [])
+        .map((r: any) => (Array.isArray(r.regions) ? r.regions[0]?.name : r.regions?.name))
+        .filter(Boolean),
+    }));
+    setBanners(mapped);
     setLoading(false);
   }
 
   useEffect(() => {
     load();
+    loadRegions();
   }, []);
+
+  function toggleRegionSelection(id: string) {
+    setSelectedRegionIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
 
   async function toggleEnabled() {
     const newValue = !enabled;
@@ -1781,13 +1849,27 @@ function BannersTab() {
       return;
     }
     const { data: publicUrlData } = supabase.storage.from("promo-banners").getPublicUrl(filePath);
-    await supabase.from("promo_banners").insert({
-      image_url: publicUrlData.publicUrl,
-      link_url: linkUrl || null,
-      sort_order: banners.length,
-    });
+    const { data: inserted, error: insertError } = await supabase
+      .from("promo_banners")
+      .insert({
+        image_url: publicUrlData.publicUrl,
+        link_url: linkUrl || null,
+        sort_order: banners.length,
+        all_regions: allRegions,
+      })
+      .select("id")
+      .single();
+
+    if (!insertError && inserted && !allRegions && selectedRegionIds.length > 0) {
+      await supabase.from("promo_banner_regions").insert(
+        selectedRegionIds.map((region_id) => ({ banner_id: inserted.id, region_id }))
+      );
+    }
+
     setLinkUrl("");
     setFile(null);
+    setAllRegions(true);
+    setSelectedRegionIds([]);
     await load();
     setUploading(false);
   }
@@ -1823,7 +1905,8 @@ function BannersTab() {
       </div>
 
       <p className="text-muted text-sm mb-3">
-        До 5 баннеров, показываются по кругу с автопрокруткой.
+        До 5 баннеров, показываются по кругу с автопрокруткой. Зритель видит
+        только баннеры своего региона + общероссийские.
       </p>
 
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
@@ -1842,6 +1925,15 @@ function BannersTab() {
           placeholder="Ссылка при клике (необязательно)"
           className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
         />
+
+        <RegionPicker
+          regions={regions}
+          allRegions={allRegions}
+          selectedIds={selectedRegionIds}
+          onToggleAll={() => setAllRegions((v) => !v)}
+          onToggleRegion={toggleRegionSelection}
+        />
+
         <button
           onClick={createBanner}
           disabled={uploading || !file || banners.length >= 5}
@@ -1860,6 +1952,9 @@ function BannersTab() {
             <img src={b.image_url} alt="" className="w-20 h-12 object-cover rounded-lg" />
             <div className="flex-1">
               <p className="text-muted text-xs truncate">{b.link_url || "без ссылки"}</p>
+              <p className="text-gold text-[10px] mt-0.5">
+                {b.all_regions ? "Все регионы" : b.region_names.join(", ") || "регион не выбран"}
+              </p>
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={() => toggleActive(b)}
@@ -2299,6 +2394,8 @@ type AdSlotRow = {
   status: string;
   capacity: number | null;
   sold_count: number;
+  all_regions: boolean;
+  region_names: string[];
 };
 
 type AdSlotRequestRow = {
@@ -2352,6 +2449,20 @@ function AdSpaceTab() {
   const [presaleUntil, setPresaleUntil] = useState("");
   const [duration, setDuration] = useState("season");
   const [description, setDescription] = useState("");
+  const [regions, setRegions] = useState<RegionOption[]>([]);
+  const [addAllRegions, setAddAllRegions] = useState(true);
+  const [addSelectedRegionIds, setAddSelectedRegionIds] = useState<string[]>([]);
+
+  async function loadRegions() {
+    const { data } = await supabase.from("regions").select("id, name").order("name");
+    setRegions((data as RegionOption[]) ?? []);
+  }
+
+  function toggleAddRegion(id: string) {
+    setAddSelectedRegionIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -2385,11 +2496,18 @@ function AdSpaceTab() {
     const { data } = await supabase
       .from("ad_slots")
       .select(
-        "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status, capacity, sold_count"
+        "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status, capacity, sold_count, all_regions, ad_slot_regions(regions(name))"
       )
       .order("category", { ascending: true })
       .order("slot_number", { ascending: true });
-    setSlots((data as AdSlotRow[]) ?? []);
+
+    const mapped = (data as any[] ?? []).map((s) => ({
+      ...s,
+      region_names: (s.ad_slot_regions ?? [])
+        .map((r: any) => (Array.isArray(r.regions) ? r.regions[0]?.name : r.regions?.name))
+        .filter(Boolean),
+    }));
+    setSlots(mapped);
     setLoading(false);
   }
 
@@ -2416,6 +2534,7 @@ function AdSpaceTab() {
     if (subTab === "slots") {
       loadSlots();
       loadPartners();
+      loadRegions();
     } else loadRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subTab]);
@@ -2423,20 +2542,32 @@ function AdSpaceTab() {
   async function createSlot() {
     if (!title || !fullPrice) return;
     if (addMode !== "capacity" && !slotNumber) return;
-    await supabase.from("ad_slots").insert({
-      category: addCategory,
-      slot_number: addMode === "capacity" ? 1 : Number(slotNumber),
-      title,
-      description: description || null,
-      full_price: Number(fullPrice),
-      presale_price: presalePrice ? Number(presalePrice) : null,
-      presale_until: presaleUntil ? new Date(presaleUntil).toISOString() : null,
-      duration,
-      capacity:
-        addMode === "capacity"
-          ? Number(capacity || DEFAULT_CAPACITY[addCategory] || 20)
-          : null,
-    });
+    const { data: inserted, error } = await supabase
+      .from("ad_slots")
+      .insert({
+        category: addCategory,
+        slot_number: addMode === "capacity" ? 1 : Number(slotNumber),
+        title,
+        description: description || null,
+        full_price: Number(fullPrice),
+        presale_price: presalePrice ? Number(presalePrice) : null,
+        presale_until: presaleUntil ? new Date(presaleUntil).toISOString() : null,
+        duration,
+        capacity:
+          addMode === "capacity"
+            ? Number(capacity || DEFAULT_CAPACITY[addCategory] || 20)
+            : null,
+        all_regions: addAllRegions,
+      })
+      .select("id")
+      .single();
+
+    if (!error && inserted && !addAllRegions && addSelectedRegionIds.length > 0) {
+      await supabase.from("ad_slot_regions").insert(
+        addSelectedRegionIds.map((region_id) => ({ slot_id: inserted.id, region_id }))
+      );
+    }
+
     setTitle("");
     setSlotNumber("");
     setCapacity("");
@@ -2444,6 +2575,8 @@ function AdSpaceTab() {
     setPresalePrice("");
     setPresaleUntil("");
     setDescription("");
+    setAddAllRegions(true);
+    setAddSelectedRegionIds([]);
     await loadSlots();
   }
 
@@ -2648,6 +2781,16 @@ function AdSpaceTab() {
                 className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
               />
             </div>
+            <p className="text-muted text-xs mb-1">
+              В каких регионах видно и продаётся:
+            </p>
+            <RegionPicker
+              regions={regions}
+              allRegions={addAllRegions}
+              selectedIds={addSelectedRegionIds}
+              onToggleAll={() => setAddAllRegions((v) => !v)}
+              onToggleRegion={toggleAddRegion}
+            />
             <button
               onClick={createSlot}
               disabled={!title || !fullPrice || (addMode !== "capacity" && !slotNumber)}
@@ -2795,6 +2938,11 @@ function AdSpaceTab() {
                               {cat.mode === "capacity" && (
                                 <> · занято {s.sold_count} из {s.capacity ?? 0}</>
                               )}
+                            </p>
+                            <p className="text-gold text-[11px] mb-2">
+                              {s.all_regions
+                                ? "Все регионы"
+                                : (s.region_names ?? []).join(", ") || "регион не выбран"}
                             </p>
 
                             {sellingSlotId === s.id && (
