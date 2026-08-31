@@ -49,6 +49,7 @@ export default function NotificationsPage() {
 
   return (
     <main className="min-h-screen pb-28">
+      <div className="max-w-3xl mx-auto">
       <PageHeader />
       <h1 className="text-2xl font-semibold text-offwhite mb-6 px-6">
         Уведомления
@@ -81,6 +82,8 @@ export default function NotificationsPage() {
             <div key={n.id}>{content}</div>
           );
         })}
+      </div>
+
       </div>
 
       <BottomNav />
