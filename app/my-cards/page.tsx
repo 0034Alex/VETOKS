@@ -141,7 +141,7 @@ export default function MyCardsPage() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
-      <div className="px-6">
+      <div className="px-6 max-w-3xl mx-auto">
         <h1 className="text-2xl font-semibold text-offwhite mb-2">
           Мои коллекционные карточки
         </h1>
@@ -151,7 +151,7 @@ export default function MyCardsPage() {
           с каждой продажи.
         </p>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {STAGES.map((s) => {
             const card = cards[s.key];
             const displayImage = card?.final_image_url ?? card?.raw_photo_url;
