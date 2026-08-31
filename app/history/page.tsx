@@ -59,6 +59,7 @@ export default function HistoryPage() {
 
   return (
     <main className="min-h-screen pb-28">
+      <div className="max-w-3xl mx-auto">
       <PageHeader />
       <h1 className="text-2xl font-semibold text-offwhite mb-6 px-6">
         История операций
@@ -93,6 +94,8 @@ export default function HistoryPage() {
             </span>
           </div>
         ))}
+      </div>
+
       </div>
 
       <BottomNav />
