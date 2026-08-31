@@ -72,6 +72,7 @@ export default function GoalDonorsPage() {
 
   return (
     <main className="min-h-screen pb-28">
+      <div className="max-w-3xl mx-auto">
       <PageHeader />
       <h1 className="text-2xl font-semibold text-offwhite mb-2 px-6">
         Кто донатил на цель
@@ -104,6 +105,8 @@ export default function GoalDonorsPage() {
             </div>
           </div>
         ))}
+      </div>
+
       </div>
 
       <BottomNav />
