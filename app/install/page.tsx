@@ -35,6 +35,7 @@ export default function InstallPage() {
 
   return (
     <main className="min-h-screen pb-28">
+      <div className="max-w-3xl mx-auto">
       <PageHeader />
       <div className="px-6">
         <h1 className="text-2xl font-semibold text-offwhite mb-6">
@@ -76,6 +77,8 @@ export default function InstallPage() {
           )}
         </div>
       </div>
+      </div>
+
       <BottomNav />
     </main>
   );
