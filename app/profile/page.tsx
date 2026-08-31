@@ -380,6 +380,13 @@ export default function ProfilePage() {
               <span className="text-gold text-sm">{referralCount}</span>
             </div>
             <a
+              href="/my-follows"
+              className="p-4 flex items-center justify-between text-muted text-sm"
+            >
+              <span>Мои подписки</span>
+              <span>→</span>
+            </a>
+            <a
               href="/edit-profile"
               className="p-4 flex items-center justify-between text-muted text-sm"
             >
