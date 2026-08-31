@@ -103,7 +103,7 @@ export default function ParticipantGiftsPage() {
         </div>
       )}
 
-      <div className="px-6">
+      <div className="px-6 max-w-3xl mx-auto">
         <h2 className="text-muted text-sm mb-3">Последние подарки</h2>
         <div className="flex flex-col gap-2">
           {gifts.slice(0, 30).map((g) => (
