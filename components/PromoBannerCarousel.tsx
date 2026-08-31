@@ -36,7 +36,6 @@ export default function PromoBannerCarousel() {
       if (error) {
         console.error("[PromoBannerCarousel] promo_banners error:", error);
       }
-      console.log("[PromoBannerCarousel] fetched banners:", data);
 
       setBanners((data as Banner[]) ?? []);
     })();
@@ -53,16 +52,32 @@ export default function PromoBannerCarousel() {
   if (!enabled || banners.length === 0) return null;
 
   return (
-    <div className="px-6 mb-4">
-      <div className="relative w-full aspect-[16/7] rounded-xl overflow-hidden bg-black/40">
+    <div style={{ padding: "0 24px", marginBottom: 16 }}>
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          paddingTop: "43.75%", // держит соотношение сторон 16:7 в любом браузере
+          borderRadius: 12,
+          overflow: "hidden",
+          backgroundColor: "rgba(0,0,0,0.4)",
+        }}
+      >
         {banners.map((b, i) => {
           const content = (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={b.image_url}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
-              style={{ opacity: i === active ? 1 : 0 }}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                opacity: i === active ? 1 : 0,
+                transition: "opacity 0.7s",
+              }}
             />
           );
           return b.link_url ? (
@@ -71,16 +86,19 @@ export default function PromoBannerCarousel() {
               href={b.link_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="absolute inset-0"
-              style={{ zIndex: i === active ? 1 : 0, pointerEvents: i === active ? "auto" : "none" }}
+              style={{
+                position: "absolute",
+                inset: 0,
+                zIndex: i === active ? 1 : 0,
+                pointerEvents: i === active ? "auto" : "none",
+              }}
             >
               {content}
             </a>
           ) : (
             <div
               key={b.id}
-              className="absolute inset-0"
-              style={{ zIndex: i === active ? 1 : 0 }}
+              style={{ position: "absolute", inset: 0, zIndex: i === active ? 1 : 0 }}
             >
               {content}
             </div>
@@ -88,12 +106,27 @@ export default function PromoBannerCarousel() {
         })}
 
         {banners.length > 1 && (
-          <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">
+          <div
+            style={{
+              position: "absolute",
+              bottom: 8,
+              left: 0,
+              right: 0,
+              display: "flex",
+              justifyContent: "center",
+              gap: 6,
+              zIndex: 10,
+            }}
+          >
             {banners.map((_, i) => (
               <span
                 key={i}
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ backgroundColor: i === active ? "#C9A227" : "rgba(255,255,255,0.4)" }}
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 999,
+                  backgroundColor: i === active ? "#C9A227" : "rgba(255,255,255,0.4)",
+                }}
               />
             ))}
           </div>
