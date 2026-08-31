@@ -297,6 +297,7 @@ function ShopContent() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
+      <div className="max-w-3xl mx-auto">
 
       <div className="px-6 mb-4 flex gap-2">
         <button
@@ -494,7 +495,7 @@ function ShopContent() {
         ))}
       </div>
 
-      <div className="px-6 grid grid-cols-3 gap-3">
+      <div className="px-6 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
         {filteredGifts.map((g) => {
           const qty = quantities[g.id] ?? 1;
           return (
@@ -551,6 +552,7 @@ function ShopContent() {
         </>
       )}
 
+      </div>
       <BottomNav />
     </main>
   );
@@ -588,7 +590,7 @@ function CardsSection() {
   );
 
   return (
-    <div className="px-6">
+    <div className="px-6 max-w-3xl mx-auto">
       <input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
