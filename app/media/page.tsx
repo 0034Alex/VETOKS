@@ -172,9 +172,9 @@ export default function MediaPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black">
+    <main className="min-h-screen bg-black flex justify-center">
       <div
-        className="h-screen overflow-y-scroll snap-y snap-mandatory"
+        className="h-screen w-full max-w-md overflow-y-scroll snap-y snap-mandatory"
         style={{ scrollSnapType: "y mandatory" }}
       >
         {posts.map((p) => (
