@@ -27,28 +27,29 @@ export default function PromoPage() {
         return;
       }
 
-      if (u.region_id) {
-        const { data: season } = await supabase
-          .from("seasons")
-          .select("id")
-          .eq("region_id", u.region_id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+      // Один общий национальный сезон на всю страну — как и на главной,
+      // регион пользователя тут ни на что не влияет.
+      const { data: season } = await supabase
+        .from("seasons")
+        .select("id")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-        if (season) {
-          const { data: stages } = await supabase
-            .from("season_stages")
-            .select("stage_number, title, ends_at, promo_video_url")
-            .eq("season_id", season.id)
-            .order("stage_number", { ascending: true });
+      if (season) {
+        const { data: stages } = await supabase
+          .from("season_stages")
+          .select("stage_number, title, ends_at, promo_video_url")
+          .eq("season_id", season.id)
+          .order("stage_number", { ascending: true });
 
-          const now = new Date();
-          const current = (stages ?? []).find(
-            (s: Stage) => s.ends_at && new Date(s.ends_at) > now
-          );
-          setStage((current as Stage) ?? null);
-        }
+        const now = new Date();
+        // Этап без даты окончания или с датой в будущем считается текущим.
+        const current =
+          (stages ?? []).find((s: Stage) => s.ends_at && new Date(s.ends_at) > now) ??
+          (stages ?? []).find((s: Stage) => !s.ends_at) ??
+          (stages ?? [])[0];
+        setStage((current as Stage) ?? null);
       }
       setLoading(false);
     })();
