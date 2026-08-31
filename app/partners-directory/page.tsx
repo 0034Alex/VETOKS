@@ -32,6 +32,7 @@ export default function PartnersDirectoryPage() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
+      <div className="max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold text-offwhite mb-3 px-6">
         Партнёры
       </h1>
@@ -48,7 +49,7 @@ export default function PartnersDirectoryPage() {
         <p className="text-muted text-center px-6">Пока нет партнёров.</p>
       )}
 
-      <div className="px-6 grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="px-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {partners.map((p) => {
           const card = (
             <div
@@ -76,6 +77,7 @@ export default function PartnersDirectoryPage() {
         })}
       </div>
 
+      </div>
       <BottomNav />
     </main>
   );
