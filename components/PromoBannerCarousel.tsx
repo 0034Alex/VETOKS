@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 type Banner = {
@@ -13,7 +13,6 @@ export default function PromoBannerCarousel() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [enabled, setEnabled] = useState(true);
   const [active, setActive] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -37,14 +36,7 @@ export default function PromoBannerCarousel() {
   useEffect(() => {
     if (banners.length <= 1) return;
     const interval = setInterval(() => {
-      setActive((prev) => {
-        const next = (prev + 1) % banners.length;
-        scrollRef.current?.scrollTo({
-          left: next * scrollRef.current.clientWidth,
-          behavior: "smooth",
-        });
-        return next;
-      });
+      setActive((prev) => (prev + 1) % banners.length);
     }, 4000);
     return () => clearInterval(interval);
   }, [banners.length]);
@@ -52,29 +44,52 @@ export default function PromoBannerCarousel() {
   if (!enabled || banners.length === 0) return null;
 
   return (
-    <div
-      ref={scrollRef}
-      className="flex overflow-x-hidden snap-x snap-mandatory px-6 mb-4 gap-3"
-    >
-      {banners.map((b) => {
-        const content = (
-          <div className="w-full aspect-[16/7] rounded-xl overflow-hidden bg-black/40">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={b.image_url} alt="" className="w-full h-full object-cover" />
+    <div className="px-6 mb-4">
+      <div className="relative w-full aspect-[16/7] rounded-xl overflow-hidden bg-black/40">
+        {banners.map((b, i) => {
+          const content = (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={b.image_url}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
+              style={{ opacity: i === active ? 1 : 0 }}
+            />
+          );
+          return b.link_url ? (
+            <a
+              key={b.id}
+              href={b.link_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute inset-0"
+              style={{ zIndex: i === active ? 1 : 0, pointerEvents: i === active ? "auto" : "none" }}
+            >
+              {content}
+            </a>
+          ) : (
+            <div
+              key={b.id}
+              className="absolute inset-0"
+              style={{ zIndex: i === active ? 1 : 0 }}
+            >
+              {content}
+            </div>
+          );
+        })}
+
+        {banners.length > 1 && (
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">
+            {banners.map((_, i) => (
+              <span
+                key={i}
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: i === active ? "#C9A227" : "rgba(255,255,255,0.4)" }}
+              />
+            ))}
           </div>
-        );
-        return (
-          <div key={b.id} className="snap-center flex-shrink-0 w-full">
-            {b.link_url ? (
-              <a href={b.link_url} target="_blank" rel="noopener noreferrer">
-                {content}
-              </a>
-            ) : (
-              content
-            )}
-          </div>
-        );
-      })}
+        )}
+      </div>
     </div>
   );
 }
