@@ -167,6 +167,7 @@ export default function AdSpacePage() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
+      <div className="max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold text-offwhite mb-2 px-6">
         Рекламный кабинет
       </h1>
@@ -359,6 +360,7 @@ export default function AdSpacePage() {
         </div>
       )}
 
+      </div>
       <BottomNav />
     </main>
   );
