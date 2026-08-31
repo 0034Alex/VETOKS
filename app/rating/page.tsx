@@ -125,6 +125,7 @@ export default function RatingPage() {
 
   return (
     <main className="min-h-screen pb-28">
+      <div className="max-w-3xl mx-auto">
       <PageHeader />
       <PromoBannerCarousel />
       <div className="px-6 mb-4">
@@ -235,6 +236,8 @@ export default function RatingPage() {
             </div>
           </Link>
         )}
+      </div>
+
       </div>
 
       <BottomNav />
