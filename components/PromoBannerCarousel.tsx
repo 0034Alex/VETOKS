@@ -16,19 +16,28 @@ export default function PromoBannerCarousel() {
 
   useEffect(() => {
     (async () => {
-      const { data: settingRow } = await supabase
+      const { data: settingRow, error: settingError } = await supabase
         .from("platform_settings")
         .select("value")
         .eq("key", "banners_enabled")
         .maybeSingle();
+      if (settingError) {
+        console.error("[PromoBannerCarousel] platform_settings error:", settingError);
+      }
       setEnabled(settingRow?.value !== "false");
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("promo_banners")
         .select("id, image_url, link_url")
         .eq("is_active", true)
         .order("sort_order", { ascending: true })
         .limit(5);
+
+      if (error) {
+        console.error("[PromoBannerCarousel] promo_banners error:", error);
+      }
+      console.log("[PromoBannerCarousel] fetched banners:", data);
+
       setBanners((data as Banner[]) ?? []);
     })();
   }, []);
