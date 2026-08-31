@@ -20,6 +20,8 @@ type Slot = {
   status: string;
   capacity: number | null;
   sold_count: number;
+  all_regions: boolean;
+  region_names: string[];
 };
 
 type Mode = "tiers" | "capacity" | "seats";
@@ -106,11 +108,18 @@ export default function AdSpacePage() {
       const { data } = await supabase
         .from("ad_slots")
         .select(
-          "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status, capacity, sold_count"
+          "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status, capacity, sold_count, all_regions, ad_slot_regions(regions(name))"
         )
         .order("category", { ascending: true })
         .order("slot_number", { ascending: true });
-      setSlots((data as Slot[]) ?? []);
+
+      const mapped = (data as any[] ?? []).map((s) => ({
+        ...s,
+        region_names: (s.ad_slot_regions ?? [])
+          .map((r: any) => (Array.isArray(r.regions) ? r.regions[0]?.name : r.regions?.name))
+          .filter(Boolean),
+      }));
+      setSlots(mapped);
       setLoading(false);
     })();
   }, [router]);
@@ -167,7 +176,6 @@ export default function AdSpacePage() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
-      <div className="max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold text-offwhite mb-2 px-6">
         Рекламный кабинет
       </h1>
@@ -228,6 +236,10 @@ export default function AdSpacePage() {
                         <p className="text-offwhite text-sm font-semibold mb-1">
                           Показ {s.slot_number} раз{s.slot_number === 1 ? "" : "а"}
                         </p>
+                        <p className="text-gold text-[10px] mb-1">
+                          📍 {s.all_regions ? "Все регионы" : (s.region_names ?? [])[0] ?? "—"}
+                          {!s.all_regions && (s.region_names ?? []).length > 1 && " +ещё"}
+                        </p>
                         {sold ? (
                           <p className="text-danger text-xs">Занято</p>
                         ) : (
@@ -255,6 +267,10 @@ export default function AdSpacePage() {
                       }`}
                     >
                       <p className="text-offwhite text-sm font-semibold mb-1">{s.title}</p>
+                      <p className="text-gold text-[10px] mb-1">
+                        📍 {s.all_regions ? "Все регионы" : (s.region_names ?? [])[0] ?? "—"}
+                        {!s.all_regions && (s.region_names ?? []).length > 1 && " +ещё"}
+                      </p>
                       {s.description && (
                         <p className="text-muted text-xs mb-2">{s.description}</p>
                       )}
@@ -304,8 +320,14 @@ export default function AdSpacePage() {
             <h3 className="text-offwhite text-lg font-semibold mb-1">
               {selected.title}
             </h3>
-            <p className="text-muted text-xs mb-3">
+            <p className="text-muted text-xs mb-1">
               {DURATION_LABELS[selected.duration] ?? selected.duration}
+            </p>
+            <p className="text-gold text-xs mb-3">
+              📍{" "}
+              {selected.all_regions
+                ? "Все регионы"
+                : (selected.region_names ?? []).join(", ") || "регион не указан"}
             </p>
             {selected.description && (
               <p className="text-muted text-sm mb-3">{selected.description}</p>
@@ -360,7 +382,6 @@ export default function AdSpacePage() {
         </div>
       )}
 
-      </div>
       <BottomNav />
     </main>
   );
