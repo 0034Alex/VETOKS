@@ -146,7 +146,6 @@ export default function ApplyPage() {
               <input
                 type="file"
                 accept="image/*"
-                capture="user"
                 onChange={handlePhotoChange}
                 className="hidden"
               />
