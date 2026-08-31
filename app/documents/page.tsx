@@ -43,6 +43,7 @@ export default function DocumentsPage() {
 
   return (
     <main className="min-h-screen pb-28">
+      <div className="max-w-3xl mx-auto">
       <PageHeader />
       <h1 className="text-2xl font-semibold text-offwhite mb-6 px-6">
         Документы
@@ -70,6 +71,8 @@ export default function DocumentsPage() {
             )}
           </div>
         ))}
+      </div>
+
       </div>
 
       <BottomNav />
