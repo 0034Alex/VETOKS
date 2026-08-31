@@ -125,11 +125,19 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
 
       const { data: adsData } = await supabase
         .from("magazine_ads")
-        .select("id, image_url, button_text, button_link")
+        .select("id, image_url, button_text, button_link, all_regions, magazine_ad_regions(region_id)")
         .eq("is_active", true)
         .order("sort_order", { ascending: true });
 
-      const ads: MagazinePage[] = (adsData ?? []).map((a: any) => ({
+      const filteredAds = (adsData ?? []).filter((a: any) => {
+        if (a.all_regions) return true;
+        if (scope !== "region" || !userRegionId) return false;
+        return (a.magazine_ad_regions ?? []).some(
+          (r: { region_id: string }) => r.region_id === userRegionId
+        );
+      });
+
+      const ads: MagazinePage[] = filteredAds.map((a: any) => ({
         kind: "ad",
         id: a.id,
         image_url: a.image_url,
