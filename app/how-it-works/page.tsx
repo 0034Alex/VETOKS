@@ -12,6 +12,7 @@ const STEPS = [
 export default function HowItWorksPage() {
   return (
     <main className="min-h-screen pb-28">
+      <div className="max-w-3xl mx-auto">
       <PageHeader />
       <div className="px-6">
         <h1 className="text-2xl font-semibold text-gold mb-6 text-center">
@@ -42,6 +43,8 @@ export default function HowItWorksPage() {
           </p>
         </div>
       </div>
+      </div>
+
       <BottomNav />
     </main>
   );
