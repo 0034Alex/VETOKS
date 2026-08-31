@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { getCurrentUser } from "@/lib/currentUser";
 
 type Banner = {
   id: string;
@@ -26,18 +27,39 @@ export default function PromoBannerCarousel() {
       }
       setEnabled(settingRow?.value !== "false");
 
-      const { data, error } = await supabase
-        .from("promo_banners")
-        .select("id, image_url, link_url")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true })
-        .limit(5);
+      const u = await getCurrentUser();
+      const myRegionId = u?.region_id ?? null;
 
-      if (error) {
-        console.error("[PromoBannerCarousel] promo_banners error:", error);
+      // Общероссийские баннеры — видны всем.
+      const { data: nationwide, error: nationwideError } = await supabase
+        .from("promo_banners")
+        .select("id, image_url, link_url, sort_order")
+        .eq("is_active", true)
+        .eq("all_regions", true);
+      if (nationwideError) {
+        console.error("[PromoBannerCarousel] nationwide error:", nationwideError);
       }
 
-      setBanners((data as Banner[]) ?? []);
+      // Региональные баннеры — только те, что отмечены для региона зрителя.
+      let regional: any[] = [];
+      if (myRegionId) {
+        const { data: regionalRows, error: regionalError } = await supabase
+          .from("promo_banner_regions")
+          .select("banner_id, promo_banners(id, image_url, link_url, sort_order, is_active, all_regions)")
+          .eq("region_id", myRegionId);
+        if (regionalError) {
+          console.error("[PromoBannerCarousel] regional error:", regionalError);
+        }
+        regional = (regionalRows ?? [])
+          .map((r: any) => (Array.isArray(r.promo_banners) ? r.promo_banners[0] : r.promo_banners))
+          .filter((b: any) => b && b.is_active && !b.all_regions);
+      }
+
+      const merged = [...(nationwide ?? []), ...regional]
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .slice(0, 5);
+
+      setBanners(merged as Banner[]);
     })();
   }, []);
 
@@ -57,7 +79,7 @@ export default function PromoBannerCarousel() {
         style={{
           position: "relative",
           width: "100%",
-          paddingTop: "43.75%", // держит соотношение сторон 16:7 в любом браузере
+          paddingTop: "43.75%",
           borderRadius: 12,
           overflow: "hidden",
           backgroundColor: "rgba(0,0,0,0.4)",
