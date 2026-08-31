@@ -343,6 +343,13 @@ export default function AdSpacePage() {
               </p>
             ) : (
               <div className="flex flex-col gap-2">
+                <p className="text-muted text-[11px] mb-1">
+                  Оформляете размещение{" "}
+                  {selected.all_regions
+                    ? "на всю страну"
+                    : `только в: ${(selected.region_names ?? []).join(", ") || "—"}`}
+                  .
+                </p>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
