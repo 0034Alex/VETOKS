@@ -107,6 +107,7 @@ export default function ThreadPage() {
   return (
     <main className="min-h-screen pb-28 flex flex-col">
       <PageHeader />
+      <div className="max-w-3xl mx-auto w-full flex flex-col flex-1">
       <h1 className="text-xl font-semibold text-offwhite mb-4 px-6">
         {otherName}
       </h1>
@@ -142,6 +143,7 @@ export default function ThreadPage() {
         </button>
       </div>
 
+      </div>
       <BottomNav />
     </main>
   );
