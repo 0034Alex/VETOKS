@@ -34,6 +34,7 @@ export default function SeasonsPage() {
 
   return (
     <main className="min-h-screen pb-28">
+      <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between px-6 py-4">
         <Logo size={28} />
       </div>
@@ -64,6 +65,8 @@ export default function SeasonsPage() {
           <span className="text-offwhite font-semibold">Архив прошлых сезонов</span>
           <span className="text-muted text-xs">Пока пусто</span>
         </div>
+      </div>
+
       </div>
 
       <BottomNav />
