@@ -97,11 +97,16 @@ type MagazinePage =
       q3_answer: string | null;
     }
   | {
-      kind: "ad";
+      kind: "ad_text";
       id: string;
-      image_url: string;
+      description: string | null;
       button_text: string;
       button_link: string;
+    }
+  | {
+      kind: "ad_photo";
+      id: string;
+      image_url: string;
     };
 
 function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRegionId: string | null }) {
@@ -126,21 +131,15 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
 
       const { data: adsData } = await supabase
         .from("magazine_ads")
-        .select("id, image_url, button_text, button_link")
+        .select("id, image_url, description, button_text, button_link")
         .eq("is_active", true)
         .order("sort_order", { ascending: true });
 
-      const ads: MagazinePage[] = (adsData ?? []).map((a: any) => ({
-        kind: "ad",
-        id: a.id,
-        image_url: a.image_url,
-        button_text: a.button_text,
-        button_link: a.button_link,
-      }));
+      const ads = adsData ?? [];
 
       // Каждая участница — разворот: текст (левая страница) + фото (правая).
-      // Каждый 10-й разворот — реклама, целиком на обе страницы (чтобы не
-      // сбивать чередование текст/фото у следующих участниц). Если реклам
+      // Каждый 10-й разворот — реклама, тем же принципом: слева текст с
+      // кнопкой-ссылкой, справа лого/фото в такой же рамке. Если реклам
       // нет — просто идут дальше участницы без пропусков.
       const merged: MagazinePage[] = [];
       let adIndex = 0;
@@ -163,9 +162,15 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
         merged.push({ kind: "photo", id: p.id, display_name: p.display_name, photo_url: p.photo_url });
 
         if (merged.length % 20 === 0 && ads.length > 0) {
-          const ad = ads[adIndex % ads.length];
-          merged.push({ ...ad, id: `${ad.id}-l` });
-          merged.push({ ...ad, id: `${ad.id}-r` });
+          const ad: any = ads[adIndex % ads.length];
+          merged.push({
+            kind: "ad_text",
+            id: `${ad.id}-l`,
+            description: ad.description,
+            button_text: ad.button_text,
+            button_link: ad.button_link,
+          });
+          merged.push({ kind: "ad_photo", id: `${ad.id}-r`, image_url: ad.image_url });
           adIndex++;
         }
       });
@@ -250,69 +255,107 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
             style={{ margin: "0 auto" }}
           >
             {pages.map((page) => {
-            if (page.kind === "ad") {
+            if (page.kind === "ad_text") {
               return (
                 <div
-                  key={`ad-${page.id}`}
-                  className="relative bg-black"
-                  style={{ width: "100%", height: "100%", overflow: "hidden" }}
+                  key={`adtext-${page.id}`}
+                  className="relative rounded-l-lg"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    backgroundColor: "#F0EBDD",
+                    boxShadow: "inset -18px 0 18px -18px rgba(0,0,0,0.5)",
+                    borderRight: "2px solid rgba(0,0,0,0.3)",
+                    WebkitMaskImage: "-webkit-radial-gradient(white, black)",
+                    transform: "translateZ(0)",
+                  }}
                 >
-                  <a
-                    href={page.button_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ display: "block", width: "100%", height: "100%" }}
+                  <div
+                    className="px-3.5 pt-3"
+                    style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 12 }}
+                  >
+                    <p className="text-[#B23A5C] text-[6px] tracking-[0.2em] font-semibold mb-1">
+                      РЕКЛАМА
+                    </p>
+                    <h4
+                      className="text-[#1a1520] text-sm italic mb-2 pb-1"
+                      style={{
+                        fontFamily: "Georgia, 'Times New Roman', serif",
+                        borderBottom: "1px solid #ddd6c8",
+                      }}
+                    >
+                      Партнёр VETOKS
+                    </h4>
+                    {page.description && (
+                      <p
+                        className="text-[#2b2530] text-[9px] leading-[1.4] mb-3"
+                        style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+                      >
+                        {page.description}
+                      </p>
+                    )}
+                    <a
+                      href={page.button_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: "inline-block",
+                        width: "fit-content",
+                        backgroundColor: "#1a1520",
+                        color: "#F3EEE4",
+                        fontWeight: 600,
+                        padding: "8px 14px",
+                        borderRadius: 999,
+                        fontSize: 10,
+                      }}
+                    >
+                      {page.button_text}
+                    </a>
+                  </div>
+                </div>
+              );
+            }
+
+            if (page.kind === "ad_photo") {
+              return (
+                <div
+                  key={`adphoto-${page.id}`}
+                  className="relative rounded-r-lg"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    backgroundColor: "#F0EBDD",
+                    boxShadow: "inset 18px 0 18px -18px rgba(0,0,0,0.5)",
+                    borderLeft: "2px solid rgba(0,0,0,0.3)",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 14,
+                      right: 12,
+                      bottom: 14,
+                      left: 12,
+                      border: "1px solid #C9A227",
+                      overflow: "hidden",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "#fff",
+                    }}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={page.image_url}
                       alt=""
                       style={{
-                        position: "absolute",
-                        inset: 0,
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
+                        display: "block",
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        objectFit: "contain",
                       }}
                     />
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        background:
-                          "linear-gradient(to top, rgba(0,0,0,0.85), transparent 60%)",
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "flex-end",
-                        padding: 14,
-                      }}
-                    >
-                      <span
-                        style={{
-                          color: "rgba(255,255,255,0.6)",
-                          fontSize: 8,
-                          letterSpacing: 2,
-                          marginBottom: 8,
-                        }}
-                      >
-                        РЕКЛАМА
-                      </span>
-                      <span
-                        style={{
-                          display: "inline-block",
-                          width: "fit-content",
-                          backgroundColor: "#C9A227",
-                          color: "#0B0B0D",
-                          fontWeight: 600,
-                          padding: "8px 16px",
-                          borderRadius: 999,
-                          fontSize: 11,
-                        }}
-                      >
-                        {page.button_text}
-                      </span>
-                    </div>
-                  </a>
+                  </div>
                 </div>
               );
             }
