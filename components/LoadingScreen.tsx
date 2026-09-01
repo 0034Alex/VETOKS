@@ -1,4 +1,22 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
 export default function LoadingScreen() {
+  const [sponsorLogo, setSponsorLogo] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("platform_settings")
+        .select("value")
+        .eq("key", "sponsor_logo_url")
+        .maybeSingle();
+      if (data?.value) setSponsorLogo(data.value);
+    })();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-bgPrimary">
       <svg
@@ -59,6 +77,16 @@ export default function LoadingScreen() {
       <span className="text-gold font-semibold tracking-[0.25em] text-sm">
         VETOKS
       </span>
+
+      {sponsorLogo && (
+        <div className="flex flex-col items-center gap-1.5 mt-4">
+          <span className="text-muted text-[9px] tracking-[0.2em]">
+            ГЕНЕРАЛЬНЫЙ ПАРТНЁР
+          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={sponsorLogo} alt="" className="h-8 object-contain opacity-90" />
+        </div>
+      )}
     </div>
   );
 }

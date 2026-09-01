@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import { useState } from "react";
 
 type Partner = {
   id: string;
@@ -11,6 +10,15 @@ type Partner = {
   logo_url: string;
   link_url: string | null;
 };
+
+function shuffle<T>(arr: T[]): T[] {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
 
 export default function PartnersShowcase() {
   const [partners, setPartners] = useState<Partner[]>([]);
@@ -22,8 +30,8 @@ export default function PartnersShowcase() {
         .from("partner_logos")
         .select("id, name, logo_url, link_url")
         .eq("is_active", true)
-        .order("sort_order", { ascending: true });
-      setPartners((data as Partner[]) ?? []);
+        .limit(30);
+      setPartners(shuffle((data as Partner[]) ?? []));
     })();
   }, []);
 
