@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import PromoBannerCarousel from "@/components/PromoBannerCarousel";
 
 export default function PartnerPage() {
   const [name, setName] = useState("");
@@ -46,6 +47,7 @@ export default function PartnerPage() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
+      <PromoBannerCarousel placement="partner_page" />
       <div className="px-6 flex flex-col items-center">
         <div className="w-full max-w-sm bg-gradient-to-br from-[#7C3AED] to-[#EC4899] rounded-2xl p-6 mb-6 text-center">
           <h1 className="text-2xl font-bold text-white mb-2">
