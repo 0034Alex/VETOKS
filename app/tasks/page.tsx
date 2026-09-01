@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
+import { formatCoins } from "@/lib/coins";
 
 type Participant = {
   id: string;
@@ -142,7 +143,7 @@ export default function TasksPage() {
             <div className="min-w-0">
               <p className="text-muted text-xs mb-1">Ваш баланс</p>
               <p className="text-gold text-2xl font-semibold truncate">
-                {Math.round(balance)} ₽
+                {formatCoins(balance)}
               </p>
             </div>
             <span className="text-3xl flex-shrink-0">🏆</span>
@@ -163,7 +164,7 @@ export default function TasksPage() {
                 Добавьте фото и описание о себе в анкете
               </p>
               <p className="text-gold text-xs mt-1">
-                +{PROFILE_TASK_REWARD} ₽
+                +{formatCoins(PROFILE_TASK_REWARD)}
               </p>
             </div>
             {profileTaskDone ? (
