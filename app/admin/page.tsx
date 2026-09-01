@@ -1777,6 +1777,12 @@ type BannerRow = {
   sort_order: number;
   all_regions: boolean;
   region_names: string[];
+  placement: string;
+};
+
+const PLACEMENT_LABELS: Record<string, string> = {
+  main: "Участницы / Рейтинг",
+  partner_page: "Страница «Стать партнёром»",
 };
 
 function BannersTab() {
@@ -1789,6 +1795,7 @@ function BannersTab() {
   const [regions, setRegions] = useState<RegionOption[]>([]);
   const [allRegions, setAllRegions] = useState(true);
   const [selectedRegionIds, setSelectedRegionIds] = useState<string[]>([]);
+  const [placement, setPlacement] = useState("main");
 
   async function loadRegions() {
     const { data } = await supabase.from("regions").select("id, name").order("name");
@@ -1806,7 +1813,9 @@ function BannersTab() {
 
     const { data } = await supabase
       .from("promo_banners")
-      .select("id, image_url, link_url, is_active, sort_order, all_regions, promo_banner_regions(regions(name))")
+      .select(
+        "id, image_url, link_url, is_active, sort_order, all_regions, placement, promo_banner_regions(regions(name))"
+      )
       .order("sort_order", { ascending: true });
 
     const mapped = (data as any[] ?? []).map((b) => ({
@@ -1816,6 +1825,7 @@ function BannersTab() {
       is_active: b.is_active,
       sort_order: b.sort_order,
       all_regions: b.all_regions,
+      placement: b.placement ?? "main",
       region_names: (b.promo_banner_regions ?? [])
         .map((r: any) => (Array.isArray(r.regions) ? r.regions[0]?.name : r.regions?.name))
         .filter(Boolean),
@@ -1860,8 +1870,9 @@ function BannersTab() {
       .insert({
         image_url: publicUrlData.publicUrl,
         link_url: linkUrl || null,
-        sort_order: banners.length,
+        sort_order: banners.filter((b) => b.placement === placement).length,
         all_regions: allRegions,
+        placement,
       })
       .select("id")
       .single();
@@ -1911,11 +1922,23 @@ function BannersTab() {
       </div>
 
       <p className="text-muted text-sm mb-3">
-        До 5 баннеров, показываются по кругу с автопрокруткой. Зритель видит
-        только баннеры своего региона + общероссийские.
+        До 5 баннеров на каждое место показа, крутятся по кругу. Зритель
+        видит только баннеры своего региона + общероссийские.
       </p>
 
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+        <label className="text-offwhite text-xs mb-1 block">Где показывать</label>
+        <select
+          value={placement}
+          onChange={(e) => setPlacement(e.target.value)}
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        >
+          {Object.entries(PLACEMENT_LABELS).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
         <label className="block w-full text-center bg-bgPrimary border border-muted text-offwhite text-xs py-2 rounded-lg mb-2 cursor-pointer">
           {file ? file.name : "Выбрать изображение"}
           <input
@@ -1942,10 +1965,14 @@ function BannersTab() {
 
         <button
           onClick={createBanner}
-          disabled={uploading || !file || banners.length >= 5}
+          disabled={uploading || !file || banners.filter((b) => b.placement === placement).length >= 5}
           className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
         >
-          {uploading ? "Загрузка..." : banners.length >= 5 ? "Уже 5 баннеров" : "Добавить баннер"}
+          {uploading
+            ? "Загрузка..."
+            : banners.filter((b) => b.placement === placement).length >= 5
+            ? "Уже 5 баннеров для этого места"
+            : "Добавить баннер"}
         </button>
       </div>
 
@@ -1957,6 +1984,9 @@ function BannersTab() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={b.image_url} alt="" className="w-20 h-12 object-cover rounded-lg" />
             <div className="flex-1">
+              <p className="text-offwhite text-xs font-semibold">
+                {PLACEMENT_LABELS[b.placement] ?? b.placement}
+              </p>
               <p className="text-muted text-xs truncate">{b.link_url || "без ссылки"}</p>
               <p className="text-gold text-[10px] mt-0.5">
                 {b.all_regions ? "Все регионы" : b.region_names.join(", ") || "регион не выбран"}
@@ -2421,6 +2451,7 @@ const AD_CATEGORIES: { key: string; label: string; mode: AdMode }[] = [
   { key: "homepage", label: "Главная (партнёры)", mode: "capacity" },
   { key: "banner_participants", label: "Баннер — Участницы", mode: "capacity" },
   { key: "banner_rating", label: "Баннер — Рейтинг", mode: "capacity" },
+  { key: "banner_partner_page", label: "Баннер — Страница «Стать партнёром»", mode: "capacity" },
   { key: "jury", label: "Место в жюри", mode: "seats" },
   { key: "magazine_gf", label: "Гранд-финал · Журнал", mode: "tiers" },
   { key: "homepage_gf", label: "Гранд-финал · Главная", mode: "capacity" },
@@ -2436,6 +2467,7 @@ const DEFAULT_CAPACITY: Record<string, number> = {
   banner_participants_gf: 5,
   banner_rating: 5,
   banner_rating_gf: 5,
+  banner_partner_page: 5,
 };
 
 function AdSpaceTab() {
@@ -3483,6 +3515,57 @@ function BrandingTab() {
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
 
+  const [popupEnabled, setPopupEnabled] = useState(false);
+  const [popupImageUrl, setPopupImageUrl] = useState<string | null>(null);
+  const [popupUploading, setPopupUploading] = useState(false);
+  const [popupText, setPopupText] = useState("");
+  const [popupButtonText, setPopupButtonText] = useState("");
+  const [popupButtonLink, setPopupButtonLink] = useState("");
+  const [popupSaved, setPopupSaved] = useState(false);
+
+  async function loadPopup() {
+    const { data } = await supabase
+      .from("popup_settings")
+      .select("enabled, image_url, text, button_text, button_link")
+      .eq("id", 1)
+      .maybeSingle();
+    if (data) {
+      setPopupEnabled(data.enabled);
+      setPopupImageUrl(data.image_url);
+      setPopupText(data.text ?? "");
+      setPopupButtonText(data.button_text ?? "");
+      setPopupButtonLink(data.button_link ?? "");
+    }
+  }
+
+  async function uploadPopupImage(file: File) {
+    setPopupUploading(true);
+    const fileExt = file.name.split(".").pop();
+    const filePath = `popup-${Date.now()}.${fileExt}`;
+    const { error } = await supabase.storage.from("promo-banners").upload(filePath, file);
+    if (error) {
+      alert(`Ошибка загрузки: ${error.message}`);
+      setPopupUploading(false);
+      return;
+    }
+    const { data: publicUrlData } = supabase.storage.from("promo-banners").getPublicUrl(filePath);
+    setPopupImageUrl(publicUrlData.publicUrl);
+    setPopupUploading(false);
+  }
+
+  async function savePopup() {
+    await supabase.from("popup_settings").upsert({
+      id: 1,
+      enabled: popupEnabled,
+      image_url: popupImageUrl,
+      text: popupText,
+      button_text: popupButtonText || null,
+      button_link: popupButtonLink || null,
+    });
+    setPopupSaved(true);
+    setTimeout(() => setPopupSaved(false), 2000);
+  }
+
   async function load() {
     setLoading(true);
     const { data } = await supabase
@@ -3496,6 +3579,7 @@ function BrandingTab() {
     setSponsorLogoUrl(map.sponsor_logo_url ?? null);
     setTickerText(map.ticker_text ?? "");
     setTickerEnabled(map.ticker_enabled === "true");
+    await loadPopup();
     setLoading(false);
   }
 
@@ -3605,6 +3689,71 @@ function BrandingTab() {
           Сохранить
         </button>
         {saved && <span className="text-success text-sm ml-3">Сохранено!</span>}
+      </div>
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mt-6">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-offwhite text-sm font-semibold">
+            Полноэкранное окно при входе
+          </p>
+          <button
+            onClick={() => setPopupEnabled((v) => !v)}
+            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+              popupEnabled ? "bg-success text-bgPrimary" : "bg-bgPrimary border border-muted text-muted"
+            }`}
+          >
+            {popupEnabled ? "Включено" : "Выключено"}
+          </button>
+        </div>
+        <p className="text-muted text-xs mb-3">
+          Показывается не чаще раза в 3 дня для одного пользователя.
+        </p>
+
+        {popupImageUrl && (
+          <div className="mb-2 rounded-lg overflow-hidden aspect-square">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={popupImageUrl} alt="" className="w-full h-full object-cover" />
+          </div>
+        )}
+        <label className="block w-full text-center bg-bgPrimary border border-muted text-offwhite text-xs py-2 rounded-lg mb-2 cursor-pointer">
+          {popupUploading ? "Загрузка..." : popupImageUrl ? "Заменить изображение" : "Загрузить изображение"}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            disabled={popupUploading}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadPopupImage(file);
+            }}
+          />
+        </label>
+        <textarea
+          value={popupText}
+          onChange={(e) => setPopupText(e.target.value)}
+          rows={2}
+          placeholder="Текст в окне"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        />
+        <input
+          value={popupButtonText}
+          onChange={(e) => setPopupButtonText(e.target.value)}
+          placeholder="Текст кнопки"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        />
+        <input
+          value={popupButtonLink}
+          onChange={(e) => setPopupButtonLink(e.target.value)}
+          placeholder="Ссылка кнопки"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        />
+        <button
+          onClick={savePopup}
+          className="bg-gold text-bgPrimary font-semibold px-6 py-2 rounded-full text-sm"
+        >
+          Сохранить
+        </button>
+        {popupSaved && <span className="text-success text-sm ml-3">Сохранено!</span>}
       </div>
     </div>
   );
