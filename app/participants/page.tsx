@@ -7,6 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
 import PromoBannerCarousel from "@/components/PromoBannerCarousel";
+import TickerBar from "@/components/TickerBar";
 
 type Participant = {
   id: string;
@@ -349,6 +350,7 @@ export default function ParticipantsPage() {
         </div>
       </div>
 
+      <TickerBar />
       <BottomNav />
     </main>
   );
