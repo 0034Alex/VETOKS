@@ -252,15 +252,63 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
             {pages.map((page) => {
             if (page.kind === "ad") {
               return (
-                <div key={`ad-${page.id}`} className="relative bg-black overflow-hidden">
-                  <a href={page.button_link} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+                <div
+                  key={`ad-${page.id}`}
+                  className="relative bg-black"
+                  style={{ width: "100%", height: "100%", overflow: "hidden" }}
+                >
+                  <a
+                    href={page.button_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: "block", width: "100%", height: "100%" }}
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={page.image_url} alt="" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent flex flex-col justify-end p-4">
-                      <span className="text-white/60 text-[8px] tracking-widest mb-2">
+                    <img
+                      src={page.image_url}
+                      alt=""
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background:
+                          "linear-gradient(to top, rgba(0,0,0,0.85), transparent 60%)",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "flex-end",
+                        padding: 14,
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: "rgba(255,255,255,0.6)",
+                          fontSize: 8,
+                          letterSpacing: 2,
+                          marginBottom: 8,
+                        }}
+                      >
                         РЕКЛАМА
                       </span>
-                      <span className="inline-block w-fit bg-gold text-bgPrimary font-semibold py-2 px-4 rounded-full text-xs">
+                      <span
+                        style={{
+                          display: "inline-block",
+                          width: "fit-content",
+                          backgroundColor: "#C9A227",
+                          color: "#0B0B0D",
+                          fontWeight: 600,
+                          padding: "8px 16px",
+                          borderRadius: 999,
+                          fontSize: 11,
+                        }}
+                      >
                         {page.button_text}
                       </span>
                     </div>
