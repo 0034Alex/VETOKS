@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
+import { formatCoins } from "@/lib/coins";
 
 type Gift = {
   id: string;
@@ -297,7 +298,6 @@ function ShopContent() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
-      <div className="max-w-3xl mx-auto">
 
       <div className="px-6 mb-4 flex gap-2">
         <button
@@ -338,13 +338,13 @@ function ShopContent() {
       <div className="px-6 mb-4 bg-bgSurface border border-gold/40 rounded-xl p-4 flex items-center justify-between">
         <div>
           <p className="text-muted text-xs">Ваш баланс</p>
-          <p className="text-gold text-xl font-semibold">{Math.round(balance)} ₽</p>
+          <p className="text-gold text-xl font-semibold">{formatCoins(balance)}</p>
         </div>
         <button
           onClick={testTopUp}
           className="bg-bgPrimary border border-muted text-offwhite text-xs px-3 py-2 rounded-full"
         >
-          Пополнить (тест +1000₽)
+          Пополнить (тест +{formatCoins(1000)})
         </button>
       </div>
 
@@ -495,7 +495,7 @@ function ShopContent() {
         ))}
       </div>
 
-      <div className="px-6 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+      <div className="px-6 grid grid-cols-3 gap-3">
         {filteredGifts.map((g) => {
           const qty = quantities[g.id] ?? 1;
           return (
@@ -508,7 +508,7 @@ function ShopContent() {
                 {g.name}
               </span>
               <span className="text-gold text-xs font-semibold">
-                {g.price * qty} ₽
+                {formatCoins(g.price * qty)}
               </span>
               <div className="flex items-center gap-2 mt-1">
                 <button
@@ -552,7 +552,6 @@ function ShopContent() {
         </>
       )}
 
-      </div>
       <BottomNav />
     </main>
   );
@@ -590,7 +589,7 @@ function CardsSection() {
   );
 
   return (
-    <div className="px-6 max-w-3xl mx-auto">
+    <div className="px-6">
       <input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
@@ -635,7 +634,7 @@ function CardsSection() {
                   c.status === "sold" ? "text-success" : "text-gold"
                 }`}
               >
-                {c.status === "sold" ? "Продана" : "25 000 ₽"}
+                {c.status === "sold" ? "Продана" : formatCoins(25000)}
               </p>
             </div>
           </a>
