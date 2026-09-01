@@ -157,14 +157,59 @@ export default function MediaPage() {
 
   if (posts.length === 0) {
     return (
-      <main className="min-h-screen pb-28">
-        <PageHeader />
-        <div className="px-6 flex flex-col items-center justify-center text-center pt-16">
-          <h1 className="text-2xl font-semibold text-gold mb-4">Медиа</h1>
-          <p className="text-muted max-w-sm">
-            Здесь будут ролики участниц. Раздел появится, когда участницы
-            начнут выкладывать контент.
-          </p>
+      <main className="min-h-screen bg-black flex justify-center">
+        <div className="h-screen w-full max-w-md relative flex items-center justify-center overflow-hidden">
+          <div
+            className="w-full h-full"
+            style={{
+              background:
+                "linear-gradient(135deg, #2a1f3d 0%, #0B0B0D 55%, #3d1f30 100%)",
+            }}
+          />
+
+          <div className="absolute top-0 left-0 right-0 z-10">
+            <PageHeader />
+          </div>
+
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <p className="text-muted text-sm px-10 text-center">
+              Здесь появятся ролики участниц — а пока вот как будет выглядеть
+              лента
+            </p>
+          </div>
+
+          <div className="absolute bottom-0 left-0 right-0 p-4 pb-24 bg-gradient-to-t from-black/90 to-transparent">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-9 h-9 rounded-full bg-black/40 border border-gold flex items-center justify-center text-gold text-xs">
+                👑
+              </div>
+              <span className="text-white font-semibold text-sm">
+                Имя участницы
+              </span>
+            </div>
+            <p className="text-white text-sm mb-2">
+              Подпись под роликом будет здесь ✨
+            </p>
+            <button
+              disabled
+              className="bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white text-xs font-semibold px-4 py-2 rounded-full opacity-40"
+            >
+              ❤️ Поддержать
+            </button>
+          </div>
+
+          <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5">
+            <button disabled className="flex flex-col items-center">
+              <span className="text-2xl">🤍</span>
+              <span className="text-white text-xs">0</span>
+            </button>
+            <button disabled className="flex flex-col items-center">
+              <span className="text-2xl">💬</span>
+            </button>
+            <button disabled className="flex flex-col items-center">
+              <span className="text-2xl">🔗</span>
+            </button>
+          </div>
         </div>
         <BottomNav />
       </main>
@@ -172,9 +217,9 @@ export default function MediaPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black flex justify-center">
+    <main className="min-h-screen bg-black">
       <div
-        className="h-screen w-full max-w-md overflow-y-scroll snap-y snap-mandatory"
+        className="h-screen overflow-y-scroll snap-y snap-mandatory"
         style={{ scrollSnapType: "y mandatory" }}
       >
         {posts.map((p) => (
