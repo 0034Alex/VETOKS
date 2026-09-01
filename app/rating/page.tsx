@@ -7,6 +7,7 @@ import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import PromoBannerCarousel from "@/components/PromoBannerCarousel";
+import TickerBar from "@/components/TickerBar";
 
 type Ranking = {
   title_key: string;
@@ -125,7 +126,6 @@ export default function RatingPage() {
 
   return (
     <main className="min-h-screen pb-28">
-      <div className="max-w-3xl mx-auto">
       <PageHeader />
       <PromoBannerCarousel />
       <div className="px-6 mb-4">
@@ -238,8 +238,7 @@ export default function RatingPage() {
         )}
       </div>
 
-      </div>
-
+      <TickerBar />
       <BottomNav />
     </main>
   );
