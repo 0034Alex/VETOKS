@@ -10,7 +10,11 @@ type Banner = {
   link_url: string | null;
 };
 
-export default function PromoBannerCarousel() {
+export default function PromoBannerCarousel({
+  placement = "main",
+}: {
+  placement?: string;
+}) {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [enabled, setEnabled] = useState(true);
   const [active, setActive] = useState(0);
@@ -30,11 +34,12 @@ export default function PromoBannerCarousel() {
       const u = await getCurrentUser();
       const myRegionId = u?.region_id ?? null;
 
-      // Общероссийские баннеры — видны всем.
+      // Общероссийские баннеры этого места показа — видны всем.
       const { data: nationwide, error: nationwideError } = await supabase
         .from("promo_banners")
         .select("id, image_url, link_url, sort_order")
         .eq("is_active", true)
+        .eq("placement", placement)
         .eq("all_regions", true);
       if (nationwideError) {
         console.error("[PromoBannerCarousel] nationwide error:", nationwideError);
@@ -45,14 +50,16 @@ export default function PromoBannerCarousel() {
       if (myRegionId) {
         const { data: regionalRows, error: regionalError } = await supabase
           .from("promo_banner_regions")
-          .select("banner_id, promo_banners(id, image_url, link_url, sort_order, is_active, all_regions)")
+          .select(
+            "banner_id, promo_banners(id, image_url, link_url, sort_order, is_active, all_regions, placement)"
+          )
           .eq("region_id", myRegionId);
         if (regionalError) {
           console.error("[PromoBannerCarousel] regional error:", regionalError);
         }
         regional = (regionalRows ?? [])
           .map((r: any) => (Array.isArray(r.promo_banners) ? r.promo_banners[0] : r.promo_banners))
-          .filter((b: any) => b && b.is_active && !b.all_regions);
+          .filter((b: any) => b && b.is_active && !b.all_regions && b.placement === placement);
       }
 
       const merged = [...(nationwide ?? []), ...regional]
@@ -61,7 +68,7 @@ export default function PromoBannerCarousel() {
 
       setBanners(merged as Banner[]);
     })();
-  }, []);
+  }, [placement]);
 
   useEffect(() => {
     if (banners.length <= 1) return;
