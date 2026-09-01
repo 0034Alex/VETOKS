@@ -1877,7 +1877,13 @@ function BannersTab() {
       .select("id")
       .single();
 
-    if (!insertError && inserted && !allRegions && selectedRegionIds.length > 0) {
+    if (insertError) {
+      alert(`Не удалось сохранить баннер: ${insertError.message}`);
+      setUploading(false);
+      return;
+    }
+
+    if (inserted && !allRegions && selectedRegionIds.length > 0) {
       await supabase.from("promo_banner_regions").insert(
         selectedRegionIds.map((region_id) => ({ banner_id: inserted.id, region_id }))
       );
@@ -2600,7 +2606,12 @@ function AdSpaceTab() {
       .select("id")
       .single();
 
-    if (!error && inserted && !addAllRegions && addSelectedRegionIds.length > 0) {
+    if (error) {
+      alert(`Не удалось сохранить место: ${error.message}`);
+      return;
+    }
+
+    if (inserted && !addAllRegions && addSelectedRegionIds.length > 0) {
       await supabase.from("ad_slot_regions").insert(
         addSelectedRegionIds.map((region_id) => ({ slot_id: inserted.id, region_id }))
       );
@@ -3395,7 +3406,13 @@ function MagazineAdsTab() {
       .select("id")
       .single();
 
-    if (!insertError && inserted && !allRegions && selectedRegionIds.length > 0) {
+    if (insertError) {
+      alert(`Не удалось сохранить рекламу: ${insertError.message}`);
+      setUploading(false);
+      return;
+    }
+
+    if (inserted && !allRegions && selectedRegionIds.length > 0) {
       await supabase.from("magazine_ad_regions").insert(
         selectedRegionIds.map((region_id) => ({ ad_id: inserted.id, region_id }))
       );
