@@ -31,6 +31,7 @@ const CATEGORIES: { key: string; label: string; mode: Mode }[] = [
   { key: "homepage", label: "Главная (партнёры)", mode: "capacity" },
   { key: "banner_participants", label: "Баннер — Участницы", mode: "capacity" },
   { key: "banner_rating", label: "Баннер — Рейтинг", mode: "capacity" },
+  { key: "banner_partner_page", label: "Баннер — Страница «Стать партнёром»", mode: "capacity" },
   { key: "jury", label: "Место в жюри", mode: "seats" },
   { key: "magazine_gf", label: "Гранд-финал · Журнал", mode: "tiers" },
   { key: "homepage_gf", label: "Гранд-финал · Главная", mode: "capacity" },
