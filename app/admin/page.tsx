@@ -23,7 +23,8 @@ type Tab =
   | "calendar"
   | "social"
   | "media"
-  | "magazine-ads";
+  | "magazine-ads"
+  | "branding";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -44,6 +45,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "calendar", label: "Календарь контента" },
   { key: "social", label: "Соцсети" },
   { key: "media", label: "Материалы" },
+  { key: "branding", label: "Брендирование" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
@@ -51,7 +53,7 @@ const TABS: { key: Tab; label: string }[] = [
 const PERMISSION_TABS: Record<string, Tab[]> = {
   moderation: ["applications", "participants", "cards", "calendar", "media"],
   finance: ["dashboard", "goal"],
-  partners: ["partners", "partner-logos", "banners", "magazine-ads", "ad-space", "social"],
+  partners: ["partners", "partner-logos", "banners", "magazine-ads", "ad-space", "social", "branding"],
   staff: ["staff", "users"],
   support: ["support", "documents"],
 };
@@ -202,6 +204,7 @@ export default function AdminPage() {
         {tab === "stages" && <StagesTab />}
         {tab === "banners" && <BannersTab />}
         {tab === "magazine-ads" && <MagazineAdsTab />}
+        {tab === "branding" && <BrandingTab />}
         {tab === "documents" && <DocumentsTab />}
         {tab === "calendar" && <CalendarTab />}
         {tab === "social" && <SocialLinksTab />}
@@ -3463,6 +3466,145 @@ function MagazineAdsTab() {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// БРЕНДИРОВАНИЕ
+// ---------------------------------------------------------------------
+
+function BrandingTab() {
+  const [sponsorLogoUrl, setSponsorLogoUrl] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [tickerText, setTickerText] = useState("");
+  const [tickerEnabled, setTickerEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("platform_settings")
+      .select("key, value")
+      .in("key", ["sponsor_logo_url", "ticker_text", "ticker_enabled"]);
+    const map: Record<string, string> = {};
+    (data ?? []).forEach((r: { key: string; value: string }) => {
+      map[r.key] = r.value;
+    });
+    setSponsorLogoUrl(map.sponsor_logo_url ?? null);
+    setTickerText(map.ticker_text ?? "");
+    setTickerEnabled(map.ticker_enabled === "true");
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function uploadSponsorLogo(file: File) {
+    setUploadingLogo(true);
+    const fileExt = file.name.split(".").pop();
+    const filePath = `sponsor-${Date.now()}.${fileExt}`;
+    const { error } = await supabase.storage.from("promo-banners").upload(filePath, file);
+    if (error) {
+      alert(`Ошибка загрузки: ${error.message}`);
+      setUploadingLogo(false);
+      return;
+    }
+    const { data: publicUrlData } = supabase.storage.from("promo-banners").getPublicUrl(filePath);
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "sponsor_logo_url", value: publicUrlData.publicUrl });
+    setSponsorLogoUrl(publicUrlData.publicUrl);
+    setUploadingLogo(false);
+  }
+
+  async function removeSponsorLogo() {
+    await supabase.from("platform_settings").upsert({ key: "sponsor_logo_url", value: null });
+    setSponsorLogoUrl(null);
+  }
+
+  async function saveTicker() {
+    await supabase.from("platform_settings").upsert({ key: "ticker_text", value: tickerText });
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "ticker_enabled", value: tickerEnabled ? "true" : "false" });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  if (loading) return <p className="text-muted">Загрузка...</p>;
+
+  return (
+    <div className="max-w-lg">
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+        <p className="text-offwhite text-sm font-semibold mb-2">
+          Логотип генерального партнёра
+        </p>
+        <p className="text-muted text-xs mb-3">
+          Показывается на экране загрузки при каждом старте приложения.
+        </p>
+        {sponsorLogoUrl && (
+          <div className="mb-2 bg-bgPrimary rounded-lg p-3 flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={sponsorLogoUrl} alt="" className="h-10 object-contain" />
+          </div>
+        )}
+        <label className="block w-full text-center bg-bgPrimary border border-muted text-offwhite text-xs py-2 rounded-lg mb-2 cursor-pointer">
+          {uploadingLogo ? "Загрузка..." : sponsorLogoUrl ? "Заменить логотип" : "Загрузить логотип"}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            disabled={uploadingLogo}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadSponsorLogo(file);
+            }}
+          />
+        </label>
+        {sponsorLogoUrl && (
+          <button
+            onClick={removeSponsorLogo}
+            className="w-full text-danger text-xs py-2 rounded-full border border-danger"
+          >
+            Убрать логотип
+          </button>
+        )}
+      </div>
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-offwhite text-sm font-semibold">Бегущая строка</p>
+          <button
+            onClick={() => setTickerEnabled((v) => !v)}
+            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+              tickerEnabled ? "bg-success text-bgPrimary" : "bg-bgPrimary border border-muted text-muted"
+            }`}
+          >
+            {tickerEnabled ? "Включена" : "Выключена"}
+          </button>
+        </div>
+        <p className="text-muted text-xs mb-3">
+          Показывается снизу на страницах «Участницы» и «Рейтинг», бежит по
+          кругу.
+        </p>
+        <textarea
+          value={tickerText}
+          onChange={(e) => setTickerText(e.target.value)}
+          rows={2}
+          placeholder="Текст бегущей строки"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        />
+        <button
+          onClick={saveTicker}
+          className="bg-gold text-bgPrimary font-semibold px-6 py-2 rounded-full text-sm"
+        >
+          Сохранить
+        </button>
+        {saved && <span className="text-success text-sm ml-3">Сохранено!</span>}
       </div>
     </div>
   );
