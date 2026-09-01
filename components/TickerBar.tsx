@@ -26,19 +26,30 @@ export default function TickerBar() {
 
   return (
     <div
-      className="fixed left-0 right-0 z-30 overflow-hidden bg-bgSurface border-t border-gold/30"
-      style={{ bottom: "calc(64px + env(safe-area-inset-bottom))", height: 28 }}
+      style={{
+        overflow: "hidden",
+        backgroundColor: "#151517",
+        borderTop: "1px solid rgba(201,162,39,0.3)",
+        borderBottom: "1px solid rgba(201,162,39,0.3)",
+        height: 28,
+        marginTop: 16,
+      }}
     >
       <div
-        className="whitespace-nowrap text-gold text-xs flex items-center h-full"
         style={{
-          animation: "vetoks-ticker-scroll 22s linear infinite",
+          whiteSpace: "nowrap",
+          color: "#C9A227",
+          fontSize: 12,
+          display: "flex",
+          alignItems: "center",
+          height: "100%",
           width: "max-content",
+          animation: "vetoks-ticker-scroll 22s linear infinite",
         }}
       >
-        <span className="px-6">{text}</span>
-        <span className="px-6">{text}</span>
-        <span className="px-6">{text}</span>
+        <span style={{ padding: "0 24px" }}>{text}</span>
+        <span style={{ padding: "0 24px" }}>{text}</span>
+        <span style={{ padding: "0 24px" }}>{text}</span>
       </div>
       <style>{`
         @keyframes vetoks-ticker-scroll {
