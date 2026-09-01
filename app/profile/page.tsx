@@ -387,6 +387,13 @@ export default function ProfilePage() {
               <span>→</span>
             </a>
             <a
+              href="/region-clan"
+              className="p-4 flex items-center justify-between text-muted text-sm"
+            >
+              <span>🏰 Клан региона</span>
+              <span>→</span>
+            </a>
+            <a
               href="/edit-profile"
               className="p-4 flex items-center justify-between text-muted text-sm"
             >
