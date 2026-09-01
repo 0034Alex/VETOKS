@@ -3314,6 +3314,7 @@ function MediaMaterialsTab() {
 type MagazineAdRow = {
   id: string;
   image_url: string;
+  description: string | null;
   button_text: string;
   button_link: string;
   is_active: boolean;
@@ -3326,6 +3327,7 @@ function MagazineAdsTab() {
   const [ads, setAds] = useState<MagazineAdRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [description, setDescription] = useState("");
   const [buttonText, setButtonText] = useState("");
   const [buttonLink, setButtonLink] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -3349,7 +3351,7 @@ function MagazineAdsTab() {
     const { data } = await supabase
       .from("magazine_ads")
       .select(
-        "id, image_url, button_text, button_link, is_active, sort_order, all_regions, magazine_ad_regions(regions(name))"
+        "id, image_url, description, button_text, button_link, is_active, sort_order, all_regions, magazine_ad_regions(regions(name))"
       )
       .order("sort_order", { ascending: true });
 
@@ -3384,6 +3386,7 @@ function MagazineAdsTab() {
       .from("magazine_ads")
       .insert({
         image_url: publicUrlData.publicUrl,
+        description: description || null,
         button_text: buttonText,
         button_link: buttonLink,
         sort_order: ads.length,
@@ -3398,6 +3401,7 @@ function MagazineAdsTab() {
       );
     }
 
+    setDescription("");
     setButtonText("");
     setButtonLink("");
     setFile(null);
@@ -3421,14 +3425,16 @@ function MagazineAdsTab() {
   return (
     <div className="max-w-lg">
       <p className="text-muted text-sm mb-4">
-        Рекламный блок появляется каждой 10-й страницей в журнале на главной.
-        Зритель видит только рекламу своего региона + общероссийскую.
+        Рекламный блок появляется каждой 10-й страницей в журнале на главной
+        — разворотом: слева текст с кнопкой-ссылкой, справа изображение/лого
+        партнёра в такой же рамке, как у участниц. Зритель видит только
+        рекламу своего региона + общероссийскую.
       </p>
 
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
         <p className="text-offwhite text-sm font-semibold mb-2">Новая реклама</p>
         <label className="block w-full text-center bg-bgPrimary border border-muted text-offwhite text-xs py-2 rounded-lg mb-2 cursor-pointer">
-          {file ? file.name : "Выбрать изображение"}
+          {file ? file.name : "Изображение / лого (правая страница)"}
           <input
             type="file"
             accept="image/*"
@@ -3436,6 +3442,13 @@ function MagazineAdsTab() {
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
         </label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          placeholder="Текст на левой странице (необязательно)"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        />
         <input
           value={buttonText}
           onChange={(e) => setButtonText(e.target.value)}
