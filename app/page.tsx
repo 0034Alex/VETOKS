@@ -10,6 +10,7 @@ import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PartnersShowcase from "@/components/PartnersShowcase";
 import LoadingScreen from "@/components/LoadingScreen";
+import EntryPopup from "@/components/EntryPopup";
 
 // Настоящий 3D-переворот страниц — библиотека работает только в браузере,
 // поэтому подключаем её динамически, без серверной отрисовки.
@@ -125,19 +126,11 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
 
       const { data: adsData } = await supabase
         .from("magazine_ads")
-        .select("id, image_url, button_text, button_link, all_regions, magazine_ad_regions(region_id)")
+        .select("id, image_url, button_text, button_link")
         .eq("is_active", true)
         .order("sort_order", { ascending: true });
 
-      const filteredAds = (adsData ?? []).filter((a: any) => {
-        if (a.all_regions) return true;
-        if (scope !== "region" || !userRegionId) return false;
-        return (a.magazine_ad_regions ?? []).some(
-          (r: { region_id: string }) => r.region_id === userRegionId
-        );
-      });
-
-      const ads: MagazinePage[] = filteredAds.map((a: any) => ({
+      const ads: MagazinePage[] = (adsData ?? []).map((a: any) => ({
         kind: "ad",
         id: a.id,
         image_url: a.image_url,
@@ -693,6 +686,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen pb-28">
+      <EntryPopup />
       <div
         className="flex items-center justify-between px-6 py-4 sticky top-0 z-40 bg-bgPrimary/95 backdrop-blur"
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
