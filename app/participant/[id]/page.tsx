@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
+import { formatCoins } from "@/lib/coins";
 
 type CollectibleCard = {
   id: string;
@@ -374,7 +375,7 @@ export default function ParticipantProfilePage() {
     if (!msgError && participant) {
       await notify(
         participant.user_id,
-        `✉️ Новое платное сообщение (${MESSAGE_PRICE.toLocaleString("ru-RU")} ₽)`,
+        `✉️ Новое платное сообщение (${formatCoins(MESSAGE_PRICE)})`,
         `/messages/${userId}`
       );
     }
@@ -463,7 +464,7 @@ export default function ParticipantProfilePage() {
     if (participant) {
       await notify(
         participant.user_id,
-        `🃏 Продана карточка «${STAGE_LABELS[card.stage]}» за ${CARD_PRICE.toLocaleString("ru-RU")} ₽`,
+        `🃏 Продана карточка «${STAGE_LABELS[card.stage]}» за ${formatCoins(CARD_PRICE)}`,
         `/my-cards`
       );
     }
@@ -526,7 +527,7 @@ export default function ParticipantProfilePage() {
       week_start: monday.toISOString().slice(0, 10),
     });
 
-    await notify(participant.user_id, `💝 Вам задонатили ${Math.round(amount)} ₽ на цель недели`, `/participant/${id}`);
+    await notify(participant.user_id, `💝 Вам задонатили ${formatCoins(amount)} на цель недели`, `/participant/${id}`);
 
     setBalance((b) => b - amount);
     setGoalCollected((g) => g + amount);
@@ -653,7 +654,7 @@ export default function ParticipantProfilePage() {
           )}
         </div>
 
-        <div className="px-6 max-w-3xl mx-auto">
+        <div className="px-6">
           <h1 className="text-2xl text-offwhite font-semibold mb-2">
             {participant.display_name}
           </h1>
@@ -680,7 +681,7 @@ export default function ParticipantProfilePage() {
               <p className="text-muted text-xs mb-1">
                 Ваш заработок с подарков (видно только вам)
               </p>
-              <p className="text-gold text-xl font-semibold">{Math.round(giftTotal)} ₽</p>
+              <p className="text-gold text-xl font-semibold">{formatCoins(giftTotal)}</p>
             </div>
           )}
 
@@ -699,7 +700,7 @@ export default function ParticipantProfilePage() {
                 />
               </div>
               <p className="text-muted text-xs mb-3">
-                Собрано {Math.round(goalCollected)} / {goalTarget} ₽
+                Собрано {formatCoins(goalCollected)} / {formatCoins(goalTarget)}
               </p>
               {!isOwner && (
                 <div className="flex gap-2">
@@ -728,7 +729,7 @@ export default function ParticipantProfilePage() {
                   {goalDonors.map((d, i) => (
                     <div key={i} className="flex justify-between text-xs">
                       <span className="text-offwhite">{d.name}</span>
-                      <span className="text-gold">{Math.round(d.amount)} ₽</span>
+                      <span className="text-gold">{formatCoins(d.amount)}</span>
                     </div>
                   ))}
                 </div>
@@ -791,7 +792,7 @@ export default function ParticipantProfilePage() {
                       {c.status === "sold"
                         ? "Продана"
                         : c.status === "ready"
-                        ? "25 000 ₽"
+                        ? formatCoins(25000)
                         : "Скоро"}
                     </button>
                   </div>
@@ -837,9 +838,7 @@ export default function ParticipantProfilePage() {
                   disabled={!userId}
                   className="w-full text-offwhite font-semibold text-sm disabled:opacity-40"
                 >
-                  ✉️ Написать участнице — от {MESSAGE_PRICE.toLocaleString(
-                    "ru-RU"
-                  )} ₽
+                  ✉️ Написать участнице — от {formatCoins(MESSAGE_PRICE)}
                 </button>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -857,7 +856,7 @@ export default function ParticipantProfilePage() {
                   >
                     {thread.length > 0
                       ? "Отправить"
-                      : `Отправить за ${MESSAGE_PRICE.toLocaleString("ru-RU")} ₽`}
+                      : `Отправить за ${formatCoins(MESSAGE_PRICE)}`}
                   </button>
                 </div>
               )}
@@ -866,7 +865,7 @@ export default function ParticipantProfilePage() {
 
           <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
             <p className="text-offwhite text-sm font-semibold mb-1">
-              🚀 Продвинуть в топ — {BOOST_PRICE.toLocaleString("ru-RU")} ₽
+              🚀 Продвинуть в топ — {formatCoins(BOOST_PRICE)}
             </p>
             <p className="text-muted text-xs mb-3">
               +1000 голосов сразу · осталось {boostsLeft} из {BOOST_LIMIT}{" "}
