@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import { formatCoins } from "@/lib/coins";
 
 type Tx = {
   id: string;
@@ -59,7 +60,6 @@ export default function HistoryPage() {
 
   return (
     <main className="min-h-screen pb-28">
-      <div className="max-w-3xl mx-auto">
       <PageHeader />
       <h1 className="text-2xl font-semibold text-offwhite mb-6 px-6">
         История операций
@@ -90,12 +90,10 @@ export default function HistoryPage() {
               }`}
             >
               {Number(t.amount) >= 0 ? "+" : ""}
-              {Math.round(t.amount)} ₽
+              {formatCoins(t.amount)}
             </span>
           </div>
         ))}
-      </div>
-
       </div>
 
       <BottomNav />
