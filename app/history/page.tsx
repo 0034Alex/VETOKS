@@ -6,7 +6,6 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
-import { formatCoins } from "@/lib/coins";
 
 type Tx = {
   id: string;
@@ -90,7 +89,7 @@ export default function HistoryPage() {
               }`}
             >
               {Number(t.amount) >= 0 ? "+" : ""}
-              {formatCoins(t.amount)}
+              {Math.round(t.amount)} ₽
             </span>
           </div>
         ))}
