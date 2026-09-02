@@ -281,6 +281,17 @@ export default function ProfilePage() {
             </div>
           </Link>
 
+          {!participant && (
+            <Link
+              href="/region-clan"
+              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
+            >
+              <span className="text-offwhite font-semibold text-sm">
+                🏰 Клан региона
+              </span>
+            </Link>
+          )}
+
           {participant && (
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="bg-bgSurface border border-muted rounded-xl p-4">
@@ -374,6 +385,17 @@ export default function ProfilePage() {
             </a>
           )}
 
+          {participant && (
+            <a
+              href="/region-clan"
+              className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
+            >
+              <span className="text-offwhite font-semibold text-sm">
+                🏰 Клан региона
+              </span>
+            </a>
+          )}
+
           <div className="bg-bgSurface border border-muted rounded-xl divide-y divide-muted mb-6">
             <div className="p-4 flex items-center justify-between">
               <span className="text-offwhite text-sm">Мои приглашения</span>
@@ -384,13 +406,6 @@ export default function ProfilePage() {
               className="p-4 flex items-center justify-between text-muted text-sm"
             >
               <span>Мои подписки</span>
-              <span>→</span>
-            </a>
-            <a
-              href="/region-clan"
-              className="p-4 flex items-center justify-between text-muted text-sm"
-            >
-              <span>🏰 Клан региона</span>
               <span>→</span>
             </a>
             <a
