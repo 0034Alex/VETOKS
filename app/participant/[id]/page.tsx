@@ -139,7 +139,7 @@ export default function ParticipantProfilePage() {
       .select("id")
       .eq("is_eliminated", false);
     if (allParticipants) {
-      const { data: allVotes } = await supabase.from("votes").select("participant_id");
+      const { data: allVotes } = await supabase.from("votes").select("participant_id").range(0, 49999);
       const counts: Record<string, number> = {};
       (allVotes ?? []).forEach((v: { participant_id: string }) => {
         counts[v.participant_id] = (counts[v.participant_id] ?? 0) + 1;
