@@ -50,7 +50,8 @@ export default function ParticipantsPage() {
     if (list.length > 0) {
       const { data: votesData } = await supabase
         .from("votes")
-        .select("participant_id");
+        .select("participant_id")
+        .range(0, 49999);
 
       const vCounts: Record<string, number> = {};
       (votesData ?? []).forEach((v: { participant_id: string }) => {
@@ -335,18 +336,6 @@ export default function ParticipantsPage() {
               </div>
             </div>
           ))}
-        </div>
-
-        <div className="mx-6 mt-8 bg-bgSurface border border-gold/40 rounded-xl p-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-offwhite text-sm font-semibold">
-              Хочешь попасть в топ?
-            </p>
-            <p className="text-muted text-xs">
-              Получай больше голосов от своих поклонников
-            </p>
-          </div>
-          <span className="text-gold text-xl">👑</span>
         </div>
       </div>
 
