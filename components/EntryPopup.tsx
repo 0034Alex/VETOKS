@@ -17,7 +17,6 @@ const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 export default function EntryPopup() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [show, setShow] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -32,7 +31,6 @@ export default function EntryPopup() {
 
       const u = await getCurrentUser();
       if (!u) return;
-      setUserId(u.id);
 
       const { data: lastShow } = await supabase
         .from("popup_shows")
@@ -56,34 +54,78 @@ export default function EntryPopup() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-black/85 flex items-center justify-center px-6"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
+        backgroundColor: "rgba(0,0,0,0.85)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "0 24px",
+      }}
       onClick={() => setShow(false)}
     >
       <div
-        className="bg-bgSurface border border-gold/40 rounded-2xl overflow-hidden w-full max-w-sm"
+        style={{
+          backgroundColor: "#151517",
+          border: "1px solid rgba(201,162,39,0.4)",
+          borderRadius: 16,
+          overflow: "hidden",
+          width: "100%",
+          maxWidth: 384,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {settings.image_url && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={settings.image_url} alt="" className="w-full aspect-square object-cover" />
+          <img
+            src={settings.image_url}
+            alt=""
+            style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", display: "block" }}
+          />
         )}
-        <div className="p-5">
+        <div style={{ padding: 20 }}>
           {settings.text && (
-            <p className="text-offwhite text-sm mb-4">{settings.text}</p>
+            <p style={{ color: "#F5F5F2", fontSize: 14, marginBottom: 16 }}>
+              {settings.text}
+            </p>
           )}
           {settings.button_text && settings.button_link && (
             <a
               href={settings.button_link}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full bg-gold text-bgPrimary font-semibold text-center py-3 rounded-full text-sm mb-2"
+              style={{
+                display: "block",
+                width: "100%",
+                backgroundColor: "#C9A227",
+                color: "#0B0B0D",
+                fontWeight: 600,
+                textAlign: "center",
+                padding: "12px 0",
+                borderRadius: 999,
+                fontSize: 14,
+                marginBottom: 8,
+                textDecoration: "none",
+              }}
             >
               {settings.button_text}
             </a>
           )}
           <button
             onClick={() => setShow(false)}
-            className="w-full text-muted text-xs py-2"
+            style={{
+              width: "100%",
+              color: "#8A8A8E",
+              fontSize: 12,
+              padding: "8px 0",
+              background: "none",
+              border: "none",
+            }}
           >
             Закрыть
           </button>
