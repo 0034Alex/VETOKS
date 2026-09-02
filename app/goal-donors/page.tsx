@@ -6,7 +6,6 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
-import { formatCoins } from "@/lib/coins";
 
 type Donor = { name: string; amount: number; created_at: string };
 
@@ -97,7 +96,7 @@ export default function GoalDonorsPage() {
             <span className="text-offwhite text-sm">{d.name}</span>
             <div className="text-right">
               <p className="text-gold text-sm font-semibold">
-                {formatCoins(d.amount)}
+                {Math.round(d.amount)} ₽
               </p>
               <p className="text-muted text-xs">
                 {new Date(d.created_at).toLocaleDateString("ru-RU")}
