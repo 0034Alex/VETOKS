@@ -59,7 +59,8 @@ export default function Top25Page() {
         .from("votes")
         .select("participant_id")
         .eq("is_paid", false)
-        .gte("created_at", since.toISOString());
+        .gte("created_at", since.toISOString())
+        .range(0, 49999);
 
       const counts: Record<string, number> = {};
       (votes ?? []).forEach((v: { participant_id: string }) => {
