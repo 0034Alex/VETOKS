@@ -938,53 +938,59 @@ export default function Home() {
             Пока нет одобренных участниц.
           </p>
         ) : (
-          <div className="flex items-start gap-3 px-6 mb-8 overflow-x-auto">
-            {participants.map((p, slot) => {
-              const isFirst = slot === 0;
-              const isRising = risingIds.has(p.id);
-              const medal =
-                slot === 0 ? "👑" : slot === 1 ? "🥈" : slot === 2 ? "🥉" : `#${slot + 1}`;
-              return (
-                <Link
-                  href={`/participant/${p.id}`}
-                  key={p.id}
-                  className={`flex-shrink-0 w-[110px] bg-bgSurface border rounded-xl overflow-hidden transition-transform duration-500 ${
-                    isFirst ? "border-gold" : "border-muted"
-                  } ${isRising ? "scale-110 shadow-lg shadow-gold/50" : ""}`}
-                >
-                  <div className="bg-black/40 flex items-center justify-center relative aspect-[3/4]">
-                    {isRising && (
-                      <span className="absolute -top-3 right-1 text-lg z-10">
-                        🚀
+          <div className="flex items-end justify-center gap-1.5 px-4 mb-8">
+            {[participants[3], participants[1], participants[0], participants[2], participants[4]].map(
+              (p, slot) => {
+                if (!p) return <div key={slot} className="flex-1 max-w-[70px]" />;
+                // slot: 0=4-е место, 1=2-е, 2=1-е (по центру), 3=3-е, 4=5-е
+                const isFirst = slot === 2;
+                const isMedium = slot === 1 || slot === 3;
+                const isRising = risingIds.has(p.id);
+                const rank = slot === 2 ? 1 : slot === 1 ? 2 : slot === 3 ? 3 : slot === 0 ? 4 : 5;
+                const medal = rank === 1 ? "👑" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`;
+                const widthClass = isFirst ? "w-[92px]" : isMedium ? "w-[76px]" : "w-[62px]";
+                return (
+                  <Link
+                    href={`/participant/${p.id}`}
+                    key={p.id}
+                    className={`flex-shrink-0 ${widthClass} bg-bgSurface border rounded-xl overflow-hidden transition-transform duration-500 ${
+                      isFirst ? "border-gold" : "border-muted"
+                    } ${isRising ? "scale-110 shadow-lg shadow-gold/50" : ""}`}
+                    style={{ marginBottom: isFirst ? 0 : isMedium ? 14 : 24 }}
+                  >
+                    <div className="bg-black/40 flex items-center justify-center relative aspect-[3/4]">
+                      {isRising && (
+                        <span className="absolute -top-2 right-0.5 text-sm z-10">
+                          🚀
+                        </span>
+                      )}
+                      <span className={isFirst ? "absolute top-1.5 left-1.5 text-base" : "absolute top-1 left-1 text-xs"}>
+                        {medal}
                       </span>
-                    )}
-                    <span className="absolute top-1.5 left-1.5 text-base">
-                      {medal}
-                    </span>
-                    {p.photo_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={p.photo_url}
-                        alt={p.display_name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-muted text-xs">Нет фото</span>
-                    )}
-                  </div>
-                  <div className="p-2">
-                    <p className="text-offwhite text-xs font-semibold truncate">
-                      {p.display_name}
-                    </p>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="text-rose text-[10px]">♥ {p.votes}</p>
-                      <p className="text-gold text-[10px]">🎁 {p.gifts}</p>
-                      <p className="text-muted text-[10px]">👥 {p.followers}</p>
+                      {p.photo_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.photo_url}
+                          alt={p.display_name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-muted text-[9px] px-1 text-center">Нет фото</span>
+                      )}
                     </div>
-                  </div>
-                </Link>
-              );
-            })}
+                    <div className={isFirst ? "p-2" : "p-1"}>
+                      <p className={`text-offwhite font-semibold truncate ${isFirst ? "text-xs" : "text-[10px]"}`}>
+                        {p.display_name}
+                      </p>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <p className="text-rose text-[8px]">♥{p.votes}</p>
+                        {isFirst && <p className="text-gold text-[8px]">🎁{p.gifts}</p>}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              }
+            )}
           </div>
         )}
 
