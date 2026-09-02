@@ -129,6 +129,16 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
           ? (participantsData ?? []).filter((p: any) => p.region_id === userRegionId)
           : participantsData ?? [];
 
+      // Перемешиваем порядок при каждом открытии — чтобы при повторном
+      // заходе журнал показывал участниц в новом случайном порядке.
+      for (let i = filteredParticipants.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [filteredParticipants[i], filteredParticipants[j]] = [
+          filteredParticipants[j],
+          filteredParticipants[i],
+        ];
+      }
+
       const { data: adsData } = await supabase
         .from("magazine_ads")
         .select("id, image_url, description, button_text, button_link")
@@ -663,7 +673,7 @@ export default function Home() {
         .select("id, display_name, photo_url, season_id, region_id")
         .eq("is_eliminated", false);
 
-      const { data: votesData } = await supabase.from("votes").select("participant_id");
+      const { data: votesData } = await supabase.from("votes").select("participant_id").range(0, 49999);
       const counts: Record<string, number> = {};
       (votesData ?? []).forEach((v: { participant_id: string }) => {
         counts[v.participant_id] = (counts[v.participant_id] ?? 0) + 1;
@@ -727,7 +737,7 @@ export default function Home() {
     if (!inWindow || !checked) return;
 
     const interval = setInterval(async () => {
-      const { data: votesData } = await supabase.from("votes").select("participant_id");
+      const { data: votesData } = await supabase.from("votes").select("participant_id").range(0, 49999);
       const counts: Record<string, number> = {};
       (votesData ?? []).forEach((v: { participant_id: string }) => {
         counts[v.participant_id] = (counts[v.participant_id] ?? 0) + 1;
@@ -779,7 +789,7 @@ export default function Home() {
     <main className="min-h-screen pb-28">
       <EntryPopup />
       <div
-        className="flex items-center justify-between px-6 py-4 sticky top-0 z-40 bg-bgPrimary/95 backdrop-blur"
+        className="flex items-center justify-between px-6 py-4"
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
       >
         <Logo size={32} />
@@ -928,58 +938,53 @@ export default function Home() {
             Пока нет одобренных участниц.
           </p>
         ) : (
-          <div className="flex items-end justify-center gap-3 px-6 mb-8">
-            {[participants[1], participants[0], participants[2]].map(
-              (p, slot) => {
-                if (!p) return <div key={slot} className="flex-1 max-w-[110px]" />;
-                const isFirst = slot === 1;
-                const isRising = risingIds.has(p.id);
-                return (
-                  <Link
-                    href={`/participant/${p.id}`}
-                    key={slot}
-                    className={`flex-1 max-w-[130px] bg-bgSurface border rounded-xl overflow-hidden transition-transform duration-500 ${
-                      isFirst ? "border-gold" : "border-muted"
-                    } ${isRising ? "scale-110 shadow-lg shadow-gold/50" : ""}`}
-                    style={{ marginBottom: isFirst ? 0 : 16 }}
-                  >
-                    <div
-                      className="bg-black/40 flex items-center justify-center relative aspect-[3/4]"
-                      style={{ transform: isFirst ? "scale(1)" : "scale(0.92)" }}
-                    >
-                      {isRising && (
-                        <span className="absolute -top-3 right-1 text-lg z-10">
-                          🚀
-                        </span>
-                      )}
-                      <span className="absolute top-1.5 left-1.5 text-lg">
-                        {isFirst ? "👑" : slot === 0 ? "🥈" : "🥉"}
+          <div className="flex items-start gap-3 px-6 mb-8 overflow-x-auto">
+            {participants.map((p, slot) => {
+              const isFirst = slot === 0;
+              const isRising = risingIds.has(p.id);
+              const medal =
+                slot === 0 ? "👑" : slot === 1 ? "🥈" : slot === 2 ? "🥉" : `#${slot + 1}`;
+              return (
+                <Link
+                  href={`/participant/${p.id}`}
+                  key={p.id}
+                  className={`flex-shrink-0 w-[110px] bg-bgSurface border rounded-xl overflow-hidden transition-transform duration-500 ${
+                    isFirst ? "border-gold" : "border-muted"
+                  } ${isRising ? "scale-110 shadow-lg shadow-gold/50" : ""}`}
+                >
+                  <div className="bg-black/40 flex items-center justify-center relative aspect-[3/4]">
+                    {isRising && (
+                      <span className="absolute -top-3 right-1 text-lg z-10">
+                        🚀
                       </span>
-                      {p.photo_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={p.photo_url}
-                          alt={p.display_name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-muted text-xs">Нет фото</span>
-                      )}
+                    )}
+                    <span className="absolute top-1.5 left-1.5 text-base">
+                      {medal}
+                    </span>
+                    {p.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={p.photo_url}
+                        alt={p.display_name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-muted text-xs">Нет фото</span>
+                    )}
+                  </div>
+                  <div className="p-2">
+                    <p className="text-offwhite text-xs font-semibold truncate">
+                      {p.display_name}
+                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-rose text-[10px]">♥ {p.votes}</p>
+                      <p className="text-gold text-[10px]">🎁 {p.gifts}</p>
+                      <p className="text-muted text-[10px]">👥 {p.followers}</p>
                     </div>
-                    <div className="p-2">
-                      <p className="text-offwhite text-xs font-semibold truncate">
-                        {p.display_name}
-                      </p>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-rose text-[10px]">♥ {p.votes}</p>
-                        <p className="text-gold text-[10px]">🎁 {p.gifts}</p>
-                        <p className="text-muted text-[10px]">👥 {p.followers}</p>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              }
-            )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
 
