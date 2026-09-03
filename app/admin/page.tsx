@@ -24,7 +24,8 @@ type Tab =
   | "social"
   | "media"
   | "magazine-ads"
-  | "branding";
+  | "branding"
+  | "ad-prices";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -35,6 +36,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "partners", label: "Партнёры" },
   { key: "partner-logos", label: "Витрина партнёров" },
   { key: "ad-space", label: "Рекламный кабинет" },
+  { key: "ad-prices", label: "Базовые цены" },
   { key: "support", label: "Поддержка" },
   { key: "cards", label: "Карточки" },
   { key: "goal", label: "Цель недели" },
@@ -53,7 +55,7 @@ const TABS: { key: Tab; label: string }[] = [
 const PERMISSION_TABS: Record<string, Tab[]> = {
   moderation: ["applications", "participants", "cards", "calendar", "media"],
   finance: ["dashboard", "goal"],
-  partners: ["partners", "partner-logos", "banners", "magazine-ads", "ad-space", "social", "branding"],
+  partners: ["partners", "partner-logos", "banners", "magazine-ads", "ad-space", "ad-prices", "social", "branding"],
   staff: ["staff", "users"],
   support: ["support", "documents"],
 };
@@ -198,6 +200,7 @@ export default function AdminPage() {
         {tab === "partners" && <PartnersTab />}
         {tab === "partner-logos" && <PartnerLogosTab />}
         {tab === "ad-space" && <AdSpaceTab />}
+        {tab === "ad-prices" && <AdPricesTab />}
         {tab === "support" && <SupportTab />}
         {tab === "cards" && <CardsTab />}
         {tab === "goal" && <GoalTab />}
@@ -1730,7 +1733,7 @@ function StagesTab() {
 // БАННЕРЫ
 // ---------------------------------------------------------------------
 
-type RegionOption = { id: string; name: string };
+type RegionOption = { id: string; name: string; grade?: string | null; grade_coefficient?: number };
 
 function RegionPicker({
   regions,
@@ -2496,10 +2499,26 @@ function AdSpaceTab() {
   const [regions, setRegions] = useState<RegionOption[]>([]);
   const [addAllRegions, setAddAllRegions] = useState(true);
   const [addSelectedRegionIds, setAddSelectedRegionIds] = useState<string[]>([]);
+  const [basePrices, setBasePrices] = useState<Record<string, number>>({});
+  const [priceAutoFilled, setPriceAutoFilled] = useState(false);
 
   async function loadRegions() {
-    const { data } = await supabase.from("regions").select("id, name").order("name");
+    const { data } = await supabase
+      .from("regions")
+      .select("id, name, grade, grade_coefficient")
+      .order("name");
     setRegions((data as RegionOption[]) ?? []);
+  }
+
+  async function loadBasePrices() {
+    const { data } = await supabase
+      .from("ad_category_base_prices")
+      .select("category, base_price");
+    const map: Record<string, number> = {};
+    (data ?? []).forEach((r: { category: string; base_price: number }) => {
+      map[r.category] = r.base_price;
+    });
+    setBasePrices(map);
   }
 
   function toggleAddRegion(id: string) {
@@ -2507,6 +2526,21 @@ function AdSpaceTab() {
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   }
+
+  // Автоподтяжка цены: если выбран ровно один конкретный регион и для
+  // этой категории задана базовая цена — считаем цену = база × коэффициент
+  // региона. Если админ уже правил цену руками — не перезаписываем.
+  useEffect(() => {
+    if (addAllRegions || addSelectedRegionIds.length !== 1) return;
+    const base = basePrices[addCategory];
+    if (!base) return;
+    const region = regions.find((r) => r.id === addSelectedRegionIds[0]);
+    const coef = region?.grade_coefficient ?? 1;
+    const computed = Math.round(base * coef);
+    setFullPrice(String(computed));
+    setPriceAutoFilled(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addCategory, addAllRegions, addSelectedRegionIds, basePrices, regions]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -2579,6 +2613,7 @@ function AdSpaceTab() {
       loadSlots();
       loadPartners();
       loadRegions();
+      loadBasePrices();
     } else loadRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subTab]);
@@ -2797,10 +2832,13 @@ function AdSpaceTab() {
               rows={2}
               className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
             />
-            <div className="flex gap-2 mb-2">
+            <div className="flex gap-2 mb-1">
               <input
                 value={fullPrice}
-                onChange={(e) => setFullPrice(e.target.value)}
+                onChange={(e) => {
+                  setFullPrice(e.target.value);
+                  setPriceAutoFilled(false);
+                }}
                 placeholder="Полная цена, ₽"
                 type="number"
                 className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
@@ -2814,7 +2852,26 @@ function AdSpaceTab() {
                 <option value="season">На весь сезон</option>
               </select>
             </div>
-            <p className="text-muted text-xs mb-1">Предпродажа (необязательно):</p>
+            {priceAutoFilled && !addAllRegions && addSelectedRegionIds.length === 1 && (
+              <p className="text-gold text-[11px] mb-2">
+                Цена подтянута автоматически (база × коэффициент региона).
+                Можно поправить вручную.
+              </p>
+            )}
+            {!addAllRegions && addSelectedRegionIds.length > 1 && (
+              <p className="text-muted text-[11px] mb-2">
+                Выбрано несколько регионов с разными коэффициентами — цену
+                нужно указать вручную.
+              </p>
+            )}
+            {!addAllRegions && addSelectedRegionIds.length === 1 && !basePrices[addCategory] && (
+              <p className="text-muted text-[11px] mb-2">
+                Для этой категории не задана базовая цена — задайте её ниже,
+                на вкладке «Базовые цены», чтобы цена подтягивалась
+                автоматически.
+              </p>
+            )}
+            <p className="text-muted text-xs mb-1 mt-1">Предпродажа (необязательно):</p>
             <div className="flex gap-2 mb-3">
               <input
                 value={presalePrice}
@@ -3785,6 +3842,114 @@ function BrandingTab() {
         </button>
         {popupSaved && <span className="text-success text-sm ml-3">Сохранено!</span>}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// БАЗОВЫЕ ЦЕНЫ ПО КАТЕГОРИЯМ (для авто-подтяжки по региону)
+// ---------------------------------------------------------------------
+
+function AdPricesTab() {
+  const [prices, setPrices] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [regionCounts, setRegionCounts] = useState<{ A: number; B: number; C: number; none: number }>({
+    A: 0,
+    B: 0,
+    C: 0,
+    none: 0,
+  });
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("ad_category_base_prices")
+      .select("category, base_price");
+    const map: Record<string, string> = {};
+    (data ?? []).forEach((r: { category: string; base_price: number }) => {
+      map[r.category] = String(r.base_price);
+    });
+    setPrices(map);
+
+    const { data: regionsData } = await supabase.from("regions").select("grade");
+    const counts = { A: 0, B: 0, C: 0, none: 0 };
+    (regionsData ?? []).forEach((r: { grade: string | null }) => {
+      if (r.grade === "A") counts.A++;
+      else if (r.grade === "B") counts.B++;
+      else if (r.grade === "C") counts.C++;
+      else counts.none++;
+    });
+    setRegionCounts(counts);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function savePrice(category: string) {
+    setSavingKey(category);
+    const value = Number(prices[category] || 0);
+    await supabase
+      .from("ad_category_base_prices")
+      .upsert({ category, base_price: value });
+    setSavingKey(null);
+  }
+
+  return (
+    <div className="max-w-lg">
+      <p className="text-muted text-sm mb-2">
+        Базовая цена — это цена при коэффициенте региона ×1.0 (грейд B).
+        Когда в «Рекламном кабинете» вы создаёте место и выбираете ровно один
+        регион — цена подтянется сама: база × коэффициент региона (Грейд A —
+        ×1.5, Грейд B — ×1.0, Грейд C — ×0.5).
+      </p>
+      <p className="text-muted text-xs mb-6">
+        Регионов по грейдам: A — {regionCounts.A}, B — {regionCounts.B}, C —{" "}
+        {regionCounts.C}
+        {regionCounts.none > 0 && (
+          <span className="text-danger"> · без грейда: {regionCounts.none}</span>
+        )}
+        .
+      </p>
+
+      {loading && <p className="text-muted">Загрузка...</p>}
+
+      {!loading && (
+        <div className="flex flex-col gap-3">
+          {AD_CATEGORIES.map((cat) => (
+            <div key={cat.key} className="bg-bgSurface border border-muted rounded-xl p-3">
+              <p className="text-offwhite text-sm font-semibold mb-2">{cat.label}</p>
+              <div className="flex gap-2">
+                <input
+                  value={prices[cat.key] ?? ""}
+                  onChange={(e) =>
+                    setPrices((prev) => ({ ...prev, [cat.key]: e.target.value }))
+                  }
+                  type="number"
+                  placeholder="Базовая цена, ₽"
+                  className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+                />
+                <button
+                  onClick={() => savePrice(cat.key)}
+                  disabled={savingKey === cat.key}
+                  className="bg-gold text-bgPrimary font-semibold px-4 py-2 rounded-full text-sm disabled:opacity-40"
+                >
+                  {savingKey === cat.key ? "..." : "Сохранить"}
+                </button>
+              </div>
+              {prices[cat.key] && (
+                <p className="text-muted text-[11px] mt-2">
+                  Грейд A: {Math.round(Number(prices[cat.key]) * 1.5)} ₽ · Грейд
+                  B: {Math.round(Number(prices[cat.key]))} ₽ · Грейд C:{" "}
+                  {Math.round(Number(prices[cat.key]) * 0.5)} ₽
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
