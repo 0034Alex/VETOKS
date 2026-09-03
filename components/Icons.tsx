@@ -115,3 +115,82 @@ export function IconProfile({ active }: { active?: boolean }) {
     </svg>
   );
 }
+
+export function IconHeart({ filled, color = "#fff" }: { filled?: boolean; color?: string }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={filled ? "#E24B4A" : "none"}>
+      <path
+        d="M12 20.5s-7.5-4.6-9.8-9.4C.7 7.7 2.2 4 6 4c2.2 0 3.7 1.3 6 3.7C14.3 5.3 15.8 4 18 4c3.8 0 5.3 3.7 3.8 7.1C19.5 15.9 12 20.5 12 20.5z"
+        stroke={filled ? "#E24B4A" : color}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function IconComment({ color = "#fff" }: { color?: string }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8c-1.1 0-2.2-.2-3.1-.7L4 20l1.1-4.4C4.4 14.4 4 13.2 4 12z"
+        stroke={color}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+export function IconShare({ color = "#fff" }: { color?: string }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M7 17c1-5.5 4-7.5 9-8"
+        stroke={color}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M12 5l4 4-4 4"
+        stroke={color}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function IconCrownVote({ color = "#F0997B" }: { color?: string }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M4 18h16l-1.4-8-4.1 3.2L12 8l-2.5 5.2L5.4 10 4 18z"
+        stroke={color}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <path d="M5 20.5h14" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconPlusBadge() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+      <path d="M12 5v14M5 12h14" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconSearchWhite() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <circle cx="11" cy="11" r="7" stroke="#fff" strokeWidth="1.8" />
+      <path d="M20 20l-4.3-4.3" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
