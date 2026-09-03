@@ -269,6 +269,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
             drawShadow={true}
             maxShadowOpacity={0.4}
             mobileScrollSupport={true}
+            usePortrait={false}
             className="vetoks-magazine relative"
             style={{ margin: "0 auto" }}
           >
