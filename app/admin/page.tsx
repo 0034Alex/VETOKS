@@ -2527,20 +2527,29 @@ function AdSpaceTab() {
     );
   }
 
-  // Автоподтяжка цены: если выбран ровно один конкретный регион и для
-  // этой категории задана базовая цена — считаем цену = база × коэффициент
-  // региона. Если админ уже правил цену руками — не перезаписываем.
-  useEffect(() => {
-    if (addAllRegions || addSelectedRegionIds.length !== 1) return;
-    const base = basePrices[addCategory];
-    if (!base) return;
-    const region = regions.find((r) => r.id === addSelectedRegionIds[0]);
-    const coef = region?.grade_coefficient ?? 1;
-    const computed = Math.round(base * coef);
-    setFullPrice(String(computed));
-    setPriceAutoFilled(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addCategory, addAllRegions, addSelectedRegionIds, basePrices, regions]);
+  // Автоподтяжка цены: работает, когда у всех выбранных регионов один и
+  // тот же коэффициент (например, выбрали весь грейд разом кнопкой ниже,
+  // или просто один конкретный регион) — цена = база × этот коэффициент.
+  // Базу берём либо из сохранённых «Базовых цен», либо, если админ уже
+  // сам вписал число в поле цены до выбора грейда — используем его.
+  function priceForGrade(grade: "A" | "B" | "C") {
+    const coef = grade === "A" ? 1.5 : grade === "B" ? 1.0 : 0.5;
+    const savedBase = basePrices[addCategory];
+    const typedBase = Number(fullPrice) || 0;
+    const base = typedBase > 0 ? typedBase : savedBase ?? 0;
+    return { base, computed: Math.round(base * coef) };
+  }
+
+  function selectWholeGrade(grade: "A" | "B" | "C") {
+    const ids = regions.filter((r) => r.grade === grade).map((r) => r.id);
+    setAddAllRegions(false);
+    setAddSelectedRegionIds(ids);
+    const { base, computed } = priceForGrade(grade);
+    if (base > 0) {
+      setFullPrice(String(computed));
+      setPriceAutoFilled(true);
+    }
+  }
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -2852,23 +2861,10 @@ function AdSpaceTab() {
                 <option value="season">На весь сезон</option>
               </select>
             </div>
-            {priceAutoFilled && !addAllRegions && addSelectedRegionIds.length === 1 && (
+            {priceAutoFilled && (
               <p className="text-gold text-[11px] mb-2">
-                Цена подтянута автоматически (база × коэффициент региона).
-                Можно поправить вручную.
-              </p>
-            )}
-            {!addAllRegions && addSelectedRegionIds.length > 1 && (
-              <p className="text-muted text-[11px] mb-2">
-                Выбрано несколько регионов с разными коэффициентами — цену
-                нужно указать вручную.
-              </p>
-            )}
-            {!addAllRegions && addSelectedRegionIds.length === 1 && !basePrices[addCategory] && (
-              <p className="text-muted text-[11px] mb-2">
-                Для этой категории не задана базовая цена — задайте её ниже,
-                на вкладке «Базовые цены», чтобы цена подтягивалась
-                автоматически.
+                Цена пересчитана по грейду (база × коэффициент). Можно
+                поправить вручную.
               </p>
             )}
             <p className="text-muted text-xs mb-1 mt-1">Предпродажа (необязательно):</p>
@@ -2890,6 +2886,34 @@ function AdSpaceTab() {
             <p className="text-muted text-xs mb-1">
               В каких регионах видно и продаётся:
             </p>
+            <p className="text-muted text-[11px] mb-2">
+              Впишите цену выше (как для грейда B, ×1.0), затем нажмите
+              грейд — цена пересчитается и подставится сама, а регионы
+              этого грейда выберутся все разом.
+            </p>
+            <div className="flex gap-2 mb-2">
+              <button
+                type="button"
+                onClick={() => selectWholeGrade("A")}
+                className="flex-1 text-xs px-2 py-1.5 rounded-full bg-bgPrimary border border-gold text-gold"
+              >
+                Весь грейд A (×1.5)
+              </button>
+              <button
+                type="button"
+                onClick={() => selectWholeGrade("B")}
+                className="flex-1 text-xs px-2 py-1.5 rounded-full bg-bgPrimary border border-gold text-gold"
+              >
+                Весь грейд B (×1.0)
+              </button>
+              <button
+                type="button"
+                onClick={() => selectWholeGrade("C")}
+                className="flex-1 text-xs px-2 py-1.5 rounded-full bg-bgPrimary border border-gold text-gold"
+              >
+                Весь грейд C (×0.5)
+              </button>
+            </div>
             <RegionPicker
               regions={regions}
               allRegions={addAllRegions}
