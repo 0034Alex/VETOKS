@@ -127,6 +127,7 @@ export default function RatingPage() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
+      <div className="max-w-5xl mx-auto">
       <PromoBannerCarousel />
       <div className="px-6 mb-4">
         <h1 className="text-2xl font-semibold text-gold mb-1">Рейтинг</h1>
@@ -238,6 +239,7 @@ export default function RatingPage() {
         )}
       </div>
 
+      </div>
       <TickerBar />
       <BottomNav />
     </main>
