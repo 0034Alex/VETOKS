@@ -114,6 +114,14 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -249,14 +257,14 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
           />
 
           <HTMLFlipBook
-            key={`${scope}-${pages.length}-${pages[0]?.id ?? "x"}`}
-            width={150}
-            height={230}
+            key={`${scope}-${pages.length}-${pages[0]?.id ?? "x"}-${isDesktop}`}
+            width={isDesktop ? 300 : 150}
+            height={isDesktop ? 460 : 230}
             size="stretch"
-            minWidth={140}
-            maxWidth={220}
-            minHeight={210}
-            maxHeight={340}
+            minWidth={isDesktop ? 280 : 140}
+            maxWidth={isDesktop ? 440 : 220}
+            minHeight={isDesktop ? 420 : 210}
+            maxHeight={isDesktop ? 680 : 340}
             showCover={false}
             drawShadow={true}
             maxShadowOpacity={0.4}
@@ -938,17 +946,21 @@ export default function Home() {
             Пока нет одобренных участниц.
           </p>
         ) : (
-          <div className="flex items-end justify-center gap-1.5 px-4 mb-8">
+          <div className="flex items-end justify-center gap-1.5 md:gap-3 px-4 mb-8">
             {[participants[3], participants[1], participants[0], participants[2], participants[4]].map(
               (p, slot) => {
-                if (!p) return <div key={slot} className="flex-1 max-w-[70px]" />;
+                if (!p) return <div key={slot} className="flex-1 max-w-[70px] md:max-w-[140px]" />;
                 // slot: 0=4-е место, 1=2-е, 2=1-е (по центру), 3=3-е, 4=5-е
                 const isFirst = slot === 2;
                 const isMedium = slot === 1 || slot === 3;
                 const isRising = risingIds.has(p.id);
                 const rank = slot === 2 ? 1 : slot === 1 ? 2 : slot === 3 ? 3 : slot === 0 ? 4 : 5;
                 const medal = rank === 1 ? "👑" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`;
-                const widthClass = isFirst ? "w-[92px]" : isMedium ? "w-[76px]" : "w-[62px]";
+                const widthClass = isFirst
+                  ? "w-[92px] md:w-[184px]"
+                  : isMedium
+                  ? "w-[76px] md:w-[152px]"
+                  : "w-[62px] md:w-[124px]";
                 return (
                   <Link
                     href={`/participant/${p.id}`}
@@ -960,11 +972,11 @@ export default function Home() {
                   >
                     <div className="bg-black/40 flex items-center justify-center relative aspect-[3/4]">
                       {isRising && (
-                        <span className="absolute -top-2 right-0.5 text-sm z-10">
+                        <span className="absolute -top-2 right-0.5 text-sm md:text-xl z-10">
                           🚀
                         </span>
                       )}
-                      <span className={isFirst ? "absolute top-1.5 left-1.5 text-base" : "absolute top-1 left-1 text-xs"}>
+                      <span className={isFirst ? "absolute top-1.5 left-1.5 text-base md:text-2xl" : "absolute top-1 left-1 text-xs md:text-lg"}>
                         {medal}
                       </span>
                       {p.photo_url ? (
@@ -975,16 +987,16 @@ export default function Home() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-muted text-[9px] px-1 text-center">Нет фото</span>
+                        <span className="text-muted text-[9px] md:text-sm px-1 text-center">Нет фото</span>
                       )}
                     </div>
-                    <div className={isFirst ? "p-2" : "p-1"}>
-                      <p className={`text-offwhite font-semibold truncate ${isFirst ? "text-xs" : "text-[10px]"}`}>
+                    <div className={isFirst ? "p-2 md:p-4" : "p-1 md:p-2"}>
+                      <p className={`text-offwhite font-semibold truncate ${isFirst ? "text-xs md:text-lg" : "text-[10px] md:text-sm"}`}>
                         {p.display_name}
                       </p>
                       <div className="flex items-center gap-1 flex-wrap">
-                        <p className="text-rose text-[8px]">♥{p.votes}</p>
-                        {isFirst && <p className="text-gold text-[8px]">🎁{p.gifts}</p>}
+                        <p className="text-rose text-[8px] md:text-sm">♥{p.votes}</p>
+                        {isFirst && <p className="text-gold text-[8px] md:text-sm">🎁{p.gifts}</p>}
                       </div>
                     </div>
                   </Link>
