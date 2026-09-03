@@ -6,6 +6,14 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import {
+  IconHeart,
+  IconComment,
+  IconShare,
+  IconCrownVote,
+  IconPlusBadge,
+  IconSearchWhite,
+} from "@/components/Icons";
 
 type Post = {
   id: string;
@@ -227,19 +235,7 @@ export default function MediaPage() {
   }
 
   if (allPosts.length === 0) {
-    return (
-      <main className="min-h-screen pb-28">
-        <PageHeader />
-        <div className="px-6 flex flex-col items-center justify-center text-center pt-16">
-          <h1 className="text-2xl font-semibold text-gold mb-4">Медиа</h1>
-          <p className="text-muted max-w-sm">
-            Здесь будут ролики участниц. Раздел появится, когда участницы
-            начнут выкладывать контент.
-          </p>
-        </div>
-        <BottomNav />
-      </main>
-    );
+    return <MediaShowcase />;
   }
 
   return (
@@ -292,8 +288,8 @@ export default function MediaPage() {
                 Вся страна
               </button>
             </div>
-            <button onClick={() => setSearchOpen((v) => !v)} className="text-white text-xl flex-shrink-0 ml-2">
-              🔍
+            <button onClick={() => setSearchOpen((v) => !v)} className="flex-shrink-0 ml-2">
+              <IconSearchWhite />
             </button>
           </div>
           {searchOpen && (
@@ -380,25 +376,25 @@ export default function MediaPage() {
                   <button
                     onClick={() => toggleFollow(p.participant_id)}
                     disabled={!me}
-                    className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-danger text-white text-xs flex items-center justify-center font-bold leading-none"
+                    className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-[17px] h-[17px] rounded-full bg-danger flex items-center justify-center"
                   >
-                    +
+                    <IconPlusBadge />
                   </button>
                 )}
               </div>
 
               <button onClick={() => toggleLike(p.id)} className="flex flex-col items-center">
-                <span className="text-2xl">{likedIds.has(p.id) ? "❤️" : "🤍"}</span>
+                <IconHeart filled={likedIds.has(p.id)} />
                 <span className="text-white text-xs mt-0.5">{likeCounts[p.id] ?? 0}</span>
               </button>
 
               <button onClick={() => openCommentsFor(p.id)} className="flex flex-col items-center">
-                <span className="text-2xl">💬</span>
+                <IconComment />
                 <span className="text-white text-xs mt-0.5">{commentCounts[p.id] ?? 0}</span>
               </button>
 
               <button onClick={() => share(p)} className="flex flex-col items-center">
-                <span className="text-2xl">↗️</span>
+                <IconShare />
                 <span className="text-white text-[10px] mt-0.5">Поделиться</span>
               </button>
 
@@ -407,7 +403,7 @@ export default function MediaPage() {
                 disabled={votedIds.includes(p.participant_id) || !me}
                 className="flex flex-col items-center disabled:opacity-50"
               >
-                <span className="text-2xl">🗳️</span>
+                <IconCrownVote />
                 <span className="text-white text-[10px] mt-0.5">
                   {votedIds.includes(p.participant_id) ? "Голос отдан" : "Голосовать"}
                 </span>
@@ -463,6 +459,130 @@ export default function MediaPage() {
           </div>
         </div>
       )}
+
+      <BottomNav />
+    </main>
+  );
+}
+
+// ---------------------------------------------------------------------
+// ПОКАЗ, ПОКА НЕТ РЕАЛЬНЫХ ВИДЕО — красивая рабочая витрина вместо
+// скучной надписи «раздел появится позже». Как только участницы
+// загрузят первые ролики, страница выше автоматически покажет уже их.
+// ---------------------------------------------------------------------
+
+const DEMO_CARDS = [
+  { name: "Анна", likes: 214, comments: 38, caption: "Съёмка для журнала VETOKS ✨" },
+  { name: "Виктория", likes: 189, comments: 22, caption: "Отбор — этап 1, всем привет!" },
+  { name: "Дарья", likes: 302, comments: 61, caption: "Спасибо за поддержку, девочки 💛" },
+];
+
+function MediaShowcase() {
+  const [active, setActive] = useState(0);
+  const [liked, setLiked] = useState(false);
+  const [followed, setFollowed] = useState(false);
+  const [voted, setVoted] = useState(false);
+  const card = DEMO_CARDS[active];
+
+  function next(dir: 1 | -1) {
+    setActive((i) => (i + dir + DEMO_CARDS.length) % DEMO_CARDS.length);
+    setLiked(false);
+    setFollowed(false);
+    setVoted(false);
+  }
+
+  return (
+    <main className="min-h-screen bg-black flex flex-col items-center pb-24">
+      <div className="w-full max-w-md">
+        <PageHeader />
+      </div>
+      <p className="text-muted text-xs text-center px-6 mb-3">
+        Здесь появятся ролики участниц. А пока — как это будет выглядеть.
+      </p>
+
+      <div
+        className="relative w-full max-w-md rounded-2xl overflow-hidden"
+        style={{ aspectRatio: "9 / 16" }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background: "linear-gradient(160deg, #2a1f3d 0%, #1a1620 55%, #241826 100%)",
+          }}
+        />
+
+        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 pt-4 pb-2 bg-gradient-to-b from-black/70 to-transparent">
+          <div className="flex items-center gap-3">
+            <span className="text-white text-xs font-semibold">Рекомендации</span>
+            <span className="text-white/55 text-xs">Подписки</span>
+            <span className="text-white/55 text-xs">Вся страна</span>
+          </div>
+          <IconSearchWhite />
+        </div>
+
+        <div className="absolute right-2.5 bottom-28 flex flex-col items-center gap-4 z-10">
+          <div className="relative mb-1">
+            <div className="w-11 h-11 rounded-full bg-[#3c3489] border-2 border-white" />
+            {!followed && (
+              <button
+                onClick={() => setFollowed(true)}
+                className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-[17px] h-[17px] rounded-full bg-danger flex items-center justify-center"
+              >
+                <IconPlusBadge />
+              </button>
+            )}
+          </div>
+
+          <button onClick={() => setLiked((v) => !v)} className="flex flex-col items-center">
+            <IconHeart filled={liked} />
+            <span className="text-white text-xs mt-0.5">{card.likes + (liked ? 1 : 0)}</span>
+          </button>
+
+          <button className="flex flex-col items-center">
+            <IconComment />
+            <span className="text-white text-xs mt-0.5">{card.comments}</span>
+          </button>
+
+          <button className="flex flex-col items-center">
+            <IconShare />
+            <span className="text-white text-[10px] mt-0.5">Поделиться</span>
+          </button>
+
+          <button
+            onClick={() => setVoted(true)}
+            disabled={voted}
+            className="flex flex-col items-center disabled:opacity-50"
+          >
+            <IconCrownVote />
+            <span className="text-white text-[10px] mt-0.5">
+              {voted ? "Голос отдан" : "Голосовать"}
+            </span>
+          </button>
+        </div>
+
+        <div className="absolute left-0 right-0 bottom-0 px-4 pb-6 pt-16 bg-gradient-to-t from-black/90 to-transparent">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-full bg-[#534AB7] border border-gold" />
+            <span className="text-white font-semibold text-sm">{card.name}</span>
+          </div>
+          <p className="text-white text-sm">{card.caption}</p>
+        </div>
+      </div>
+
+      <div className="flex gap-3 mt-4">
+        <button
+          onClick={() => next(-1)}
+          className="bg-bgSurface border border-muted text-offwhite px-4 py-2 rounded-full text-sm"
+        >
+          ← Другой пример
+        </button>
+        <button
+          onClick={() => next(1)}
+          className="bg-bgSurface border border-muted text-offwhite px-4 py-2 rounded-full text-sm"
+        >
+          Другой пример →
+        </button>
+      </div>
 
       <BottomNav />
     </main>
