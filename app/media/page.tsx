@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import { getCurrentUser } from "@/lib/currentUser";
+import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 
@@ -12,7 +12,7 @@ type Post = {
   video_url: string;
   caption: string | null;
   participant_id: string;
-  participants: { display_name: string; photo_url: string | null } | null;
+  participants: { display_name: string; photo_url: string | null; region_id: string | null } | null;
 };
 
 type Comment = {
@@ -22,26 +22,44 @@ type Comment = {
   users: { first_name: string } | null;
 };
 
+type FeedTab = "region" | "following" | "country";
+
+function shuffle<T>(arr: T[]): T[] {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 export default function MediaPage() {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [allPosts, setAllPosts] = useState<Post[]>([]);
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [votedIds, setVotedIds] = useState<string[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [me, setMe] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [openComments, setOpenComments] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState("");
+  const [feedTab, setFeedTab] = useState<FeedTab>("region");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
 
   useEffect(() => {
     (async () => {
       const { data } = await supabase
         .from("content_posts")
-        .select("id, video_url, caption, participant_id, participants(display_name, photo_url)")
+        .select(
+          "id, video_url, caption, participant_id, participants(display_name, photo_url, region_id)"
+        )
         .not("video_url", "is", null)
         .order("submitted_at", { ascending: false });
-      setPosts((data as unknown as Post[]) ?? []);
+      setAllPosts((data as unknown as Post[]) ?? []);
 
       const { data: likesData } = await supabase.from("media_likes").select("post_id, user_id");
       const counts: Record<string, number> = {};
@@ -50,15 +68,30 @@ export default function MediaPage() {
       });
       setLikeCounts(counts);
 
+      const { data: commentsData } = await supabase.from("media_comments").select("post_id");
+      const cCounts: Record<string, number> = {};
+      (commentsData ?? []).forEach((c: { post_id: string }) => {
+        cCounts[c.post_id] = (cCounts[c.post_id] ?? 0) + 1;
+      });
+      setCommentCounts(cCounts);
+
       const u = await getCurrentUser();
       if (u) {
-        setUserId(u.id);
+        setMe(u);
         const mine = new Set(
           (likesData ?? [])
             .filter((l: { user_id: string }) => l.user_id === u.id)
             .map((l: { post_id: string }) => l.post_id)
         );
         setLikedIds(mine);
+
+        const { data: followsData } = await supabase
+          .from("participant_follows")
+          .select("participant_id")
+          .eq("user_id", u.id);
+        setFollowedIds(
+          new Set((followsData ?? []).map((f: { participant_id: string }) => f.participant_id))
+        );
       }
 
       const stored = localStorage.getItem("vetoks_voted_ids");
@@ -67,6 +100,22 @@ export default function MediaPage() {
       setLoading(false);
     })();
   }, []);
+
+  const posts = (() => {
+    let list = allPosts;
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      return list.filter((p) => p.participants?.display_name?.toLowerCase().includes(q));
+    }
+    if (feedTab === "region" && me?.region_id) {
+      list = shuffle(list.filter((p) => p.participants?.region_id === me.region_id));
+    } else if (feedTab === "following") {
+      list = list.filter((p) => followedIds.has(p.participant_id));
+    } else {
+      list = shuffle(list);
+    }
+    return list;
+  })();
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -87,9 +136,9 @@ export default function MediaPage() {
   }, [posts]);
 
   async function toggleLike(postId: string) {
-    if (!userId) return;
+    if (!me) return;
     if (likedIds.has(postId)) {
-      await supabase.from("media_likes").delete().eq("post_id", postId).eq("user_id", userId);
+      await supabase.from("media_likes").delete().eq("post_id", postId).eq("user_id", me.id);
       setLikedIds((prev) => {
         const next = new Set(prev);
         next.delete(postId);
@@ -97,16 +146,37 @@ export default function MediaPage() {
       });
       setLikeCounts((prev) => ({ ...prev, [postId]: Math.max(0, (prev[postId] ?? 1) - 1) }));
     } else {
-      await supabase.from("media_likes").insert({ post_id: postId, user_id: userId });
+      await supabase.from("media_likes").insert({ post_id: postId, user_id: me.id });
       setLikedIds((prev) => new Set(prev).add(postId));
       setLikeCounts((prev) => ({ ...prev, [postId]: (prev[postId] ?? 0) + 1 }));
     }
   }
 
+  async function toggleFollow(participantId: string) {
+    if (!me) return;
+    if (followedIds.has(participantId)) {
+      await supabase
+        .from("participant_follows")
+        .delete()
+        .eq("participant_id", participantId)
+        .eq("user_id", me.id);
+      setFollowedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(participantId);
+        return next;
+      });
+    } else {
+      await supabase
+        .from("participant_follows")
+        .insert({ participant_id: participantId, user_id: me.id });
+      setFollowedIds((prev) => new Set(prev).add(participantId));
+    }
+  }
+
   async function handleVote(participantId: string) {
-    if (!userId || votedIds.includes(participantId)) return;
+    if (!me || votedIds.includes(participantId)) return;
     await supabase.from("votes").insert({
-      voter_id: userId,
+      voter_id: me.id,
       participant_id: participantId,
       weight: 1,
       is_paid: false,
@@ -127,13 +197,14 @@ export default function MediaPage() {
   }
 
   async function sendComment() {
-    if (!userId || !openComments || !commentText.trim()) return;
+    if (!me || !openComments || !commentText.trim()) return;
     await supabase.from("media_comments").insert({
       post_id: openComments,
-      user_id: userId,
+      user_id: me.id,
       body: commentText,
     });
     setCommentText("");
+    setCommentCounts((prev) => ({ ...prev, [openComments]: (prev[openComments] ?? 0) + 1 }));
     await openCommentsFor(openComments);
   }
 
@@ -155,61 +226,16 @@ export default function MediaPage() {
     );
   }
 
-  if (posts.length === 0) {
+  if (allPosts.length === 0) {
     return (
-      <main className="min-h-screen bg-black flex justify-center">
-        <div className="h-screen w-full max-w-md relative flex items-center justify-center overflow-hidden">
-          <div
-            className="w-full h-full"
-            style={{
-              background:
-                "linear-gradient(135deg, #2a1f3d 0%, #0B0B0D 55%, #3d1f30 100%)",
-            }}
-          />
-
-          <div className="absolute top-0 left-0 right-0 z-10">
-            <PageHeader />
-          </div>
-
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <p className="text-muted text-sm px-10 text-center">
-              Здесь появятся ролики участниц — а пока вот как будет выглядеть
-              лента
-            </p>
-          </div>
-
-          <div className="absolute bottom-0 left-0 right-0 p-4 pb-24 bg-gradient-to-t from-black/90 to-transparent">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-9 h-9 rounded-full bg-black/40 border border-gold flex items-center justify-center text-gold text-xs">
-                👑
-              </div>
-              <span className="text-white font-semibold text-sm">
-                Имя участницы
-              </span>
-            </div>
-            <p className="text-white text-sm mb-2">
-              Подпись под роликом будет здесь ✨
-            </p>
-            <button
-              disabled
-              className="bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white text-xs font-semibold px-4 py-2 rounded-full opacity-40"
-            >
-              ❤️ Поддержать
-            </button>
-          </div>
-
-          <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5">
-            <button disabled className="flex flex-col items-center">
-              <span className="text-2xl">🤍</span>
-              <span className="text-white text-xs">0</span>
-            </button>
-            <button disabled className="flex flex-col items-center">
-              <span className="text-2xl">💬</span>
-            </button>
-            <button disabled className="flex flex-col items-center">
-              <span className="text-2xl">🔗</span>
-            </button>
-          </div>
+      <main className="min-h-screen pb-28">
+        <PageHeader />
+        <div className="px-6 flex flex-col items-center justify-center text-center pt-16">
+          <h1 className="text-2xl font-semibold text-gold mb-4">Медиа</h1>
+          <p className="text-muted max-w-sm">
+            Здесь будут ролики участниц. Раздел появится, когда участницы
+            начнут выкладывать контент.
+          </p>
         </div>
         <BottomNav />
       </main>
@@ -217,11 +243,84 @@ export default function MediaPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black">
+    <main className="min-h-screen bg-black flex justify-center">
       <div
-        className="h-screen overflow-y-scroll snap-y snap-mandatory"
+        className="h-screen w-full max-w-md overflow-y-scroll snap-y snap-mandatory relative"
         style={{ scrollSnapType: "y mandatory" }}
       >
+        {/* Верхние вкладки + поиск */}
+        <div
+          className="fixed top-0 left-0 right-0 z-30 flex justify-center"
+          style={{ paddingTop: "env(safe-area-inset-top)" }}
+        >
+          <div className="w-full max-w-md px-4 py-3 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent">
+            <div className="flex items-center gap-4 overflow-x-auto">
+              <button
+                onClick={() => {
+                  setFeedTab("region");
+                  setSearchOpen(false);
+                  setSearchQuery("");
+                }}
+                className={`text-sm whitespace-nowrap ${
+                  feedTab === "region" && !searchQuery ? "text-white font-semibold" : "text-white/60"
+                }`}
+              >
+                Рекомендации
+              </button>
+              <button
+                onClick={() => {
+                  setFeedTab("following");
+                  setSearchOpen(false);
+                  setSearchQuery("");
+                }}
+                className={`text-sm whitespace-nowrap ${
+                  feedTab === "following" && !searchQuery ? "text-white font-semibold" : "text-white/60"
+                }`}
+              >
+                Подписки
+              </button>
+              <button
+                onClick={() => {
+                  setFeedTab("country");
+                  setSearchOpen(false);
+                  setSearchQuery("");
+                }}
+                className={`text-sm whitespace-nowrap ${
+                  feedTab === "country" && !searchQuery ? "text-white font-semibold" : "text-white/60"
+                }`}
+              >
+                Вся страна
+              </button>
+            </div>
+            <button onClick={() => setSearchOpen((v) => !v)} className="text-white text-xl flex-shrink-0 ml-2">
+              🔍
+            </button>
+          </div>
+          {searchOpen && (
+            <div className="absolute top-full left-0 right-0 px-4 pb-2 flex justify-center bg-black/70">
+              <input
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Имя участницы..."
+                className="w-full max-w-md bg-black/60 text-white border border-white/30 rounded-full px-4 py-2 text-sm"
+              />
+            </div>
+          )}
+        </div>
+
+        {posts.length === 0 && (
+          <div className="h-screen w-full flex items-center justify-center px-8 text-center">
+            <p className="text-muted text-sm">
+              {searchQuery
+                ? "Никого не нашли по этому имени."
+                : feedTab === "following"
+                ? "Вы пока ни на кого не подписаны."
+                : "Пока нет роликов."}
+            </p>
+          </div>
+        )}
+
         {posts.map((p) => (
           <div
             key={p.id}
@@ -260,33 +359,58 @@ export default function MediaPage() {
               {p.caption && (
                 <p className="text-white text-sm mb-2">{p.caption}</p>
               )}
-              <button
-                onClick={() => handleVote(p.participant_id)}
-                disabled={votedIds.includes(p.participant_id) || !userId}
-                className="bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white text-xs font-semibold px-4 py-2 rounded-full disabled:opacity-40"
-              >
-                {votedIds.includes(p.participant_id) ? "Голос отдан" : "❤️ Поддержать"}
-              </button>
             </div>
 
-            <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5">
-              <button
-                onClick={() => toggleLike(p.id)}
-                className="flex flex-col items-center"
-              >
-                <span className="text-2xl">
-                  {likedIds.has(p.id) ? "❤️" : "🤍"}
-                </span>
-                <span className="text-white text-xs">{likeCounts[p.id] ?? 0}</span>
+            {/* Правая колонка — подписка, лайк, комментарии, поделиться, голос */}
+            <div className="absolute right-2.5 bottom-28 flex flex-col items-center gap-4">
+              <div className="relative mb-1">
+                <Link href={`/participant/${p.participant_id}`}>
+                  <div className="w-11 h-11 rounded-full bg-black/40 overflow-hidden border-2 border-white">
+                    {p.participants?.photo_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={p.participants.photo_url}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                </Link>
+                {!followedIds.has(p.participant_id) && (
+                  <button
+                    onClick={() => toggleFollow(p.participant_id)}
+                    disabled={!me}
+                    className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-danger text-white text-xs flex items-center justify-center font-bold leading-none"
+                  >
+                    +
+                  </button>
+                )}
+              </div>
+
+              <button onClick={() => toggleLike(p.id)} className="flex flex-col items-center">
+                <span className="text-2xl">{likedIds.has(p.id) ? "❤️" : "🤍"}</span>
+                <span className="text-white text-xs mt-0.5">{likeCounts[p.id] ?? 0}</span>
               </button>
-              <button
-                onClick={() => openCommentsFor(p.id)}
-                className="flex flex-col items-center"
-              >
+
+              <button onClick={() => openCommentsFor(p.id)} className="flex flex-col items-center">
                 <span className="text-2xl">💬</span>
+                <span className="text-white text-xs mt-0.5">{commentCounts[p.id] ?? 0}</span>
               </button>
+
               <button onClick={() => share(p)} className="flex flex-col items-center">
-                <span className="text-2xl">🔗</span>
+                <span className="text-2xl">↗️</span>
+                <span className="text-white text-[10px] mt-0.5">Поделиться</span>
+              </button>
+
+              <button
+                onClick={() => handleVote(p.participant_id)}
+                disabled={votedIds.includes(p.participant_id) || !me}
+                className="flex flex-col items-center disabled:opacity-50"
+              >
+                <span className="text-2xl">🗳️</span>
+                <span className="text-white text-[10px] mt-0.5">
+                  {votedIds.includes(p.participant_id) ? "Голос отдан" : "Голосовать"}
+                </span>
               </button>
             </div>
           </div>
