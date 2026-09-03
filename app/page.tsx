@@ -257,19 +257,18 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
           />
 
           <HTMLFlipBook
-            key={`${scope}-${pages.length}-${pages[0]?.id ?? "x"}-${isDesktop}`}
-            width={isDesktop ? 210 : 150}
-            height={isDesktop ? 322 : 230}
+            key={`${scope}-${pages.length}-${pages[0]?.id ?? "x"}`}
+            width={150}
+            height={230}
             size="stretch"
-            minWidth={isDesktop ? 196 : 140}
-            maxWidth={isDesktop ? 308 : 220}
-            minHeight={isDesktop ? 294 : 210}
-            maxHeight={isDesktop ? 476 : 340}
+            minWidth={140}
+            maxWidth={220}
+            minHeight={210}
+            maxHeight={340}
             showCover={false}
             drawShadow={true}
             maxShadowOpacity={0.4}
             mobileScrollSupport={true}
-            usePortrait={false}
             className="vetoks-magazine relative"
             style={{ margin: "0 auto" }}
           >
@@ -293,11 +292,11 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                     className="px-3.5 pt-3"
                     style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 12 }}
                   >
-                    <p className={`text-[#B23A5C] tracking-[0.2em] font-semibold mb-1 ${isDesktop ? "text-[8px]" : "text-[6px]"}`}>
+                    <p className="text-[#B23A5C] text-[6px] tracking-[0.2em] font-semibold mb-1">
                       РЕКЛАМА
                     </p>
                     <h4
-                      className={`text-[#1a1520] italic mb-2 pb-1 ${isDesktop ? "text-base" : "text-sm"}`}
+                      className="text-[#1a1520] text-sm italic mb-2 pb-1"
                       style={{
                         fontFamily: "Georgia, 'Times New Roman', serif",
                         borderBottom: "1px solid #ddd6c8",
@@ -307,7 +306,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                     </h4>
                     {page.description && (
                       <p
-                        className={`text-[#2b2530] leading-[1.4] mb-3 ${isDesktop ? "text-[13px]" : "text-[9px]"}`}
+                        className="text-[#2b2530] text-[9px] leading-[1.4] mb-3"
                         style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
                       >
                         {page.description}
@@ -323,9 +322,9 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                         backgroundColor: "#1a1520",
                         color: "#F3EEE4",
                         fontWeight: 600,
-                        padding: isDesktop ? "11px 20px" : "8px 14px",
+                        padding: "8px 14px",
                         borderRadius: 999,
-                        fontSize: isDesktop ? 14 : 10,
+                        fontSize: 10,
                       }}
                     >
                       {page.button_text}
@@ -424,7 +423,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                           className="select-none"
                           style={{
                             fontFamily: "Georgia, 'Times New Roman', serif",
-                            fontSize: isDesktop ? 56 : 40,
+                            fontSize: 40,
                             lineHeight: 1,
                             color: "#C9A227",
                             opacity: 0.35,
@@ -467,15 +466,15 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                     top: 0,
                     left: 0,
                     right: 0,
-                    bottom: isDesktop ? 68 : 56,
+                    bottom: 56,
                     touchAction: "pan-y",
                   }}
                 >
-                  <p className={`text-[#B23A5C] tracking-[0.2em] font-semibold mb-1 ${isDesktop ? "text-[8px]" : "text-[6px]"}`}>
+                  <p className="text-[#B23A5C] text-[6px] tracking-[0.2em] font-semibold mb-1">
                     ИНТЕРВЬЮ
                   </p>
                   <h4
-                    className={`text-[#1a1520] italic mb-1.5 pb-1 ${isDesktop ? "text-base" : "text-sm"}`}
+                    className="text-[#1a1520] text-sm italic mb-1.5 pb-1"
                     style={{
                       fontFamily: "Georgia, 'Times New Roman', serif",
                       borderBottom: "1px solid #ddd6c8",
@@ -489,15 +488,15 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                       {qaList.map((qa, i) => (
                         <p
                           key={i}
-                          className={`text-[#2b2530] leading-[1.3] ${isDesktop ? "text-[13px]" : "text-[9px]"}`}
+                          className="text-[#2b2530] text-[9px] leading-[1.3]"
                           style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
                         >
-                          <span className={`text-[#B23A5C] tracking-[0.1em] font-bold uppercase ${isDesktop ? "text-[10px]" : "text-[7px]"}`}>
+                          <span className="text-[#B23A5C] text-[7px] tracking-[0.1em] font-bold uppercase">
                             В:{" "}
                           </span>
-                          <span className={`italic text-[#5a5260] ${isDesktop ? "text-[12px]" : "text-[8px]"}`}>{qa.q}</span>
+                          <span className="italic text-[#5a5260] text-[8px]">{qa.q}</span>
                           <br />
-                          <span className={`text-[#7C3AED] tracking-[0.1em] font-bold uppercase ${isDesktop ? "text-[10px]" : "text-[7px]"}`}>
+                          <span className="text-[#7C3AED] text-[7px] tracking-[0.1em] font-bold uppercase">
                             О:{" "}
                           </span>
                           {qa.a}
@@ -506,9 +505,9 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center text-center py-4">
-                      <span className={`text-[#C9A227] mb-1.5 ${isDesktop ? "text-xl" : "text-base"}`}>✦</span>
+                      <span className="text-[#C9A227] text-base mb-1.5">✦</span>
                       <p
-                        className={`text-[#5a5260] italic ${isDesktop ? "text-[15px]" : "text-[11px]"}`}
+                        className="text-[#5a5260] text-[11px] italic"
                         style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
                       >
                         Страница в процессе наполнения...
@@ -524,14 +523,14 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                     left: 0,
                     right: 0,
                     bottom: 12,
-                    height: isDesktop ? 56 : 44,
+                    height: 44,
                     alignItems: "center",
                   }}
                 >
                   <button
                     onClick={() => toggleFollow(page.id)}
                     disabled={!userId}
-                    className={`flex-1 font-semibold py-1.5 px-1 rounded-full leading-tight ${isDesktop ? "text-[11px]" : "text-[8px]"} ${
+                    className={`flex-1 text-[8px] font-semibold py-1.5 px-1 rounded-full leading-tight ${
                       followedIds.has(page.id)
                         ? "bg-white border border-[#c9c2b4] text-[#5a5260]"
                         : "bg-[#1a1520] text-[#F3EEE4]"
@@ -541,7 +540,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                   </button>
                   <Link
                     href={`/participant/${page.id}`}
-                    className={`flex-1 font-semibold py-1.5 px-1 rounded-full border border-[#1a1520] text-[#1a1520] text-center leading-tight ${isDesktop ? "text-[11px]" : "text-[8px]"}`}
+                    className="flex-1 text-[8px] font-semibold py-1.5 px-1 rounded-full border border-[#1a1520] text-[#1a1520] text-center leading-tight"
                   >
                     Профиль
                   </Link>
