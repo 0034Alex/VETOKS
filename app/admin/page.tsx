@@ -60,6 +60,20 @@ const PERMISSION_TABS: Record<string, Tab[]> = {
   support: ["support", "documents"],
 };
 
+// Группировка вкладок в разделы — чтобы боковое меню не было одним длинным
+// списком. Вкладка, попавшая в группу, в общем экране больше не
+// показывается отдельным квадратом — только внутри своей группы.
+const TAB_GROUPS: { key: string; label: string; tabs: Tab[] }[] = [
+  { key: "users-group", label: "Пользователи", tabs: ["users", "staff", "participants", "applications"] },
+  {
+    key: "ads-group",
+    label: "Реклама",
+    tabs: ["partner-logos", "ad-prices", "ad-space", "banners", "magazine-ads", "branding"],
+  },
+];
+
+const GROUPED_TAB_KEYS = new Set(TAB_GROUPS.flatMap((g) => g.tabs));
+
 function getAllowedTabs(user: CurrentUser): Tab[] {
   if (user.role === "super_admin") return TABS.map((t) => t.key);
   const perms = user.permissions ?? {};
@@ -76,6 +90,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
   const [allowed, setAllowed] = useState(false);
   const [me, setMe] = useState<CurrentUser | null>(null);
@@ -143,7 +158,11 @@ export default function AdminPage() {
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
       >
         <button
-          onClick={() => setMenuOpen(true)}
+          onClick={() => {
+            const group = TAB_GROUPS.find((g) => g.tabs.includes(tab));
+            setActiveGroup(group?.key ?? null);
+            setMenuOpen(true);
+          }}
           className="text-2xl text-gold leading-none"
           aria-label="Открыть меню"
         >
@@ -158,12 +177,16 @@ export default function AdminPage() {
           onClick={() => setMenuOpen(false)}
         >
           <div
-            className="bg-bgSurface w-72 h-full p-4 flex flex-col gap-1 overflow-y-auto"
+            className="bg-bgSurface w-80 h-full p-4 flex flex-col gap-1 overflow-y-auto"
             style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <span className="text-gold font-semibold">Разделы</span>
+              <span className="text-gold font-semibold">
+                {activeGroup
+                  ? TAB_GROUPS.find((g) => g.key === activeGroup)?.label
+                  : "Разделы"}
+              </span>
               <button
                 onClick={() => setMenuOpen(false)}
                 className="text-muted text-xl leading-none"
@@ -171,22 +194,97 @@ export default function AdminPage() {
                 ✕
               </button>
             </div>
-            {TABS.filter((t) => allowedTabs.includes(t.key)).map((t) => (
+
+            {activeGroup && (
               <button
-                key={t.key}
-                onClick={() => {
-                  setTab(t.key);
-                  setMenuOpen(false);
-                }}
-                className={`text-left px-4 py-3 rounded-lg text-sm ${
-                  tab === t.key
-                    ? "bg-gold text-bgPrimary font-semibold"
-                    : "text-offwhite hover:bg-bgPrimary"
-                }`}
+                onClick={() => setActiveGroup(null)}
+                className="text-left px-2 py-2 mb-2 text-gold text-sm flex items-center gap-1"
               >
-                {t.label}
+                ← Назад ко всем разделам
               </button>
-            ))}
+            )}
+
+            {!activeGroup && (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    setTab("dashboard");
+                    setMenuOpen(false);
+                  }}
+                  className={`aspect-square rounded-xl flex items-center justify-center text-center p-2 text-sm font-semibold ${
+                    tab === "dashboard"
+                      ? "bg-gold text-bgPrimary"
+                      : "bg-bgPrimary border border-muted text-offwhite"
+                  }`}
+                >
+                  Дашборд
+                </button>
+
+                {TAB_GROUPS.filter((g) =>
+                  g.tabs.some((t) => allowedTabs.includes(t))
+                ).map((g) => (
+                  <button
+                    key={g.key}
+                    onClick={() => setActiveGroup(g.key)}
+                    className={`aspect-square rounded-xl flex items-center justify-center text-center p-2 text-sm font-semibold ${
+                      g.tabs.includes(tab)
+                        ? "bg-gold text-bgPrimary"
+                        : "bg-bgPrimary border border-gold/40 text-gold"
+                    }`}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+
+                {TABS.filter(
+                  (t) =>
+                    t.key !== "dashboard" &&
+                    !GROUPED_TAB_KEYS.has(t.key) &&
+                    allowedTabs.includes(t.key)
+                ).map((t) => (
+                  <button
+                    key={t.key}
+                    onClick={() => {
+                      setTab(t.key);
+                      setMenuOpen(false);
+                    }}
+                    className={`aspect-square rounded-xl flex items-center justify-center text-center p-2 text-sm font-semibold ${
+                      tab === t.key
+                        ? "bg-gold text-bgPrimary"
+                        : "bg-bgPrimary border border-muted text-offwhite"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {activeGroup && (
+              <div className="grid grid-cols-2 gap-2">
+                {TAB_GROUPS.find((g) => g.key === activeGroup)
+                  ?.tabs.filter((t) => allowedTabs.includes(t))
+                  .map((tKey) => {
+                    const t = TABS.find((x) => x.key === tKey)!;
+                    return (
+                      <button
+                        key={t.key}
+                        onClick={() => {
+                          setTab(t.key);
+                          setMenuOpen(false);
+                        }}
+                        className={`aspect-square rounded-xl flex items-center justify-center text-center p-2 text-sm font-semibold ${
+                          tab === t.key
+                            ? "bg-gold text-bgPrimary"
+                            : "bg-bgPrimary border border-muted text-offwhite"
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
           </div>
         </div>
       )}
