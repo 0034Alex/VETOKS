@@ -8,6 +8,7 @@ import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
 import PromoBannerCarousel from "@/components/PromoBannerCarousel";
 import TickerBar from "@/components/TickerBar";
+import VoteModal from "@/components/VoteModal";
 
 type Participant = {
   id: string;
@@ -32,6 +33,7 @@ export default function ParticipantsPage() {
   const [rankMovement, setRankMovement] = useState<Record<string, number | "new">>({});
   const [loading, setLoading] = useState(true);
   const [votedIds, setVotedIds] = useState<string[]>([]);
+  const [voteModalParticipant, setVoteModalParticipant] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -137,29 +139,8 @@ export default function ParticipantsPage() {
     if (stored) setVotedIds(JSON.parse(stored));
   }, []);
 
-  async function handleVote(participantId: string) {
-    if (votedIds.includes(participantId)) return;
-    setBusyId(participantId);
-
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      setBusyId(null);
-      return;
-    }
-
-    await supabase.from("votes").insert({
-      voter_id: currentUser.id,
-      participant_id: participantId,
-      weight: 1,
-      is_paid: false,
-    });
-
-    const updated = [...votedIds, participantId];
-    setVotedIds(updated);
-    localStorage.setItem("vetoks_voted_ids", JSON.stringify(updated));
-
-    await loadData();
-    setBusyId(null);
+  function handleVote(participantId: string) {
+    setVoteModalParticipant(participantId);
   }
 
   const filtered = participants
@@ -322,10 +303,9 @@ export default function ParticipantsPage() {
               <div className="p-3 pt-2">
                 <button
                   onClick={() => handleVote(p.id)}
-                  disabled={votedIds.includes(p.id) || busyId === p.id}
-                  className="w-full bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold py-2 rounded-full text-xs disabled:opacity-40"
+                  className="w-full bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold py-2 rounded-full text-xs"
                 >
-                  {votedIds.includes(p.id) ? "Голос отдан" : "Поддержать"}
+                  🗳️ Проголосовать
                 </button>
                 <a
                   href={`/shop?participant=${p.id}&name=${encodeURIComponent(p.display_name)}`}
@@ -338,6 +318,14 @@ export default function ParticipantsPage() {
           ))}
         </div>
       </div>
+
+      {voteModalParticipant && (
+        <VoteModal
+          participantId={voteModalParticipant}
+          userId={me?.id ?? null}
+          onClose={() => setVoteModalParticipant(null)}
+        />
+      )}
 
       <TickerBar />
       <BottomNav />
