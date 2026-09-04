@@ -80,6 +80,8 @@ function ShopContent() {
     participantId ?? ""
   );
   const [participantSearch, setParticipantSearch] = useState("");
+  const [showFollowed, setShowFollowed] = useState(false);
+  const [showRecent, setShowRecent] = useState(false);
   const [followedParticipants, setFollowedParticipants] = useState<
     (Participant & { photo_url: string | null })[]
   >([]);
@@ -95,7 +97,9 @@ function ShopContent() {
     "idle" | "sending" | "sent" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
-  const [section, setSection] = useState<"gifts" | "cards">("gifts");
+  const [section, setSection] = useState<"gifts" | "votes" | "cards">(
+    (searchParams.get("section") as "gifts" | "votes" | "cards") ?? "gifts"
+  );
 
   useEffect(() => {
     (async () => {
@@ -310,6 +314,16 @@ function ShopContent() {
           Подарки
         </button>
         <button
+          onClick={() => setSection("votes")}
+          className={`px-4 py-2 rounded-full text-sm font-medium ${
+            section === "votes"
+              ? "bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
+              : "bg-bgSurface text-muted border border-muted"
+          }`}
+        >
+          🗳️ Голоса
+        </button>
+        <button
           onClick={() => setSection("cards")}
           className={`px-4 py-2 rounded-full text-sm font-medium ${
             section === "cards"
@@ -323,6 +337,8 @@ function ShopContent() {
 
       {section === "cards" ? (
         <CardsSection />
+      ) : section === "votes" ? (
+        <VotesSection />
       ) : (
         <>
       <div className="px-6 mb-4">
@@ -349,9 +365,8 @@ function ShopContent() {
 
       {!participantId && (
         <div className="px-6 mb-4">
-          <label className="text-offwhite text-sm">Кому дарим</label>
           {selectedParticipant ? (
-            <div className="flex items-center justify-between bg-bgSurface border border-gold rounded-lg px-4 py-3 mt-1">
+            <div className="flex items-center justify-between bg-bgSurface border border-gold rounded-lg px-4 py-3">
               <span className="text-offwhite text-sm">
                 {participants.find((p) => p.id === selectedParticipant)
                   ?.display_name ?? ""}
@@ -368,9 +383,43 @@ function ShopContent() {
             </div>
           ) : (
             <>
-              {followedParticipants.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-muted text-xs mb-2">Ваши подписки</p>
+              <div className="flex gap-3 mb-3">
+                {followedParticipants.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setShowFollowed((v) => !v);
+                      setShowRecent(false);
+                    }}
+                    className="flex items-center gap-1 text-muted text-xs"
+                  >
+                    Ваши подписки
+                    <span
+                      className={`transition-transform ${showFollowed ? "rotate-180" : ""}`}
+                    >
+                      ▾
+                    </span>
+                  </button>
+                )}
+                {recentParticipants.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setShowRecent((v) => !v);
+                      setShowFollowed(false);
+                    }}
+                    className="flex items-center gap-1 text-muted text-xs"
+                  >
+                    Кому недавно дарили
+                    <span
+                      className={`transition-transform ${showRecent ? "rotate-180" : ""}`}
+                    >
+                      ▾
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              {showFollowed && followedParticipants.length > 0 && (
+                <div className="mb-4">
                   <div className="flex gap-3 overflow-x-auto pb-1">
                     {followedParticipants.map((p) => (
                       <button
@@ -397,9 +446,8 @@ function ShopContent() {
                 </div>
               )}
 
-              {recentParticipants.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-muted text-xs mb-2">Вы недавно дарили</p>
+              {showRecent && recentParticipants.length > 0 && (
+                <div className="mb-4">
                   <div className="flex gap-3 overflow-x-auto pb-1">
                     {recentParticipants.map((p) => (
                       <button
@@ -556,6 +604,16 @@ function ShopContent() {
   );
 }
 
+const STAGE_ORDER = ["casting", "week2", "week3", "week4", "week5", "grand_final"];
+const STAGE_LABELS: Record<string, string> = {
+  casting: "Отбор",
+  week2: "Неделя 2",
+  week3: "Неделя 3",
+  week4: "Неделя 4",
+  week5: "Неделя 5",
+  grand_final: "Гранд-финал",
+};
+
 function CardsSection() {
   const [cards, setCards] = useState<
     {
@@ -563,6 +621,7 @@ function CardsSection() {
       stage: string;
       final_image_url: string | null;
       status: string;
+      sold_at: string | null;
       participant_id: string;
       participants: { display_name: string } | null;
     }[]
@@ -575,7 +634,7 @@ function CardsSection() {
       const { data } = await supabase
         .from("collectible_cards")
         .select(
-          "id, stage, final_image_url, status, participant_id, participants(display_name)"
+          "id, stage, final_image_url, status, sold_at, participant_id, participants(display_name)"
         )
         .in("status", ["ready", "sold"]);
       setCards((data as any) ?? []);
@@ -583,9 +642,60 @@ function CardsSection() {
     })();
   }, []);
 
-  const filtered = cards.filter((c) =>
+  // Проданные карточки видны ещё 12 часов после продажи, потом пропадают
+  // из общего показа целиком.
+  const visible = cards.filter((c) => {
+    if (c.status !== "sold") return true;
+    if (!c.sold_at) return true;
+    const hoursSinceSold = (Date.now() - new Date(c.sold_at).getTime()) / 3600000;
+    return hoursSinceSold < 12;
+  });
+
+  const searched = visible.filter((c) =>
     matchesSearch(c.participants?.display_name ?? "", search)
   );
+
+  const byStage: Record<string, typeof searched> = {};
+  searched.forEach((c) => {
+    (byStage[c.stage] ??= []).push(c);
+  });
+  const presentStages = STAGE_ORDER.filter((s) => byStage[s]?.length > 0);
+  const currentStage = presentStages[presentStages.length - 1];
+  const currentCards = currentStage ? byStage[currentStage] : [];
+  const previousStages = presentStages.slice(0, -1);
+
+  function CardTile({ c }: { c: (typeof searched)[number] }) {
+    return (
+      <a
+        href={`/participant/${c.participant_id}`}
+        className="bg-bgSurface border border-muted rounded-xl overflow-hidden"
+      >
+        <div className="aspect-[3/4] bg-black/40">
+          {c.final_image_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={c.final_image_url}
+              alt={STAGE_LABELS[c.stage] ?? c.stage}
+              className="w-full h-full object-cover"
+            />
+          )}
+        </div>
+        <div className="p-2">
+          <p className="text-offwhite text-xs font-semibold truncate">
+            {c.participants?.display_name ?? "—"}
+          </p>
+          <p className="text-muted text-[10px]">{STAGE_LABELS[c.stage] ?? c.stage}</p>
+          <p
+            className={`text-xs font-semibold mt-1 ${
+              c.status === "sold" ? "text-success" : "text-gold"
+            }`}
+          >
+            {c.status === "sold" ? "Продана" : "25 000 ₽"}
+          </p>
+        </div>
+      </a>
+    );
+  }
 
   return (
     <div className="px-6">
@@ -597,63 +707,136 @@ function CardsSection() {
       />
 
       {loading && <p className="text-muted text-center">Загрузка...</p>}
-      {!loading && filtered.length === 0 && (
+      {!loading && searched.length === 0 && (
         <p className="text-muted text-center">
           Пока нет опубликованных карточек — они появятся, когда участницы
           загрузят фото и мы их обработаем.
         </p>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {filtered.map((c) => (
-          <a
-            key={c.id}
-            href={`/participant/${c.participant_id}`}
-            className="bg-bgSurface border border-muted rounded-xl overflow-hidden"
-          >
-            <div className="aspect-[3/4] bg-black/40">
-              {c.final_image_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={c.final_image_url}
-                  alt={STAGE_LABELS[c.stage] ?? c.stage}
-                  className="w-full h-full object-cover"
-                />
-              )}
+      {currentStage && (
+        <>
+          <p className="text-gold text-sm font-semibold mb-2">
+            {STAGE_LABELS[currentStage] ?? currentStage}
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {currentCards.map((c) => (
+              <CardTile key={c.id} c={c} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {previousStages.length > 0 && (
+        <div className="mt-8">
+          <p className="text-muted text-sm font-semibold mb-2">
+            Карточки предыдущих этапов
+          </p>
+          {previousStages.map((stageKey) => (
+            <div key={stageKey} className="mb-6">
+              <p className="text-muted text-xs mb-2">
+                {STAGE_LABELS[stageKey] ?? stageKey}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {byStage[stageKey].map((c) => (
+                  <CardTile key={c.id} c={c} />
+                ))}
+              </div>
             </div>
-            <div className="p-2">
-              <p className="text-offwhite text-xs font-semibold truncate">
-                {c.participants?.display_name ?? "—"}
-              </p>
-              <p className="text-muted text-[10px]">
-                {STAGE_LABELS[c.stage] ?? c.stage}
-              </p>
-              <p
-                className={`text-xs font-semibold mt-1 ${
-                  c.status === "sold" ? "text-success" : "text-gold"
-                }`}
-              >
-                {c.status === "sold" ? "Продана" : "25 000 ₽"}
-              </p>
-            </div>
-          </a>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-const STAGE_LABELS: Record<string, string> = {
-  casting: "Кастинг",
-  week2: "Неделя 2",
-  week3: "Неделя 3",
-  grand_final: "Гранд-финал",
-};
 
 export default function ShopPage() {
   return (
     <Suspense fallback={null}>
       <ShopContent />
     </Suspense>
+  );
+}
+
+// ---------------------------------------------------------------------
+// ГОЛОСА
+// ---------------------------------------------------------------------
+
+const VOTE_PACKAGES = [25, 50, 100, 200, 500, 1000];
+const PRICE_PER_VOTE = 10;
+
+function VotesSection() {
+  const [balance, setBalance] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [buyingAmount, setBuyingAmount] = useState<number | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    const u = await getCurrentUser();
+    if (!u) {
+      setLoading(false);
+      return;
+    }
+    setUserId(u.id);
+    const { data } = await supabase
+      .from("vote_credits")
+      .select("balance")
+      .eq("user_id", u.id)
+      .maybeSingle();
+    setBalance(data?.balance ?? 0);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function buy(amount: number) {
+    if (!userId) return;
+    setBuyingAmount(amount);
+    const { data } = await supabase
+      .from("vote_credits")
+      .select("balance")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const newBalance = (data?.balance ?? 0) + amount;
+    await supabase.from("vote_credits").upsert({ user_id: userId, balance: newBalance });
+    setBalance(newBalance);
+    setBuyingAmount(null);
+  }
+
+  return (
+    <div>
+      <div className="px-6 mb-4">
+        <h1 className="text-2xl font-semibold text-offwhite mb-1">Голоса</h1>
+        <p className="text-muted text-xs mb-3">
+          Тестовый режим — реальные деньги пока не подключены. 1 голос = {PRICE_PER_VOTE} ₽.
+        </p>
+        <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
+          <p className="text-muted text-xs">Ваши купленные голоса</p>
+          <p className="text-gold text-xl font-semibold">{loading ? "..." : balance}</p>
+        </div>
+      </div>
+
+      <div className="px-6 grid grid-cols-2 gap-3">
+        {VOTE_PACKAGES.map((amount) => (
+          <button
+            key={amount}
+            onClick={() => buy(amount)}
+            disabled={buyingAmount === amount}
+            className="bg-bgSurface border border-muted rounded-xl p-4 flex flex-col items-center gap-1 disabled:opacity-50"
+          >
+            <span className="text-3xl">🗳️</span>
+            <span className="text-offwhite font-semibold">{amount} голосов</span>
+            <span className="text-gold text-sm">{amount * PRICE_PER_VOTE} ₽</span>
+            {buyingAmount === amount && (
+              <span className="text-muted text-xs">Покупаем...</span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
