@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-const FREE_VOTES_PER_DAY = 3;
+const FREE_VOTES_TOTAL = 3;
 
 export default function VoteModal({
   participantId,
@@ -29,21 +29,21 @@ export default function VoteModal({
     (async () => {
       setLoading(true);
       setDone(false);
-      const today = new Date().toISOString().slice(0, 10);
 
-      const { data: usageRow } = await supabase
+      const { data: usageRow, error: usageError } = await supabase
         .from("free_vote_usage")
         .select("used_count")
         .eq("user_id", userId)
-        .eq("vote_date", today)
         .maybeSingle();
-      setFreeRemaining(Math.max(0, FREE_VOTES_PER_DAY - (usageRow?.used_count ?? 0)));
+      if (usageError) console.error("[VoteModal] free_vote_usage read error:", usageError);
+      setFreeRemaining(Math.max(0, FREE_VOTES_TOTAL - (usageRow?.used_count ?? 0)));
 
-      const { data: creditsRow } = await supabase
+      const { data: creditsRow, error: creditsError } = await supabase
         .from("vote_credits")
         .select("balance")
         .eq("user_id", userId)
         .maybeSingle();
+      if (creditsError) console.error("[VoteModal] vote_credits read error:", creditsError);
       setPurchasedBalance(creditsRow?.balance ?? 0);
 
       setLoading(false);
@@ -53,30 +53,46 @@ export default function VoteModal({
   async function confirmVote() {
     if (!participantId || !userId) return;
     setVoting(true);
-    const today = new Date().toISOString().slice(0, 10);
     const usingFree = freeRemaining > 0;
 
-    await supabase.from("votes").insert({
+    const { error: voteError } = await supabase.from("votes").insert({
       voter_id: userId,
       participant_id: participantId,
       weight: 1,
       is_paid: !usingFree,
     });
+    if (voteError) {
+      console.error("[VoteModal] vote insert error:", voteError);
+      alert(`Не удалось засчитать голос: ${voteError.message}`);
+      setVoting(false);
+      return;
+    }
 
     if (usingFree) {
       const { data: usageRow } = await supabase
         .from("free_vote_usage")
         .select("used_count")
         .eq("user_id", userId)
-        .eq("vote_date", today)
         .maybeSingle();
-      await supabase
+      const { error: usageUpdateError } = await supabase
         .from("free_vote_usage")
-        .upsert({ user_id: userId, vote_date: today, used_count: (usageRow?.used_count ?? 0) + 1 });
+        .upsert(
+          { user_id: userId, used_count: (usageRow?.used_count ?? 0) + 1 },
+          { onConflict: "user_id" }
+        );
+      if (usageUpdateError) {
+        console.error("[VoteModal] free_vote_usage upsert error:", usageUpdateError);
+      }
     } else {
-      await supabase
+      const { error: balanceUpdateError } = await supabase
         .from("vote_credits")
-        .upsert({ user_id: userId, balance: Math.max(0, purchasedBalance - 1) });
+        .upsert(
+          { user_id: userId, balance: Math.max(0, purchasedBalance - 1) },
+          { onConflict: "user_id" }
+        );
+      if (balanceUpdateError) {
+        console.error("[VoteModal] vote_credits upsert error:", balanceUpdateError);
+      }
     }
 
     setVoting(false);
@@ -118,7 +134,7 @@ export default function VoteModal({
               У вас есть бесплатные голоса
             </p>
             <p className="text-gold text-2xl font-bold mb-4">
-              {freeRemaining} из {FREE_VOTES_PER_DAY} сегодня
+              Осталось {freeRemaining} из {FREE_VOTES_TOTAL}
             </p>
             <button
               onClick={confirmVote}
@@ -135,7 +151,7 @@ export default function VoteModal({
 
         {!loading && !done && freeRemaining === 0 && purchasedBalance > 0 && (
           <>
-            <p className="text-offwhite text-sm mb-1">Бесплатные голоса на сегодня закончились</p>
+            <p className="text-offwhite text-sm mb-1">Бесплатные голоса закончились</p>
             <p className="text-gold text-2xl font-bold mb-4">
               У вас {purchasedBalance} купленных голосов
             </p>
@@ -156,7 +172,7 @@ export default function VoteModal({
           <>
             <p className="text-offwhite text-sm mb-1">У вас нет голосов</p>
             <p className="text-muted text-xs mb-4">
-              Бесплатные на сегодня закончились — можно купить ещё.
+              Бесплатные 3 голоса уже использованы — можно купить ещё.
             </p>
             <button
               onClick={() => {
