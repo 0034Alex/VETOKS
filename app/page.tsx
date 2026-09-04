@@ -257,18 +257,19 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
           />
 
           <HTMLFlipBook
-            key={`${scope}-${pages.length}-${pages[0]?.id ?? "x"}`}
-            width={150}
-            height={230}
+            key={`${scope}-${pages.length}-${pages[0]?.id ?? "x"}-${isDesktop}`}
+            width={isDesktop ? 300 : 150}
+            height={isDesktop ? 460 : 230}
             size="stretch"
-            minWidth={140}
-            maxWidth={220}
-            minHeight={210}
-            maxHeight={340}
+            minWidth={isDesktop ? 280 : 140}
+            maxWidth={isDesktop ? 440 : 220}
+            minHeight={isDesktop ? 420 : 210}
+            maxHeight={isDesktop ? 680 : 340}
             showCover={false}
             drawShadow={true}
             maxShadowOpacity={0.4}
             mobileScrollSupport={true}
+            usePortrait={false}
             className="vetoks-magazine relative"
             style={{ margin: "0 auto" }}
           >
@@ -946,10 +947,10 @@ export default function Home() {
             Пока нет одобренных участниц.
           </p>
         ) : (
-          <div className="flex items-end justify-center gap-1.5 md:gap-3 px-4 mb-8">
+          <div className="flex items-end justify-center gap-1 md:gap-3 px-2 md:px-4 mb-8">
             {[participants[3], participants[1], participants[0], participants[2], participants[4]].map(
               (p, slot) => {
-                if (!p) return <div key={slot} className="flex-1 max-w-[70px] md:max-w-[140px]" />;
+                if (!p) return <div key={slot} className="flex-1 max-w-[52px] md:max-w-[140px]" />;
                 // slot: 0=4-е место, 1=2-е, 2=1-е (по центру), 3=3-е, 4=5-е
                 const isFirst = slot === 2;
                 const isMedium = slot === 1 || slot === 3;
@@ -959,8 +960,8 @@ export default function Home() {
                 const widthClass = isFirst
                   ? "w-[92px] md:w-[184px]"
                   : isMedium
-                  ? "w-[76px] md:w-[152px]"
-                  : "w-[62px] md:w-[124px]";
+                  ? "w-[64px] md:w-[152px]"
+                  : "w-[52px] md:w-[124px]";
                 return (
                   <Link
                     href={`/participant/${p.id}`}
