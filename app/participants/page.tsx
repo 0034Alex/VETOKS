@@ -7,6 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
 import PromoBannerCarousel from "@/components/PromoBannerCarousel";
+import { formatCompact } from "@/lib/formatCompact";
 import TickerBar from "@/components/TickerBar";
 import VoteModal from "@/components/VoteModal";
 
@@ -290,12 +291,12 @@ export default function ParticipantsPage() {
                       )}
                   </div>
                   <div className="flex items-center gap-2 text-xs mt-1">
-                    <span className="text-rose">♥ {voteCounts[p.id] ?? 0}</span>
+                    <span className="text-rose">♥ {formatCompact(voteCounts[p.id] ?? 0)}</span>
                     <span className="text-gold">
-                      🎁 {giftCounts[p.id] ?? 0}
+                      🎁 {formatCompact(giftCounts[p.id] ?? 0)}
                     </span>
                     <span className="text-muted">
-                      👥 {followerCounts[p.id] ?? 0}
+                      👥 {formatCompact(followerCounts[p.id] ?? 0)}
                     </span>
                   </div>
                 </div>
