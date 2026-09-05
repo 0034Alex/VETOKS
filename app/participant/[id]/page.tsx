@@ -9,7 +9,6 @@ import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
 import VoteModal from "@/components/VoteModal";
-import { formatCoins } from "@/lib/coins";
 
 type CollectibleCard = {
   id: string;
@@ -58,6 +57,7 @@ export default function ParticipantProfilePage() {
   const [rankPosition, setRankPosition] = useState<number | null>(null);
   const [votesToNextRank, setVotesToNextRank] = useState<number | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [videoPosts, setVideoPosts] = useState<{ id: string; video_url: string }[]>([]);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteModalOpen, setVoteModalOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -112,6 +112,14 @@ export default function ParticipantProfilePage() {
       .select("id", { count: "exact", head: true })
       .eq("participant_id", id);
     setVoteCount(votes ?? 0);
+
+    const { data: videosData } = await supabase
+      .from("content_posts")
+      .select("id, video_url")
+      .eq("participant_id", id)
+      .not("video_url", "is", null)
+      .order("submitted_at", { ascending: false });
+    setVideoPosts((videosData as any) ?? []);
 
     const { data: giftsData } = await supabase
       .from("gifts")
@@ -377,7 +385,7 @@ export default function ParticipantProfilePage() {
     if (!msgError && participant) {
       await notify(
         participant.user_id,
-        `✉️ Новое платное сообщение (${formatCoins(MESSAGE_PRICE)})`,
+        `✉️ Новое платное сообщение (${MESSAGE_PRICE.toLocaleString("ru-RU")} ₽)`,
         `/messages/${userId}`
       );
     }
@@ -466,7 +474,7 @@ export default function ParticipantProfilePage() {
     if (participant) {
       await notify(
         participant.user_id,
-        `🃏 Продана карточка «${STAGE_LABELS[card.stage]}» за ${formatCoins(CARD_PRICE)}`,
+        `🃏 Продана карточка «${STAGE_LABELS[card.stage]}» за ${CARD_PRICE.toLocaleString("ru-RU")} ₽`,
         `/my-cards`
       );
     }
@@ -529,7 +537,7 @@ export default function ParticipantProfilePage() {
       week_start: monday.toISOString().slice(0, 10),
     });
 
-    await notify(participant.user_id, `💝 Вам задонатили ${formatCoins(amount)} на цель недели`, `/participant/${id}`);
+    await notify(participant.user_id, `💝 Вам задонатили ${Math.round(amount)} ₽ на цель недели`, `/participant/${id}`);
 
     setBalance((b) => b - amount);
     setGoalCollected((g) => g + amount);
@@ -683,7 +691,7 @@ export default function ParticipantProfilePage() {
               <p className="text-muted text-xs mb-1">
                 Ваш заработок с подарков (видно только вам)
               </p>
-              <p className="text-gold text-xl font-semibold">{formatCoins(giftTotal)}</p>
+              <p className="text-gold text-xl font-semibold">{Math.round(giftTotal)} ₽</p>
             </div>
           )}
 
@@ -702,7 +710,7 @@ export default function ParticipantProfilePage() {
                 />
               </div>
               <p className="text-muted text-xs mb-3">
-                Собрано {formatCoins(goalCollected)} / {formatCoins(goalTarget)}
+                Собрано {Math.round(goalCollected)} / {goalTarget} ₽
               </p>
               {!isOwner && (
                 <div className="flex gap-2">
@@ -731,7 +739,7 @@ export default function ParticipantProfilePage() {
                   {goalDonors.map((d, i) => (
                     <div key={i} className="flex justify-between text-xs">
                       <span className="text-offwhite">{d.name}</span>
-                      <span className="text-gold">{formatCoins(d.amount)}</span>
+                      <span className="text-gold">{Math.round(d.amount)} ₽</span>
                     </div>
                   ))}
                 </div>
@@ -794,7 +802,7 @@ export default function ParticipantProfilePage() {
                       {c.status === "sold"
                         ? "Продана"
                         : c.status === "ready"
-                        ? formatCoins(25000)
+                        ? "25 000 ₽"
                         : "Скоро"}
                     </button>
                   </div>
@@ -803,17 +811,42 @@ export default function ParticipantProfilePage() {
             </div>
           )}
 
-          <button
-            onClick={toggleFollow}
-            disabled={busy || !userId}
-            className={`w-full border font-semibold py-3 rounded-full text-sm disabled:opacity-40 mb-3 ${
-              isFollowing
-                ? "border-muted text-muted"
-                : "border-gold text-gold"
-            }`}
-          >
-            {isFollowing ? "Вы подписаны" : "Подписаться"}
-          </button>
+          {isFollowing ? (
+            <button
+              onClick={toggleFollow}
+              disabled={busy || !userId}
+              className="w-full border border-muted text-muted font-semibold py-3 rounded-full text-sm disabled:opacity-40 mb-3"
+            >
+              Отписаться
+            </button>
+          ) : (
+            <div
+              className="rounded-full p-[2px] mb-3"
+              style={{
+                background:
+                  "conic-gradient(from var(--vetoks-follow-angle, 0deg), transparent 0%, #C9A227 12%, #F5E6A8 18%, #C9A227 24%, transparent 36%)",
+                animation: "vetoks-follow-border-spin 3s linear infinite",
+              }}
+            >
+              <button
+                onClick={toggleFollow}
+                disabled={busy || !userId}
+                className="w-full bg-bgPrimary text-gold font-semibold py-3 rounded-full text-sm disabled:opacity-40"
+              >
+                Подписаться
+              </button>
+            </div>
+          )}
+          <style>{`
+            @property --vetoks-follow-angle {
+              syntax: '<angle>';
+              initial-value: 0deg;
+              inherits: false;
+            }
+            @keyframes vetoks-follow-border-spin {
+              to { --vetoks-follow-angle: 360deg; }
+            }
+          `}</style>
 
           {!isOwner && (
             <div className="bg-bgSurface border border-muted rounded-xl p-4 mb-3">
@@ -840,7 +873,9 @@ export default function ParticipantProfilePage() {
                   disabled={!userId}
                   className="w-full text-offwhite font-semibold text-sm disabled:opacity-40"
                 >
-                  ✉️ Написать участнице — от {formatCoins(MESSAGE_PRICE)}
+                  ✉️ Написать участнице — от {MESSAGE_PRICE.toLocaleString(
+                    "ru-RU"
+                  )} ₽
                 </button>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -858,7 +893,7 @@ export default function ParticipantProfilePage() {
                   >
                     {thread.length > 0
                       ? "Отправить"
-                      : `Отправить за ${formatCoins(MESSAGE_PRICE)}`}
+                      : `Отправить за ${MESSAGE_PRICE.toLocaleString("ru-RU")} ₽`}
                   </button>
                 </div>
               )}
@@ -867,7 +902,7 @@ export default function ParticipantProfilePage() {
 
           <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
             <p className="text-offwhite text-sm font-semibold mb-1">
-              🚀 Продвинуть в топ — {formatCoins(BOOST_PRICE)}
+              🚀 Продвинуть в топ — {BOOST_PRICE.toLocaleString("ru-RU")} ₽
             </p>
             <p className="text-muted text-xs mb-3">
               +1000 голосов сразу · осталось {boostsLeft} из {BOOST_LIMIT}{" "}
@@ -882,6 +917,31 @@ export default function ParticipantProfilePage() {
               {boostsLeft <= 0 ? "Лимит исчерпан" : "Продвинуть"}
             </button>
           </div>
+
+          {videoPosts.length > 0 && (
+            <div className="mb-6">
+              <p className="text-offwhite text-sm font-semibold mb-2">
+                🎬 Видео участницы
+              </p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {videoPosts.map((post, i) => (
+                  <Link
+                    key={post.id}
+                    href={`/participant/${id}/videos?start=${i}`}
+                    className="relative aspect-[9/16] bg-black rounded-lg overflow-hidden"
+                  >
+                    <video
+                      src={post.video_url}
+                      muted
+                      playsInline
+                      preload="metadata"
+                      className="w-full h-full object-cover pointer-events-none"
+                    />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {notice && (
             <p className="text-gold text-sm text-center mb-4">{notice}</p>
