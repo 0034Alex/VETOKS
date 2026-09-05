@@ -7,6 +7,7 @@ import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import PromoBannerCarousel from "@/components/PromoBannerCarousel";
+import { formatCompact } from "@/lib/formatCompact";
 import TickerBar from "@/components/TickerBar";
 
 type Ranking = {
@@ -208,7 +209,7 @@ export default function RatingPage() {
                 <p className="text-offwhite font-semibold">{p.display_name}</p>
               </div>
               <span className="text-gold text-sm font-semibold">
-                {ranking.metric_value} {t.unit}
+                {formatCompact(ranking.metric_value)} {t.unit}
               </span>
             </Link>
           );
