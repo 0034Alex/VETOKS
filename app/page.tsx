@@ -8,6 +8,7 @@ import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
+import { formatCompact } from "@/lib/formatCompact";
 import PartnersShowcase from "@/components/PartnersShowcase";
 import LoadingScreen from "@/components/LoadingScreen";
 import EntryPopup from "@/components/EntryPopup";
@@ -996,8 +997,8 @@ export default function Home() {
                         {p.display_name}
                       </p>
                       <div className="flex items-center gap-1 flex-wrap">
-                        <p className="text-rose text-[8px] md:text-sm">♥{p.votes}</p>
-                        {isFirst && <p className="text-gold text-[8px] md:text-sm">🎁{p.gifts}</p>}
+                        <p className="text-rose text-[8px] md:text-sm">♥{formatCompact(p.votes)}</p>
+                        {isFirst && <p className="text-gold text-[8px] md:text-sm">🎁{formatCompact(p.gifts)}</p>}
                       </div>
                     </div>
                   </Link>
