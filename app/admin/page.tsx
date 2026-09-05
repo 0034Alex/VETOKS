@@ -25,7 +25,8 @@ type Tab =
   | "media"
   | "magazine-ads"
   | "branding"
-  | "ad-prices";
+  | "ad-prices"
+  | "media-demo-upload";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -48,12 +49,13 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "social", label: "Соцсети" },
   { key: "media", label: "Материалы" },
   { key: "branding", label: "Брендирование" },
+  { key: "media-demo-upload", label: "Демо-ролики" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
 // Владелец (super_admin) видит всё независимо от галочек.
 const PERMISSION_TABS: Record<string, Tab[]> = {
-  moderation: ["applications", "participants", "cards", "calendar", "media"],
+  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload"],
   finance: ["dashboard", "goal"],
   partners: ["partners", "partner-logos", "banners", "magazine-ads", "ad-space", "ad-prices", "social", "branding"],
   staff: ["staff", "users"],
@@ -93,6 +95,7 @@ const NAV_LIST: (
   { type: "tab", key: "calendar", label: "Календарь контента" },
   { type: "tab", key: "social", label: "Соцсети" },
   { type: "tab", key: "media", label: "Материалы" },
+  { type: "tab", key: "media-demo-upload", label: "Демо-ролики" },
 ];
 
 function getAllowedTabs(user: CurrentUser): Tab[] {
@@ -316,6 +319,7 @@ export default function AdminPage() {
         {tab === "banners" && <BannersTab />}
         {tab === "magazine-ads" && <MagazineAdsTab />}
         {tab === "branding" && <BrandingTab />}
+        {tab === "media-demo-upload" && <MediaDemoUploadTab />}
         {tab === "documents" && <DocumentsTab />}
         {tab === "calendar" && <CalendarTab />}
         {tab === "social" && <SocialLinksTab />}
@@ -4082,6 +4086,167 @@ function AdPricesTab() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// ДЕМО-РОЛИКИ ДЛЯ МЕДИА (маркетинг, презентации партнёрам)
+// ---------------------------------------------------------------------
+
+function MediaDemoUploadTab() {
+  const [participants, setParticipants] = useState<{ id: string; display_name: string }[]>([]);
+  const [selectedParticipant, setSelectedParticipant] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [caption, setCaption] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [recent, setRecent] = useState<
+    { id: string; caption: string | null; participants: { display_name: string } | null }[]
+  >([]);
+
+  async function load() {
+    const { data: participantsData } = await supabase
+      .from("participants")
+      .select("id, display_name")
+      .eq("is_eliminated", false)
+      .order("display_name");
+    setParticipants(participantsData ?? []);
+
+    const { data: postsData } = await supabase
+      .from("content_posts")
+      .select("id, caption, participants(display_name)")
+      .order("submitted_at", { ascending: false })
+      .limit(15);
+    setRecent((postsData as any) ?? []);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function upload() {
+    if (!file || !selectedParticipant) return;
+    setUploading(true);
+    const fileExt = file.name.split(".").pop();
+    const filePath = `${selectedParticipant}-demo-${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("media-videos")
+      .upload(filePath, file);
+    if (uploadError) {
+      alert(`Ошибка загрузки: ${uploadError.message}`);
+      setUploading(false);
+      return;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from("media-videos")
+      .getPublicUrl(filePath);
+
+    const { error: insertError } = await supabase.from("content_posts").insert({
+      participant_id: selectedParticipant,
+      platform: "vetoks",
+      video_url: publicUrlData.publicUrl,
+      caption,
+      is_verified: true,
+    });
+    if (insertError) {
+      alert(`Не удалось опубликовать: ${insertError.message}`);
+      setUploading(false);
+      return;
+    }
+
+    setFile(null);
+    setCaption("");
+    await load();
+    setUploading(false);
+  }
+
+  async function removePost(id: string) {
+    if (!confirm("Удалить этот ролик из ленты «Медиа»?")) return;
+    await supabase.from("content_posts").delete().eq("id", id);
+    await load();
+  }
+
+  return (
+    <div className="max-w-lg">
+      <p className="text-muted text-sm mb-4">
+        Загрузите тестовые ролики от лица любой существующей участницы —
+        появятся в настоящей ленте «Медиа» на сайте, чтобы можно было
+        показать партнёрам живую работу всех кнопок (лайк, комментарии,
+        подписка, голос, поделиться). Работает как обычная загрузка видео
+        участницей, просто вы делаете это за неё из CRM.
+      </p>
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+        <label className="text-offwhite text-xs mb-1 block">
+          От чьего лица опубликовать
+        </label>
+        <select
+          value={selectedParticipant}
+          onChange={(e) => setSelectedParticipant(e.target.value)}
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        >
+          <option value="">Выберите участницу</option>
+          {participants.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.display_name}
+            </option>
+          ))}
+        </select>
+
+        <label className="block w-full text-center bg-bgPrimary border border-muted text-offwhite text-xs py-2 rounded-lg mb-2 cursor-pointer">
+          {file ? file.name : "Выбрать видео"}
+          <input
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        <input
+          value={caption}
+          onChange={(e) => setCaption(e.target.value)}
+          placeholder="Подпись под роликом (необязательно)"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        />
+
+        <button
+          onClick={upload}
+          disabled={uploading || !file || !selectedParticipant}
+          className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+        >
+          {uploading ? "Загрузка..." : "Опубликовать в «Медиа»"}
+        </button>
+      </div>
+
+      <p className="text-offwhite text-sm font-semibold mb-2">Последние ролики</p>
+      <div className="flex flex-col gap-2">
+        {recent.map((post) => (
+          <div
+            key={post.id}
+            className="bg-bgSurface border border-muted rounded-xl p-3 flex items-center justify-between"
+          >
+            <div>
+              <p className="text-offwhite text-sm">
+                {post.participants?.display_name ?? "—"}
+              </p>
+              <p className="text-muted text-xs truncate max-w-[280px]">
+                {post.caption || "без подписи"}
+              </p>
+            </div>
+            <button
+              onClick={() => removePost(post.id)}
+              className="text-danger text-xs px-3 py-1 rounded-full border border-danger flex-shrink-0"
+            >
+              Удалить
+            </button>
+          </div>
+        ))}
+        {recent.length === 0 && (
+          <p className="text-muted text-sm">Пока ничего не загружено.</p>
+        )}
+      </div>
     </div>
   );
 }
