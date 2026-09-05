@@ -26,7 +26,9 @@ type Tab =
   | "magazine-ads"
   | "branding"
   | "ad-prices"
-  | "media-demo-upload";
+  | "media-demo-upload"
+  | "tasks"
+  | "black-marks";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -50,12 +52,14 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "media", label: "Материалы" },
   { key: "branding", label: "Брендирование" },
   { key: "media-demo-upload", label: "Демо-ролики" },
+  { key: "tasks", label: "Задания" },
+  { key: "black-marks", label: "Чёрная метка" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
 // Владелец (super_admin) видит всё независимо от галочек.
 const PERMISSION_TABS: Record<string, Tab[]> = {
-  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload"],
+  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks"],
   finance: ["dashboard", "goal"],
   partners: ["partners", "partner-logos", "banners", "magazine-ads", "ad-space", "ad-prices", "social", "branding"],
   staff: ["staff", "users"],
@@ -96,6 +100,8 @@ const NAV_LIST: (
   { type: "tab", key: "social", label: "Соцсети" },
   { type: "tab", key: "media", label: "Материалы" },
   { type: "tab", key: "media-demo-upload", label: "Демо-ролики" },
+  { type: "tab", key: "tasks", label: "Задания" },
+  { type: "tab", key: "black-marks", label: "Чёрная метка" },
 ];
 
 function getAllowedTabs(user: CurrentUser): Tab[] {
@@ -320,6 +326,8 @@ export default function AdminPage() {
         {tab === "magazine-ads" && <MagazineAdsTab />}
         {tab === "branding" && <BrandingTab />}
         {tab === "media-demo-upload" && <MediaDemoUploadTab />}
+        {tab === "tasks" && <TasksAdminTab />}
+        {tab === "black-marks" && <BlackMarksAdminTab />}
         {tab === "documents" && <DocumentsTab />}
         {tab === "calendar" && <CalendarTab />}
         {tab === "social" && <SocialLinksTab />}
@@ -4245,6 +4253,437 @@ function MediaDemoUploadTab() {
         ))}
         {recent.length === 0 && (
           <p className="text-muted text-sm">Пока ничего не загружено.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// ЗАДАНИЯ ДЛЯ УЧАСТНИЦ
+// ---------------------------------------------------------------------
+
+type CustomTaskRow = {
+  id: string;
+  title: string;
+  description: string;
+  reward: number;
+  deadline: string | null;
+  is_active: boolean;
+};
+
+type PendingCompletion = {
+  id: string;
+  task_id: string;
+  participant_id: string;
+  submitted_at: string;
+  custom_tasks: { title: string; reward: number } | null;
+  participants: { display_name: string } | null;
+};
+
+function TasksAdminTab() {
+  const [tasks, setTasks] = useState<CustomTaskRow[]>([]);
+  const [pending, setPending] = useState<PendingCompletion[]>([]);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [reward, setReward] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    const { data: tasksData } = await supabase
+      .from("custom_tasks")
+      .select("id, title, description, reward, deadline, is_active")
+      .order("created_at", { ascending: false });
+    setTasks((tasksData as CustomTaskRow[]) ?? []);
+
+    const { data: pendingData } = await supabase
+      .from("task_completions")
+      .select("id, task_id, participant_id, submitted_at, custom_tasks(title, reward), participants(display_name)")
+      .eq("status", "pending")
+      .order("submitted_at", { ascending: true });
+    setPending((pendingData as any) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function createTask() {
+    if (!title || !description || !reward) return;
+    setCreating(true);
+    const { data: inserted, error } = await supabase
+      .from("custom_tasks")
+      .insert({
+        title,
+        description,
+        reward: Number(reward),
+        deadline: deadline ? new Date(deadline).toISOString() : null,
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      alert(`Не удалось создать задание: ${error.message}`);
+      setCreating(false);
+      return;
+    }
+
+    // Пуш всем участницам
+    const { data: participantsData } = await supabase
+      .from("participants")
+      .select("user_id")
+      .eq("is_eliminated", false);
+    const notifRows = (participantsData ?? [])
+      .filter((p: { user_id: string | null }) => p.user_id)
+      .map((p: { user_id: string }) => ({
+        user_id: p.user_id,
+        message: `⭐ Новое задание: «${title}» — награда ${Math.round(Number(reward))} ₽`,
+        link: "/tasks",
+      }));
+    if (notifRows.length > 0) {
+      await supabase.from("notifications").insert(notifRows);
+    }
+
+    setTitle("");
+    setDescription("");
+    setReward("");
+    setDeadline("");
+    await load();
+    setCreating(false);
+  }
+
+  async function toggleActive(task: CustomTaskRow) {
+    await supabase.from("custom_tasks").update({ is_active: !task.is_active }).eq("id", task.id);
+    await load();
+  }
+
+  async function approve(completion: PendingCompletion, participantId: string) {
+    // participantId передаём отдельно, т.к. его нет напрямую в PendingCompletion
+    const { data: task } = await supabase
+      .from("custom_tasks")
+      .select("reward")
+      .eq("id", completion.task_id)
+      .single();
+    const rewardAmount = Number(task?.reward ?? 0);
+
+    const { data: participant } = await supabase
+      .from("participants")
+      .select("user_id")
+      .eq("id", participantId)
+      .single();
+    if (!participant?.user_id) return;
+
+    let { data: wallet } = await supabase
+      .from("wallets")
+      .select("id, balance")
+      .eq("user_id", participant.user_id)
+      .maybeSingle();
+    if (!wallet) {
+      const { data: newWallet } = await supabase
+        .from("wallets")
+        .insert({ user_id: participant.user_id })
+        .select("id, balance")
+        .single();
+      wallet = newWallet;
+    }
+    if (!wallet) return;
+
+    await supabase.from("wallet_transactions").insert({
+      wallet_id: wallet.id,
+      type: "task_reward",
+      amount: rewardAmount,
+      metadata: { task: completion.task_id },
+    });
+    await supabase
+      .from("wallets")
+      .update({ balance: Number(wallet.balance) + rewardAmount })
+      .eq("id", wallet.id);
+
+    await supabase
+      .from("task_completions")
+      .update({ status: "approved", approved_at: new Date().toISOString() })
+      .eq("id", completion.id);
+
+    await supabase.from("notifications").insert({
+      user_id: participant.user_id,
+      message: `✅ Задание «${completion.custom_tasks?.title}» одобрено — начислено ${Math.round(rewardAmount)} ₽`,
+      link: "/tasks",
+    });
+
+    await load();
+  }
+
+  async function reject(completionId: string) {
+    await supabase.from("task_completions").update({ status: "rejected" }).eq("id", completionId);
+    await load();
+  }
+
+  return (
+    <div className="max-w-lg">
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+        <p className="text-offwhite text-sm font-semibold mb-2">Новое задание</p>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Заголовок"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        />
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          placeholder="Текст задания — что нужно сделать"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        />
+        <div className="flex gap-2 mb-3">
+          <input
+            value={reward}
+            onChange={(e) => setReward(e.target.value)}
+            type="number"
+            placeholder="Награда, ₽"
+            className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+          />
+          <input
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            type="date"
+            className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+          />
+        </div>
+        <button
+          onClick={createTask}
+          disabled={creating || !title || !description || !reward}
+          className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+        >
+          {creating ? "Создаём и рассылаем пуш..." : "Создать и отправить пуш всем участницам"}
+        </button>
+      </div>
+
+      {loading && <p className="text-muted">Загрузка...</p>}
+
+      {!loading && pending.length > 0 && (
+        <>
+          <p className="text-offwhite text-sm font-semibold mb-2">
+            На проверке ({pending.length})
+          </p>
+          <div className="flex flex-col gap-2 mb-6">
+            {pending.map((c: any) => (
+              <div key={c.id} className="bg-bgSurface border border-gold/40 rounded-xl p-3">
+                <p className="text-offwhite text-sm">
+                  {c.participants?.display_name ?? "—"} — «{c.custom_tasks?.title}»
+                </p>
+                <p className="text-muted text-xs mb-2">
+                  Награда {Math.round(c.custom_tasks?.reward ?? 0)} ₽ · отправлено{" "}
+                  {new Date(c.submitted_at).toLocaleDateString("ru-RU")}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => approve(c, c.participant_id)}
+                    className="flex-1 bg-success text-bgPrimary font-semibold py-1.5 rounded-full text-xs"
+                  >
+                    Одобрить и начислить
+                  </button>
+                  <button
+                    onClick={() => reject(c.id)}
+                    className="flex-1 bg-bgPrimary border border-danger text-danger font-semibold py-1.5 rounded-full text-xs"
+                  >
+                    Отклонить
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <p className="text-offwhite text-sm font-semibold mb-2">Все задания</p>
+      <div className="flex flex-col gap-2">
+        {tasks.map((t) => (
+          <div key={t.id} className="bg-bgSurface border border-muted rounded-xl p-3 flex items-center justify-between">
+            <div>
+              <p className="text-offwhite text-sm">{t.title}</p>
+              <p className="text-muted text-xs">
+                {Math.round(t.reward)} ₽
+                {t.deadline && ` · до ${new Date(t.deadline).toLocaleDateString("ru-RU")}`}
+              </p>
+            </div>
+            <button
+              onClick={() => toggleActive(t)}
+              className={`text-xs px-3 py-1 rounded-full flex-shrink-0 ${
+                t.is_active ? "bg-success text-bgPrimary" : "bg-bgPrimary border border-muted text-muted"
+              }`}
+            >
+              {t.is_active ? "Активно" : "Выключено"}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// ЧЁРНАЯ МЕТКА — ИТОГИ НЕДЕЛИ ПО РЕГИОНАМ
+// ---------------------------------------------------------------------
+
+function getWeekStartAdmin(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday.toISOString().slice(0, 10);
+}
+
+type RegionStanding = {
+  regionId: string;
+  regionName: string;
+  topParticipantId: string;
+  topName: string;
+  count: number;
+  currentVotes: number;
+  penaltyApplied: number | null;
+};
+
+function BlackMarksAdminTab() {
+  const [standings, setStandings] = useState<RegionStanding[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [applyingId, setApplyingId] = useState<string | null>(null);
+  const weekStart = getWeekStartAdmin();
+
+  async function load() {
+    setLoading(true);
+    const { data: marksData } = await supabase
+      .from("black_marks")
+      .select("target_participant_id, region_id")
+      .eq("week_start", weekStart);
+
+    const byRegion: Record<string, Record<string, number>> = {};
+    (marksData ?? []).forEach((m: { target_participant_id: string; region_id: string }) => {
+      byRegion[m.region_id] ??= {};
+      byRegion[m.region_id][m.target_participant_id] =
+        (byRegion[m.region_id][m.target_participant_id] ?? 0) + 1;
+    });
+
+    const rows: RegionStanding[] = [];
+    for (const regionId of Object.keys(byRegion)) {
+      const counts = byRegion[regionId];
+      const topId = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+      if (!topId) continue;
+
+      const { data: region } = await supabase
+        .from("regions")
+        .select("name")
+        .eq("id", regionId)
+        .maybeSingle();
+      const { data: participant } = await supabase
+        .from("participants")
+        .select("display_name")
+        .eq("id", topId)
+        .maybeSingle();
+      const { count: votesCount } = await supabase
+        .from("votes")
+        .select("id", { count: "exact", head: true })
+        .eq("participant_id", topId);
+      const { data: penaltyRow } = await supabase
+        .from("black_mark_penalties")
+        .select("penalty_votes")
+        .eq("participant_id", topId)
+        .eq("week_start", weekStart)
+        .maybeSingle();
+
+      rows.push({
+        regionId,
+        regionName: region?.name ?? "—",
+        topParticipantId: topId,
+        topName: participant?.display_name ?? "—",
+        count: counts[topId],
+        currentVotes: votesCount ?? 0,
+        penaltyApplied: penaltyRow?.penalty_votes ?? null,
+      });
+    }
+    setStandings(rows);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function applyPenalty(row: RegionStanding) {
+    const penaltyVotes = Math.round(row.currentVotes * 0.1);
+    if (
+      !confirm(
+        `Записать штраф −${penaltyVotes} голосов для «${row.topName}»?\n\n` +
+          `Важно: голоса везде в приложении считаются количеством строк в таблице votes, ` +
+          `а не суммой веса — просто «отрицательная запись» их не уменьшит. Чтобы штраф ` +
+          `реально повлиял на видимое число голосов, нужно удалить ${penaltyVotes} ` +
+          `настоящих голосов этой участницы вручную в Table Editor Supabase (таблица votes, ` +
+          `фильтр participant_id = ${row.topParticipantId}). Здесь мы только фиксируем факт ` +
+          `и размер штрафа для истории.`
+      )
+    )
+      return;
+    setApplyingId(row.topParticipantId);
+
+    await supabase.from("black_mark_penalties").upsert({
+      participant_id: row.topParticipantId,
+      region_id: row.regionId,
+      week_start: weekStart,
+      marks_count: row.count,
+      votes_before: row.currentVotes,
+      penalty_votes: penaltyVotes,
+    });
+
+    await load();
+    setApplyingId(null);
+  }
+
+  return (
+    <div className="max-w-lg">
+      <p className="text-muted text-sm mb-4">
+        Итоги по чёрным меткам за текущую неделю, по каждому региону —
+        участница с наибольшим числом меток. Штраф (−10% текущих голосов)
+        применяется вручную кнопкой, когда вы решите, что время подводить
+        итоги пришло.
+      </p>
+
+      {loading && <p className="text-muted">Загрузка...</p>}
+
+      <div className="flex flex-col gap-3">
+        {standings.map((row) => (
+          <div key={row.regionId} className="bg-bgSurface border border-danger/40 rounded-xl p-4">
+            <p className="text-muted text-xs">{row.regionName}</p>
+            <p className="text-offwhite font-semibold">{row.topName}</p>
+            <p className="text-danger text-sm">
+              🖤 {row.count} меток · сейчас {row.currentVotes} голосов
+            </p>
+            {row.penaltyApplied !== null ? (
+              <p className="text-success text-xs mt-2">
+                Штраф уже применён: −{row.penaltyApplied} голосов
+              </p>
+            ) : (
+              <button
+                onClick={() => applyPenalty(row)}
+                disabled={applyingId === row.topParticipantId}
+                className="mt-2 bg-danger text-white font-semibold px-4 py-2 rounded-full text-xs disabled:opacity-40"
+              >
+                {applyingId === row.topParticipantId
+                  ? "Сохраняем..."
+                  : `Зафиксировать штраф (−${Math.round(row.currentVotes * 0.1)} голосов)`}
+              </button>
+            )}
+          </div>
+        ))}
+        {!loading && standings.length === 0 && (
+          <p className="text-muted text-sm">
+            На этой неделе ещё никто не отправлял чёрные метки.
+          </p>
         )}
       </div>
     </div>
