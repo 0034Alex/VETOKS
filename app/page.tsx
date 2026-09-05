@@ -115,14 +115,6 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    const check = () => setIsDesktop(window.innerWidth >= 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   useEffect(() => {
     (async () => {
@@ -258,19 +250,18 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
           />
 
           <HTMLFlipBook
-            key={`${scope}-${pages.length}-${pages[0]?.id ?? "x"}-${isDesktop}`}
-            width={isDesktop ? 300 : 150}
-            height={isDesktop ? 460 : 230}
+            key={`${scope}-${pages.length}-${pages[0]?.id ?? "x"}`}
+            width={150}
+            height={230}
             size="stretch"
-            minWidth={isDesktop ? 280 : 140}
-            maxWidth={isDesktop ? 440 : 220}
-            minHeight={isDesktop ? 420 : 210}
-            maxHeight={isDesktop ? 680 : 340}
+            minWidth={140}
+            maxWidth={220}
+            minHeight={210}
+            maxHeight={340}
             showCover={false}
             drawShadow={true}
             maxShadowOpacity={0.4}
             mobileScrollSupport={true}
-            usePortrait={false}
             className="vetoks-magazine relative"
             style={{ margin: "0 auto" }}
           >
