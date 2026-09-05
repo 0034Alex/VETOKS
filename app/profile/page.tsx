@@ -8,8 +8,6 @@ import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import SocialLinksBar from "@/components/SocialLinksBar";
-import InstallApplePopup from "@/components/InstallApplePopup";
-import GoogleNotAndroidToast from "@/components/GoogleNotAndroidToast";
 
 type Participant = { id: string; display_name: string };
 
@@ -49,8 +47,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showApplePopup, setShowApplePopup] = useState(false);
-  const [showGoogleToast, setShowGoogleToast] = useState(false);
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -62,11 +58,6 @@ export default function ProfilePage() {
   }, []);
 
   async function installAndroid() {
-    const isAndroid = /android/i.test(navigator.userAgent);
-    if (!isAndroid) {
-      setShowGoogleToast(true);
-      return;
-    }
     if (deferredPrompt) {
       deferredPrompt.prompt();
       await deferredPrompt.userChoice;
@@ -417,6 +408,15 @@ export default function ProfilePage() {
               <span>Мои подписки</span>
               <span>→</span>
             </a>
+            {participant && (
+              <a
+                href="/black-marks"
+                className="p-4 flex items-center justify-between text-muted text-sm"
+              >
+                <span>🖤 Полученные чёрные метки</span>
+                <span>→</span>
+              </a>
+            )}
             <a
               href="/edit-profile"
               className="p-4 flex items-center justify-between text-muted text-sm"
@@ -472,8 +472,8 @@ export default function ProfilePage() {
           )}
 
           <div className="flex gap-3 mb-2">
-            <button
-              onClick={() => setShowApplePopup(true)}
+            <a
+              href="/install"
               className="flex-1 flex items-center justify-center gap-2 bg-black border border-white/20 rounded-xl py-2.5"
             >
               <svg viewBox="0 0 384 512" width="20" height="20" fill="#fff">
@@ -484,7 +484,7 @@ export default function ProfilePage() {
                 <br />
                 App Store
               </span>
-            </button>
+            </a>
             <button
               onClick={installAndroid}
               className="flex-1 flex items-center justify-center gap-2 bg-black border border-white/20 rounded-xl py-2.5"
@@ -504,13 +504,6 @@ export default function ProfilePage() {
           </div>
 
           <SocialLinksBar />
-
-          {showApplePopup && (
-            <InstallApplePopup onClose={() => setShowApplePopup(false)} />
-          )}
-          {showGoogleToast && (
-            <GoogleNotAndroidToast onClose={() => setShowGoogleToast(false)} />
-          )}
 
           <button
             onClick={handleLogout}
