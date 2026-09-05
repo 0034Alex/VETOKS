@@ -14,6 +14,14 @@ type Participant = {
   photo_url: string | null;
 };
 
+type CustomTask = {
+  id: string;
+  title: string;
+  description: string;
+  reward: number;
+  deadline: string | null;
+};
+
 const PROFILE_TASK_REWARD = 100;
 
 export default function TasksPage() {
@@ -25,6 +33,9 @@ export default function TasksPage() {
   const [balance, setBalance] = useState(0);
   const [profileTaskDone, setProfileTaskDone] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [customTasks, setCustomTasks] = useState<CustomTask[]>([]);
+  const [completions, setCompletions] = useState<Record<string, string>>({});
+  const [submittingTaskId, setSubmittingTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -79,6 +90,23 @@ export default function TasksPage() {
         setProfileTaskDone(!!existingReward);
       }
 
+      const { data: tasksData } = await supabase
+        .from("custom_tasks")
+        .select("id, title, description, reward, deadline")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      setCustomTasks((tasksData as CustomTask[]) ?? []);
+
+      const { data: completionsData } = await supabase
+        .from("task_completions")
+        .select("task_id, status")
+        .eq("participant_id", p.id);
+      const map: Record<string, string> = {};
+      (completionsData ?? []).forEach((c: { task_id: string; status: string }) => {
+        map[c.task_id] = c.status;
+      });
+      setCompletions(map);
+
       setLoading(false);
     })();
   }, [router]);
@@ -104,6 +132,18 @@ export default function TasksPage() {
     setBalance((b) => b + PROFILE_TASK_REWARD);
     setProfileTaskDone(true);
     setClaiming(false);
+  }
+
+  async function submitTaskCompletion(taskId: string) {
+    if (!participant) return;
+    setSubmittingTaskId(taskId);
+    await supabase.from("task_completions").insert({
+      task_id: taskId,
+      participant_id: participant.id,
+      status: "pending",
+    });
+    setCompletions((prev) => ({ ...prev, [taskId]: "pending" }));
+    setSubmittingTaskId(null);
   }
 
   if (loading) {
@@ -180,6 +220,52 @@ export default function TasksPage() {
               </button>
             )}
           </div>
+
+          {customTasks.map((task) => {
+            const status = completions[task.id];
+            const expired = task.deadline && new Date(task.deadline) < new Date();
+            return (
+              <div
+                key={task.id}
+                className="bg-bgSurface border border-muted rounded-xl p-4 flex items-center justify-between gap-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-offwhite font-semibold text-sm">{task.title}</p>
+                  <p className="text-muted text-xs">{task.description}</p>
+                  <p className="text-gold text-xs mt-1">
+                    +{Math.round(task.reward)} ₽
+                    {task.deadline && (
+                      <span className="text-muted">
+                        {" "}
+                        · до {new Date(task.deadline).toLocaleDateString("ru-RU")}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                {status === "approved" ? (
+                  <span className="text-success text-xs font-semibold whitespace-nowrap flex-shrink-0">
+                    Выполнено
+                  </span>
+                ) : status === "pending" ? (
+                  <span className="text-muted text-xs font-semibold whitespace-nowrap flex-shrink-0">
+                    На проверке
+                  </span>
+                ) : status === "rejected" ? (
+                  <span className="text-danger text-xs font-semibold whitespace-nowrap flex-shrink-0">
+                    Отклонено
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => submitTaskCompletion(task.id)}
+                    disabled={!!expired || submittingTaskId === task.id}
+                    className="bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold px-3 py-2 rounded-full text-xs disabled:opacity-40 whitespace-nowrap flex-shrink-0"
+                  >
+                    {expired ? "Срок истёк" : "Выполнила"}
+                  </button>
+                )}
+              </div>
+            );
+          })}
 
           <div className="bg-bgSurface border border-muted rounded-xl p-4 opacity-60">
             <p className="text-offwhite font-semibold text-sm">
