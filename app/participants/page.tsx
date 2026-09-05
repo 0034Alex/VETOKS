@@ -10,6 +10,7 @@ import PromoBannerCarousel from "@/components/PromoBannerCarousel";
 import { formatCompact } from "@/lib/formatCompact";
 import TickerBar from "@/components/TickerBar";
 import VoteModal from "@/components/VoteModal";
+import BlackMarkModal from "@/components/BlackMarkModal";
 
 type Participant = {
   id: string;
@@ -35,6 +36,8 @@ export default function ParticipantsPage() {
   const [loading, setLoading] = useState(true);
   const [votedIds, setVotedIds] = useState<string[]>([]);
   const [voteModalParticipant, setVoteModalParticipant] = useState<string | null>(null);
+  const [blackMarkOpen, setBlackMarkOpen] = useState(false);
+  const [myParticipantId, setMyParticipantId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -135,7 +138,17 @@ export default function ParticipantsPage() {
 
   useEffect(() => {
     loadData();
-    getCurrentUser().then(setMe);
+    getCurrentUser().then(async (u) => {
+      setMe(u);
+      if (u) {
+        const { data: myParticipant } = await supabase
+          .from("participants")
+          .select("id")
+          .eq("user_id", u.id)
+          .maybeSingle();
+        setMyParticipantId(myParticipant?.id ?? null);
+      }
+    });
     const stored = localStorage.getItem("vetoks_voted_ids");
     if (stored) setVotedIds(JSON.parse(stored));
   }, []);
@@ -227,6 +240,12 @@ export default function ParticipantsPage() {
               {f.label}
             </button>
           ))}
+          <button
+            onClick={() => setBlackMarkOpen(true)}
+            className="ml-auto px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-bgSurface border border-danger text-danger flex-shrink-0"
+          >
+            🖤 Чёрная метка
+          </button>
         </div>
 
         {loading && <p className="text-muted text-center">Загрузка...</p>}
@@ -325,6 +344,14 @@ export default function ParticipantsPage() {
           participantId={voteModalParticipant}
           userId={me?.id ?? null}
           onClose={() => setVoteModalParticipant(null)}
+        />
+      )}
+
+      {blackMarkOpen && (
+        <BlackMarkModal
+          myParticipantId={myParticipantId}
+          myRegionId={me?.region_id ?? null}
+          onClose={() => setBlackMarkOpen(false)}
         />
       )}
 
