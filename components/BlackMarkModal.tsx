@@ -17,15 +17,16 @@ type RegionParticipant = { id: string; display_name: string; photo_url: string |
 type LeaderRow = { target_participant_id: string; count: number };
 
 export default function BlackMarkModal({
-  myParticipantId,
-  myRegionId,
+  userId,
   onClose,
 }: {
-  myParticipantId: string | null;
-  myRegionId: string | null;
+  userId: string | null;
   onClose: () => void;
 }) {
   const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState("");
+  const [myParticipantId, setMyParticipantId] = useState<string | null>(null);
+  const [myRegionId, setMyRegionId] = useState<string | null>(null);
   const [alreadySentTo, setAlreadySentTo] = useState<string | null>(null);
   const [regionParticipants, setRegionParticipants] = useState<RegionParticipant[]>([]);
   const [leader, setLeader] = useState<(RegionParticipant & { count: number }) | null>(null);
@@ -37,32 +38,61 @@ export default function BlackMarkModal({
     (async () => {
       setLoading(true);
 
-      if (myParticipantId) {
+      if (!userId) {
+        setDebugInfo("Вы не вошли в аккаунт.");
+        setLoading(false);
+        return;
+      }
+
+      // Окно само проверяет, участница ли это и какой у неё регион —
+      // не полагаясь на то, что передала родительская страница.
+      const { data: myParticipant, error: participantError } = await supabase
+        .from("participants")
+        .select("id, region_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (participantError) {
+        setDebugInfo(`Ошибка проверки анкеты: ${participantError.message}`);
+      }
+
+      if (!myParticipant) {
+        setDebugInfo(
+          "У этого аккаунта не нашлось анкеты участницы — отправлять чёрную метку может только сама участница."
+        );
+      } else {
+        setMyParticipantId(myParticipant.id);
+        setMyRegionId(myParticipant.region_id ?? null);
+
         const { data: mySend } = await supabase
           .from("black_marks")
           .select("target_participant_id")
-          .eq("sender_participant_id", myParticipantId)
+          .eq("sender_participant_id", myParticipant.id)
           .eq("week_start", weekStart)
           .maybeSingle();
         setAlreadySentTo(mySend?.target_participant_id ?? null);
+
+        if (myParticipant.region_id) {
+          const { data: participantsData } = await supabase
+            .from("participants")
+            .select("id, display_name, photo_url")
+            .eq("region_id", myParticipant.region_id)
+            .eq("is_eliminated", false);
+          setRegionParticipants(
+            ((participantsData as RegionParticipant[]) ?? []).filter(
+              (p) => p.id !== myParticipant.id
+            )
+          );
+        } else {
+          setDebugInfo("У вашей анкеты не указан регион — обратитесь в поддержку.");
+        }
       }
 
-      if (myRegionId) {
-        const { data: participantsData } = await supabase
-          .from("participants")
-          .select("id, display_name, photo_url")
-          .eq("region_id", myRegionId)
-          .eq("is_eliminated", false);
-        setRegionParticipants(
-          ((participantsData as RegionParticipant[]) ?? []).filter(
-            (p) => p.id !== myParticipantId
-          )
-        );
-
+      if (myParticipant?.region_id) {
         const { data: marksData } = await supabase
           .from("black_marks")
           .select("target_participant_id")
-          .eq("region_id", myRegionId)
+          .eq("region_id", myParticipant.region_id)
           .eq("week_start", weekStart);
         const counts: Record<string, number> = {};
         (marksData ?? []).forEach((m: { target_participant_id: string }) => {
@@ -91,7 +121,7 @@ export default function BlackMarkModal({
 
       setLoading(false);
     })();
-  }, [myParticipantId, myRegionId, weekStart]);
+  }, [userId, weekStart]);
 
   async function sendMark(targetId: string) {
     if (!myParticipantId || !myRegionId || alreadySentTo) return;
@@ -161,6 +191,10 @@ export default function BlackMarkModal({
           <p className="text-muted text-sm text-center py-3">
             На этой неделе в вашем регионе ещё никто не получил чёрную метку.
           </p>
+        )}
+
+        {!loading && !myParticipantId && debugInfo && (
+          <p className="text-danger text-xs text-center py-3">{debugInfo}</p>
         )}
 
         {!loading && myParticipantId && (
