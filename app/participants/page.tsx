@@ -349,8 +349,7 @@ export default function ParticipantsPage() {
 
       {blackMarkOpen && (
         <BlackMarkModal
-          myParticipantId={myParticipantId}
-          myRegionId={me?.region_id ?? null}
+          userId={me?.id ?? null}
           onClose={() => setBlackMarkOpen(false)}
         />
       )}
