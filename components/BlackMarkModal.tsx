@@ -144,12 +144,32 @@ export default function BlackMarkModal({
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center px-6"
-      style={{ backgroundColor: "rgba(0,0,0,0.8)" }}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
+        backgroundColor: "rgba(0,0,0,0.85)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "0 24px",
+      }}
       onClick={onClose}
     >
       <div
-        className="bg-bgSurface border border-danger/50 rounded-2xl p-5 w-full max-w-sm max-h-[80vh] overflow-y-auto"
+        style={{
+          backgroundColor: "#151517",
+          border: "1px solid rgba(224,58,58,0.5)",
+          borderRadius: 16,
+          padding: 20,
+          width: "100%",
+          maxWidth: 384,
+          maxHeight: "80vh",
+          overflowY: "auto",
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-3">
