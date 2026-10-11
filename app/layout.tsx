@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import Script from "next/script";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import AuthGate from "@/components/AuthGate";
+import VerifyPhonePopup from "@/components/VerifyPhonePopup";
 
 export const metadata: Metadata = {
   title: "VETOKS",
@@ -31,9 +34,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ru">
+    <html lang="uk">
       <body className="bg-bgPrimary">
-        {children}
+        <Script
+          src="https://telegram.org/js/telegram-web-app.js"
+          strategy="beforeInteractive"
+        />
+        <AuthGate>{children}</AuthGate>
+        <VerifyPhonePopup />
         <ServiceWorkerRegister />
       </body>
     </html>

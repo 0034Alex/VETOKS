@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { getInitData, openSession, postJson } from "@/lib/authClient";
+import TelegramLoginButton from "@/components/TelegramLoginButton";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,43 +13,70 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [auto, setAuto] = useState(false);
+
+  // Уже вошли — на главную. Внутри Telegram — входим сами, без ввода.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (data.session) {
+        router.replace("/");
+        return;
+      }
+      const initData = getInitData();
+      if (initData) {
+        setAuto(true);
+        const r = await postJson("/api/auth/telegram", { initData });
+        if (cancelled) return;
+        if (r.status === "ok" && (await openSession(r.token_hash))) {
+          router.replace("/");
+          router.refresh();
+          return;
+        }
+        if (r.status === "new") {
+          router.replace("/register");
+          return;
+        }
+        setAuto(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("loading");
     setErrorMessage("");
 
-    let email = identifier.trim();
-
-    if (!email.includes("@")) {
-      // Ввели не почту — похоже на телефон, ищем почту по номеру
-      // (так же, как раньше умел вход по почте или телефону).
-      const { data: userRow } = await supabase
-        .from("users")
-        .select("email")
-        .eq("phone", identifier.trim())
-        .maybeSingle();
-
-      if (!userRow?.email) {
-        setStatus("error");
-        setErrorMessage("Аккаунт с такой почтой или телефоном не найден.");
-        return;
-      }
-      email = userRow.email;
-    }
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
+    const r = await postJson("/api/auth/password-login", { identifier, password });
+    if (r.status !== "ok") {
       setStatus("error");
-      setErrorMessage("Неверные данные для входа или пароль.");
+      setErrorMessage(r.message || "Неверные данные для входа или пароль.");
       return;
     }
+    const { error } = await supabase.auth.setSession({
+      access_token: r.access_token,
+      refresh_token: r.refresh_token,
+    });
+    if (error) {
+      setStatus("error");
+      setErrorMessage("Не удалось войти. Попробуйте ещё раз.");
+      return;
+    }
+    router.replace("/");
+    router.refresh();
+  }
 
-    router.push("/");
+  if (auto) {
+    return (
+      <main className="min-h-screen flex items-center justify-center text-muted text-sm">
+        Входим через Telegram...
+      </main>
+    );
   }
 
   return (
@@ -60,49 +89,52 @@ export default function LoginPage() {
         </Link>
       </p>
 
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm flex flex-col gap-3 text-left"
-      >
-        <div>
-          <label className="text-offwhite text-sm">Почта или телефон</label>
-          <input
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
-            required
-          />
-        </div>
-        <div>
-          <label className="text-offwhite text-sm">Пароль</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
-            required
-          />
-        </div>
+      <div className="w-full max-w-sm flex flex-col gap-3 text-left">
+        <TelegramLoginButton />
 
-        <Link
-          href="/reset-password"
-          className="text-gold underline text-xs text-right -mt-1"
-        >
-          Забыли пароль?
-        </Link>
+        <p className="text-muted text-xs text-center my-1">или по почте / номеру</p>
 
-        <button
-          type="submit"
-          disabled={status === "loading"}
-          className="bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full mt-2 disabled:opacity-50"
-        >
-          {status === "loading" ? "Входим..." : "Войти"}
-        </button>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <div>
+            <label className="text-offwhite text-sm">
+              Почта или подтверждённый номер
+            </label>
+            <input
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
+              required
+            />
+          </div>
+          <div>
+            <label className="text-offwhite text-sm">Пароль</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
+              required
+            />
+          </div>
 
-        {errorMessage && (
-          <p className="text-danger text-sm">{errorMessage}</p>
-        )}
-      </form>
+          <Link
+            href="/forgot-password"
+            className="text-gold underline text-xs text-right -mt-1"
+          >
+            Забыли пароль?
+          </Link>
+
+          <button
+            type="submit"
+            disabled={status === "loading"}
+            className="bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full mt-2 disabled:opacity-50"
+          >
+            {status === "loading" ? "Входим..." : "Войти"}
+          </button>
+
+          {errorMessage && <p className="text-danger text-sm">{errorMessage}</p>}
+        </form>
+      </div>
     </main>
   );
 }
