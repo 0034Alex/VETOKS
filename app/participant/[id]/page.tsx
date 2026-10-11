@@ -9,6 +9,7 @@ import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
 import VoteModal from "@/components/VoteModal";
+import { getAppPrices, getCurrencySymbol } from "@/lib/currency";
 
 type CollectibleCard = {
   id: string;
@@ -33,15 +34,19 @@ type Participant = {
   user_id: string;
 };
 
-const MESSAGE_PRICE = 10000;
-const CARD_PRICE = 25000;
+// Цены теперь не зашиты в коде — берутся из CRM («Базовые цены», в
+// долларах) и переводятся в текущую валюту по курсу из CRM («Страны и
+// регионы»). Значения ниже — только запасной вариант на случай, если
+// цены в CRM ещё не заданы.
+const DEFAULT_MESSAGE_PRICE = 80;
+const DEFAULT_CARD_PRICE = 120;
 const STAGE_LABELS: Record<string, string> = {
   casting: "Кастинг",
   week2: "Неделя 2",
   week3: "Неделя 3",
   grand_final: "Гранд-финал",
 };
-const BOOST_PRICE = 100000;
+const DEFAULT_BOOST_PRICE = 400;
 const BOOST_LIMIT = 3;
 const BOOST_VOTES = 1000;
 
@@ -72,6 +77,10 @@ export default function ParticipantProfilePage() {
   const [goalCollected, setGoalCollected] = useState(0);
   const [goalEnabled, setGoalEnabled] = useState(true);
   const [paidMessagesEnabled, setPaidMessagesEnabled] = useState(false);
+  const [currencySymbol, setCurrencySymbol] = useState("₴");
+  const [messagePrice, setMessagePrice] = useState(DEFAULT_MESSAGE_PRICE);
+  const [cardPrice, setCardPrice] = useState(DEFAULT_CARD_PRICE);
+  const [boostPrice, setBoostPrice] = useState(DEFAULT_BOOST_PRICE);
   const [goalDonors, setGoalDonors] = useState<
     { name: string; amount: number; created_at: string }[]
   >([]);
@@ -102,6 +111,15 @@ export default function ParticipantProfilePage() {
 
   async function load() {
     setLoading(true);
+
+    const [symbol, prices] = await Promise.all([
+      getCurrencySymbol(),
+      getAppPrices(),
+    ]);
+    setCurrencySymbol(symbol);
+    setMessagePrice(prices.paid_message || DEFAULT_MESSAGE_PRICE);
+    setCardPrice(prices.collectible_card || DEFAULT_CARD_PRICE);
+    setBoostPrice(prices.boost || DEFAULT_BOOST_PRICE);
 
     const { data: p } = await supabase
       .from("participants")
@@ -353,7 +371,7 @@ export default function ParticipantProfilePage() {
 
   async function sendMessage() {
     if (!userId || !walletId || !messageText.trim()) return;
-    if (balance < MESSAGE_PRICE) {
+    if (balance < messagePrice) {
       setNotice("Недостаточно средств для платного сообщения.");
       return;
     }
@@ -362,19 +380,19 @@ export default function ParticipantProfilePage() {
     await supabase.from("wallet_transactions").insert({
       wallet_id: walletId,
       type: "vote_purchase",
-      amount: -MESSAGE_PRICE,
+      amount: -messagePrice,
       related_participant_id: id,
       metadata: { kind: "paid_message" },
     });
     await supabase
       .from("wallets")
-      .update({ balance: balance - MESSAGE_PRICE })
+      .update({ balance: balance - messagePrice })
       .eq("id", walletId);
 
     if (participant) {
       const pWallet = await getOrCreateWallet(participant.user_id);
       if (pWallet) {
-        const earning = MESSAGE_PRICE * 0.5;
+        const earning = messagePrice * 0.5;
         await supabase.from("wallet_transactions").insert({
           wallet_id: pWallet.id,
           type: "gift_received",
@@ -396,18 +414,18 @@ export default function ParticipantProfilePage() {
         recipient_id: participant?.user_id,
         participant_id: id,
         body: messageText,
-        price: MESSAGE_PRICE,
+        price: messagePrice,
       });
 
     if (!msgError && participant) {
       await notify(
         participant.user_id,
-        `✉️ Новое платное сообщение (${MESSAGE_PRICE.toLocaleString("ru-RU")} ₽)`,
+        `✉️ Новое платное сообщение (${messagePrice.toLocaleString("ru-RU")} ${currencySymbol})`,
         `/messages/${userId}`
       );
     }
 
-    setBalance((b) => b - MESSAGE_PRICE);
+    setBalance((b) => b - messagePrice);
     setMessageText("");
     setNotice(
       msgError ? `Ошибка отправки: ${msgError.message}` : "Сообщение отправлено!"
@@ -447,7 +465,7 @@ export default function ParticipantProfilePage() {
 
   async function buyCard(card: CollectibleCard) {
     if (!userId || !walletId || card.status !== "ready") return;
-    if (balance < CARD_PRICE) {
+    if (balance < cardPrice) {
       setNotice("Недостаточно средств для покупки карточки.");
       return;
     }
@@ -456,19 +474,19 @@ export default function ParticipantProfilePage() {
     await supabase.from("wallet_transactions").insert({
       wallet_id: walletId,
       type: "gift_sent",
-      amount: -CARD_PRICE,
+      amount: -cardPrice,
       related_participant_id: id,
       metadata: { kind: "collectible_card", stage: card.stage },
     });
     await supabase
       .from("wallets")
-      .update({ balance: balance - CARD_PRICE })
+      .update({ balance: balance - cardPrice })
       .eq("id", walletId);
 
     if (participant) {
       const pWallet = await getOrCreateWallet(participant.user_id);
       if (pWallet) {
-        const earning = CARD_PRICE * 0.5;
+        const earning = cardPrice * 0.5;
         await supabase.from("wallet_transactions").insert({
           wallet_id: pWallet.id,
           type: "gift_received",
@@ -491,12 +509,12 @@ export default function ParticipantProfilePage() {
     if (participant) {
       await notify(
         participant.user_id,
-        `🃏 Продана карточка «${STAGE_LABELS[card.stage]}» за ${CARD_PRICE.toLocaleString("ru-RU")} ₽`,
+        `🃏 Продана карточка «${STAGE_LABELS[card.stage]}» за ${cardPrice.toLocaleString("ru-RU")} ${currencySymbol}`,
         `/my-cards`
       );
     }
 
-    setBalance((b) => b - CARD_PRICE);
+    setBalance((b) => b - cardPrice);
     setNotice(`Карточка «${STAGE_LABELS[card.stage]}» ваша!`);
     await load();
     setBusy(false);
@@ -554,7 +572,7 @@ export default function ParticipantProfilePage() {
       week_start: monday.toISOString().slice(0, 10),
     });
 
-    await notify(participant.user_id, `💝 Вам задонатили ${Math.round(amount)} ₽ на цель недели`, `/participant/${id}`);
+    await notify(participant.user_id, `💝 Вам задонатили ${Math.round(amount)} ${currencySymbol} на цель недели`, `/participant/${id}`);
 
     setBalance((b) => b - amount);
     setGoalCollected((g) => g + amount);
@@ -565,7 +583,7 @@ export default function ParticipantProfilePage() {
   async function buyBoost() {
     if (!userId || !walletId) return;
     if (boostCount >= BOOST_LIMIT) return;
-    if (balance < BOOST_PRICE) {
+    if (balance < boostPrice) {
       setNotice("Недостаточно средств для буста.");
       return;
     }
@@ -576,7 +594,7 @@ export default function ParticipantProfilePage() {
       .insert({
         wallet_id: walletId,
         type: "boost_purchase",
-        amount: -BOOST_PRICE,
+        amount: -boostPrice,
         related_participant_id: id,
       })
       .select("id")
@@ -584,14 +602,14 @@ export default function ParticipantProfilePage() {
 
     await supabase
       .from("wallets")
-      .update({ balance: balance - BOOST_PRICE })
+      .update({ balance: balance - boostPrice })
       .eq("id", walletId);
 
     // Половина стоимости буста — участнице, как и с подарками/сообщениями.
     if (participant) {
       const pWallet = await getOrCreateWallet(participant.user_id);
       if (pWallet) {
-        const earning = BOOST_PRICE * 0.5;
+        const earning = boostPrice * 0.5;
         await supabase.from("wallet_transactions").insert({
           wallet_id: pWallet.id,
           type: "gift_received",
@@ -612,7 +630,7 @@ export default function ParticipantProfilePage() {
     await supabase.from("boosts").insert({
       participant_id: id,
       boost_type: "rating_bump",
-      price: BOOST_PRICE,
+      price: boostPrice,
       ends_at: endsAt.toISOString(),
       wallet_transaction_id: tx?.id ?? null,
     });
@@ -636,7 +654,7 @@ export default function ParticipantProfilePage() {
       );
     }
 
-    setBalance((b) => b - BOOST_PRICE);
+    setBalance((b) => b - boostPrice);
     setNotice("Буст активирован на 7 дней!");
     await load();
     setBusy(false);
@@ -708,7 +726,7 @@ export default function ParticipantProfilePage() {
               <p className="text-muted text-xs mb-1">
                 Ваш заработок с подарков (видно только вам)
               </p>
-              <p className="text-gold text-xl font-semibold">{Math.round(giftTotal)} ₽</p>
+              <p className="text-gold text-xl font-semibold">{Math.round(giftTotal)} {currencySymbol}</p>
             </div>
           )}
 
@@ -727,7 +745,7 @@ export default function ParticipantProfilePage() {
                 />
               </div>
               <p className="text-muted text-xs mb-3">
-                Собрано {Math.round(goalCollected)} / {goalTarget} ₽
+                Собрано {Math.round(goalCollected)} / {goalTarget} {currencySymbol}
               </p>
               {!isOwner && (
                 <div className="flex gap-2">
@@ -756,7 +774,7 @@ export default function ParticipantProfilePage() {
                   {goalDonors.map((d, i) => (
                     <div key={i} className="flex justify-between text-xs">
                       <span className="text-offwhite">{d.name}</span>
-                      <span className="text-gold">{Math.round(d.amount)} ₽</span>
+                      <span className="text-gold">{Math.round(d.amount)} {currencySymbol}</span>
                     </div>
                   ))}
                 </div>
@@ -819,7 +837,7 @@ export default function ParticipantProfilePage() {
                       {c.status === "sold"
                         ? "Продана"
                         : c.status === "ready"
-                        ? "25 000 ₽"
+                        ? `${cardPrice.toLocaleString("ru-RU")} ${currencySymbol}`
                         : "Скоро"}
                     </button>
                   </div>
@@ -890,9 +908,9 @@ export default function ParticipantProfilePage() {
                   disabled={!userId}
                   className="w-full text-offwhite font-semibold text-sm disabled:opacity-40"
                 >
-                  ✉️ Написать участнице — от {MESSAGE_PRICE.toLocaleString(
+                  ✉️ Написать участнице — от {messagePrice.toLocaleString(
                     "ru-RU"
-                  )} ₽
+                  )} {currencySymbol}
                 </button>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -910,7 +928,7 @@ export default function ParticipantProfilePage() {
                   >
                     {thread.length > 0
                       ? "Отправить"
-                      : `Отправить за ${MESSAGE_PRICE.toLocaleString("ru-RU")} ₽`}
+                      : `Отправить за ${messagePrice.toLocaleString("ru-RU")} ${currencySymbol}`}
                   </button>
                 </div>
               )}
@@ -919,7 +937,7 @@ export default function ParticipantProfilePage() {
 
           <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
             <p className="text-offwhite text-sm font-semibold mb-1">
-              🚀 Продвинуть в топ — {BOOST_PRICE.toLocaleString("ru-RU")} ₽
+              🚀 Продвинуть в топ — {boostPrice.toLocaleString("ru-RU")} {currencySymbol}
             </p>
             <p className="text-muted text-xs mb-3">
               +1000 голосов сразу · осталось {boostsLeft} из {BOOST_LIMIT}{" "}
