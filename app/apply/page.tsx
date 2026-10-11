@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
@@ -17,6 +18,7 @@ export default function ApplyPage() {
     "idle" | "loading" | "success" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [agreed, setAgreed] = useState(false);
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -27,6 +29,13 @@ export default function ApplyPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!agreed) {
+      setErrorMessage(
+        "Нужно принять соглашение об участии и лицензию на контент."
+      );
+      return;
+    }
 
     setStatus("loading");
     setErrorMessage("");
@@ -193,9 +202,27 @@ export default function ApplyPage() {
             />
           </div>
 
+          <label className="flex items-start gap-2 text-xs text-muted">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Я принимаю{" "}
+              <Link
+                href="/legal/participation"
+                className="text-gold underline"
+              >
+                соглашение об участии и лицензию на контент
+              </Link>
+            </span>
+          </label>
+
           <button
             type="submit"
-            disabled={status === "loading"}
+            disabled={status === "loading" || !agreed}
             className="bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full hover:bg-goldSoft transition-colors disabled:opacity-50"
           >
             {status === "loading" ? "Отправляем..." : "Отправить анкету"}
