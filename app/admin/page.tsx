@@ -3746,6 +3746,9 @@ function BrandingTab() {
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
 
+  const [paidMessagesEnabled, setPaidMessagesEnabled] = useState(false);
+  const [paidMessagesSaving, setPaidMessagesSaving] = useState(false);
+
   const [popupEnabled, setPopupEnabled] = useState(false);
   const [popupImageUrl, setPopupImageUrl] = useState<string | null>(null);
   const [popupUploading, setPopupUploading] = useState(false);
@@ -3802,7 +3805,12 @@ function BrandingTab() {
     const { data } = await supabase
       .from("platform_settings")
       .select("key, value")
-      .in("key", ["sponsor_logo_url", "ticker_text", "ticker_enabled"]);
+      .in("key", [
+        "sponsor_logo_url",
+        "ticker_text",
+        "ticker_enabled",
+        "paid_messages_enabled",
+      ]);
     const map: Record<string, string> = {};
     (data ?? []).forEach((r: { key: string; value: string }) => {
       map[r.key] = r.value;
@@ -3810,6 +3818,7 @@ function BrandingTab() {
     setSponsorLogoUrl(map.sponsor_logo_url ?? null);
     setTickerText(map.ticker_text ?? "");
     setTickerEnabled(map.ticker_enabled === "true");
+    setPaidMessagesEnabled(map.paid_messages_enabled === "true");
     await loadPopup();
     setLoading(false);
   }
@@ -3839,6 +3848,16 @@ function BrandingTab() {
   async function removeSponsorLogo() {
     await supabase.from("platform_settings").upsert({ key: "sponsor_logo_url", value: null });
     setSponsorLogoUrl(null);
+  }
+
+  async function togglePaidMessages() {
+    const next = !paidMessagesEnabled;
+    setPaidMessagesSaving(true);
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "paid_messages_enabled", value: next ? "true" : "false" });
+    setPaidMessagesEnabled(next);
+    setPaidMessagesSaving(false);
   }
 
   async function saveTicker() {
@@ -3985,6 +4004,30 @@ function BrandingTab() {
           Сохранить
         </button>
         {popupSaved && <span className="text-success text-sm ml-3">Сохранено!</span>}
+      </div>
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mt-6">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-offwhite text-sm font-semibold">
+            Кнопка «Написать участнице»
+          </p>
+          <button
+            onClick={togglePaidMessages}
+            disabled={paidMessagesSaving}
+            className={`px-3 py-1 rounded-full text-xs font-semibold disabled:opacity-50 ${
+              paidMessagesEnabled
+                ? "bg-success text-bgPrimary"
+                : "bg-bgPrimary border border-muted text-muted"
+            }`}
+          >
+            {paidMessagesEnabled ? "Включено" : "Выключено"}
+          </button>
+        </div>
+        <p className="text-muted text-xs">
+          Платные сообщения участницам (кнопка на странице участницы). На
+          старте можно скрыть, включить позже одним нажатием — без
+          выгрузки файлов.
+        </p>
       </div>
     </div>
   );
