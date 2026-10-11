@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import { getCurrencySymbol } from "@/lib/currency";
 
 type Donor = { name: string; amount: number; created_at: string };
 
@@ -13,9 +14,12 @@ export default function GoalDonorsPage() {
   const router = useRouter();
   const [donors, setDonors] = useState<Donor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currencySymbol, setCurrencySymbol] = useState("₴");
 
   useEffect(() => {
     (async () => {
+      setCurrencySymbol(await getCurrencySymbol());
+
       const u = await getCurrentUser();
       if (!u) {
         router.push("/login?redirect=/goal-donors");
@@ -96,7 +100,7 @@ export default function GoalDonorsPage() {
             <span className="text-offwhite text-sm">{d.name}</span>
             <div className="text-right">
               <p className="text-gold text-sm font-semibold">
-                {Math.round(d.amount)} ₽
+                {Math.round(d.amount)} {currencySymbol}
               </p>
               <p className="text-muted text-xs">
                 {new Date(d.created_at).toLocaleDateString("ru-RU")}
