@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
+import { getCurrencySymbol } from "@/lib/currency";
 
 type Participant = {
   id: string;
@@ -36,9 +37,12 @@ export default function TasksPage() {
   const [customTasks, setCustomTasks] = useState<CustomTask[]>([]);
   const [completions, setCompletions] = useState<Record<string, string>>({});
   const [submittingTaskId, setSubmittingTaskId] = useState<string | null>(null);
+  const [currencySymbol, setCurrencySymbol] = useState("₴");
 
   useEffect(() => {
     (async () => {
+      setCurrencySymbol(await getCurrencySymbol());
+
       const u = await getCurrentUser();
       if (!u) {
         router.push("/login?redirect=/tasks");
@@ -182,7 +186,7 @@ export default function TasksPage() {
             <div className="min-w-0">
               <p className="text-muted text-xs mb-1">Ваш баланс</p>
               <p className="text-gold text-2xl font-semibold truncate">
-                {Math.round(balance)} ₽
+                {Math.round(balance)} {currencySymbol}
               </p>
             </div>
             <span className="text-3xl flex-shrink-0">🏆</span>
@@ -203,7 +207,7 @@ export default function TasksPage() {
                 Добавьте фото и описание о себе в анкете
               </p>
               <p className="text-gold text-xs mt-1">
-                +{PROFILE_TASK_REWARD} ₽
+                +{PROFILE_TASK_REWARD} {currencySymbol}
               </p>
             </div>
             {profileTaskDone ? (
@@ -233,7 +237,7 @@ export default function TasksPage() {
                   <p className="text-offwhite font-semibold text-sm">{task.title}</p>
                   <p className="text-muted text-xs">{task.description}</p>
                   <p className="text-gold text-xs mt-1">
-                    +{Math.round(task.reward)} ₽
+                    +{Math.round(task.reward)} {currencySymbol}
                     {task.deadline && (
                       <span className="text-muted">
                         {" "}
