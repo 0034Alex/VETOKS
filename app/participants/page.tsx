@@ -54,37 +54,42 @@ export default function ParticipantsPage() {
     setParticipants(list);
 
     if (list.length > 0) {
-      const { data: votesData } = await supabase
-        .from("votes")
-        .select("participant_id")
-        .range(0, 49999);
-
+      // Считаем голоса/подарки/подписчиков через SQL-агрегаты (RPC), а не
+      // построчной выгрузкой — построчная выгрузка подчиняется лимиту
+      // Max Rows в настройках Supabase и может молча обрезаться, из-за чего
+      // на карточке в списке было 0, а на полной странице участницы —
+      // верное число (там считали отдельным точным запросом на каждую).
+      const { data: votesData } = await supabase.rpc(
+        "get_participant_vote_counts"
+      );
       const vCounts: Record<string, number> = {};
-      (votesData ?? []).forEach((v: { participant_id: string }) => {
-        vCounts[v.participant_id] = (vCounts[v.participant_id] ?? 0) + 1;
-      });
+      (votesData ?? []).forEach(
+        (v: { participant_id: string; cnt: number }) => {
+          vCounts[v.participant_id] = Number(v.cnt);
+        }
+      );
       setVoteCounts(vCounts);
 
-      const { data: giftsData } = await supabase
-        .from("gifts")
-        .select("participant_id, quantity");
-
+      const { data: giftsData } = await supabase.rpc(
+        "get_participant_gift_counts"
+      );
       const gCounts: Record<string, number> = {};
       (giftsData ?? []).forEach(
-        (g: { participant_id: string; quantity: number }) => {
-          gCounts[g.participant_id] =
-            (gCounts[g.participant_id] ?? 0) + (g.quantity ?? 1);
+        (g: { participant_id: string; cnt: number }) => {
+          gCounts[g.participant_id] = Number(g.cnt);
         }
       );
       setGiftCounts(gCounts);
 
-      const { data: followsData } = await supabase
-        .from("participant_follows")
-        .select("participant_id");
+      const { data: followsData } = await supabase.rpc(
+        "get_participant_follower_counts"
+      );
       const fCounts: Record<string, number> = {};
-      (followsData ?? []).forEach((f: { participant_id: string }) => {
-        fCounts[f.participant_id] = (fCounts[f.participant_id] ?? 0) + 1;
-      });
+      (followsData ?? []).forEach(
+        (f: { participant_id: string; cnt: number }) => {
+          fCounts[f.participant_id] = Number(f.cnt);
+        }
+      );
       setFollowerCounts(fCounts);
 
       const { data: boostsData } = await supabase
