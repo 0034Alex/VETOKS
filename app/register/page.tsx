@@ -18,6 +18,7 @@ export default function RegisterPage() {
   const [regionId, setRegionId] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
     supabase
@@ -43,6 +44,12 @@ export default function RegisterPage() {
     }
     if (!regionId) {
       setErrorMessage("Выберите регион.");
+      return;
+    }
+    if (!agreed) {
+      setErrorMessage(
+        "Нужно принять пользовательское соглашение и публичную оферту."
+      );
       return;
     }
 
@@ -171,9 +178,24 @@ export default function RegisterPage() {
           />
         </div>
 
+        <label className="flex items-start gap-2 text-xs text-muted mt-1">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Я принимаю{" "}
+            <Link href="/legal/offer" className="text-gold underline">
+              пользовательское соглашение и публичную оферту
+            </Link>
+          </span>
+        </label>
+
         <button
           type="submit"
-          disabled={status === "loading"}
+          disabled={status === "loading" || !agreed}
           className="bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full mt-2 disabled:opacity-50"
         >
           {status === "loading" ? "Регистрируем..." : "Зарегистрироваться"}
