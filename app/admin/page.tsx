@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, isStaff, CurrentUser } from "@/lib/currentUser";
+import AdminPricesPanel from "@/components/AdminPricesPanel";
 
 type Tab =
   | "dashboard"
@@ -335,7 +336,7 @@ export default function AdminPage() {
         {tab === "tasks" && <TasksAdminTab />}
         {tab === "black-marks" && <BlackMarksAdminTab />}
         {tab === "countries" && <CountriesTab />}
-        {tab === "app-prices" && <AppPricesTab />}
+        {tab === "app-prices" && <AdminPricesPanel />}
         {tab === "documents" && <DocumentsTab />}
         {tab === "calendar" && <CalendarTab />}
         {tab === "social" && <SocialLinksTab />}

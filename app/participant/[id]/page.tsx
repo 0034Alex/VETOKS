@@ -10,6 +10,7 @@ import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
 import VoteModal from "@/components/VoteModal";
 import { getAppPrices, getCurrencySymbol } from "@/lib/currency";
+import { apiPost } from "@/lib/authClient";
 
 type CollectibleCard = {
   id: string;
@@ -38,7 +39,6 @@ type Participant = {
 // долларах) и переводятся в текущую валюту по курсу из CRM («Страны и
 // регионы»). Значения ниже — только запасной вариант на случай, если
 // цены в CRM ещё не заданы.
-const DEFAULT_MESSAGE_PRICE = 80;
 const DEFAULT_CARD_PRICE = 120;
 const STAGE_LABELS: Record<string, string> = {
   casting: "Кастинг",
@@ -68,7 +68,6 @@ export default function ParticipantProfilePage() {
   const [hasVoted, setHasVoted] = useState(false);
   const [voteModalOpen, setVoteModalOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [walletId, setWalletId] = useState<string | null>(null);
   const [balance, setBalance] = useState(0);
   const [boostCount, setBoostCount] = useState(0);
   const [cards, setCards] = useState<CollectibleCard[]>([]);
@@ -76,9 +75,7 @@ export default function ParticipantProfilePage() {
   const [goalTarget, setGoalTarget] = useState(5000);
   const [goalCollected, setGoalCollected] = useState(0);
   const [goalEnabled, setGoalEnabled] = useState(true);
-  const [paidMessagesEnabled, setPaidMessagesEnabled] = useState(false);
   const [currencySymbol, setCurrencySymbol] = useState("₴");
-  const [messagePrice, setMessagePrice] = useState(DEFAULT_MESSAGE_PRICE);
   const [cardPrice, setCardPrice] = useState(DEFAULT_CARD_PRICE);
   const [boostPrice, setBoostPrice] = useState(DEFAULT_BOOST_PRICE);
   const [goalDonors, setGoalDonors] = useState<
@@ -88,26 +85,8 @@ export default function ParticipantProfilePage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
-  const [messageOpen, setMessageOpen] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [thread, setThread] = useState<ThreadMessage[]>([]);
-
-  async function getOrCreateWallet(uid: string) {
-    let { data: wallet } = await supabase
-      .from("wallets")
-      .select("id, balance")
-      .eq("user_id", uid)
-      .maybeSingle();
-    if (!wallet) {
-      const { data: newWallet } = await supabase
-        .from("wallets")
-        .insert({ user_id: uid })
-        .select("id, balance")
-        .single();
-      wallet = newWallet;
-    }
-    return wallet;
-  }
 
   async function load() {
     setLoading(true);
@@ -117,7 +96,6 @@ export default function ParticipantProfilePage() {
       getAppPrices(),
     ]);
     setCurrencySymbol(symbol);
-    setMessagePrice(prices.paid_message || DEFAULT_MESSAGE_PRICE);
     setCardPrice(prices.collectible_card || DEFAULT_CARD_PRICE);
     setBoostPrice(prices.boost || DEFAULT_BOOST_PRICE);
 
@@ -222,7 +200,6 @@ export default function ParticipantProfilePage() {
         "weekly_goal_text",
         "weekly_goal_target",
         "weekly_goal_enabled",
-        "paid_messages_enabled",
       ]);
     const settingsMap: Record<string, string> = {};
     (settingsData ?? []).forEach((s: { key: string; value: string }) => {
@@ -231,7 +208,6 @@ export default function ParticipantProfilePage() {
     setGoalText(settingsMap.weekly_goal_text ?? "");
     setGoalTarget(Number(settingsMap.weekly_goal_target ?? 5000));
     setGoalEnabled(settingsMap.weekly_goal_enabled !== "false");
-    setPaidMessagesEnabled(settingsMap.paid_messages_enabled === "true");
 
     const now = new Date();
     const monday = new Date(now);
@@ -289,11 +265,12 @@ export default function ParticipantProfilePage() {
         .maybeSingle();
       setIsFollowing(!!followRow);
 
-      const wallet = await getOrCreateWallet(u.id);
-      if (wallet) {
-        setWalletId(wallet.id);
-        setBalance(Number(wallet.balance));
-      }
+      const { data: wallet } = await supabase
+        .from("wallets")
+        .select("balance")
+        .eq("user_id", u.id)
+        .maybeSingle();
+      setBalance(wallet ? Number(wallet.balance) : 0);
 
       if (p) {
         const { data: threadData } = await supabase
@@ -314,26 +291,6 @@ export default function ParticipantProfilePage() {
   useEffect(() => {
     if (id) load();
   }, [id]);
-
-  async function handleVote() {
-    if (!userId || hasVoted) return;
-    setBusy(true);
-    await supabase.from("votes").insert({
-      voter_id: userId,
-      participant_id: id,
-      weight: 1,
-      is_paid: false,
-    });
-    const votedIds = JSON.parse(
-      localStorage.getItem("vetoks_voted_ids") ?? "[]"
-    );
-    localStorage.setItem(
-      "vetoks_voted_ids",
-      JSON.stringify([...votedIds, id])
-    );
-    await load();
-    setBusy(false);
-  }
 
   async function notify(recipientId: string, message: string, link?: string) {
     await supabase.from("notifications").insert({
@@ -369,71 +326,6 @@ export default function ParticipantProfilePage() {
     setBusy(false);
   }
 
-  async function sendMessage() {
-    if (!userId || !walletId || !messageText.trim()) return;
-    if (balance < messagePrice) {
-      setNotice("Недостаточно средств для платного сообщения.");
-      return;
-    }
-    setBusy(true);
-
-    await supabase.from("wallet_transactions").insert({
-      wallet_id: walletId,
-      type: "vote_purchase",
-      amount: -messagePrice,
-      related_participant_id: id,
-      metadata: { kind: "paid_message" },
-    });
-    await supabase
-      .from("wallets")
-      .update({ balance: balance - messagePrice })
-      .eq("id", walletId);
-
-    if (participant) {
-      const pWallet = await getOrCreateWallet(participant.user_id);
-      if (pWallet) {
-        const earning = messagePrice * 0.5;
-        await supabase.from("wallet_transactions").insert({
-          wallet_id: pWallet.id,
-          type: "gift_received",
-          amount: earning,
-          related_participant_id: id,
-          metadata: { kind: "paid_message" },
-        });
-        await supabase
-          .from("wallets")
-          .update({ balance: Number(pWallet.balance) + earning })
-          .eq("id", pWallet.id);
-      }
-    }
-
-    const { error: msgError } = await supabase
-      .from("participant_messages")
-      .insert({
-        sender_id: userId,
-        recipient_id: participant?.user_id,
-        participant_id: id,
-        body: messageText,
-        price: messagePrice,
-      });
-
-    if (!msgError && participant) {
-      await notify(
-        participant.user_id,
-        `✉️ Новое платное сообщение (${messagePrice.toLocaleString("ru-RU")} ${currencySymbol})`,
-        `/messages/${userId}`
-      );
-    }
-
-    setBalance((b) => b - messagePrice);
-    setMessageText("");
-    setNotice(
-      msgError ? `Ошибка отправки: ${msgError.message}` : "Сообщение отправлено!"
-    );
-    setBusy(false);
-    await loadThread();
-  }
-
   async function sendReplyAsFan() {
     if (!userId || !participant || !messageText.trim()) return;
     setBusy(true);
@@ -463,199 +355,70 @@ export default function ParticipantProfilePage() {
     setThread((data as ThreadMessage[]) ?? []);
   }
 
+  function purchaseError(r: any, fallback: string) {
+    if (r?.error === "not_enough") return "Недостаточно средств. Пополните баланс в разделе «Подарки».";
+    if (r?.error === "sold") return "Эту карточку уже купили.";
+    if (r?.error === "limit") return "Лимит бустов исчерпан.";
+    if (r?.error === "banned") return "Аккаунт заблокирован.";
+    return fallback;
+  }
+
   async function buyCard(card: CollectibleCard) {
-    if (!userId || !walletId || card.status !== "ready") return;
+    if (!userId || card.status !== "ready") return;
     if (balance < cardPrice) {
       setNotice("Недостаточно средств для покупки карточки.");
       return;
     }
     setBusy(true);
-
-    await supabase.from("wallet_transactions").insert({
-      wallet_id: walletId,
-      type: "gift_sent",
-      amount: -cardPrice,
-      related_participant_id: id,
-      metadata: { kind: "collectible_card", stage: card.stage },
-    });
-    await supabase
-      .from("wallets")
-      .update({ balance: balance - cardPrice })
-      .eq("id", walletId);
-
-    if (participant) {
-      const pWallet = await getOrCreateWallet(participant.user_id);
-      if (pWallet) {
-        const earning = cardPrice * 0.5;
-        await supabase.from("wallet_transactions").insert({
-          wallet_id: pWallet.id,
-          type: "gift_received",
-          amount: earning,
-          related_participant_id: id,
-          metadata: { kind: "collectible_card", stage: card.stage },
-        });
-        await supabase
-          .from("wallets")
-          .update({ balance: Number(pWallet.balance) + earning })
-          .eq("id", pWallet.id);
-      }
+    const r = await apiPost("/api/shop/buy-card", { cardId: card.id });
+    if (r.ok) {
+      setBalance(Number(r.balance));
+      setNotice(`Карточка «${STAGE_LABELS[card.stage] ?? card.stage}» ваша!`);
+    } else {
+      setNotice(purchaseError(r, "Не удалось купить карточку."));
     }
-
-    await supabase
-      .from("collectible_cards")
-      .update({ status: "sold", buyer_id: userId, sold_at: new Date().toISOString() })
-      .eq("id", card.id);
-
-    if (participant) {
-      await notify(
-        participant.user_id,
-        `🃏 Продана карточка «${STAGE_LABELS[card.stage]}» за ${cardPrice.toLocaleString("ru-RU")} ${currencySymbol}`,
-        `/my-cards`
-      );
-    }
-
-    setBalance((b) => b - cardPrice);
-    setNotice(`Карточка «${STAGE_LABELS[card.stage]}» ваша!`);
     await load();
     setBusy(false);
   }
 
   async function donateToGoal() {
-    if (!userId || !walletId || !participant) return;
+    if (!userId || !participant) return;
     const amount = Number(donateAmount);
-    if (!amount || amount <= 0) return;
+    if (!amount || amount < 10) {
+      setNotice("Минимальный донат — 10.");
+      return;
+    }
     if (balance < amount) {
       setNotice("Недостаточно средств.");
       return;
     }
     setBusy(true);
-
-    await supabase.from("wallet_transactions").insert({
-      wallet_id: walletId,
-      type: "gift_sent",
-      amount: -amount,
-      related_participant_id: id,
-      metadata: { kind: "weekly_goal" },
-    });
-    await supabase
-      .from("wallets")
-      .update({ balance: balance - amount })
-      .eq("id", walletId);
-
-    const earning = amount * 0.5;
-    const pWallet = await getOrCreateWallet(participant.user_id);
-    if (pWallet) {
-      await supabase.from("wallet_transactions").insert({
-        wallet_id: pWallet.id,
-        type: "gift_received",
-        amount: earning,
-        related_participant_id: id,
-        metadata: { kind: "weekly_goal" },
-      });
-      await supabase
-        .from("wallets")
-        .update({ balance: Number(pWallet.balance) + earning })
-        .eq("id", pWallet.id);
+    const r = await apiPost("/api/shop/donate", { participantId: id, amount });
+    if (r.ok) {
+      setBalance(Number(r.balance));
+      setGoalCollected((g) => g + amount);
+      setNotice("Спасибо за поддержку!");
+    } else {
+      setNotice(purchaseError(r, "Не удалось отправить донат."));
     }
-
-    const now = new Date();
-    const monday = new Date(now);
-    const day = monday.getDay();
-    const diff = day === 0 ? 6 : day - 1;
-    monday.setDate(monday.getDate() - diff);
-    monday.setHours(0, 0, 0, 0);
-
-    await supabase.from("weekly_goal_contributions").insert({
-      participant_id: id,
-      user_id: userId,
-      amount,
-      week_start: monday.toISOString().slice(0, 10),
-    });
-
-    await notify(participant.user_id, `💝 Вам задонатили ${Math.round(amount)} ${currencySymbol} на цель недели`, `/participant/${id}`);
-
-    setBalance((b) => b - amount);
-    setGoalCollected((g) => g + amount);
-    setNotice("Спасибо за поддержку!");
     setBusy(false);
   }
 
   async function buyBoost() {
-    if (!userId || !walletId) return;
+    if (!userId) return;
     if (boostCount >= BOOST_LIMIT) return;
     if (balance < boostPrice) {
       setNotice("Недостаточно средств для буста.");
       return;
     }
     setBusy(true);
-
-    const { data: tx } = await supabase
-      .from("wallet_transactions")
-      .insert({
-        wallet_id: walletId,
-        type: "boost_purchase",
-        amount: -boostPrice,
-        related_participant_id: id,
-      })
-      .select("id")
-      .single();
-
-    await supabase
-      .from("wallets")
-      .update({ balance: balance - boostPrice })
-      .eq("id", walletId);
-
-    // Половина стоимости буста — участнице, как и с подарками/сообщениями.
-    if (participant) {
-      const pWallet = await getOrCreateWallet(participant.user_id);
-      if (pWallet) {
-        const earning = boostPrice * 0.5;
-        await supabase.from("wallet_transactions").insert({
-          wallet_id: pWallet.id,
-          type: "gift_received",
-          amount: earning,
-          related_participant_id: id,
-          metadata: { kind: "boost" },
-        });
-        await supabase
-          .from("wallets")
-          .update({ balance: Number(pWallet.balance) + earning })
-          .eq("id", pWallet.id);
-      }
+    const r = await apiPost("/api/shop/boost", { participantId: id });
+    if (r.ok) {
+      setBalance(Number(r.balance));
+      setNotice("Буст активирован на 7 дней!");
+    } else {
+      setNotice(purchaseError(r, "Не удалось купить буст."));
     }
-
-    const endsAt = new Date();
-    endsAt.setDate(endsAt.getDate() + 7);
-
-    await supabase.from("boosts").insert({
-      participant_id: id,
-      boost_type: "rating_bump",
-      price: boostPrice,
-      ends_at: endsAt.toISOString(),
-      wallet_transaction_id: tx?.id ?? null,
-    });
-
-    // Буст = 1000 реальных голосов, честно помеченных как купленные —
-    // они сразу считаются в общем счётчике голосов везде в приложении,
-    // но не участвуют в честном суточном топ-25.
-    const boostVotes = Array.from({ length: BOOST_VOTES }, () => ({
-      voter_id: userId,
-      participant_id: id,
-      weight: 1,
-      is_paid: true,
-    }));
-    await supabase.from("votes").insert(boostVotes);
-
-    if (participant) {
-      await notify(
-        participant.user_id,
-        `🚀 Ваш профиль продвинут — +${BOOST_VOTES} голосов`,
-        `/participant/${id}`
-      );
-    }
-
-    setBalance((b) => b - boostPrice);
-    setNotice("Буст активирован на 7 дней!");
     await load();
     setBusy(false);
   }
@@ -680,7 +443,7 @@ export default function ParticipantProfilePage() {
   const boostsLeft = BOOST_LIMIT - boostCount;
 
   return (
-    <main className="min-h-screen pb-28">
+    <main className="min-h-screen pb-40">
       <PageHeader />
 
       <div className="max-w-md mx-auto">
@@ -786,7 +549,11 @@ export default function ParticipantProfilePage() {
             <p className="text-offwhite text-sm mb-6">{participant.bio}</p>
           )}
 
-          <div className="flex gap-3 mb-3">
+          <div
+            className="fixed left-0 right-0 z-40 px-6"
+            style={{ bottom: "calc(60px + env(safe-area-inset-bottom))" }}
+          >
+          <div className="max-w-md mx-auto flex gap-3 bg-bgPrimary/90 backdrop-blur rounded-full p-1">
             <button
               onClick={() => setVoteModalOpen(true)}
               disabled={!userId}
@@ -802,6 +569,7 @@ export default function ParticipantProfilePage() {
             >
               🎁 Подарить
             </Link>
+          </div>
           </div>
 
           {cards.length > 0 && (
@@ -883,55 +651,38 @@ export default function ParticipantProfilePage() {
             }
           `}</style>
 
-          {!isOwner && paidMessagesEnabled && (
+          {!isOwner && thread.length > 0 && (
             <div className="bg-bgSurface border border-muted rounded-xl p-4 mb-3">
-              {thread.length > 0 && (
-                <div className="flex flex-col gap-2 mb-3 max-h-64 overflow-y-auto">
-                  {thread.map((m) => (
-                    <div
-                      key={m.id}
-                      className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                        m.sender_id === userId
-                          ? "self-end bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
-                          : "self-start bg-bgPrimary text-offwhite"
-                      }`}
-                    >
-                      {m.body}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {thread.length === 0 && !messageOpen ? (
-                <button
-                  onClick={() => setMessageOpen(true)}
-                  disabled={!userId}
-                  className="w-full text-offwhite font-semibold text-sm disabled:opacity-40"
-                >
-                  ✉️ Написать участнице — от {messagePrice.toLocaleString(
-                    "ru-RU"
-                  )} {currencySymbol}
-                </button>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <textarea
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    rows={2}
-                    placeholder="Ваше сообщение..."
-                    className="bg-bgPrimary text-offwhite border border-muted rounded-lg px-3 py-2 text-sm"
-                  />
-                  <button
-                    onClick={thread.length > 0 ? sendReplyAsFan : sendMessage}
-                    disabled={busy || !messageText.trim()}
-                    className="bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+              <div className="flex flex-col gap-2 mb-3 max-h-64 overflow-y-auto">
+                {thread.map((m) => (
+                  <div
+                    key={m.id}
+                    className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+                      m.sender_id === userId
+                        ? "self-end bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
+                        : "self-start bg-bgPrimary text-offwhite"
+                    }`}
                   >
-                    {thread.length > 0
-                      ? "Отправить"
-                      : `Отправить за ${messagePrice.toLocaleString("ru-RU")} ${currencySymbol}`}
-                  </button>
-                </div>
-              )}
+                    {m.body}
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col gap-2">
+                <textarea
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  rows={2}
+                  placeholder="Ваш ответ..."
+                  className="bg-bgPrimary text-offwhite border border-muted rounded-lg px-3 py-2 text-sm"
+                />
+                <button
+                  onClick={sendReplyAsFan}
+                  disabled={busy || !messageText.trim()}
+                  className="bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+                >
+                  Отправить
+                </button>
+              </div>
             </div>
           )}
 

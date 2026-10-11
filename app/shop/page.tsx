@@ -7,12 +7,14 @@ import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
-import { getAppPrices, getCurrencySymbol } from "@/lib/currency";
+import { getAppPrices, getCurrencySymbol, getUsdRate } from "@/lib/currency";
+import { apiPost } from "@/lib/authClient";
 
 type Gift = {
   id: string;
   name: string;
   price: number;
+  usd_price?: number | null;
   category: string;
   participant_share_percent: number;
 };
@@ -90,7 +92,6 @@ function ShopContent() {
     (Participant & { photo_url: string | null })[]
   >([]);
   const [participantRegions, setParticipantRegions] = useState<Record<string, string>>({});
-  const [walletId, setWalletId] = useState<string | null>(null);
   const [balance, setBalance] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -109,10 +110,19 @@ function ShopContent() {
 
       const { data: giftsData } = await supabase
         .from("gift_catalog")
-        .select("id, name, price, category, participant_share_percent")
-        .eq("is_active", true)
-        .order("price");
-      setGifts((giftsData as Gift[]) ?? []);
+        .select("id, name, price, usd_price, category, participant_share_percent")
+        .eq("is_active", true);
+      // Цена подарка задаётся в CRM в долларах; пересчитываем по курсу.
+      const rate = await getUsdRate();
+      const priced = ((giftsData as Gift[]) ?? []).map((g) => ({
+        ...g,
+        price:
+          Number(g.usd_price) > 0
+            ? Math.round(Number(g.usd_price) * rate)
+            : Number(g.price),
+      }));
+      priced.sort((a, b) => a.price - b.price);
+      setGifts(priced);
 
       if (!participantId) {
         const { data: participantsData } = await supabase
@@ -133,25 +143,14 @@ function ShopContent() {
       if (!u) return;
       setUserId(u.id);
 
-      let { data: wallet } = await supabase
+      const { data: wallet } = await supabase
         .from("wallets")
         .select("id, balance")
         .eq("user_id", u.id)
         .maybeSingle();
 
-      if (!wallet) {
-        const { data: newWallet } = await supabase
-          .from("wallets")
-          .insert({ user_id: u.id })
-          .select("id, balance")
-          .single();
-        wallet = newWallet;
-      }
-
-      if (wallet) {
-        setWalletId(wallet.id);
-        setBalance(Number(wallet.balance));
-      }
+      // Кошелёк создаёт сервер при первой покупке или пополнении.
+      setBalance(wallet ? Number(wallet.balance) : 0);
 
       // Подписки пользователя — для блока «Ваши подписки».
       const { data: followsData } = await supabase
@@ -184,109 +183,41 @@ function ShopContent() {
   }, [participantId]);
 
   async function testTopUp() {
-    if (!walletId) return;
-    await supabase.from("wallet_transactions").insert({
-      wallet_id: walletId,
-      type: "topup",
-      amount: 1000,
-      metadata: { test: true },
-    });
-    await supabase
-      .from("wallets")
-      .update({ balance: balance + 1000 })
-      .eq("id", walletId);
-    setBalance((b) => b + 1000);
+    const r = await apiPost("/api/shop/test-topup");
+    if (r.ok) setBalance(Number(r.balance));
+    else setErrorMessage("Пополнение сейчас недоступно.");
   }
 
   async function sendGift(gift: Gift) {
-    if (!walletId || !userId || !selectedParticipant) return;
+    if (!userId || !selectedParticipant) return;
     const qty = quantities[gift.id] ?? 1;
     const totalPrice = gift.price * qty;
     if (balance < totalPrice) {
-      setErrorMessage("Недостаточно средств. Пополните тестовый баланс.");
+      setErrorMessage("Недостаточно средств. Пополните баланс.");
       return;
     }
 
     setStatus("sending");
     setErrorMessage("");
 
-    const participantEarning =
-      (totalPrice * gift.participant_share_percent) / 100;
-
-    // Списываем у отправителя.
-    const { data: senderTx } = await supabase
-      .from("wallet_transactions")
-      .insert({
-        wallet_id: walletId,
-        type: "gift_sent",
-        amount: -totalPrice,
-        related_participant_id: selectedParticipant,
-      })
-      .select("id")
-      .single();
-
-    await supabase
-      .from("wallets")
-      .update({ balance: balance - totalPrice })
-      .eq("id", walletId);
-
-    // Находим/создаём кошелёк участницы и начисляем её долю.
-    const { data: participant } = await supabase
-      .from("participants")
-      .select("user_id")
-      .eq("id", selectedParticipant)
-      .single();
-
-    if (participant) {
-      let { data: pWallet } = await supabase
-        .from("wallets")
-        .select("id, balance")
-        .eq("user_id", participant.user_id)
-        .maybeSingle();
-
-      if (!pWallet) {
-        const { data: newWallet } = await supabase
-          .from("wallets")
-          .insert({ user_id: participant.user_id })
-          .select("id, balance")
-          .single();
-        pWallet = newWallet;
-      }
-
-      if (pWallet) {
-        await supabase.from("wallet_transactions").insert({
-          wallet_id: pWallet.id,
-          type: "gift_received",
-          amount: participantEarning,
-          related_participant_id: selectedParticipant,
-        });
-        await supabase
-          .from("wallets")
-          .update({ balance: Number(pWallet.balance) + participantEarning })
-          .eq("id", pWallet.id);
-      }
-    }
-
-    // Запись самого подарка.
-    await supabase.from("gifts").insert({
-      sender_id: userId,
-      participant_id: selectedParticipant,
-      gift_catalog_id: gift.id,
-      quantity: qty,
-      total_price: totalPrice,
-      participant_earning: participantEarning,
-      wallet_transaction_id: senderTx?.id ?? null,
+    const r = await apiPost("/api/shop/gift", {
+      giftId: gift.id,
+      participantId: selectedParticipant,
+      qty,
     });
 
-    if (participant) {
-      await supabase.from("notifications").insert({
-        user_id: participant.user_id,
-        message: `🎁 Вам подарили ${gift.name}${qty > 1 ? ` ×${qty}` : ""}`,
-        link: `/participant/${selectedParticipant}/gifts`,
-      });
+    if (!r.ok) {
+      setStatus("error");
+      setErrorMessage(
+        r.error === "not_enough"
+          ? "Недостаточно средств. Пополните баланс."
+          : "Не удалось отправить подарок. Попробуйте ещё раз."
+      );
+      if (typeof r.balance === "number") setBalance(r.balance);
+      return;
     }
 
-    setBalance((b) => b - totalPrice);
+    setBalance(Number(r.balance));
     setQuantities((q) => ({ ...q, [gift.id]: 1 }));
     setStatus("sent");
     setTimeout(() => setStatus("idle"), 2000);
@@ -783,11 +714,13 @@ const DEFAULT_PRICE_PER_VOTE = 4;
 
 function VotesSection() {
   const [balance, setBalance] = useState(0);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [buyingAmount, setBuyingAmount] = useState<number | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [currencySymbol, setCurrencySymbol] = useState("₴");
   const [pricePerVote, setPricePerVote] = useState(DEFAULT_PRICE_PER_VOTE);
+  const [message, setMessage] = useState("");
 
   async function load() {
     setLoading(true);
@@ -811,6 +744,13 @@ function VotesSection() {
       .eq("user_id", u.id)
       .maybeSingle();
     setBalance(data?.balance ?? 0);
+
+    const { data: wallet } = await supabase
+      .from("wallets")
+      .select("balance")
+      .eq("user_id", u.id)
+      .maybeSingle();
+    setWalletBalance(wallet ? Number(wallet.balance) : 0);
     setLoading(false);
   }
 
@@ -818,17 +758,30 @@ function VotesSection() {
     load();
   }, []);
 
+  async function testTopUp() {
+    const r = await apiPost("/api/shop/test-topup");
+    if (r.ok) setWalletBalance(Number(r.balance));
+  }
+
   async function buy(amount: number) {
     if (!userId) return;
+    setMessage("");
+    if (walletBalance < amount * pricePerVote) {
+      setMessage("Недостаточно средств на балансе. Пополните баланс.");
+      return;
+    }
     setBuyingAmount(amount);
-    const { data } = await supabase
-      .from("vote_credits")
-      .select("balance")
-      .eq("user_id", userId)
-      .maybeSingle();
-    const newBalance = (data?.balance ?? 0) + amount;
-    await supabase.from("vote_credits").upsert({ user_id: userId, balance: newBalance });
-    setBalance(newBalance);
+    const r = await apiPost("/api/shop/buy-votes", { amount });
+    if (r.ok) {
+      setBalance(Number(r.votes));
+      setWalletBalance(Number(r.balance));
+      setMessage(`Куплено голосов: ${amount}`);
+    } else if (r.error === "not_enough") {
+      setMessage("Недостаточно средств на балансе. Пополните баланс.");
+      if (typeof r.balance === "number") setWalletBalance(r.balance);
+    } else {
+      setMessage("Не удалось купить голоса. Попробуйте ещё раз.");
+    }
     setBuyingAmount(null);
   }
 
@@ -839,10 +792,25 @@ function VotesSection() {
         <p className="text-muted text-xs mb-3">
           Тестовый режим — реальные деньги пока не подключены. 1 голос = {pricePerVote} {currencySymbol}.
         </p>
+        <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-3 flex items-center justify-between">
+          <div>
+            <p className="text-muted text-xs">Ваш баланс</p>
+            <p className="text-gold text-xl font-semibold">
+              {loading ? "..." : `${Math.round(walletBalance)} ${currencySymbol}`}
+            </p>
+          </div>
+          <button
+            onClick={testTopUp}
+            className="bg-bgPrimary border border-muted text-offwhite text-xs px-3 py-2 rounded-full"
+          >
+            Пополнить (тест +1000{currencySymbol})
+          </button>
+        </div>
         <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
           <p className="text-muted text-xs">Ваши купленные голоса</p>
           <p className="text-gold text-xl font-semibold">{loading ? "..." : balance}</p>
         </div>
+        {message && <p className="text-gold text-sm text-center mt-3">{message}</p>}
       </div>
 
       <div className="px-6 grid grid-cols-2 gap-3">

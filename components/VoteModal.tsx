@@ -2,9 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { apiPost } from "@/lib/authClient";
 
-const FREE_VOTES_TOTAL = 3;
+type Info = {
+  verified: boolean;
+  free_total: number;
+  free_left: number;
+  balance: number;
+};
 
 export default function VoteModal({
   participantId,
@@ -19,88 +24,60 @@ export default function VoteModal({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [freeRemaining, setFreeRemaining] = useState(0);
-  const [purchasedBalance, setPurchasedBalance] = useState(0);
+  const [info, setInfo] = useState<Info | null>(null);
+  const [count, setCount] = useState(1);
   const [voting, setVoting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<number | null>(null);
+  const [error, setError] = useState("");
+
+  async function loadInfo() {
+    setLoading(true);
+    const r = await apiPost("/api/shop/vote-info");
+    if (r.ok) setInfo(r as Info);
+    setLoading(false);
+  }
 
   useEffect(() => {
     if (!participantId || !userId) return;
-    (async () => {
-      setLoading(true);
-      setDone(false);
-
-      const { data: usageRow, error: usageError } = await supabase
-        .from("free_vote_usage")
-        .select("used_count")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (usageError) console.error("[VoteModal] free_vote_usage read error:", usageError);
-      setFreeRemaining(Math.max(0, FREE_VOTES_TOTAL - (usageRow?.used_count ?? 0)));
-
-      const { data: creditsRow, error: creditsError } = await supabase
-        .from("vote_credits")
-        .select("balance")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (creditsError) console.error("[VoteModal] vote_credits read error:", creditsError);
-      setPurchasedBalance(creditsRow?.balance ?? 0);
-
-      setLoading(false);
-    })();
+    setDone(null);
+    setError("");
+    setCount(1);
+    loadInfo();
+    const onVerified = () => loadInfo();
+    window.addEventListener("vetoks:verified", onVerified);
+    return () => window.removeEventListener("vetoks:verified", onVerified);
   }, [participantId, userId]);
 
-  async function confirmVote() {
-    if (!participantId || !userId) return;
-    setVoting(true);
-    const usingFree = freeRemaining > 0;
+  const available = info ? info.free_left + info.balance : 0;
+  const maxCount = Math.min(100, available);
 
-    const { error: voteError } = await supabase.from("votes").insert({
-      voter_id: userId,
-      participant_id: participantId,
-      weight: 1,
-      is_paid: !usingFree,
-    });
-    if (voteError) {
-      console.error("[VoteModal] vote insert error:", voteError);
-      alert(`Не удалось засчитать голос: ${voteError.message}`);
-      setVoting(false);
+  async function confirmVote() {
+    if (!participantId) return;
+    setVoting(true);
+    setError("");
+    const r = await apiPost("/api/shop/vote", { participantId, count });
+    setVoting(false);
+
+    if (r.ok) {
+      setDone(count);
+      onVoted?.();
       return;
     }
-
-    if (usingFree) {
-      const { data: usageRow } = await supabase
-        .from("free_vote_usage")
-        .select("used_count")
-        .eq("user_id", userId)
-        .maybeSingle();
-      const { error: usageUpdateError } = await supabase
-        .from("free_vote_usage")
-        .upsert(
-          { user_id: userId, used_count: (usageRow?.used_count ?? 0) + 1 },
-          { onConflict: "user_id" }
-        );
-      if (usageUpdateError) {
-        console.error("[VoteModal] free_vote_usage upsert error:", usageUpdateError);
-      }
-    } else {
-      const { error: balanceUpdateError } = await supabase
-        .from("vote_credits")
-        .upsert(
-          { user_id: userId, balance: Math.max(0, purchasedBalance - 1) },
-          { onConflict: "user_id" }
-        );
-      if (balanceUpdateError) {
-        console.error("[VoteModal] vote_credits upsert error:", balanceUpdateError);
-      }
+    if (r.error === "need_verify") {
+      onClose();
+      window.dispatchEvent(new Event("vetoks:verify-phone"));
+      return;
     }
-
-    setVoting(false);
-    setDone(true);
-    onVoted?.();
+    if (r.error === "own") setError("За себя голосовать нельзя.");
+    else if (r.error === "not_enough") setError("Не хватает голосов.");
+    else if (r.error === "banned") setError("Аккаунт заблокирован.");
+    else setError("Не удалось засчитать голос. Попробуйте ещё раз.");
+    loadInfo();
   }
 
   if (!participantId) return null;
+
+  const hasVotes = available > 0;
 
   return (
     <div
@@ -116,9 +93,22 @@ export default function VoteModal({
 
         {loading && <p className="text-muted text-sm py-4">Загрузка...</p>}
 
-        {!loading && done && (
+        {!loading && !info && (
           <>
-            <p className="text-success font-semibold mb-4">Голос учтён!</p>
+            <p className="text-offwhite text-sm mb-4">
+              Не удалось загрузить данные. Войдите и попробуйте ещё раз.
+            </p>
+            <button onClick={onClose} className="w-full text-muted text-xs py-2">
+              Закрыть
+            </button>
+          </>
+        )}
+
+        {!loading && info && done !== null && (
+          <>
+            <p className="text-success font-semibold mb-4">
+              {done === 1 ? "Голос учтён!" : `Голосов учтено: ${done}`}
+            </p>
             <button
               onClick={onClose}
               className="w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full text-sm"
@@ -128,61 +118,90 @@ export default function VoteModal({
           </>
         )}
 
-        {!loading && !done && freeRemaining > 0 && (
+        {!loading && info && done === null && (
           <>
-            <p className="text-offwhite text-sm mb-1">
-              У вас есть бесплатные голоса
+            {info.verified ? (
+              <p className="text-offwhite text-sm mb-1">
+                Бесплатные голоса: {info.free_left} из {info.free_total}
+              </p>
+            ) : (
+              <p className="text-offwhite text-sm mb-1">
+                Бесплатные {info.free_total} голоса дают после подтверждения
+                номера в Telegram.
+              </p>
+            )}
+            <p className="text-gold text-2xl font-bold mb-1">
+              Всего доступно: {available}
             </p>
-            <p className="text-gold text-2xl font-bold mb-4">
-              Осталось {freeRemaining} из {FREE_VOTES_TOTAL}
-            </p>
-            <button
-              onClick={confirmVote}
-              disabled={voting}
-              className="w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full text-sm mb-2 disabled:opacity-50"
-            >
-              {voting ? "Голосуем..." : "Проголосовать"}
-            </button>
-            <button onClick={onClose} className="w-full text-muted text-xs py-2">
-              Закрыть
-            </button>
-          </>
-        )}
+            {info.balance > 0 && (
+              <p className="text-muted text-xs mb-3">
+                из них купленных: {info.balance}
+              </p>
+            )}
 
-        {!loading && !done && freeRemaining === 0 && purchasedBalance > 0 && (
-          <>
-            <p className="text-offwhite text-sm mb-1">Бесплатные голоса закончились</p>
-            <p className="text-gold text-2xl font-bold mb-4">
-              У вас {purchasedBalance} купленных голосов
-            </p>
-            <button
-              onClick={confirmVote}
-              disabled={voting}
-              className="w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full text-sm mb-2 disabled:opacity-50"
-            >
-              {voting ? "Голосуем..." : "Проголосовать"}
-            </button>
-            <button onClick={onClose} className="w-full text-muted text-xs py-2">
-              Закрыть
-            </button>
-          </>
-        )}
+            {hasVotes && (
+              <div className="flex items-center justify-center gap-2 mb-4 mt-3">
+                <button
+                  onClick={() => setCount((c) => Math.max(1, c - 1))}
+                  className="w-9 h-9 rounded-full bg-bgPrimary border border-muted text-offwhite"
+                >
+                  −
+                </button>
+                <span className="text-offwhite font-semibold w-10">{count}</span>
+                <button
+                  onClick={() => setCount((c) => Math.min(maxCount, c + 1))}
+                  className="w-9 h-9 rounded-full bg-bgPrimary border border-muted text-offwhite"
+                >
+                  +
+                </button>
+                {maxCount > 1 && (
+                  <button
+                    onClick={() => setCount(maxCount)}
+                    className="text-gold text-xs underline ml-1"
+                  >
+                    все ({maxCount})
+                  </button>
+                )}
+              </div>
+            )}
 
-        {!loading && !done && freeRemaining === 0 && purchasedBalance === 0 && (
-          <>
-            <p className="text-offwhite text-sm mb-1">У вас нет голосов</p>
-            <p className="text-muted text-xs mb-4">
-              Бесплатные 3 голоса уже использованы — можно купить ещё.
-            </p>
+            {hasVotes && (
+              <button
+                onClick={confirmVote}
+                disabled={voting}
+                className="w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full text-sm mb-2 disabled:opacity-50"
+              >
+                {voting ? "Голосуем..." : count === 1 ? "Проголосовать" : `Проголосовать (${count})`}
+              </button>
+            )}
+
+            {!info.verified && (
+              <button
+                onClick={() => {
+                  onClose();
+                  window.dispatchEvent(new Event("vetoks:verify-phone"));
+                }}
+                className="w-full bg-bgPrimary border border-gold text-gold font-semibold py-3 rounded-full text-sm mb-2"
+              >
+                📱 Подтвердить номер
+              </button>
+            )}
+
             <button
               onClick={() => {
                 onClose();
                 router.push("/shop?section=votes");
               }}
-              className="w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full text-sm mb-2"
+              className={`w-full py-3 rounded-full text-sm mb-2 font-semibold ${
+                hasVotes
+                  ? "border border-muted text-offwhite"
+                  : "bg-gold text-bgPrimary"
+              }`}
             >
-              Перейти купить голоса
+              Купить голоса
             </button>
+
+            {error && <p className="text-danger text-xs mb-2">{error}</p>}
             <button onClick={onClose} className="w-full text-muted text-xs py-2">
               Закрыть
             </button>

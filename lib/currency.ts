@@ -63,3 +63,9 @@ export function clearPricingCache() {
   cachedRate = null;
   cachedPrices = null;
 }
+
+/** Курс доллара к местной валюте (для пересчёта цен подарков из CRM). */
+export async function getUsdRate(): Promise<number> {
+  await ensureRateAndSymbol();
+  return cachedRate as number;
+}
