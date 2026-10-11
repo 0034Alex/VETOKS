@@ -69,6 +69,7 @@ export default function ParticipantProfilePage() {
   const [goalTarget, setGoalTarget] = useState(5000);
   const [goalCollected, setGoalCollected] = useState(0);
   const [goalEnabled, setGoalEnabled] = useState(true);
+  const [paidMessagesEnabled, setPaidMessagesEnabled] = useState(false);
   const [goalDonors, setGoalDonors] = useState<
     { name: string; amount: number; created_at: string }[]
   >([]);
@@ -189,7 +190,12 @@ export default function ParticipantProfilePage() {
     const { data: settingsData } = await supabase
       .from("platform_settings")
       .select("key, value")
-      .in("key", ["weekly_goal_text", "weekly_goal_target", "weekly_goal_enabled"]);
+      .in("key", [
+        "weekly_goal_text",
+        "weekly_goal_target",
+        "weekly_goal_enabled",
+        "paid_messages_enabled",
+      ]);
     const settingsMap: Record<string, string> = {};
     (settingsData ?? []).forEach((s: { key: string; value: string }) => {
       settingsMap[s.key] = s.value;
@@ -197,6 +203,7 @@ export default function ParticipantProfilePage() {
     setGoalText(settingsMap.weekly_goal_text ?? "");
     setGoalTarget(Number(settingsMap.weekly_goal_target ?? 5000));
     setGoalEnabled(settingsMap.weekly_goal_enabled !== "false");
+    setPaidMessagesEnabled(settingsMap.paid_messages_enabled === "true");
 
     const now = new Date();
     const monday = new Date(now);
@@ -848,7 +855,7 @@ export default function ParticipantProfilePage() {
             }
           `}</style>
 
-          {!isOwner && (
+          {!isOwner && paidMessagesEnabled && (
             <div className="bg-bgSurface border border-muted rounded-xl p-4 mb-3">
               {thread.length > 0 && (
                 <div className="flex flex-col gap-2 mb-3 max-h-64 overflow-y-auto">
