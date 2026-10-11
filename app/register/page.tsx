@@ -12,6 +12,9 @@ export default function RegisterPage() {
   const [regions, setRegions] = useState<Region[]>([]);
   const [firstName, setFirstName] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneStatus, setPhoneStatus] = useState<
+    "idle" | "waiting" | "got" | "error"
+  >("idle");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -41,10 +44,58 @@ export default function RegisterPage() {
     })();
   }, []);
 
+  // Номер телефона теперь нельзя ввести вручную — только кнопкой "Поделиться
+  // номером" через Telegram. Сам номер Telegram присылает не сюда в
+  // браузер, а боту (на сервер), поэтому после нажатия кнопки мы несколько
+  // секунд опрашиваем сервер, пока номер не придёт и не сохранится.
+  function requestPhone() {
+    const tg = (window as any).Telegram?.WebApp;
+    const tgId = tg?.initDataUnsafe?.user?.id;
+
+    if (!tg?.requestContact || !tgId) {
+      setPhoneStatus("error");
+      return;
+    }
+
+    setPhoneStatus("waiting");
+
+    tg.requestContact((sent: boolean) => {
+      if (!sent) {
+        setPhoneStatus("idle");
+        return;
+      }
+
+      let attempts = 0;
+      const interval = setInterval(async () => {
+        attempts++;
+        try {
+          const res = await fetch(`/api/get-shared-phone?telegram_id=${tgId}`);
+          const json = await res.json();
+          if (json.phone) {
+            setPhone(json.phone);
+            setPhoneStatus("got");
+            clearInterval(interval);
+            return;
+          }
+        } catch {
+          // игнорируем — просто попробуем ещё раз на следующем тике
+        }
+        if (attempts >= 15) {
+          clearInterval(interval);
+          setPhoneStatus((s) => (s === "got" ? s : "error"));
+        }
+      }, 1500);
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrorMessage("");
 
+    if (!phone) {
+      setErrorMessage("Поделитесь номером телефона через Telegram.");
+      return;
+    }
     if (password.length < 6) {
       setErrorMessage("Пароль должен быть не короче 6 символов.");
       return;
@@ -130,13 +181,35 @@ export default function RegisterPage() {
 
         <div>
           <label className="text-offwhite text-sm">Телефон</label>
-          <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+7 900 000 00 00"
-            className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
-            required
-          />
+          {phone ? (
+            <div className="w-full bg-bgSurface text-offwhite border border-success rounded-lg px-4 py-3 mt-1 flex items-center justify-between gap-2">
+              <span>{phone}</span>
+              <button
+                type="button"
+                onClick={requestPhone}
+                className="text-gold text-xs underline whitespace-nowrap"
+              >
+                Изменить
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={requestPhone}
+              disabled={phoneStatus === "waiting"}
+              className="w-full bg-bgSurface text-gold border border-gold rounded-lg px-4 py-3 mt-1 font-semibold disabled:opacity-50"
+            >
+              {phoneStatus === "waiting"
+                ? "Ждём подтверждения в Telegram..."
+                : "📱 Поделиться номером через Telegram"}
+            </button>
+          )}
+          {phoneStatus === "error" && (
+            <p className="text-danger text-xs mt-1">
+              Не удалось получить номер. Откройте приложение внутри Telegram и
+              попробуйте ещё раз.
+            </p>
+          )}
         </div>
 
         <div>
