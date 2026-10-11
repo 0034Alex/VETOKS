@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import SocialLinksBar from "@/components/SocialLinksBar";
+import { getCurrencySymbol } from "@/lib/currency";
 
 type Participant = { id: string; display_name: string };
 
@@ -43,6 +44,7 @@ export default function ProfilePage() {
   const [goalEnabled, setGoalEnabled] = useState(true);
   const [showPrivate, setShowPrivate] = useState(false);
   const [tasksDone, setTasksDone] = useState(0);
+  const [currencySymbol, setCurrencySymbol] = useState("₴");
   const TOTAL_TASKS = 3;
   const [loading, setLoading] = useState(true);
 
@@ -69,6 +71,8 @@ export default function ProfilePage() {
 
   useEffect(() => {
     (async () => {
+      setCurrencySymbol(await getCurrencySymbol());
+
       const u = await getCurrentUser();
       if (!u) {
         router.push("/login?redirect=/profile");
@@ -275,7 +279,7 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted text-xs">Баланс</p>
-                <p className="text-gold text-xl font-semibold">{Math.round(balance)} ₽</p>
+                <p className="text-gold text-xl font-semibold">{Math.round(balance)} {currencySymbol}</p>
               </div>
               <span className="text-gold text-xs">Подробнее →</span>
             </div>
@@ -331,7 +335,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex items-center justify-between">
                 <p className="text-muted text-xs">
-                  Собрано {Math.round(goalCollected)} / {goalTarget} ₽
+                  Собрано {Math.round(goalCollected)} / {goalTarget} {currencySymbol}
                 </p>
                 <span className="text-gold text-xs">Кто донатил ▾</span>
               </div>
