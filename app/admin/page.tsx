@@ -29,7 +29,8 @@ type Tab =
   | "media-demo-upload"
   | "tasks"
   | "black-marks"
-  | "countries";
+  | "countries"
+  | "app-prices";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -56,6 +57,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "tasks", label: "Задания" },
   { key: "black-marks", label: "Чёрная метка" },
   { key: "countries", label: "Страны и регионы" },
+  { key: "app-prices", label: "Цены (в долларах)" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
@@ -91,6 +93,7 @@ const NAV_LIST: (
 )[] = [
   { type: "tab", key: "dashboard", label: "Дашборд" },
   { type: "tab", key: "countries", label: "Страны и регионы" },
+  { type: "tab", key: "app-prices", label: "Цены (в долларах)" },
   { type: "group", key: "users-group", label: "Пользователи" },
   { type: "tab", key: "partners", label: "Партнёры" },
   { type: "group", key: "ads-group", label: "Реклама" },
@@ -332,6 +335,7 @@ export default function AdminPage() {
         {tab === "tasks" && <TasksAdminTab />}
         {tab === "black-marks" && <BlackMarksAdminTab />}
         {tab === "countries" && <CountriesTab />}
+        {tab === "app-prices" && <AppPricesTab />}
         {tab === "documents" && <DocumentsTab />}
         {tab === "calendar" && <CalendarTab />}
         {tab === "social" && <SocialLinksTab />}
@@ -3896,6 +3900,99 @@ function CountriesTab() {
             Сохранено!
           </span>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// ЦЕНЫ В ДОЛЛАРАХ — единый список всего платного в приложении. Каждая
+// позиция задаётся один раз в долларах, а показывается пользователю уже
+// переведённой в его валюту по курсу из «Страны и регионы».
+// ---------------------------------------------------------------------
+
+const APP_PRICE_DEFAULTS: { key: string; label: string; usd: number }[] = [
+  { key: "paid_message", label: "Платное сообщение участнице", usd: 2 },
+  { key: "collectible_card", label: "Коллекционная карточка", usd: 3 },
+  { key: "boost", label: "Продвинуть в топ (буст +1000 голосов)", usd: 10 },
+  { key: "vote", label: "1 голос (покупка голосов)", usd: 0.1 },
+];
+
+function AppPricesTab() {
+  const [rows, setRows] = useState<{ key: string; label: string; usd_price: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase.from("app_prices").select("key, label, usd_price");
+    const byKey: Record<string, { label: string; usd_price: number }> = {};
+    (data ?? []).forEach((r: { key: string; label: string; usd_price: number }) => {
+      byKey[r.key] = { label: r.label, usd_price: r.usd_price };
+    });
+    setRows(
+      APP_PRICE_DEFAULTS.map((d) => ({
+        key: d.key,
+        label: byKey[d.key]?.label ?? d.label,
+        usd_price: String(byKey[d.key]?.usd_price ?? d.usd),
+      }))
+    );
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function savePrice(row: { key: string; label: string; usd_price: string }) {
+    setSavingKey(row.key);
+    await supabase.from("app_prices").upsert({
+      key: row.key,
+      label: row.label,
+      usd_price: Number(row.usd_price) || 0,
+    });
+    setSavingKey(null);
+  }
+
+  if (loading) return <p className="text-muted">Загрузка...</p>;
+
+  return (
+    <div className="max-w-lg">
+      <p className="text-muted text-xs mb-4">
+        Цена в долларах переводится в валюту включённой страны (сейчас —
+        гривна) по курсу, заданному на вкладке «Страны и регионы». Меняйте
+        курс там — цены здесь пересчитаются сами, без перезаливки файлов.
+      </p>
+      <div className="flex flex-col gap-3">
+        {rows.map((row, i) => (
+          <div
+            key={row.key}
+            className="bg-bgSurface border border-gold/40 rounded-xl p-4"
+          >
+            <p className="text-offwhite text-sm font-semibold mb-2">
+              {row.label}
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-muted text-sm">$</span>
+              <input
+                value={row.usd_price}
+                onChange={(e) => {
+                  const next = [...rows];
+                  next[i] = { ...row, usd_price: e.target.value };
+                  setRows(next);
+                }}
+                className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+              />
+              <button
+                onClick={() => savePrice(row)}
+                disabled={savingKey === row.key}
+                className="bg-gold text-bgPrimary font-semibold px-4 py-2 rounded-full text-sm disabled:opacity-50"
+              >
+                {savingKey === row.key ? "..." : "Сохранить"}
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
