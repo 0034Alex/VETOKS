@@ -58,6 +58,8 @@ export default function ParticipantProfilePage() {
   const [votesToNextRank, setVotesToNextRank] = useState<number | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [videoPosts, setVideoPosts] = useState<{ id: string; video_url: string }[]>([]);
+  const [photoPosts, setPhotoPosts] = useState<{ id: string; photo_url: string }[]>([]);
+  const [feedTab, setFeedTab] = useState<"video" | "photo">("video");
   const [hasVoted, setHasVoted] = useState(false);
   const [voteModalOpen, setVoteModalOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -121,6 +123,14 @@ export default function ParticipantProfilePage() {
       .not("video_url", "is", null)
       .order("submitted_at", { ascending: false });
     setVideoPosts((videosData as any) ?? []);
+
+    const { data: photosData } = await supabase
+      .from("content_posts")
+      .select("id, photo_url")
+      .eq("participant_id", id)
+      .not("photo_url", "is", null)
+      .order("submitted_at", { ascending: false });
+    setPhotoPosts((photosData as any) ?? []);
 
     const { data: giftsData } = await supabase
       .from("gifts")
@@ -925,28 +935,77 @@ export default function ParticipantProfilePage() {
             </button>
           </div>
 
-          {videoPosts.length > 0 && (
+          {(videoPosts.length > 0 || photoPosts.length > 0) && (
             <div className="mb-6">
-              <p className="text-offwhite text-sm font-semibold mb-2">
-                🎬 Видео участницы
-              </p>
-              <div className="grid grid-cols-3 gap-1.5">
-                {videoPosts.map((post, i) => (
-                  <Link
-                    key={post.id}
-                    href={`/participant/${id}/videos?start=${i}`}
-                    className="relative aspect-[9/16] bg-black rounded-lg overflow-hidden"
-                  >
-                    <video
-                      src={post.video_url}
-                      muted
-                      playsInline
-                      preload="metadata"
-                      className="w-full h-full object-cover pointer-events-none"
-                    />
-                  </Link>
-                ))}
+              <div className="flex items-center gap-2 mb-2">
+                <button
+                  onClick={() => setFeedTab("video")}
+                  className={`text-sm font-semibold px-3 py-1 rounded-full ${
+                    feedTab === "video"
+                      ? "bg-gold text-bgPrimary"
+                      : "text-muted border border-muted"
+                  }`}
+                >
+                  🎬 Видео
+                </button>
+                <button
+                  onClick={() => setFeedTab("photo")}
+                  className={`text-sm font-semibold px-3 py-1 rounded-full ${
+                    feedTab === "photo"
+                      ? "bg-gold text-bgPrimary"
+                      : "text-muted border border-muted"
+                  }`}
+                >
+                  🖼 Фото
+                </button>
               </div>
+
+              {feedTab === "video" && (
+                videoPosts.length === 0 ? (
+                  <p className="text-muted text-xs">Пока нет видео.</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {videoPosts.map((post, i) => (
+                      <Link
+                        key={post.id}
+                        href={`/participant/${id}/videos?start=${i}`}
+                        className="relative aspect-[9/16] bg-black rounded-lg overflow-hidden"
+                      >
+                        <video
+                          src={post.video_url}
+                          muted
+                          playsInline
+                          preload="metadata"
+                          className="w-full h-full object-cover pointer-events-none"
+                        />
+                      </Link>
+                    ))}
+                  </div>
+                )
+              )}
+
+              {feedTab === "photo" && (
+                photoPosts.length === 0 ? (
+                  <p className="text-muted text-xs">Пока нет фото.</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {photoPosts.map((post, i) => (
+                      <Link
+                        key={post.id}
+                        href={`/participant/${id}/photos?start=${i}`}
+                        className="relative aspect-[9/16] bg-black rounded-lg overflow-hidden"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={post.photo_url}
+                          alt=""
+                          className="w-full h-full object-cover pointer-events-none"
+                        />
+                      </Link>
+                    ))}
+                  </div>
+                )
+              )}
             </div>
           )}
 
