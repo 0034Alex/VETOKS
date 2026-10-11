@@ -1,16 +1,13 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
-function LoginForm() {
+export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/";
-
-  const [identifier, setIdentifier] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -20,24 +17,6 @@ function LoginForm() {
     setStatus("loading");
     setErrorMessage("");
 
-    let email = identifier.trim();
-
-    if (!email.includes("@")) {
-      // Похоже на телефон — ищем почту по номеру.
-      const { data: userRow } = await supabase
-        .from("users")
-        .select("email")
-        .eq("phone", identifier.trim())
-        .maybeSingle();
-
-      if (!userRow?.email) {
-        setStatus("error");
-        setErrorMessage("Аккаунт с таким телефоном не найден.");
-        return;
-      }
-      email = userRow.email;
-    }
-
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -45,11 +24,11 @@ function LoginForm() {
 
     if (error) {
       setStatus("error");
-      setErrorMessage("Неверные данные для входа или пароль.");
+      setErrorMessage("Неверная почта или пароль.");
       return;
     }
 
-    router.push(redirectTo);
+    router.push("/");
   }
 
   return (
@@ -67,10 +46,11 @@ function LoginForm() {
         className="w-full max-w-sm flex flex-col gap-3 text-left"
       >
         <div>
-          <label className="text-offwhite text-sm">Почта или телефон</label>
+          <label className="text-offwhite text-sm">Почта</label>
           <input
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
             required
           />
@@ -86,7 +66,10 @@ function LoginForm() {
           />
         </div>
 
-        <Link href="/forgot-password" className="text-gold text-xs text-right">
+        <Link
+          href="/reset-password"
+          className="text-gold underline text-xs text-right -mt-1"
+        >
           Забыли пароль?
         </Link>
 
@@ -103,13 +86,5 @@ function LoginForm() {
         )}
       </form>
     </main>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={null}>
-      <LoginForm />
-    </Suspense>
   );
 }
