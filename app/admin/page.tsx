@@ -28,7 +28,8 @@ type Tab =
   | "ad-prices"
   | "media-demo-upload"
   | "tasks"
-  | "black-marks";
+  | "black-marks"
+  | "countries";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -54,6 +55,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "media-demo-upload", label: "Демо-ролики" },
   { key: "tasks", label: "Задания" },
   { key: "black-marks", label: "Чёрная метка" },
+  { key: "countries", label: "Страны и регионы" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
@@ -88,6 +90,7 @@ const NAV_LIST: (
   | { type: "group"; key: string; label: string }
 )[] = [
   { type: "tab", key: "dashboard", label: "Дашборд" },
+  { type: "tab", key: "countries", label: "Страны и регионы" },
   { type: "group", key: "users-group", label: "Пользователи" },
   { type: "tab", key: "partners", label: "Партнёры" },
   { type: "group", key: "ads-group", label: "Реклама" },
@@ -328,6 +331,7 @@ export default function AdminPage() {
         {tab === "media-demo-upload" && <MediaDemoUploadTab />}
         {tab === "tasks" && <TasksAdminTab />}
         {tab === "black-marks" && <BlackMarksAdminTab />}
+        {tab === "countries" && <CountriesTab />}
         {tab === "documents" && <DocumentsTab />}
         {tab === "calendar" && <CalendarTab />}
         {tab === "social" && <SocialLinksTab />}
@@ -3738,6 +3742,165 @@ function MagazineAdsTab() {
 // БРЕНДИРОВАНИЕ
 // ---------------------------------------------------------------------
 
+// ---------------------------------------------------------------------
+// СТРАНЫ И РЕГИОНЫ — включение/отключение страны целиком (вместе со всеми
+// её регионами) и курс доллара к гривне для конвертации цен.
+// ---------------------------------------------------------------------
+
+type CountryRow = {
+  id: string;
+  name: string;
+  code: string;
+  currency_code: string;
+  currency_symbol: string;
+  enabled: boolean;
+  region_count: number;
+};
+
+function CountriesTab() {
+  const [countries, setCountries] = useState<CountryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [usdRate, setUsdRate] = useState("");
+  const [rateSaving, setRateSaving] = useState(false);
+  const [rateSaved, setRateSaved] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    const { data: countriesData } = await supabase
+      .from("countries")
+      .select("id, name, code, currency_code, currency_symbol, enabled")
+      .order("name");
+
+    const { data: regionsData } = await supabase
+      .from("regions")
+      .select("country_id");
+
+    const counts: Record<string, number> = {};
+    (regionsData ?? []).forEach((r: { country_id: string | null }) => {
+      if (!r.country_id) return;
+      counts[r.country_id] = (counts[r.country_id] ?? 0) + 1;
+    });
+
+    setCountries(
+      (countriesData ?? []).map((c: any) => ({
+        ...c,
+        region_count: counts[c.id] ?? 0,
+      }))
+    );
+
+    const { data: rateRow } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "usd_to_uah_rate")
+      .maybeSingle();
+    setUsdRate(rateRow?.value ?? "");
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function toggleCountry(c: CountryRow) {
+    await supabase
+      .from("countries")
+      .update({ enabled: !c.enabled })
+      .eq("id", c.id);
+    setCountries((prev) =>
+      prev.map((row) =>
+        row.id === c.id ? { ...row, enabled: !row.enabled } : row
+      )
+    );
+  }
+
+  async function saveRate() {
+    setRateSaving(true);
+    await supabase
+      .from("platform_settings")
+      .upsert({ key: "usd_to_uah_rate", value: usdRate });
+    setRateSaving(false);
+    setRateSaved(true);
+    setTimeout(() => setRateSaved(false), 2000);
+  }
+
+  if (loading) return <p className="text-muted">Загрузка...</p>;
+
+  return (
+    <div className="max-w-lg">
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+        <p className="text-offwhite text-sm font-semibold mb-3">
+          Страны
+        </p>
+        <div className="flex flex-col gap-2">
+          {countries.map((c) => (
+            <div
+              key={c.id}
+              className="flex items-center justify-between bg-bgPrimary border border-muted rounded-lg px-3 py-2"
+            >
+              <div>
+                <p className="text-offwhite text-sm font-semibold">
+                  {c.name}{" "}
+                  <span className="text-muted text-xs">
+                    ({c.currency_symbol} {c.currency_code})
+                  </span>
+                </p>
+                <p className="text-muted text-xs">
+                  {c.region_count} регионов
+                </p>
+              </div>
+              <button
+                onClick={() => toggleCountry(c)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  c.enabled
+                    ? "bg-success text-bgPrimary"
+                    : "bg-bgPrimary border border-muted text-muted"
+                }`}
+              >
+                {c.enabled ? "Включена" : "Выключена"}
+              </button>
+            </div>
+          ))}
+        </div>
+        <p className="text-muted text-xs mt-3">
+          У выключенной страны её регионы не предлагаются при регистрации
+          и в списках по регионам.
+        </p>
+      </div>
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
+        <p className="text-offwhite text-sm font-semibold mb-2">
+          Курс доллара к гривне
+        </p>
+        <p className="text-muted text-xs mb-3">
+          Используется для пересчёта цен, заданных в долларах, в гривны
+          для показа пользователям из Украины.
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            value={usdRate}
+            onChange={(e) => setUsdRate(e.target.value)}
+            placeholder="напр. 41.5"
+            className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+          />
+          <button
+            onClick={saveRate}
+            disabled={rateSaving}
+            className="bg-gold text-bgPrimary font-semibold px-5 py-2 rounded-full text-sm disabled:opacity-50"
+          >
+            Сохранить
+          </button>
+        </div>
+        {rateSaved && (
+          <span className="text-success text-sm mt-2 inline-block">
+            Сохранено!
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function BrandingTab() {
   const [sponsorLogoUrl, setSponsorLogoUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -3748,6 +3911,13 @@ function BrandingTab() {
 
   const [paidMessagesEnabled, setPaidMessagesEnabled] = useState(false);
   const [paidMessagesSaving, setPaidMessagesSaving] = useState(false);
+
+  const [countdownEnabled, setCountdownEnabled] = useState(false);
+  const [countdownTargetAt, setCountdownTargetAt] = useState("");
+  const [countdownTitle, setCountdownTitle] = useState("");
+  const [countdownSubtitle, setCountdownSubtitle] = useState("");
+  const [countdownButtonText, setCountdownButtonText] = useState("");
+  const [countdownSaved, setCountdownSaved] = useState(false);
 
   const [popupEnabled, setPopupEnabled] = useState(false);
   const [popupImageUrl, setPopupImageUrl] = useState<string | null>(null);
@@ -3810,6 +3980,11 @@ function BrandingTab() {
         "ticker_text",
         "ticker_enabled",
         "paid_messages_enabled",
+        "welcome_countdown_enabled",
+        "welcome_countdown_target_at",
+        "welcome_countdown_title",
+        "welcome_countdown_subtitle",
+        "welcome_countdown_button_text",
       ]);
     const map: Record<string, string> = {};
     (data ?? []).forEach((r: { key: string; value: string }) => {
@@ -3819,6 +3994,18 @@ function BrandingTab() {
     setTickerText(map.ticker_text ?? "");
     setTickerEnabled(map.ticker_enabled === "true");
     setPaidMessagesEnabled(map.paid_messages_enabled === "true");
+    setCountdownEnabled(map.welcome_countdown_enabled === "true");
+    setCountdownTargetAt(map.welcome_countdown_target_at ?? "");
+    setCountdownTitle(
+      map.welcome_countdown_title ?? "Приём заявок открыт!"
+    );
+    setCountdownSubtitle(
+      map.welcome_countdown_subtitle ??
+        "До старта первой недели конкурса осталось:"
+    );
+    setCountdownButtonText(
+      map.welcome_countdown_button_text ?? "Подать анкету"
+    );
     await loadPopup();
     setLoading(false);
   }
@@ -3858,6 +4045,24 @@ function BrandingTab() {
       .upsert({ key: "paid_messages_enabled", value: next ? "true" : "false" });
     setPaidMessagesEnabled(next);
     setPaidMessagesSaving(false);
+  }
+
+  async function saveCountdown() {
+    await supabase.from("platform_settings").upsert([
+      {
+        key: "welcome_countdown_enabled",
+        value: countdownEnabled ? "true" : "false",
+      },
+      { key: "welcome_countdown_target_at", value: countdownTargetAt },
+      { key: "welcome_countdown_title", value: countdownTitle },
+      { key: "welcome_countdown_subtitle", value: countdownSubtitle },
+      {
+        key: "welcome_countdown_button_text",
+        value: countdownButtonText,
+      },
+    ]);
+    setCountdownSaved(true);
+    setTimeout(() => setCountdownSaved(false), 2000);
   }
 
   async function saveTicker() {
@@ -4028,6 +4233,80 @@ function BrandingTab() {
           старте можно скрыть, включить позже одним нажатием — без
           выгрузки файлов.
         </p>
+      </div>
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mt-6">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-offwhite text-sm font-semibold">
+            Страница отсчёта после регистрации
+          </p>
+          <button
+            onClick={() => setCountdownEnabled((v) => !v)}
+            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+              countdownEnabled
+                ? "bg-success text-bgPrimary"
+                : "bg-bgPrimary border border-muted text-muted"
+            }`}
+          >
+            {countdownEnabled ? "Включена" : "Выключена"}
+          </button>
+        </div>
+        <p className="text-muted text-xs mb-3">
+          Показывается один раз сразу после регистрации: отсчёт до
+          указанной даты/времени и кнопка «Подать анкету». Если
+          выключена — после регистрации сразу открывается главная.
+        </p>
+
+        <label className="text-offwhite text-xs block mb-1">
+          Дата и время, до которых идёт отсчёт
+        </label>
+        <input
+          type="datetime-local"
+          value={countdownTargetAt}
+          onChange={(e) => setCountdownTargetAt(e.target.value)}
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        />
+
+        <label className="text-offwhite text-xs block mb-1">
+          Заголовок
+        </label>
+        <input
+          value={countdownTitle}
+          onChange={(e) => setCountdownTitle(e.target.value)}
+          placeholder="Приём заявок открыт!"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        />
+
+        <label className="text-offwhite text-xs block mb-1">
+          Подпись над отсчётом
+        </label>
+        <textarea
+          value={countdownSubtitle}
+          onChange={(e) => setCountdownSubtitle(e.target.value)}
+          rows={2}
+          placeholder="До старта первой недели конкурса осталось:"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        />
+
+        <label className="text-offwhite text-xs block mb-1">
+          Текст на кнопке
+        </label>
+        <input
+          value={countdownButtonText}
+          onChange={(e) => setCountdownButtonText(e.target.value)}
+          placeholder="Подать анкету"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        />
+
+        <button
+          onClick={saveCountdown}
+          className="bg-gold text-bgPrimary font-semibold px-6 py-2 rounded-full text-sm"
+        >
+          Сохранить
+        </button>
+        {countdownSaved && (
+          <span className="text-success text-sm ml-3">Сохранено!</span>
+        )}
       </div>
     </div>
   );
