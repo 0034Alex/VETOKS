@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -17,6 +17,25 @@ export default function LoginPage() {
     setStatus("loading");
     setErrorMessage("");
 
+    let email = identifier.trim();
+
+    if (!email.includes("@")) {
+      // Ввели не почту — похоже на телефон, ищем почту по номеру
+      // (так же, как раньше умел вход по почте или телефону).
+      const { data: userRow } = await supabase
+        .from("users")
+        .select("email")
+        .eq("phone", identifier.trim())
+        .maybeSingle();
+
+      if (!userRow?.email) {
+        setStatus("error");
+        setErrorMessage("Аккаунт с такой почтой или телефоном не найден.");
+        return;
+      }
+      email = userRow.email;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -24,7 +43,7 @@ export default function LoginPage() {
 
     if (error) {
       setStatus("error");
-      setErrorMessage("Неверная почта или пароль.");
+      setErrorMessage("Неверные данные для входа или пароль.");
       return;
     }
 
@@ -46,11 +65,10 @@ export default function LoginPage() {
         className="w-full max-w-sm flex flex-col gap-3 text-left"
       >
         <div>
-          <label className="text-offwhite text-sm">Почта</label>
+          <label className="text-offwhite text-sm">Почта или телефон</label>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
             required
           />
