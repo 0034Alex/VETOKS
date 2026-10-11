@@ -21,13 +21,24 @@ export default function RegisterPage() {
   const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
-    supabase
-      .from("regions")
-      .select("id, name")
-      .order("name")
-      .then(({ data }) => {
-        if (data) setRegions(data as Region[]);
-      });
+    (async () => {
+      // Показываем регионы только включённой сейчас страны (см. CRM →
+      // «Страны и регионы»), чтобы при переходе с России на Украину (или
+      // любую другую страну в будущем) список сразу обновлялся без
+      // переписывания кода.
+      const { data: enabledCountries } = await supabase
+        .from("countries")
+        .select("id")
+        .eq("enabled", true);
+      const countryIds = (enabledCountries ?? []).map((c: { id: string }) => c.id);
+
+      let query = supabase.from("regions").select("id, name").order("name");
+      if (countryIds.length > 0) {
+        query = query.in("country_id", countryIds);
+      }
+      const { data } = await query;
+      if (data) setRegions(data as Region[]);
+    })();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -88,7 +99,9 @@ export default function RegisterPage() {
       return;
     }
 
-    router.push("/");
+    // Страница отсчёта сама решает, показываться ли (включается в CRM) —
+    // если выключена, она тут же отправит на главную.
+    router.push("/welcome");
   }
 
   return (
