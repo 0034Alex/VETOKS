@@ -139,8 +139,23 @@ export default function VerifyPhonePopup() {
   if (!open || hidden) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/70 flex items-end sm:items-center justify-center px-4 pb-6">
-      <div className="w-full max-w-sm bg-bgSurface border border-gold rounded-2xl p-5 text-center">
+    <div
+      className="fixed left-0 right-0 top-0 z-[100] bg-black/70 flex items-center justify-center px-4"
+      style={{ height: "100dvh", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
+      onClick={dismiss}
+    >
+      <div
+        className="relative w-full max-w-sm bg-bgSurface border border-gold rounded-2xl p-5 text-center overflow-y-auto"
+        style={{ maxHeight: "85dvh" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={dismiss}
+          aria-label="Закрыть"
+          className="absolute top-2 right-3 text-muted text-2xl leading-none w-9 h-9"
+        >
+          ✕
+        </button>
         {state === "done" ? (
           <>
             <p className="text-3xl mb-2">✅</p>
@@ -148,7 +163,7 @@ export default function VerifyPhonePopup() {
           </>
         ) : (
           <>
-            <h2 className="text-gold text-lg font-semibold mb-2">
+            <h2 className="text-gold text-lg font-semibold mb-2 pr-6">
               Подтвердите номер в Telegram
             </h2>
             <p className="text-offwhite text-sm mb-1">
