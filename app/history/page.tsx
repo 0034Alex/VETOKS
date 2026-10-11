@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import { getCurrencySymbol } from "@/lib/currency";
 
 type Tx = {
   id: string;
@@ -28,9 +29,12 @@ export default function HistoryPage() {
   const router = useRouter();
   const [items, setItems] = useState<Tx[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currencySymbol, setCurrencySymbol] = useState("₴");
 
   useEffect(() => {
     (async () => {
+      setCurrencySymbol(await getCurrencySymbol());
+
       const u = await getCurrentUser();
       if (!u) {
         router.push("/login?redirect=/history");
@@ -89,7 +93,7 @@ export default function HistoryPage() {
               }`}
             >
               {Number(t.amount) >= 0 ? "+" : ""}
-              {Math.round(t.amount)} ₽
+              {Math.round(t.amount)} {currencySymbol}
             </span>
           </div>
         ))}
