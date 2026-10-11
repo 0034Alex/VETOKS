@@ -2,16 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-
-function getWeekStart(): string {
-  const now = new Date();
-  const day = now.getDay(); // 0=вс, 1=пн...
-  const diff = (day === 0 ? -6 : 1) - day; // сдвиг до понедельника этой недели
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
-  return monday.toISOString().slice(0, 10);
-}
+import { apiPost } from "@/lib/authClient";
+import { kyivIsSunday, kyivWeekStart } from "@/lib/kyiv";
 
 type RegionParticipant = { id: string; display_name: string; photo_url: string | null };
 type LeaderRow = { target_participant_id: string; count: number };
@@ -32,7 +24,8 @@ export default function BlackMarkModal({
   const [leader, setLeader] = useState<(RegionParticipant & { count: number }) | null>(null);
   const [penaltyVotes, setPenaltyVotes] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
-  const weekStart = getWeekStart();
+  const weekStart = kyivWeekStart();
+  const isSunday = kyivIsSunday();
 
   useEffect(() => {
     (async () => {
@@ -125,16 +118,19 @@ export default function BlackMarkModal({
 
   async function sendMark(targetId: string) {
     if (!myParticipantId || !myRegionId || alreadySentTo) return;
-    if (!confirm("Отправить чёрную метку этой участнице? Один раз в неделю, отменить нельзя.")) return;
+    if (!confirm("Отправить чёрную метку этой участнице? Один раз в неделю, отменить нельзя. Она не узнает, кто отправил.")) return;
     setSending(true);
-    const { error } = await supabase.from("black_marks").insert({
-      sender_participant_id: myParticipantId,
-      target_participant_id: targetId,
-      region_id: myRegionId,
-      week_start: weekStart,
-    });
-    if (error) {
-      alert(`Не удалось отправить: ${error.message}`);
+    const r = await apiPost("/api/black-marks/send", { targetId });
+    if (!r.ok) {
+      const text: Record<string, string> = {
+        not_sunday: "Метки можно отправлять только в воскресенье (по киевскому времени).",
+        need_verify: "Сначала подтвердите номер в Telegram.",
+        already_sent: "Вы уже отправили метку на этой неделе.",
+        other_region: "Метку можно отправить только участнице своего региона.",
+        self: "Себе метку отправить нельзя.",
+      };
+      alert(text[r.error] ?? "Не удалось отправить. Попробуйте ещё раз.");
+      if (r.error === "need_verify") window.dispatchEvent(new Event("vetoks:verify-phone"));
       setSending(false);
       return;
     }
@@ -201,7 +197,7 @@ export default function BlackMarkModal({
               </p>
             ) : (
               <p className="text-muted text-xs mt-1">
-                Итоги недели ещё не подведены
+                Штраф применится в понедельник в 00:01
               </p>
             )}
           </div>
@@ -220,7 +216,13 @@ export default function BlackMarkModal({
         {!loading && myParticipantId && (
           <>
             <div className="border-t border-muted my-3" />
-            {alreadySentTo ? (
+            {!isSunday && !alreadySentTo ? (
+              <p className="text-muted text-xs text-center">
+                Чёрные метки можно отправлять только по воскресеньям (по
+                киевскому времени), одну в неделю и только участницам своего
+                региона.
+              </p>
+            ) : alreadySentTo ? (
               <p className="text-muted text-xs text-center">
                 Вы уже использовали чёрную метку на этой неделе —{" "}
                 {regionParticipants.find((p) => p.id === alreadySentTo)?.display_name ??

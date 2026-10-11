@@ -1,5 +1,6 @@
 "use client";
 
+import { getVoteTotals } from "@/lib/voteTotals";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -96,11 +97,8 @@ export default function ProfilePage() {
       setIsPartner(!!sponsorRow);
 
       if (p) {
-        const { count: votes } = await supabase
-          .from("votes")
-          .select("id", { count: "exact", head: true })
-          .eq("participant_id", (p as Participant).id);
-        setVoteCount(votes ?? 0);
+        const totals = await getVoteTotals();
+        setVoteCount(totals[(p as Participant).id] ?? 0);
 
         const { data: giftsData } = await supabase
           .from("gifts")

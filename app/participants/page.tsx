@@ -11,6 +11,7 @@ import { formatCompact } from "@/lib/formatCompact";
 import TickerBar from "@/components/TickerBar";
 import VoteModal from "@/components/VoteModal";
 import BlackMarkModal from "@/components/BlackMarkModal";
+import { getVoteTotals } from "@/lib/voteTotals";
 
 type Participant = {
   id: string;
@@ -59,15 +60,8 @@ export default function ParticipantsPage() {
       // Max Rows в настройках Supabase и может молча обрезаться, из-за чего
       // на карточке в списке было 0, а на полной странице участницы —
       // верное число (там считали отдельным точным запросом на каждую).
-      const { data: votesData } = await supabase.rpc(
-        "get_participant_vote_counts"
-      );
-      const vCounts: Record<string, number> = {};
-      (votesData ?? []).forEach(
-        (v: { participant_id: string; cnt: number }) => {
-          vCounts[v.participant_id] = Number(v.cnt);
-        }
-      );
+      // Голоса считает база с учётом штрафов за чёрные метки.
+      const vCounts = await getVoteTotals();
       setVoteCounts(vCounts);
 
       const { data: giftsData } = await supabase.rpc(
@@ -101,15 +95,21 @@ export default function ParticipantsPage() {
         new Set((boostsData ?? []).map((b: { participant_id: string }) => b.participant_id))
       );
 
-      // Динамика позиции: сравниваем сегодняшний порядок с вчерашним снимком.
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().slice(0, 10);
-
-      const { data: snapshotData } = await supabase
+      // Динамика позиции: сравниваем текущий порядок с последним ночным
+      // снимком (его делает сервер в 00:01).
+      const { data: lastSnap } = await supabase
         .from("daily_vote_snapshots")
-        .select("participant_id, votes")
-        .eq("snapshot_date", yesterdayStr);
+        .select("snapshot_date")
+        .order("snapshot_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const { data: snapshotData } = lastSnap?.snapshot_date
+        ? await supabase
+            .from("daily_vote_snapshots")
+            .select("participant_id, votes")
+            .eq("snapshot_date", lastSnap.snapshot_date)
+        : { data: null as { participant_id: string; votes: number }[] | null };
 
       if (snapshotData && snapshotData.length > 0) {
         const yesterdayVotes: Record<string, number> = {};
@@ -245,6 +245,7 @@ export default function ParticipantsPage() {
               {f.label}
             </button>
           ))}
+          {myParticipantId && (
           <button
             onClick={() => setBlackMarkOpen(true)}
             className="ml-auto px-2.5 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-medium whitespace-nowrap bg-bgSurface border border-danger text-danger flex-shrink-0"
@@ -252,6 +253,7 @@ export default function ParticipantsPage() {
             <span className="md:hidden">🖤 Метка</span>
             <span className="hidden md:inline">🖤 Чёрная метка</span>
           </button>
+          )}
         </div>
 
         {loading && <p className="text-muted text-center">Загрузка...</p>}

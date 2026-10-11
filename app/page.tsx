@@ -1,5 +1,6 @@
 "use client";
 
+import { getVoteTotals } from "@/lib/voteTotals";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -674,11 +675,7 @@ export default function Home() {
         .select("id, display_name, photo_url, season_id, region_id")
         .eq("is_eliminated", false);
 
-      const { data: votesData } = await supabase.from("votes").select("participant_id").range(0, 49999);
-      const counts: Record<string, number> = {};
-      (votesData ?? []).forEach((v: { participant_id: string }) => {
-        counts[v.participant_id] = (counts[v.participant_id] ?? 0) + 1;
-      });
+      const counts = await getVoteTotals();
 
       const { data: giftsData } = await supabase
         .from("gifts")
@@ -738,11 +735,7 @@ export default function Home() {
     if (!inWindow || !checked) return;
 
     const interval = setInterval(async () => {
-      const { data: votesData } = await supabase.from("votes").select("participant_id").range(0, 49999);
-      const counts: Record<string, number> = {};
-      (votesData ?? []).forEach((v: { participant_id: string }) => {
-        counts[v.participant_id] = (counts[v.participant_id] ?? 0) + 1;
-      });
+      const counts = await getVoteTotals();
       setAllParticipants((prev) => {
         const updated = prev.map((p) => ({ ...p, votes: counts[p.id] ?? p.votes }));
         const newOrder = [...updated].sort((a, b) => b.votes - a.votes).map((p) => p.id);

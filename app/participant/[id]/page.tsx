@@ -11,6 +11,7 @@ import PageHeader from "@/components/PageHeader";
 import VoteModal from "@/components/VoteModal";
 import { getAppPrices, getCurrencySymbol } from "@/lib/currency";
 import { apiPost } from "@/lib/authClient";
+import { getVoteTotals } from "@/lib/voteTotals";
 
 type CollectibleCard = {
   id: string;
@@ -106,11 +107,9 @@ export default function ParticipantProfilePage() {
       .maybeSingle();
     setParticipant(p as Participant | null);
 
-    const { count: votes } = await supabase
-      .from("votes")
-      .select("id", { count: "exact", head: true })
-      .eq("participant_id", id);
-    setVoteCount(votes ?? 0);
+    // Голоса — из базы с учётом штрафов за чёрные метки.
+    const totals = await getVoteTotals();
+    setVoteCount(totals[id] ?? 0);
 
     const { data: videosData } = await supabase
       .from("content_posts")
@@ -157,13 +156,8 @@ export default function ParticipantProfilePage() {
       .select("id")
       .eq("is_eliminated", false);
     if (allParticipants) {
-      const { data: allVotes } = await supabase.from("votes").select("participant_id");
-      const counts: Record<string, number> = {};
-      (allVotes ?? []).forEach((v: { participant_id: string }) => {
-        counts[v.participant_id] = (counts[v.participant_id] ?? 0) + 1;
-      });
       const sorted = allParticipants
-        .map((p: { id: string }) => ({ id: p.id, votes: counts[p.id] ?? 0 }))
+        .map((p: { id: string }) => ({ id: p.id, votes: totals[p.id] ?? 0 }))
         .sort((a, b) => b.votes - a.votes);
       const idx = sorted.findIndex((p) => p.id === id);
       if (idx !== -1) {

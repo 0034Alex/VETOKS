@@ -6,31 +6,20 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
-
-function getWeekStart(): string {
-  const now = new Date();
-  const day = now.getDay();
-  const diff = (day === 0 ? -6 : 1) - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
-  return monday.toISOString().slice(0, 10);
-}
-
-type Sender = { display_name: string | null };
+import { kyivWeekStart } from "@/lib/kyiv";
 
 export default function BlackMarksReceivedPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [isParticipant, setIsParticipant] = useState(false);
-  const [senders, setSenders] = useState<Sender[]>([]);
+  const [count, setCount] = useState(0);
   const [penalty, setPenalty] = useState<number | null>(null);
 
   useEffect(() => {
     (async () => {
       const u = await getCurrentUser();
       if (!u) {
-        router.push("/login?redirect=/black-marks");
+        router.push("/login");
         return;
       }
       const { data: p } = await supabase
@@ -45,24 +34,23 @@ export default function BlackMarksReceivedPage() {
         return;
       }
       setIsParticipant(true);
-      const weekStart = getWeekStart();
+      const weekStart = kyivWeekStart();
 
-      const { data: marksData } = await supabase
+      // Только количество. Кто именно отправил метку — не показываем никому.
+      const { count: marks } = await supabase
         .from("black_marks")
-        .select("participants!black_marks_sender_participant_id_fkey(display_name)")
+        .select("id", { count: "exact", head: true })
         .eq("target_participant_id", p.id)
         .eq("week_start", weekStart);
-      setSenders(
-        ((marksData as any[]) ?? []).map((m) => ({
-          display_name: m.participants?.display_name ?? null,
-        }))
-      );
+      setCount(marks ?? 0);
 
+      // Штраф за прошедшую неделю (применяется в понедельник в 00:01).
       const { data: penaltyRow } = await supabase
         .from("black_mark_penalties")
-        .select("penalty_votes")
+        .select("penalty_votes, week_start")
         .eq("participant_id", p.id)
-        .eq("week_start", weekStart)
+        .order("week_start", { ascending: false })
+        .limit(1)
         .maybeSingle();
       setPenalty(penaltyRow?.penalty_votes ?? null);
 
@@ -96,32 +84,29 @@ export default function BlackMarksReceivedPage() {
           🖤 Чёрные метки на этой неделе
         </h1>
         <p className="text-muted text-sm mb-6">
-          Видно только вам
+          Видно только вам. Кто отправил метки — скрыто.
         </p>
 
         <div className="bg-bgSurface border border-danger/40 rounded-xl p-4 mb-6 text-center">
-          <p className="text-danger text-3xl font-bold">{senders.length}</p>
+          <p className="text-danger text-3xl font-bold">{count}</p>
           <p className="text-muted text-xs mt-1">
-            {senders.length === 0
+            {count === 0
               ? "Пока никто не отправил вам чёрную метку"
               : "получено меток на этой неделе"}
           </p>
-          {penalty !== null && (
+          {penalty !== null && penalty > 0 && (
             <p className="text-danger text-sm mt-2">
-              Штраф уже применён: −{penalty} голосов
+              Последний штраф: −{penalty} голосов
             </p>
           )}
         </div>
 
-        {senders.length > 0 && (
-          <div className="flex flex-col gap-2">
-            {senders.map((s, i) => (
-              <div key={i} className="bg-bgSurface border border-muted rounded-xl p-3">
-                <p className="text-offwhite text-sm">{s.display_name ?? "Участница"}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        <p className="text-muted text-xs">
+          Метки можно отправлять только по воскресеньям (по киевскому времени),
+          одну в неделю и только участницам своего региона. Штраф получает та,
+          у кого за неделю больше всего меток (не меньше двух) — он применяется
+          в понедельник в 00:01.
+        </p>
       </div>
       <BottomNav />
     </main>

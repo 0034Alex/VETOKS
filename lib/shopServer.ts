@@ -72,18 +72,4 @@ export async function participantOwner(participantId: string) {
   return data as { user_id: string; display_name: string } | null;
 }
 
-// Понедельник текущей недели по киевскому времени (YYYY-MM-DD).
-export function kyivWeekStart(): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Kyiv",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "short",
-  }).formatToParts(new Date());
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  const dow = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(get("weekday"));
-  const d = new Date(Date.UTC(+get("year"), +get("month") - 1, +get("day")));
-  d.setUTCDate(d.getUTCDate() - (dow < 0 ? 0 : dow));
-  return d.toISOString().slice(0, 10);
-}
+export { kyivWeekStart } from "@/lib/kyiv";

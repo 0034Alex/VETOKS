@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, isStaff, CurrentUser } from "@/lib/currentUser";
 import AdminPricesPanel from "@/components/AdminPricesPanel";
+import AdminRatingPanel from "@/components/AdminRatingPanel";
+import AdminBlackMarksPanel from "@/components/AdminBlackMarksPanel";
 
 type Tab =
   | "dashboard"
@@ -31,7 +33,8 @@ type Tab =
   | "tasks"
   | "black-marks"
   | "countries"
-  | "app-prices";
+  | "app-prices"
+  | "rating-admin";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -59,12 +62,13 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "black-marks", label: "Чёрная метка" },
   { key: "countries", label: "Страны и регионы" },
   { key: "app-prices", label: "Цены (в долларах)" },
+  { key: "rating-admin", label: "Рейтинг и титулы" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
 // Владелец (super_admin) видит всё независимо от галочек.
 const PERMISSION_TABS: Record<string, Tab[]> = {
-  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks"],
+  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin"],
   finance: ["dashboard", "goal"],
   partners: ["partners", "partner-logos", "banners", "magazine-ads", "ad-space", "ad-prices", "social", "branding"],
   staff: ["staff", "users"],
@@ -95,6 +99,7 @@ const NAV_LIST: (
   { type: "tab", key: "dashboard", label: "Дашборд" },
   { type: "tab", key: "countries", label: "Страны и регионы" },
   { type: "tab", key: "app-prices", label: "Цены (в долларах)" },
+  { type: "tab", key: "rating-admin", label: "Рейтинг и титулы" },
   { type: "group", key: "users-group", label: "Пользователи" },
   { type: "tab", key: "partners", label: "Партнёры" },
   { type: "group", key: "ads-group", label: "Реклама" },
@@ -334,7 +339,8 @@ export default function AdminPage() {
         {tab === "branding" && <BrandingTab />}
         {tab === "media-demo-upload" && <MediaDemoUploadTab />}
         {tab === "tasks" && <TasksAdminTab />}
-        {tab === "black-marks" && <BlackMarksAdminTab />}
+        {tab === "black-marks" && <AdminBlackMarksPanel />}
+        {tab === "rating-admin" && <AdminRatingPanel />}
         {tab === "countries" && <CountriesTab />}
         {tab === "app-prices" && <AdminPricesPanel />}
         {tab === "documents" && <DocumentsTab />}
