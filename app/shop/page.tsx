@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
+import { getAppPrices, getCurrencySymbol } from "@/lib/currency";
 
 type Gift = {
   id: string;
@@ -100,9 +101,12 @@ function ShopContent() {
   const [section, setSection] = useState<"gifts" | "votes" | "cards">(
     (searchParams.get("section") as "gifts" | "votes" | "cards") ?? "gifts"
   );
+  const [currencySymbol, setCurrencySymbol] = useState("₴");
 
   useEffect(() => {
     (async () => {
+      setCurrencySymbol(await getCurrencySymbol());
+
       const { data: giftsData } = await supabase
         .from("gift_catalog")
         .select("id, name, price, category, participant_share_percent")
@@ -353,13 +357,13 @@ function ShopContent() {
       <div className="px-6 mb-4 bg-bgSurface border border-gold/40 rounded-xl p-4 flex items-center justify-between">
         <div>
           <p className="text-muted text-xs">Ваш баланс</p>
-          <p className="text-gold text-xl font-semibold">{Math.round(balance)} ₽</p>
+          <p className="text-gold text-xl font-semibold">{Math.round(balance)} {currencySymbol}</p>
         </div>
         <button
           onClick={testTopUp}
           className="bg-bgPrimary border border-muted text-offwhite text-xs px-3 py-2 rounded-full"
         >
-          Пополнить (тест +1000₽)
+          Пополнить (тест +1000{currencySymbol})
         </button>
       </div>
 
@@ -555,7 +559,7 @@ function ShopContent() {
                 {g.name}
               </span>
               <span className="text-gold text-xs font-semibold">
-                {g.price * qty} ₽
+                {g.price * qty} {currencySymbol}
               </span>
               <div className="flex items-center gap-2 mt-1">
                 <button
@@ -628,9 +632,18 @@ function CardsSection() {
   >([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [currencySymbol, setCurrencySymbol] = useState("₴");
+  const [cardPrice, setCardPrice] = useState(120);
 
   useEffect(() => {
     (async () => {
+      const [symbol, prices] = await Promise.all([
+        getCurrencySymbol(),
+        getAppPrices(),
+      ]);
+      setCurrencySymbol(symbol);
+      if (prices.collectible_card) setCardPrice(prices.collectible_card);
+
       const { data } = await supabase
         .from("collectible_cards")
         .select(
@@ -690,7 +703,9 @@ function CardsSection() {
               c.status === "sold" ? "text-success" : "text-gold"
             }`}
           >
-            {c.status === "sold" ? "Продана" : "25 000 ₽"}
+            {c.status === "sold"
+              ? "Продана"
+              : `${cardPrice.toLocaleString("ru-RU")} ${currencySymbol}`}
           </p>
         </div>
       </a>
@@ -764,16 +779,26 @@ export default function ShopPage() {
 // ---------------------------------------------------------------------
 
 const VOTE_PACKAGES = [25, 50, 100, 200, 500, 1000];
-const PRICE_PER_VOTE = 10;
+const DEFAULT_PRICE_PER_VOTE = 4;
 
 function VotesSection() {
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [buyingAmount, setBuyingAmount] = useState<number | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [currencySymbol, setCurrencySymbol] = useState("₴");
+  const [pricePerVote, setPricePerVote] = useState(DEFAULT_PRICE_PER_VOTE);
 
   async function load() {
     setLoading(true);
+
+    const [symbol, prices] = await Promise.all([
+      getCurrencySymbol(),
+      getAppPrices(),
+    ]);
+    setCurrencySymbol(symbol);
+    if (prices.vote) setPricePerVote(prices.vote);
+
     const u = await getCurrentUser();
     if (!u) {
       setLoading(false);
@@ -812,7 +837,7 @@ function VotesSection() {
       <div className="px-6 mb-4">
         <h1 className="text-2xl font-semibold text-offwhite mb-1">Голоса</h1>
         <p className="text-muted text-xs mb-3">
-          Тестовый режим — реальные деньги пока не подключены. 1 голос = {PRICE_PER_VOTE} ₽.
+          Тестовый режим — реальные деньги пока не подключены. 1 голос = {pricePerVote} {currencySymbol}.
         </p>
         <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
           <p className="text-muted text-xs">Ваши купленные голоса</p>
@@ -830,7 +855,7 @@ function VotesSection() {
           >
             <span className="text-3xl">🗳️</span>
             <span className="text-offwhite font-semibold">{amount} голосов</span>
-            <span className="text-gold text-sm">{amount * PRICE_PER_VOTE} ₽</span>
+            <span className="text-gold text-sm">{amount * pricePerVote} {currencySymbol}</span>
             {buyingAmount === amount && (
               <span className="text-muted text-xs">Покупаем...</span>
             )}
