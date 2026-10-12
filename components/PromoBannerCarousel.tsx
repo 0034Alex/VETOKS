@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
+import { trackAd } from "@/lib/track";
 
 type Banner = {
   id: string;
@@ -78,6 +79,12 @@ export default function PromoBannerCarousel({
     return () => clearInterval(interval);
   }, [banners.length]);
 
+  useEffect(() => {
+    if (!enabled || banners.length === 0) return;
+    const b = banners[active];
+    if (b) trackAd("view", "banner", [b.id]);
+  }, [active, banners, enabled]);
+
   if (!enabled || banners.length === 0) return null;
 
   return (
@@ -115,6 +122,7 @@ export default function PromoBannerCarousel({
               href={b.link_url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => trackAd("click", "banner", [b.id])}
               style={{
                 position: "absolute",
                 inset: 0,

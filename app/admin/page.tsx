@@ -11,6 +11,7 @@ import { apiPost } from "@/lib/authClient";
 import AdminReportsPanel from "@/components/AdminReportsPanel";
 import AdminSupportPanel from "@/components/AdminSupportPanel";
 import AdminPartnersPanel from "@/components/AdminPartnersPanel";
+import AdminAdStatsPanel from "@/components/AdminAdStatsPanel";
 import AdminDashboard from "@/components/AdminDashboard";
 import AdminPeoplePanel from "@/components/AdminPeoplePanel";
 
@@ -41,7 +42,8 @@ type Tab =
   | "countries"
   | "app-prices"
   | "rating-admin"
-  | "reports";
+  | "reports"
+  | "ad-stats";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -71,6 +73,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "app-prices", label: "Цены (в долларах)" },
   { key: "rating-admin", label: "Рейтинг и титулы" },
   { key: "reports", label: "Жалобы" },
+  { key: "ad-stats", label: "Статистика рекламы" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
@@ -78,7 +81,7 @@ const TABS: { key: Tab; label: string }[] = [
 const PERMISSION_TABS: Record<string, Tab[]> = {
   moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports"],
   finance: ["dashboard", "goal"],
-  partners: ["partners", "partner-logos", "banners", "magazine-ads", "ad-space", "ad-prices", "social", "branding"],
+  partners: ["partners", "ad-stats", "partner-logos", "banners", "magazine-ads", "ad-space", "ad-prices", "social", "branding"],
   staff: ["staff", "users"],
   support: ["support", "documents"],
 };
@@ -91,7 +94,7 @@ const TAB_GROUPS: { key: string; label: string; tabs: Tab[] }[] = [
   {
     key: "ads-group",
     label: "Реклама",
-    tabs: ["partner-logos", "ad-prices", "ad-space", "banners", "magazine-ads", "branding"],
+    tabs: ["partner-logos", "ad-stats", "ad-prices", "ad-space", "banners", "magazine-ads", "branding"],
   },
 ];
 
@@ -351,6 +354,7 @@ export default function AdminPage() {
         {tab === "black-marks" && <AdminBlackMarksPanel />}
         {tab === "rating-admin" && <AdminRatingPanel />}
         {tab === "reports" && <AdminReportsPanel />}
+        {tab === "ad-stats" && <AdminAdStatsPanel />}
         {tab === "countries" && <CountriesTab />}
         {tab === "app-prices" && <AdminPricesPanel />}
         {tab === "documents" && <DocumentsTab />}

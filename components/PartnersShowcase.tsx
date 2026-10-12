@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { trackAd } from "@/lib/track";
 
 type Partner = {
   id: string;
@@ -31,7 +32,9 @@ export default function PartnersShowcase() {
         .select("id, name, logo_url, link_url")
         .eq("is_active", true)
         .limit(30);
-      setPartners(shuffle((data as Partner[]) ?? []));
+      const list = shuffle((data as Partner[]) ?? []);
+      setPartners(list);
+      trackAd("view", "logo", list.map((x) => x.id));
     })();
   }, []);
 
@@ -84,7 +87,7 @@ export default function PartnersShowcase() {
             </div>
           );
           return p.link_url ? (
-            <a key={p.id} href={p.link_url} target="_blank" rel="noopener noreferrer">
+            <a key={p.id} href={p.link_url} target="_blank" rel="noopener noreferrer" onClick={() => trackAd("click", "logo", [p.id])}>
               {card}
             </a>
           ) : (
