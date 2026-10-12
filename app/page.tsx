@@ -826,6 +826,11 @@ export default function Home() {
   return (
     <main className="min-h-screen pb-28">
       <EntryPopup />
+      {/* Верхняя зона с цветным фоном и мягкой волной снизу */}
+      <div
+        className="pb-2"
+        style={{ background: "linear-gradient(180deg, #2b2040 0%, #1d1530 55%, #150f22 100%)" }}
+      >
       <div
         className="flex items-center justify-between px-6 py-4"
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
@@ -973,6 +978,32 @@ export default function Home() {
           </div>
         )}
 
+      </div>
+      </div>
+      <svg
+        className="block w-full h-14 -mt-px mb-2"
+        viewBox="0 0 400 56"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id="waveEdge" x1="0" x2="1">
+            <stop offset="0" stopColor="#C9A227" stopOpacity="0" />
+            <stop offset="0.5" stopColor="#E8D48A" />
+            <stop offset="1" stopColor="#C9A227" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d="M0 0 L400 0 L400 14 C330 44 280 6 200 26 C120 46 70 40 0 22 Z" fill="#150f22" />
+        <path
+          d="M0 22 C70 40 120 46 200 26 C280 6 330 44 400 14"
+          fill="none"
+          stroke="url(#waveEdge)"
+          strokeWidth="1.5"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+
+      <div className="max-w-5xl mx-auto">
         <div className="px-6 mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-offwhite">
             {t("home.topDay")}
