@@ -5,6 +5,7 @@ import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import AuthGate from "@/components/AuthGate";
 import VerifyPhonePopup from "@/components/VerifyPhonePopup";
 import ReferralCapture from "@/components/ReferralCapture";
+import { LangProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "VETOKS",
@@ -37,6 +38,7 @@ export default function RootLayout({
   return (
     <html lang="uk">
       <body className="bg-bgPrimary">
+        <LangProvider>
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
           strategy="beforeInteractive"
@@ -45,6 +47,7 @@ export default function RootLayout({
         <VerifyPhonePopup />
         <ReferralCapture />
         <ServiceWorkerRegister />
+      </LangProvider>
       </body>
     </html>
   );

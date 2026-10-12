@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useT } from "@/lib/i18n";
 import {
   IconHome,
   IconUsers,
@@ -12,16 +13,17 @@ import {
 } from "./Icons";
 
 const items = [
-  { href: "/", label: "Главная", Icon: IconHome },
-  { href: "/participants", label: "Участницы", Icon: IconUsers },
-  { href: "/media", label: "Медиа", Icon: IconPlay },
-  { href: "/shop", label: "Подарки", Icon: IconGift },
-  { href: "/rating", label: "Рейтинг", Icon: IconChart },
-  { href: "/profile", label: "Профиль", Icon: IconProfile },
+  { href: "/", label: "nav.home", Icon: IconHome },
+  { href: "/participants", label: "nav.participants", Icon: IconUsers },
+  { href: "/media", label: "nav.media", Icon: IconPlay },
+  { href: "/shop", label: "nav.shop", Icon: IconGift },
+  { href: "/rating", label: "nav.rating", Icon: IconChart },
+  { href: "/profile", label: "nav.profile", Icon: IconProfile },
 ];
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { t } = useT();
 
   return (
     <nav
@@ -59,7 +61,7 @@ export default function BottomNav() {
                 className="font-medium text-center leading-none"
                 style={{ fontSize: "9px" }}
               >
-                {item.label}
+                {t(item.label)}
               </span>
             </Link>
           );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 import { getVoteTotals } from "@/lib/voteTotals";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -634,6 +635,7 @@ function Survey() {
 }
 
 export default function Home() {
+  const { t } = useT();
   const router = useRouter();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [isParticipant, setIsParticipant] = useState(false);
@@ -833,7 +835,7 @@ export default function Home() {
           href="/hall-of-fame"
           className="text-gold text-xs font-semibold border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap"
         >
-          🏆 Зал славы
+          {t("home.hallOfFame")}
         </Link>
       </div>
 
@@ -876,9 +878,9 @@ export default function Home() {
               MISS
             </p>
             <h1 className="text-2xl md:text-4xl font-bold text-offwhite mb-1 leading-tight">
-              {scope === "country" ? countryName || "Вся страна" : user?.regions?.name ?? "Сезон скоро стартует"}
+              {scope === "country" ? countryName || t("home.country") : user?.regions?.name ?? t("home.soon")}
             </h1>
-            <p className="text-muted text-[10px] mb-4 whitespace-nowrap">Красота. Харизма. Энергия.</p>
+            <p className="text-muted text-[10px] mb-4 whitespace-nowrap">{t("home.tagline")}</p>
           </div>
 
           {currentStage && totalStages > 0 ? (
@@ -892,7 +894,7 @@ export default function Home() {
             >
               <div className="flex items-center justify-between mb-2 gap-2">
                 <span className="text-offwhite text-xs font-semibold whitespace-nowrap">
-                  Этап {currentStage.stage_number} из {totalStages}
+                  {t("home.stage", { n: currentStage.stage_number, total: totalStages })}
                 </span>
                 <span className="text-muted text-[10px] truncate">{currentStage.title}</span>
               </div>
@@ -903,7 +905,7 @@ export default function Home() {
                 />
               </div>
               <p className="text-offwhite text-[10px]">
-                🕐 До конца: <span className="font-semibold">{stageCountdown}</span>
+                {t("home.untilEnd")} <span className="font-semibold">{stageCountdown}</span>
               </p>
             </div>
           ) : (
@@ -926,7 +928,7 @@ export default function Home() {
                   href="/apply"
                   className="flex items-center justify-center gap-1.5 bg-gold text-bgPrimary rounded-full py-2.5 font-semibold text-xs"
                 >
-                  📝 Подать анкету
+                  {t("home.apply")}
                 </Link>
               </div>
             )}
@@ -934,7 +936,7 @@ export default function Home() {
               href="/promo"
               className="flex-1 flex items-center justify-center gap-1.5 bg-bgPrimary/80 border border-gold/50 text-offwhite rounded-full py-2.5 font-semibold text-xs"
             >
-              ▶ Промо-ролик
+              {t("home.promo")}
             </Link>
           </div>
           <style>{`
@@ -973,16 +975,16 @@ export default function Home() {
 
         <div className="px-6 mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-offwhite">
-            🔥 ТОП участниц дня
+            {t("home.topDay")}
           </h2>
           <Link href="/top25" className="text-gold text-sm">
-            Смотреть всех →
+            {t("home.seeAll")}
           </Link>
         </div>
 
         {participants.length === 0 ? (
           <p className="text-muted text-center px-6 mb-8">
-            Пока нет одобренных участниц.
+            {t("home.noParticipants")}
           </p>
         ) : (
           <div className="flex items-end justify-center gap-1 md:gap-3 px-2 md:px-4 mb-8">
@@ -1061,7 +1063,7 @@ export default function Home() {
                 href="/apply"
                 className="flex items-center justify-center gap-2 bg-gold text-bgPrimary rounded-full py-3 w-full font-semibold text-sm"
               >
-                📝 Подать анкету на участие
+                {t("home.applyFull")}
               </Link>
             </div>
             <style>{`

@@ -6,15 +6,13 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import { useT, LANGS } from "@/lib/i18n";
 
-const TOGGLES: [string, string][] = [
-  ["gifts", "Подарки, донаты и покупки карточек"],
-  ["tasks", "Задания: одобрение и награды"],
-  ["support", "Ответы поддержки"],
-];
+const TOGGLES: string[] = ["gifts", "tasks", "support"];
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { t, lang, setLang } = useT();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState("");
   const [verified, setVerified] = useState(false);
@@ -55,43 +53,43 @@ export default function SettingsPage() {
       <div className="max-w-2xl mx-auto">
         <PageHeader />
         <div className="px-6 flex flex-col gap-4">
-          <h1 className="text-2xl font-semibold text-offwhite">Настройки</h1>
+          <h1 className="text-2xl font-semibold text-offwhite">{t("settings.title")}</h1>
 
           <div className="bg-bgSurface border border-muted rounded-xl p-4">
-            <p className="text-offwhite font-semibold text-sm mb-2">Номер телефона</p>
+            <p className="text-offwhite font-semibold text-sm mb-2">{t("settings.phone")}</p>
             {verified ? (
-              <p className="text-success text-sm">✓ Подтверждён{phone ? ` (${phone})` : ""}</p>
+              <p className="text-success text-sm">{t("settings.verified")}{phone ? ` (${phone})` : ""}</p>
             ) : (
               <>
                 <p className="text-muted text-xs mb-2">
-                  Без подтверждения недоступны бесплатные голоса. Номер подтверждается через Telegram-бота.
+                  {t("settings.verifyHint")}
                 </p>
                 <button
                   onClick={() => window.dispatchEvent(new Event("vetoks:verify-phone"))}
                   className="bg-gold text-bgPrimary font-semibold px-5 py-2 rounded-full text-sm"
                 >
-                  Подтвердить номер
+                  {t("settings.verifyBtn")}
                 </button>
               </>
             )}
             <p className="text-muted text-[11px] mt-3">
-              Номер нельзя изменить вручную — только повторным подтверждением через Telegram.
+              {t("settings.phoneNote")}
             </p>
           </div>
 
           <div className="bg-bgSurface border border-muted rounded-xl p-4">
-            <p className="text-offwhite font-semibold text-sm mb-1">Уведомления в Telegram</p>
+            <p className="text-offwhite font-semibold text-sm mb-1">{t("settings.notif")}</p>
             {tgLinked ? (
-              <p className="text-muted text-xs mb-3">Важные события дублируются сообщением от бота.</p>
+              <p className="text-muted text-xs mb-3">{t("settings.notifLinked")}</p>
             ) : (
               <p className="text-muted text-xs mb-3">
-                Telegram не привязан к аккаунту — сообщения от бота не придут, уведомления будут только в приложении.
+                {t("settings.notifNotLinked")}
               </p>
             )}
             <div className="flex flex-col gap-2">
-              {TOGGLES.map(([k, label]) => (
+              {TOGGLES.map((k) => (
                 <label key={k} className="flex items-center justify-between gap-3 text-offwhite text-sm">
-                  <span>{label}</span>
+                  <span>{t("settings.n." + k)}</span>
                   <input type="checkbox" checked={prefs[k] !== false} onChange={() => toggle(k)} />
                 </label>
               ))}
@@ -99,9 +97,21 @@ export default function SettingsPage() {
           </div>
 
           <div className="bg-bgSurface border border-muted rounded-xl p-4">
-            <p className="text-offwhite font-semibold text-sm mb-1">Язык</p>
-            <p className="text-offwhite text-sm">Русский</p>
-            <p className="text-muted text-xs mt-1">Украинский и английский появятся позже.</p>
+            <p className="text-offwhite font-semibold text-sm mb-2">{t("settings.language")}</p>
+            <div className="flex flex-wrap gap-2">
+              {LANGS.map((l) => (
+                <button
+                  key={l.code}
+                  onClick={() => setLang(l.code)}
+                  className={`px-4 py-2 rounded-full text-sm border ${
+                    lang === l.code ? "bg-gold text-bgPrimary border-gold" : "border-muted text-offwhite"
+                  }`}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-muted text-xs mt-2">{t("settings.langNote")}</p>
           </div>
         </div>
       </div>

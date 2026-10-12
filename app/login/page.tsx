@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useT } from "@/lib/i18n";
 import { supabase } from "@/lib/supabaseClient";
 import { getInitData, openSession, postJson } from "@/lib/authClient";
 import TelegramLoginButton from "@/components/TelegramLoginButton";
 
 export default function LoginPage() {
+  const { t } = useT();
   const router = useRouter();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -55,7 +57,7 @@ export default function LoginPage() {
     const r = await postJson("/api/auth/password-login", { identifier, password });
     if (r.status !== "ok") {
       setStatus("error");
-      setErrorMessage(r.message || "Неверные данные для входа или пароль.");
+      setErrorMessage(r.message || t("login.errBad"));
       return;
     }
     const { error } = await supabase.auth.setSession({
@@ -64,7 +66,7 @@ export default function LoginPage() {
     });
     if (error) {
       setStatus("error");
-      setErrorMessage("Не удалось войти. Попробуйте ещё раз.");
+      setErrorMessage(t("login.errFail"));
       return;
     }
     router.replace("/");
@@ -81,23 +83,23 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-      <h1 className="text-3xl font-semibold text-gold mb-2">Вход</h1>
+      <h1 className="text-3xl font-semibold text-gold mb-2">{t("login.title")}</h1>
       <p className="text-muted mb-6 text-sm">
-        Нет аккаунта?{" "}
+        {t("login.noAccount")}{" "}
         <Link href="/register" className="text-gold underline">
-          Зарегистрироваться
+          {t("login.register")}
         </Link>
       </p>
 
       <div className="w-full max-w-sm flex flex-col gap-3 text-left">
         <TelegramLoginButton />
 
-        <p className="text-muted text-xs text-center my-1">или по почте / номеру</p>
+        <p className="text-muted text-xs text-center my-1">{t("login.or")}</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div>
             <label className="text-offwhite text-sm">
-              Почта или подтверждённый номер
+              {t("login.identifier")}
             </label>
             <input
               value={identifier}
@@ -107,7 +109,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="text-offwhite text-sm">Пароль</label>
+            <label className="text-offwhite text-sm">{t("login.password")}</label>
             <input
               type="password"
               value={password}
@@ -121,7 +123,7 @@ export default function LoginPage() {
             href="/forgot-password"
             className="text-gold underline text-xs text-right -mt-1"
           >
-            Забыли пароль?
+            {t("login.forgot")}
           </Link>
 
           <button
@@ -129,7 +131,7 @@ export default function LoginPage() {
             disabled={status === "loading"}
             className="bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full mt-2 disabled:opacity-50"
           >
-            {status === "loading" ? "Входим..." : "Войти"}
+            {status === "loading" ? t("login.loading") : t("login.submit")}
           </button>
 
           {errorMessage && <p className="text-danger text-sm">{errorMessage}</p>}

@@ -10,6 +10,7 @@ import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import SocialLinksBar from "@/components/SocialLinksBar";
 import { getCurrencySymbol } from "@/lib/currency";
+import { useT } from "@/lib/i18n";
 
 type Participant = { id: string; display_name: string };
 
@@ -30,6 +31,7 @@ function maskEmail(email: string | null | undefined): string {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { t } = useT();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [isPartner, setIsPartner] = useState(false);
@@ -248,15 +250,15 @@ export default function ProfilePage() {
         <div className="px-6">
           {user && !user.phone_verified && !phoneDone && (
             <div className="rounded-xl p-4 mb-4 border border-gold bg-gradient-to-r from-[#7C3AED]/30 to-[#EC4899]/30">
-              <p className="text-offwhite font-semibold text-sm mb-1">📱 Подтвердите номер в Telegram</p>
+              <p className="text-offwhite font-semibold text-sm mb-1">{t("profile.verifyTitle")}</p>
               <p className="text-muted text-xs mb-3">
-                Без подтверждения недоступны бесплатные голоса. Это займёт полминуты.
+                {t("profile.verifyText")}
               </p>
               <button
                 onClick={() => window.dispatchEvent(new Event("vetoks:verify-phone"))}
                 className="bg-gold text-bgPrimary font-semibold px-5 py-2 rounded-full text-sm"
               >
-                Подтвердить
+                {t("profile.verifyBtn")}
               </button>
             </div>
           )}
@@ -267,7 +269,7 @@ export default function ProfilePage() {
                 {user?.first_name}
                 {participant && (
                   <span className="ml-2 text-xs bg-gold text-bgPrimary px-2 py-0.5 rounded-full align-middle">
-                    Участница
+                    {t("profile.participant")}
                   </span>
                 )}
               </h1>
@@ -275,7 +277,7 @@ export default function ProfilePage() {
                 onClick={() => setShowPrivate((v) => !v)}
                 className="text-muted text-xs whitespace-nowrap"
               >
-                {showPrivate ? "🙈 Скрыть" : "👁 Показать данные"}
+                {showPrivate ? t("profile.hideData") : t("profile.showData")}
               </button>
             </div>
             <p className="text-muted text-sm">
@@ -285,7 +287,7 @@ export default function ProfilePage() {
               {showPrivate ? user?.email : maskEmail(user?.email)}
             </p>
             <p className="text-muted text-sm">
-              Регион: {user?.regions?.name ?? "—"}
+              {t("profile.region")} {user?.regions?.name ?? "—"}
             </p>
             <p className="text-muted text-xs mt-2">
               ID: {user?.referral_code}
@@ -298,10 +300,10 @@ export default function ProfilePage() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-muted text-xs">Баланс</p>
+                <p className="text-muted text-xs">{t("profile.balance")}</p>
                 <p className="text-gold text-xl font-semibold">{Math.round(balance)} {currencySymbol}</p>
               </div>
-              <span className="text-gold text-xs">Подробнее →</span>
+              <span className="text-gold text-xs">{t("profile.more")}</span>
             </div>
           </Link>
 
@@ -311,7 +313,7 @@ export default function ProfilePage() {
               className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
             >
               <span className="text-offwhite font-semibold text-sm">
-                🏰 Клан региона
+                {t("profile.clan")}
               </span>
             </Link>
           )}
@@ -322,7 +324,7 @@ export default function ProfilePage() {
                 <p className="text-gold text-lg font-semibold">
                   {voteCount}
                 </p>
-                <p className="text-muted text-xs">Голосов набрано</p>
+                <p className="text-muted text-xs">{t("profile.votes")}</p>
               </div>
               <Link
                 href={`/participant/${participant.id}/gifts`}
@@ -331,7 +333,7 @@ export default function ProfilePage() {
                 <p className="text-gold text-lg font-semibold">
                   {giftCount}
                 </p>
-                <p className="text-muted text-xs">Подарков получено →</p>
+                <p className="text-muted text-xs">{t("profile.gifts")}</p>
               </Link>
             </div>
           )}
@@ -368,7 +370,7 @@ export default function ProfilePage() {
               className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mb-4"
             >
               <span className="text-white font-semibold text-sm">
-                💡 Идеи для контента на сегодня
+                {t("profile.ideas")}
               </span>
             </a>
           )}
@@ -379,7 +381,7 @@ export default function ProfilePage() {
               className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
             >
               <span className="text-gold font-semibold text-sm">
-                🎬 Материалы для монтажа
+                {t("profile.materials")}
               </span>
             </a>
           )}
@@ -390,7 +392,7 @@ export default function ProfilePage() {
               className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mb-4"
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-white font-semibold">⭐ Задания</span>
+                <span className="text-white font-semibold">{t("profile.tasks")}</span>
                 <span className="text-white text-sm">
                   {tasksDone} / {TOTAL_TASKS}
                 </span>
@@ -415,21 +417,21 @@ export default function ProfilePage() {
               className="block bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4"
             >
               <span className="text-offwhite font-semibold text-sm">
-                🏰 Клан региона
+                {t("profile.clan")}
               </span>
             </a>
           )}
 
           <div className="bg-bgSurface border border-muted rounded-xl divide-y divide-muted mb-6">
             <a href="/invites" className="p-4 flex items-center justify-between">
-              <span className="text-offwhite text-sm">Мои приглашения</span>
+              <span className="text-offwhite text-sm">{t("profile.invites")}</span>
               <span className="text-gold text-sm">{referralCount} →</span>
             </a>
             <a
               href="/my-follows"
               className="p-4 flex items-center justify-between text-muted text-sm"
             >
-              <span>Мои подписки</span>
+              <span>{t("profile.follows")}</span>
               <span>→</span>
             </a>
             {participant && (
@@ -437,7 +439,7 @@ export default function ProfilePage() {
                 href="/black-marks"
                 className="p-4 flex items-center justify-between text-muted text-sm"
               >
-                <span>🖤 Полученные чёрные метки</span>
+                <span>{t("profile.blackMarks")}</span>
                 <span>→</span>
               </a>
             )}
@@ -445,7 +447,7 @@ export default function ProfilePage() {
               href="/edit-profile"
               className="p-4 flex items-center justify-between text-muted text-sm"
             >
-              <span>Редактировать профиль</span>
+              <span>{t("profile.edit")}</span>
               <span>→</span>
             </a>
             {(participant || isPartner) && (
@@ -453,7 +455,7 @@ export default function ProfilePage() {
                 href="/documents"
                 className="p-4 flex items-center justify-between text-muted text-sm"
               >
-                <span>Документы</span>
+                <span>{t("profile.docs")}</span>
                 <span>→</span>
               </a>
             )}
@@ -462,7 +464,7 @@ export default function ProfilePage() {
                 href="/ad-space"
                 className="p-4 flex items-center justify-between text-muted text-sm"
               >
-                <span>Рекламный кабинет</span>
+                <span>{t("profile.ads")}</span>
                 <span>→</span>
               </a>
             )}
@@ -470,14 +472,14 @@ export default function ProfilePage() {
               href="/settings"
               className="p-4 flex items-center justify-between text-muted text-sm"
             >
-              <span>Настройки</span>
+              <span>{t("profile.settings")}</span>
               <span>→</span>
             </a>
             <a
               href="/support"
               className="p-4 flex items-center justify-between text-muted text-sm"
             >
-              <span>Помощь и поддержка</span>
+              <span>{t("profile.support")}</span>
               <span>→</span>
             </a>
           </div>
@@ -488,7 +490,7 @@ export default function ProfilePage() {
               className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mb-6 text-center"
             >
               <span className="text-white font-semibold text-sm">
-                🏢 Кабинет партнёра
+                {t("profile.partnerCabinet")}
               </span>
             </a>
           ) : (
@@ -497,7 +499,7 @@ export default function ProfilePage() {
               className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mb-6 text-center"
             >
               <span className="text-white font-semibold text-sm">
-                🤝 Стать партнёром
+                {t("profile.becomePartner")}
               </span>
             </a>
           )}
@@ -506,7 +508,7 @@ export default function ProfilePage() {
             onClick={installAndroid}
             className="w-full flex items-center justify-center gap-2 bg-gold text-bgPrimary font-semibold rounded-xl py-3 mb-2 text-sm"
           >
-            📲 Установить приложение
+            {t("profile.install")}
           </button>
 
           <SocialLinksBar />
@@ -515,7 +517,7 @@ export default function ProfilePage() {
             onClick={handleLogout}
             className="w-full border border-danger text-danger font-semibold py-3 rounded-full text-sm mt-6"
           >
-            Выйти
+            {t("profile.logout")}
           </button>
         </div>
       </div>
