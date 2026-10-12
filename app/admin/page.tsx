@@ -9,6 +9,8 @@ import AdminRatingPanel from "@/components/AdminRatingPanel";
 import AdminBlackMarksPanel from "@/components/AdminBlackMarksPanel";
 import { apiPost } from "@/lib/authClient";
 import AdminReportsPanel from "@/components/AdminReportsPanel";
+import AdminDashboard from "@/components/AdminDashboard";
+import AdminPeoplePanel from "@/components/AdminPeoplePanel";
 
 type Tab =
   | "dashboard"
@@ -326,10 +328,10 @@ export default function AdminPage() {
       )}
 
       <div className="px-4 md:px-8 py-6 pb-20">
-        {tab === "dashboard" && <Dashboard />}
+        {tab === "dashboard" && <AdminDashboard onGo={(k) => setTab(k as Tab)} />}
         {tab === "applications" && <Applications />}
         {tab === "participants" && <ParticipantsTab />}
-        {tab === "users" && <UsersTab />}
+        {tab === "users" && <AdminPeoplePanel />}
         {tab === "staff" && <StaffTab />}
         {tab === "partners" && <PartnersTab />}
         {tab === "partner-logos" && <PartnerLogosTab />}
