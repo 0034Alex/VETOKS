@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { bad, kyivWeekStart, notify, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
+import { bad, kyivWeekStart, notify, fanEvent, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
 import { getShare } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +33,7 @@ export async function POST(req: Request) {
     return bad("server", 500);
   }
 
+  await fanEvent(uid, participantId, owner.display_name, "donate", `Донат ${amount} ₴`, amount);
   await notify(owner.user_id, `💝 Вам задонатили ${amount} ₴ на цель недели`, `/participant/${participantId}`, "gifts");
   return NextResponse.json({ ok: true, balance: res.balance });
 }

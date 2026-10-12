@@ -95,3 +95,36 @@ export async function participantOwner(participantId: string) {
 }
 
 export { kyivWeekStart } from "@/lib/kyiv";
+
+// Живая Фан-Зона: запись о дорогой покупке в общую ленту (если включено в CRM и сумма не меньше порога).
+export async function fanEvent(
+  userId: string,
+  participantId: string,
+  participantName: string,
+  kind: "gift" | "boost" | "card" | "donate",
+  label: string,
+  amount: number
+) {
+  try {
+    const { data: st } = await supabaseAdmin
+      .from("platform_settings")
+      .select("key, value")
+      .in("key", ["fanzone_enabled", "fanzone_min_amount"]);
+    const m: Record<string, string> = {};
+    (st ?? []).forEach((r: any) => (m[r.key] = r.value ?? ""));
+    if (m.fanzone_enabled === "false") return;
+    const min = Number(m.fanzone_min_amount);
+    if (amount < (Number.isFinite(min) && m.fanzone_min_amount !== "" ? min : 50)) return;
+    const { data: u } = await supabaseAdmin.from("users").select("first_name").eq("id", userId).maybeSingle();
+    await supabaseAdmin.from("fan_feed").insert({
+      sender_name: (u?.first_name as string) || "Гость",
+      participant_id: participantId,
+      participant_name: participantName,
+      kind,
+      label,
+      amount,
+    });
+  } catch {
+    /* лента не должна ломать покупку */
+  }
+}

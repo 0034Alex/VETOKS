@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
+import FanZoneStrip from "@/components/FanZoneStrip";
 import { getAppPrices, getCurrencySymbol, getUsdRate } from "@/lib/currency";
 import { apiPost } from "@/lib/authClient";
 
@@ -236,6 +237,8 @@ function ShopContent() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
+
+      <FanZoneStrip />
 
       <div className="px-6 mb-4 flex gap-2">
         <button

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-const KEYS = ["strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text"];
+const KEYS = ["strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text", "fanzone_enabled", "fanzone_min_amount"];
 
 // CRM → «Главная»: красная полоса и кнопка «Как это работает».
 export default function AdminHomeSettingsPanel() {
@@ -63,6 +63,26 @@ export default function AdminHomeSettingsPanel() {
           placeholder="Как это работает"
           className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
         />
+      </div>
+
+      <div className="bg-bgSurface border border-muted rounded-xl p-4">
+        <p className="text-offwhite font-semibold text-sm mb-2">🔥 Живая Фан-Зона (в разделе «Подарки»)</p>
+        <label className="flex items-center gap-2 text-offwhite text-sm mb-2">
+          <input
+            type="checkbox"
+            checked={v.fanzone_enabled !== "false"}
+            onChange={(e) => set("fanzone_enabled", e.target.checked ? "true" : "false")}
+          />
+          Показывать живую строку с дорогими подарками и покупками
+        </label>
+        <input
+          type="number"
+          value={v.fanzone_min_amount ?? ""}
+          onChange={(e) => set("fanzone_min_amount", e.target.value)}
+          placeholder="50"
+          className="w-40 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+        />
+        <p className="text-muted text-xs mt-1">Минимальная сумма покупки (₴), чтобы она попала в ленту. Пусто — 50 ₴. Меняется сразу для новых покупок.</p>
       </div>
 
       <button onClick={save} className="bg-gold text-bgPrimary font-semibold py-2.5 rounded-full text-sm">

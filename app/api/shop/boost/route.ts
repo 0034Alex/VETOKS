@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { bad, notify, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
+import { bad, notify, fanEvent, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
 import { getAppPrice } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
@@ -56,6 +56,7 @@ export async function POST(req: Request) {
   }));
   await supabaseAdmin.from("votes").insert(rows);
 
+  await fanEvent(uid, participantId, owner.display_name, "boost", "Буст в топ", p.price);
   await notify(owner.user_id, `🚀 Ваш профиль продвинут — +${BOOST_VOTES} голосов`, `/participant/${participantId}`, "gifts");
   return NextResponse.json({ ok: true, balance: res.balance });
 }

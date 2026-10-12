@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { bad, notify, participantOwner, pay, requireUser } from "@/lib/shopServer";
+import { bad, notify, fanEvent, participantOwner, pay, requireUser } from "@/lib/shopServer";
 import { getAppPrice } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +49,7 @@ export async function POST(req: Request) {
 
   const owner = await participantOwner(claimed.participant_id);
   if (owner) {
+    await fanEvent(uid, claimed.participant_id, owner.display_name, "card", "Карточка", p.price);
     await notify(
       owner.user_id,
       `🃏 Продана карточка «${STAGE_LABELS[claimed.stage] ?? claimed.stage}» за ${p.price.toLocaleString("ru-RU")} ₴`,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { bad, notify, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
+import { bad, fanEvent, notify, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
 import { getUsdRate, giftUahPrice } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +51,7 @@ export async function POST(req: Request) {
     return bad("server", 500);
   }
 
+  await fanEvent(uid, participantId, owner.display_name, "gift", `${gift.name}${qty > 1 ? ` ×${qty}` : ""}`, total);
   await notify(
     owner.user_id,
     `🎁 Вам подарили ${gift.name}${qty > 1 ? ` ×${qty}` : ""}`,
