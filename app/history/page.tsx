@@ -23,6 +23,7 @@ const TYPE_LABELS: Record<string, string> = {
   task_reward: "Награда за задание",
   boost_purchase: "Буст в топ",
   refund: "Возврат",
+  referral_reward: "Награда за приглашение",
 };
 
 export default function HistoryPage() {

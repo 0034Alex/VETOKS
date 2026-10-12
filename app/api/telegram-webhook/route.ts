@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { normalizePhone } from "@/lib/phone";
+import { qualifyReferral } from "@/lib/referral";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -183,6 +184,7 @@ async function handleContact(chatId: string, message: any) {
   }
 
   await supabaseAdmin.from("phone_verify_tokens").update({ used: true }).eq("token", tokenRow.token);
+  await qualifyReferral(tokenRow.user_id);
   await supabaseAdmin.from("telegram_links").upsert({
     user_id: tokenRow.user_id,
     chat_id: chatId,

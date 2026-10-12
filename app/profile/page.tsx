@@ -174,7 +174,7 @@ export default function ProfilePage() {
       }
 
       const { count: referrals } = await supabase
-        .from("referral_events")
+        .from("referrals")
         .select("id", { count: "exact", head: true })
         .eq("referrer_id", u.id);
       setReferralCount(referrals ?? 0);
@@ -421,10 +421,10 @@ export default function ProfilePage() {
           )}
 
           <div className="bg-bgSurface border border-muted rounded-xl divide-y divide-muted mb-6">
-            <div className="p-4 flex items-center justify-between">
+            <a href="/invites" className="p-4 flex items-center justify-between">
               <span className="text-offwhite text-sm">Мои приглашения</span>
-              <span className="text-gold text-sm">{referralCount}</span>
-            </div>
+              <span className="text-gold text-sm">{referralCount} →</span>
+            </a>
             <a
               href="/my-follows"
               className="p-4 flex items-center justify-between text-muted text-sm"

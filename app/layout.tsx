@@ -4,6 +4,7 @@ import Script from "next/script";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import AuthGate from "@/components/AuthGate";
 import VerifyPhonePopup from "@/components/VerifyPhonePopup";
+import ReferralCapture from "@/components/ReferralCapture";
 
 export const metadata: Metadata = {
   title: "VETOKS",
@@ -42,6 +43,7 @@ export default function RootLayout({
         />
         <AuthGate>{children}</AuthGate>
         <VerifyPhonePopup />
+        <ReferralCapture />
         <ServiceWorkerRegister />
       </body>
     </html>

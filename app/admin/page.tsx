@@ -16,6 +16,7 @@ import AdminDocumentsPanel from "@/components/AdminDocumentsPanel";
 import { makeCardImage } from "@/lib/cardFrame";
 import AdminHomeSettingsPanel from "@/components/AdminHomeSettingsPanel";
 import AdminClanPanel from "@/components/AdminClanPanel";
+import AdminReferralsPanel from "@/components/AdminReferralsPanel";
 import AdminDashboard from "@/components/AdminDashboard";
 import AdminPeoplePanel from "@/components/AdminPeoplePanel";
 
@@ -49,7 +50,8 @@ type Tab =
   | "reports"
   | "ad-stats"
   | "home-settings"
-  | "clan";
+  | "clan"
+  | "referrals";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -82,13 +84,14 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "ad-stats", label: "Статистика рекламы" },
   { key: "home-settings", label: "Главная" },
   { key: "clan", label: "Чат кланов" },
+  { key: "referrals", label: "Рефералы" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
 // Владелец (super_admin) видит всё независимо от галочек.
 const PERMISSION_TABS: Record<string, Tab[]> = {
-  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports", "home-settings", "clan"],
-  finance: ["dashboard", "goal"],
+  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports", "home-settings", "clan", "referrals"],
+  finance: ["dashboard", "goal", "referrals"],
   partners: ["partners", "ad-stats", "partner-logos", "banners", "magazine-ads", "ad-space", "ad-prices", "social", "branding"],
   staff: ["staff", "users"],
   support: ["support", "documents"],
@@ -122,6 +125,7 @@ const NAV_LIST: (
   { type: "tab", key: "rating-admin", label: "Рейтинг и титулы" },
   { type: "tab", key: "reports", label: "Жалобы" },
   { type: "tab", key: "clan", label: "Чат кланов" },
+  { type: "tab", key: "referrals", label: "Рефералы" },
   { type: "group", key: "users-group", label: "Пользователи" },
   { type: "tab", key: "partners", label: "Партнёры" },
   { type: "group", key: "ads-group", label: "Реклама" },
@@ -367,6 +371,7 @@ export default function AdminPage() {
         {tab === "ad-stats" && <AdminAdStatsPanel />}
         {tab === "home-settings" && <AdminHomeSettingsPanel />}
         {tab === "clan" && <AdminClanPanel />}
+        {tab === "referrals" && <AdminReferralsPanel />}
         {tab === "countries" && <CountriesTab />}
         {tab === "app-prices" && <AdminPricesPanel />}
         {tab === "documents" && <AdminDocumentsPanel />}
