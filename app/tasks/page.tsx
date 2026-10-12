@@ -7,12 +7,14 @@ import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import { getCurrencySymbol } from "@/lib/currency";
+import { apiPost } from "@/lib/authClient";
 
 type Participant = {
   id: string;
   display_name: string;
   bio: string | null;
   photo_url: string | null;
+  region_id: string | null;
 };
 
 type CustomTask = {
@@ -21,6 +23,7 @@ type CustomTask = {
   description: string;
   reward: number;
   deadline: string | null;
+  region_id: string | null;
 };
 
 const PROFILE_TASK_REWARD = 100;
@@ -51,7 +54,7 @@ export default function TasksPage() {
 
       const { data: p } = await supabase
         .from("participants")
-        .select("id, display_name, bio, photo_url")
+        .select("id, display_name, bio, photo_url, region_id")
         .eq("user_id", u.id)
         .maybeSingle();
 
@@ -96,10 +99,10 @@ export default function TasksPage() {
 
       const { data: tasksData } = await supabase
         .from("custom_tasks")
-        .select("id, title, description, reward, deadline")
+        .select("id, title, description, reward, deadline, region_id")
         .eq("is_active", true)
         .order("created_at", { ascending: false });
-      setCustomTasks((tasksData as CustomTask[]) ?? []);
+      setCustomTasks(((tasksData as CustomTask[]) ?? []).filter((t) => !t.region_id || t.region_id === p.region_id));
 
       const { data: completionsData } = await supabase
         .from("task_completions")
@@ -121,17 +124,12 @@ export default function TasksPage() {
     if (!walletId || !profileComplete || profileTaskDone) return;
     setClaiming(true);
 
-    await supabase.from("wallet_transactions").insert({
-      wallet_id: walletId,
-      type: "task_reward",
-      amount: PROFILE_TASK_REWARD,
-      metadata: { task: "profile_complete" },
-    });
-
-    await supabase
-      .from("wallets")
-      .update({ balance: balance + PROFILE_TASK_REWARD })
-      .eq("id", walletId);
+    const r = await apiPost("/api/tasks/claim-profile", {});
+    if (!r?.ok) {
+      setClaiming(false);
+      if (r?.error === "already_done") setProfileTaskDone(true);
+      return;
+    }
 
     setBalance((b) => b + PROFILE_TASK_REWARD);
     setProfileTaskDone(true);
@@ -141,12 +139,10 @@ export default function TasksPage() {
   async function submitTaskCompletion(taskId: string) {
     if (!participant) return;
     setSubmittingTaskId(taskId);
-    await supabase.from("task_completions").insert({
-      task_id: taskId,
-      participant_id: participant.id,
-      status: "pending",
-    });
-    setCompletions((prev) => ({ ...prev, [taskId]: "pending" }));
+    const r = await apiPost("/api/tasks/submit", { taskId });
+    if (r?.ok || r?.error === "already_sent") {
+      setCompletions((prev) => ({ ...prev, [taskId]: "pending" }));
+    }
     setSubmittingTaskId(null);
   }
 

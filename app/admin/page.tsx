@@ -7,6 +7,7 @@ import { getCurrentUser, isStaff, CurrentUser } from "@/lib/currentUser";
 import AdminPricesPanel from "@/components/AdminPricesPanel";
 import AdminRatingPanel from "@/components/AdminRatingPanel";
 import AdminBlackMarksPanel from "@/components/AdminBlackMarksPanel";
+import { apiPost } from "@/lib/authClient";
 import AdminReportsPanel from "@/components/AdminReportsPanel";
 
 type Tab =
@@ -4701,6 +4702,7 @@ type CustomTaskRow = {
   reward: number;
   deadline: string | null;
   is_active: boolean;
+  region_id?: string | null;
 };
 
 type PendingCompletion = {
@@ -4721,12 +4723,16 @@ function TasksAdminTab() {
   const [deadline, setDeadline] = useState("");
   const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [regionId, setRegionId] = useState("");
+  const [regionList, setRegionList] = useState<{ id: string; name: string }[]>([]);
 
   async function load() {
     setLoading(true);
+    const { data: regs } = await supabase.from("regions").select("id, name").order("name");
+    setRegionList((regs as any) ?? []);
     const { data: tasksData } = await supabase
       .from("custom_tasks")
-      .select("id, title, description, reward, deadline, is_active")
+      .select("id, title, description, reward, deadline, is_active, region_id")
       .order("created_at", { ascending: false });
     setTasks((tasksData as CustomTaskRow[]) ?? []);
 
@@ -4753,6 +4759,7 @@ function TasksAdminTab() {
         description,
         reward: Number(reward),
         deadline: deadline ? new Date(deadline).toISOString() : null,
+        region_id: regionId || null,
       })
       .select("id")
       .single();
@@ -4764,15 +4771,14 @@ function TasksAdminTab() {
     }
 
     // Пуш всем участницам
-    const { data: participantsData } = await supabase
-      .from("participants")
-      .select("user_id")
-      .eq("is_eliminated", false);
+    let pq = supabase.from("participants").select("user_id").eq("is_eliminated", false);
+    if (regionId) pq = pq.eq("region_id", regionId);
+    const { data: participantsData } = await pq;
     const notifRows = (participantsData ?? [])
       .filter((p: { user_id: string | null }) => p.user_id)
       .map((p: { user_id: string }) => ({
         user_id: p.user_id,
-        message: `⭐ Новое задание: «${title}» — награда ${Math.round(Number(reward))} ₽`,
+        message: `⭐ Новое задание: «${title}» — награда ${Math.round(Number(reward))} ₴`,
         link: "/tasks",
       }));
     if (notifRows.length > 0) {
@@ -4783,6 +4789,7 @@ function TasksAdminTab() {
     setDescription("");
     setReward("");
     setDeadline("");
+    setRegionId("");
     await load();
     setCreating(false);
   }
@@ -4792,64 +4799,14 @@ function TasksAdminTab() {
     await load();
   }
 
-  async function approve(completion: PendingCompletion, participantId: string) {
-    // participantId передаём отдельно, т.к. его нет напрямую в PendingCompletion
-    const { data: task } = await supabase
-      .from("custom_tasks")
-      .select("reward")
-      .eq("id", completion.task_id)
-      .single();
-    const rewardAmount = Number(task?.reward ?? 0);
-
-    const { data: participant } = await supabase
-      .from("participants")
-      .select("user_id")
-      .eq("id", participantId)
-      .single();
-    if (!participant?.user_id) return;
-
-    let { data: wallet } = await supabase
-      .from("wallets")
-      .select("id, balance")
-      .eq("user_id", participant.user_id)
-      .maybeSingle();
-    if (!wallet) {
-      const { data: newWallet } = await supabase
-        .from("wallets")
-        .insert({ user_id: participant.user_id })
-        .select("id, balance")
-        .single();
-      wallet = newWallet;
-    }
-    if (!wallet) return;
-
-    await supabase.from("wallet_transactions").insert({
-      wallet_id: wallet.id,
-      type: "task_reward",
-      amount: rewardAmount,
-      metadata: { task: completion.task_id },
-    });
-    await supabase
-      .from("wallets")
-      .update({ balance: Number(wallet.balance) + rewardAmount })
-      .eq("id", wallet.id);
-
-    await supabase
-      .from("task_completions")
-      .update({ status: "approved", approved_at: new Date().toISOString() })
-      .eq("id", completion.id);
-
-    await supabase.from("notifications").insert({
-      user_id: participant.user_id,
-      message: `✅ Задание «${completion.custom_tasks?.title}» одобрено — начислено ${Math.round(rewardAmount)} ₽`,
-      link: "/tasks",
-    });
-
+  async function approve(completion: PendingCompletion, _participantId: string) {
+    const r = await apiPost("/api/admin/task-review", { action: "approve", completionId: completion.id });
+    if (!r?.ok) alert("Не получилось начислить (возможно, уже одобрено).");
     await load();
   }
 
   async function reject(completionId: string) {
-    await supabase.from("task_completions").update({ status: "rejected" }).eq("id", completionId);
+    await apiPost("/api/admin/task-review", { action: "reject", completionId });
     await load();
   }
 
@@ -4875,7 +4832,7 @@ function TasksAdminTab() {
             value={reward}
             onChange={(e) => setReward(e.target.value)}
             type="number"
-            placeholder="Награда, ₽"
+            placeholder="Награда, ₴"
             className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
           />
           <input
@@ -4885,6 +4842,16 @@ function TasksAdminTab() {
             className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
           />
         </div>
+        <select
+          value={regionId}
+          onChange={(e) => setRegionId(e.target.value)}
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        >
+          <option value="">Все регионы</option>
+          {regionList.map((r) => (
+            <option key={r.id} value={r.id}>{r.name}</option>
+          ))}
+        </select>
         <button
           onClick={createTask}
           disabled={creating || !title || !description || !reward}
@@ -4908,7 +4875,7 @@ function TasksAdminTab() {
                   {c.participants?.display_name ?? "—"} — «{c.custom_tasks?.title}»
                 </p>
                 <p className="text-muted text-xs mb-2">
-                  Награда {Math.round(c.custom_tasks?.reward ?? 0)} ₽ · отправлено{" "}
+                  Награда {Math.round(c.custom_tasks?.reward ?? 0)} ₴ · отправлено{" "}
                   {new Date(c.submitted_at).toLocaleDateString("ru-RU")}
                 </p>
                 <div className="flex gap-2">
@@ -4938,8 +4905,9 @@ function TasksAdminTab() {
             <div>
               <p className="text-offwhite text-sm">{t.title}</p>
               <p className="text-muted text-xs">
-                {Math.round(t.reward)} ₽
+                {Math.round(t.reward)} ₴
                 {t.deadline && ` · до ${new Date(t.deadline).toLocaleDateString("ru-RU")}`}
+                {` · ${t.region_id ? regionList.find((r) => r.id === t.region_id)?.name ?? "регион" : "все регионы"}`}
               </p>
             </div>
             <button
