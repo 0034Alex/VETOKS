@@ -9,6 +9,7 @@ import AdminRatingPanel from "@/components/AdminRatingPanel";
 import AdminBlackMarksPanel from "@/components/AdminBlackMarksPanel";
 import { apiPost } from "@/lib/authClient";
 import AdminReportsPanel from "@/components/AdminReportsPanel";
+import AdminSupportPanel from "@/components/AdminSupportPanel";
 import AdminDashboard from "@/components/AdminDashboard";
 import AdminPeoplePanel from "@/components/AdminPeoplePanel";
 
@@ -337,7 +338,7 @@ export default function AdminPage() {
         {tab === "partner-logos" && <PartnerLogosTab />}
         {tab === "ad-space" && <AdSpaceTab />}
         {tab === "ad-prices" && <AdPricesTab />}
-        {tab === "support" && <SupportTab />}
+        {tab === "support" && <AdminSupportPanel />}
         {tab === "cards" && <CardsTab />}
         {tab === "goal" && <GoalTab />}
         {tab === "stages" && <StagesTab />}
