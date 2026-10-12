@@ -12,6 +12,8 @@ import AdminReportsPanel from "@/components/AdminReportsPanel";
 import AdminSupportPanel from "@/components/AdminSupportPanel";
 import AdminPartnersPanel from "@/components/AdminPartnersPanel";
 import AdminAdStatsPanel from "@/components/AdminAdStatsPanel";
+import AdminDocumentsPanel from "@/components/AdminDocumentsPanel";
+import { makeCardImage } from "@/lib/cardFrame";
 import AdminDashboard from "@/components/AdminDashboard";
 import AdminPeoplePanel from "@/components/AdminPeoplePanel";
 
@@ -357,7 +359,7 @@ export default function AdminPage() {
         {tab === "ad-stats" && <AdminAdStatsPanel />}
         {tab === "countries" && <CountriesTab />}
         {tab === "app-prices" && <AdminPricesPanel />}
-        {tab === "documents" && <DocumentsTab />}
+        {tab === "documents" && <AdminDocumentsPanel />}
         {tab === "calendar" && <CalendarTab />}
         {tab === "social" && <SocialLinksTab />}
         {tab === "media" && <MediaMaterialsTab />}
@@ -1365,10 +1367,50 @@ function CardsTab() {
     setUploadingId(null);
   }
 
+  async function autoFrame(row: CardRow, silent = false) {
+    if (!row.raw_photo_url) {
+      if (!silent) alert("У этой карточки нет сырого фото.");
+      return false;
+    }
+    setUploadingId(row.id);
+    try {
+      const blob = await makeCardImage(
+        row.raw_photo_url,
+        row.participants?.display_name ?? "",
+        CARD_STAGE_LABELS[row.stage] ?? row.stage
+      );
+      const filePath = `final-${row.id}-${Date.now()}.jpg`;
+      const { error } = await supabase.storage.from("card-images").upload(filePath, blob, { contentType: "image/jpeg" });
+      if (error) throw new Error(error.message);
+      const { data: pub } = supabase.storage.from("card-images").getPublicUrl(filePath);
+      await supabase.from("collectible_cards").update({ final_image_url: pub.publicUrl, status: "ready" }).eq("id", row.id);
+      setUploadingId(null);
+      return true;
+    } catch (e: any) {
+      if (!silent) alert(`Не получилось: ${e?.message ?? "ошибка"}`);
+      setUploadingId(null);
+      return false;
+    }
+  }
+
+  async function autoFrameAll() {
+    const todo = rows.filter((r) => r.status === "pending" && r.raw_photo_url);
+    if (todo.length === 0) return alert("Нет карточек на обработке.");
+    if (!confirm(`Оформить автоматически ${todo.length} шт.?`)) return;
+    let ok = 0;
+    for (const r of todo) if (await autoFrame(r, true)) ok++;
+    await load();
+    alert(`Готово: ${ok} из ${todo.length}.`);
+  }
+
   if (loading) return <p className="text-muted">Загрузка...</p>;
   if (rows.length === 0) return <p className="text-muted">Карточек пока нет.</p>;
 
   return (
+    <div>
+    <button onClick={autoFrameAll} className="mb-4 bg-gold text-bgPrimary font-semibold px-4 py-2 rounded-full text-sm">
+      ✨ Оформить все «на обработке» автоматически
+    </button>
     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
       {rows.map((r) => (
         <div
@@ -1433,6 +1475,15 @@ function CardsTab() {
           </p>
 
           {r.status !== "sold" && (
+            <button
+              onClick={async () => { if (await autoFrame(r)) await load(); }}
+              disabled={uploadingId === r.id}
+              className="block w-full text-center border border-gold text-gold font-semibold py-2 rounded-full text-xs mb-2 disabled:opacity-50"
+            >
+              {uploadingId === r.id ? "Оформляем..." : "✨ Оформить автоматически"}
+            </button>
+          )}
+          {r.status !== "sold" && (
             <label className="block w-full text-center bg-gold text-bgPrimary font-semibold py-2 rounded-full text-xs cursor-pointer">
               {uploadingId === r.id
                 ? "Загрузка..."
@@ -1451,6 +1502,7 @@ function CardsTab() {
           )}
         </div>
       ))}
+    </div>
     </div>
   );
 }
