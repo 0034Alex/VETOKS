@@ -54,6 +54,7 @@ export default function AdminDashboard({ onGo }: { onGo: (tab: string) => void }
     ["Жалобы на ролики", att.reports ?? 0, "reports"],
     ["Задания на проверке", att.tasks ?? 0, "tasks"],
     ["Обращения в поддержку", att.support ?? 0, "support"],
+    ["Партнёры: пора связаться", att.partners ?? 0, "partners"],
   ];
 
   const cards: [string, string][] = [

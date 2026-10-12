@@ -33,6 +33,9 @@ export async function POST(req: Request) {
     applications: await cnt(supabaseAdmin.from("applications").select("id", { count: "exact", head: true }).eq("status", "submitted")),
     reports: await cnt(supabaseAdmin.from("content_reports").select("id", { count: "exact", head: true }).eq("status", "open")),
     tasks: await cnt(supabaseAdmin.from("task_completions").select("id", { count: "exact", head: true }).eq("status", "pending")),
+    partners: await cnt(
+      supabaseAdmin.from("sponsors").select("id", { count: "exact", head: true }).lte("follow_up_at", today).not("stage", "in", "(done,lost)")
+    ),
     support: await cnt(supabaseAdmin.from("support_requests").select("id", { count: "exact", head: true }).neq("status", "done")),
   };
 

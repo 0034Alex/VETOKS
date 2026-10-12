@@ -10,6 +10,7 @@ import AdminBlackMarksPanel from "@/components/AdminBlackMarksPanel";
 import { apiPost } from "@/lib/authClient";
 import AdminReportsPanel from "@/components/AdminReportsPanel";
 import AdminSupportPanel from "@/components/AdminSupportPanel";
+import AdminPartnersPanel from "@/components/AdminPartnersPanel";
 import AdminDashboard from "@/components/AdminDashboard";
 import AdminPeoplePanel from "@/components/AdminPeoplePanel";
 
@@ -334,7 +335,7 @@ export default function AdminPage() {
         {tab === "participants" && <ParticipantsTab />}
         {tab === "users" && <AdminPeoplePanel />}
         {tab === "staff" && <StaffTab />}
-        {tab === "partners" && <PartnersTab />}
+        {tab === "partners" && <AdminPartnersPanel />}
         {tab === "partner-logos" && <PartnerLogosTab />}
         {tab === "ad-space" && <AdSpaceTab />}
         {tab === "ad-prices" && <AdPricesTab />}
