@@ -6,6 +6,7 @@ import AuthGate from "@/components/AuthGate";
 import VerifyPhonePopup from "@/components/VerifyPhonePopup";
 import ReferralCapture from "@/components/ReferralCapture";
 import { LangProvider } from "@/lib/i18n";
+import AutoTranslate from "@/components/AutoTranslate";
 
 export const metadata: Metadata = {
   title: "VETOKS",
@@ -46,6 +47,7 @@ export default function RootLayout({
         <AuthGate>{children}</AuthGate>
         <VerifyPhonePopup />
         <ReferralCapture />
+        <AutoTranslate />
         <ServiceWorkerRegister />
       </LangProvider>
       </body>
