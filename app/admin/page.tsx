@@ -14,6 +14,7 @@ import AdminPartnersPanel from "@/components/AdminPartnersPanel";
 import AdminAdStatsPanel from "@/components/AdminAdStatsPanel";
 import AdminDocumentsPanel from "@/components/AdminDocumentsPanel";
 import { makeCardImage } from "@/lib/cardFrame";
+import AdminHomeSettingsPanel from "@/components/AdminHomeSettingsPanel";
 import AdminDashboard from "@/components/AdminDashboard";
 import AdminPeoplePanel from "@/components/AdminPeoplePanel";
 
@@ -45,7 +46,8 @@ type Tab =
   | "app-prices"
   | "rating-admin"
   | "reports"
-  | "ad-stats";
+  | "ad-stats"
+  | "home-settings";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -76,12 +78,13 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "rating-admin", label: "Рейтинг и титулы" },
   { key: "reports", label: "Жалобы" },
   { key: "ad-stats", label: "Статистика рекламы" },
+  { key: "home-settings", label: "Главная" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
 // Владелец (super_admin) видит всё независимо от галочек.
 const PERMISSION_TABS: Record<string, Tab[]> = {
-  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports"],
+  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports", "home-settings"],
   finance: ["dashboard", "goal"],
   partners: ["partners", "ad-stats", "partner-logos", "banners", "magazine-ads", "ad-space", "ad-prices", "social", "branding"],
   staff: ["staff", "users"],
@@ -112,6 +115,7 @@ const NAV_LIST: (
   { type: "tab", key: "dashboard", label: "Дашборд" },
   { type: "tab", key: "countries", label: "Страны и регионы" },
   { type: "tab", key: "app-prices", label: "Цены (в долларах)" },
+  { type: "tab", key: "home-settings", label: "Главная" },
   { type: "tab", key: "rating-admin", label: "Рейтинг и титулы" },
   { type: "tab", key: "reports", label: "Жалобы" },
   { type: "group", key: "users-group", label: "Пользователи" },
@@ -357,6 +361,7 @@ export default function AdminPage() {
         {tab === "rating-admin" && <AdminRatingPanel />}
         {tab === "reports" && <AdminReportsPanel />}
         {tab === "ad-stats" && <AdminAdStatsPanel />}
+        {tab === "home-settings" && <AdminHomeSettingsPanel />}
         {tab === "countries" && <CountriesTab />}
         {tab === "app-prices" && <AdminPricesPanel />}
         {tab === "documents" && <AdminDocumentsPanel />}

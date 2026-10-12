@@ -566,6 +566,16 @@ function Survey() {
         .eq("key", "survey_question")
         .maybeSingle();
       setQuestion(data?.value ?? "");
+      const u = await getCurrentUser();
+      if (u && data?.value) {
+        const { data: prev } = await supabase
+          .from("survey_answers")
+          .select("id")
+          .eq("user_id", u.id)
+          .eq("question", data.value)
+          .limit(1);
+        if (prev && prev.length > 0) setSent(true);
+      }
       setLoading(false);
     })();
   }, []);
@@ -574,6 +584,16 @@ function Survey() {
     if (!answer.trim()) return;
     const u = await getCurrentUser();
     if (!u) return;
+    const { data: already } = await supabase
+      .from("survey_answers")
+      .select("id")
+      .eq("user_id", u.id)
+      .eq("question", question)
+      .limit(1);
+    if (already && already.length > 0) {
+      setSent(true);
+      return;
+    }
     await supabase.from("survey_answers").insert({
       user_id: u.id,
       question,
@@ -623,6 +643,8 @@ export default function Home() {
   const [totalStages, setTotalStages] = useState(0);
   const [allParticipants, setAllParticipants] = useState<Participant[]>([]);
   const [scope, setScope] = useState<"region" | "country">("region");
+  const [homeCfg, setHomeCfg] = useState<Record<string, string>>({});
+  const [countryName, setCountryName] = useState("");
   const [activeUsersCount, setActiveUsersCount] = useState(0);
   const [contentCount, setContentCount] = useState(0);
 
@@ -635,6 +657,26 @@ export default function Home() {
       }
       setUser(u);
       setChecked(true);
+
+      const { data: cfg } = await supabase
+        .from("platform_settings")
+        .select("key, value")
+        .in("key", ["strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text"]);
+      const cm: Record<string, string> = {};
+      (cfg ?? []).forEach((r: any) => (cm[r.key] = r.value ?? ""));
+      setHomeCfg(cm);
+
+      if (u.region_id) {
+        const { data: rg } = await supabase.from("regions").select("country_id").eq("id", u.region_id).maybeSingle();
+        if (rg?.country_id) {
+          const { data: ct } = await supabase
+            .from("countries")
+            .select("name, enabled")
+            .eq("id", rg.country_id)
+            .maybeSingle();
+          if (ct?.enabled) setCountryName(ct.name);
+        }
+      }
 
       const { data: myParticipant } = await supabase
         .from("participants")
@@ -834,7 +876,7 @@ export default function Home() {
               MISS
             </p>
             <h1 className="text-2xl md:text-4xl font-bold text-offwhite mb-1 leading-tight">
-              {scope === "country" ? "Россия" : user?.regions?.name ?? "Сезон скоро стартует"}
+              {scope === "country" ? countryName || "Вся страна" : user?.regions?.name ?? "Сезон скоро стартует"}
             </h1>
             <p className="text-muted text-[10px] mb-4 whitespace-nowrap">Красота. Харизма. Энергия.</p>
           </div>
@@ -907,10 +949,21 @@ export default function Home() {
           `}</style>
         </div>
 
-        {inWindow && (
+        {homeCfg.howitworks_enabled === "true" && (
+          <div className="mx-6 mb-4">
+            <Link
+              href="/how-it-works"
+              className="flex items-center justify-center w-full border border-gold/50 text-offwhite rounded-full py-2.5 font-semibold text-sm"
+            >
+              {homeCfg.howitworks_text?.trim() || "Как это работает"}
+            </Link>
+          </div>
+        )}
+
+        {inWindow && homeCfg.strip_enabled === "true" && (
           <div className="mx-6 mb-4 bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 text-center animate-pulse">
             <p className="text-white font-semibold text-sm">
-              🔥 До отсева недели: {timeLeft}
+              {(homeCfg.strip_text?.trim() || "🔥 До отсева недели: {time}").replace("{time}", timeLeft)}
             </p>
             <p className="text-white/80 text-xs mt-1">
               Рейтинг обновляется прямо сейчас — успейте поддержать!

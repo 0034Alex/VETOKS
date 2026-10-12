@@ -43,10 +43,11 @@ export default function EditProfilePage() {
         .maybeSingle();
       setIsParticipant(!!p);
 
-      const { data: regionsData } = await supabase
-        .from("regions")
-        .select("id, name")
-        .order("name", { ascending: true });
+      const { data: enabledCountries } = await supabase.from("countries").select("id").eq("enabled", true);
+      const countryIds = (enabledCountries ?? []).map((c: { id: string }) => c.id);
+      let regionsQuery = supabase.from("regions").select("id, name").order("name", { ascending: true });
+      if (countryIds.length > 0) regionsQuery = regionsQuery.in("country_id", countryIds);
+      const { data: regionsData } = await regionsQuery;
       setRegions((regionsData as Region[]) ?? []);
 
       const { data: row } = await supabase
