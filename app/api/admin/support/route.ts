@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       .from("support_requests")
       .update({ reply: text, replied_at: new Date().toISOString(), status: "done" })
       .eq("id", id);
-    if (r?.user_id) await notify(r.user_id, "💬 Поддержка ответила на ваше обращение", "/support");
+    if (r?.user_id) await notify(r.user_id, "💬 Поддержка ответила на ваше обращение", "/support", "support");
     await logAction(uid, "support_reply", r?.user_id ?? null, { request: id });
     return NextResponse.json({ ok: true, delivered: !!r?.user_id });
   }

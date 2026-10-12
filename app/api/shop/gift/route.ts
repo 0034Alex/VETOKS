@@ -54,7 +54,8 @@ export async function POST(req: Request) {
   await notify(
     owner.user_id,
     `🎁 Вам подарили ${gift.name}${qty > 1 ? ` ×${qty}` : ""}`,
-    `/participant/${participantId}/gifts`
+    `/participant/${participantId}/gifts`,
+    "gifts"
   );
   return NextResponse.json({ ok: true, balance: res.balance });
 }

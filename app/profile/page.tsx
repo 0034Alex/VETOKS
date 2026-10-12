@@ -48,6 +48,13 @@ export default function ProfilePage() {
   const [currencySymbol, setCurrencySymbol] = useState("₴");
   const TOTAL_TASKS = 3;
   const [loading, setLoading] = useState(true);
+  const [phoneDone, setPhoneDone] = useState(false);
+
+  useEffect(() => {
+    const done = () => setPhoneDone(true);
+    window.addEventListener("vetoks:verified", done);
+    return () => window.removeEventListener("vetoks:verified", done);
+  }, []);
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
@@ -239,6 +246,21 @@ export default function ProfilePage() {
         </div>
 
         <div className="px-6">
+          {user && !user.phone_verified && !phoneDone && (
+            <div className="rounded-xl p-4 mb-4 border border-gold bg-gradient-to-r from-[#7C3AED]/30 to-[#EC4899]/30">
+              <p className="text-offwhite font-semibold text-sm mb-1">📱 Подтвердите номер в Telegram</p>
+              <p className="text-muted text-xs mb-3">
+                Без подтверждения недоступны бесплатные голоса. Это займёт полминуты.
+              </p>
+              <button
+                onClick={() => window.dispatchEvent(new Event("vetoks:verify-phone"))}
+                className="bg-gold text-bgPrimary font-semibold px-5 py-2 rounded-full text-sm"
+              >
+                Подтвердить
+              </button>
+            </div>
+          )}
+
           <div className="bg-bgSurface border border-muted rounded-xl p-5 mb-4">
             <div className="flex items-center justify-between mb-1">
               <h1 className="text-xl text-offwhite font-semibold">
@@ -426,24 +448,31 @@ export default function ProfilePage() {
               <span>Редактировать профиль</span>
               <span>→</span>
             </a>
+            {(participant || isPartner) && (
+              <a
+                href="/documents"
+                className="p-4 flex items-center justify-between text-muted text-sm"
+              >
+                <span>Документы</span>
+                <span>→</span>
+              </a>
+            )}
+            {(participant || isPartner) && (
+              <a
+                href="/ad-space"
+                className="p-4 flex items-center justify-between text-muted text-sm"
+              >
+                <span>Рекламный кабинет</span>
+                <span>→</span>
+              </a>
+            )}
             <a
-              href="/documents"
+              href="/settings"
               className="p-4 flex items-center justify-between text-muted text-sm"
             >
-              <span>Документы</span>
-              <span>→</span>
-            </a>
-            <a
-              href="/ad-space"
-              className="p-4 flex items-center justify-between text-muted text-sm"
-            >
-              <span>Рекламный кабинет</span>
-              <span>→</span>
-            </a>
-            <div className="p-4 flex items-center justify-between text-muted text-sm">
               <span>Настройки</span>
               <span>→</span>
-            </div>
+            </a>
             <a
               href="/support"
               className="p-4 flex items-center justify-between text-muted text-sm"
@@ -473,37 +502,12 @@ export default function ProfilePage() {
             </a>
           )}
 
-          <div className="flex gap-3 mb-2">
-            <a
-              href="/install"
-              className="flex-1 flex items-center justify-center gap-2 bg-black border border-white/20 rounded-xl py-2.5"
-            >
-              <svg viewBox="0 0 384 512" width="20" height="20" fill="#fff">
-                <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141 4 184.8 4 273.9c0 26.2 4.8 53.3 14.4 81.2 12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-92.3zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
-              </svg>
-              <span className="text-white text-xs font-semibold leading-tight text-left">
-                Загрузить в
-                <br />
-                App Store
-              </span>
-            </a>
-            <button
-              onClick={installAndroid}
-              className="flex-1 flex items-center justify-center gap-2 bg-black border border-white/20 rounded-xl py-2.5"
-            >
-              <svg viewBox="0 0 512 512" width="20" height="20">
-                <path fill="#00D9FF" d="M47 25c-9 5-15 15-15 27v408c0 12 6 22 15 27l231-231z" />
-                <path fill="#FFBC00" d="M47 25l231 231-96 96-159-83c-14-8-22-23-22-38V52c0-12 5-22 13-27z" />
-                <path fill="#FF3A44" d="M182 352l96-96-231-231c-7 4-12 10-13 17z" />
-                <path fill="#00F076" d="M278 256l96 55c17 10 17 34 0 44l-96 55-96-96z" />
-              </svg>
-              <span className="text-white text-xs font-semibold leading-tight text-left">
-                Загрузить в
-                <br />
-                Google Play
-              </span>
-            </button>
-          </div>
+          <button
+            onClick={installAndroid}
+            className="w-full flex items-center justify-center gap-2 bg-gold text-bgPrimary font-semibold rounded-xl py-3 mb-2 text-sm"
+          >
+            📲 Установить приложение
+          </button>
 
           <SocialLinksBar />
 

@@ -17,5 +17,13 @@
       "sizes": "512x512",
       "type": "image/png"
     }
+  ],
+  "id": "/",
+  "scope": "/",
+  "lang": "ru",
+  "orientation": "portrait",
+  "categories": [
+    "entertainment",
+    "social"
   ]
 }

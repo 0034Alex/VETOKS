@@ -52,7 +52,8 @@ export async function POST(req: Request) {
     await notify(
       owner.user_id,
       `🃏 Продана карточка «${STAGE_LABELS[claimed.stage] ?? claimed.stage}» за ${p.price.toLocaleString("ru-RU")} ₴`,
-      `/my-cards`
+      `/my-cards`,
+      "gifts"
     );
   }
   return NextResponse.json({ ok: true, balance: res.balance, stage: claimed.stage });

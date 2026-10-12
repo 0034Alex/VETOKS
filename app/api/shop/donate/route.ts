@@ -33,6 +33,6 @@ export async function POST(req: Request) {
     return bad("server", 500);
   }
 
-  await notify(owner.user_id, `💝 Вам задонатили ${amount} ₴ на цель недели`, `/participant/${participantId}`);
+  await notify(owner.user_id, `💝 Вам задонатили ${amount} ₴ на цель недели`, `/participant/${participantId}`, "gifts");
   return NextResponse.json({ ok: true, balance: res.balance });
 }

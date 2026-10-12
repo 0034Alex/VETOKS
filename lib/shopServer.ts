@@ -19,10 +19,32 @@ export async function requireUser(req: Request): Promise<string | NextResponse> 
   return id;
 }
 
-export async function notify(userId: string, message: string, link?: string) {
+// type: gifts | tasks | support | other — по нему смотрим настройки «Уведомления в Telegram».
+export async function notify(userId: string, message: string, link?: string, type: string = "other") {
   await supabaseAdmin
     .from("notifications")
     .insert({ user_id: userId, message, link: link ?? null });
+
+  // Дублируем важное сообщением от бота (если Telegram привязан и не выключено в настройках).
+  try {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    if (!token) return;
+    const { data: u } = await supabaseAdmin
+      .from("users")
+      .select("telegram_id, notify_tg")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!u?.telegram_id) return;
+    const prefs = (u.notify_tg ?? {}) as Record<string, boolean>;
+    if (prefs[type] === false) return;
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: u.telegram_id, text: message }),
+    });
+  } catch {
+    /* уведомление в приложении уже сохранено */
+  }
 }
 
 // Платёж: списать у покупателя, начислить долю участнице (одной операцией в базе).
