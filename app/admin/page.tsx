@@ -7,6 +7,7 @@ import { getCurrentUser, isStaff, CurrentUser } from "@/lib/currentUser";
 import AdminPricesPanel from "@/components/AdminPricesPanel";
 import AdminRatingPanel from "@/components/AdminRatingPanel";
 import AdminBlackMarksPanel from "@/components/AdminBlackMarksPanel";
+import AdminReportsPanel from "@/components/AdminReportsPanel";
 
 type Tab =
   | "dashboard"
@@ -34,7 +35,8 @@ type Tab =
   | "black-marks"
   | "countries"
   | "app-prices"
-  | "rating-admin";
+  | "rating-admin"
+  | "reports";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -63,12 +65,13 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "countries", label: "Страны и регионы" },
   { key: "app-prices", label: "Цены (в долларах)" },
   { key: "rating-admin", label: "Рейтинг и титулы" },
+  { key: "reports", label: "Жалобы" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
 // Владелец (super_admin) видит всё независимо от галочек.
 const PERMISSION_TABS: Record<string, Tab[]> = {
-  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin"],
+  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports"],
   finance: ["dashboard", "goal"],
   partners: ["partners", "partner-logos", "banners", "magazine-ads", "ad-space", "ad-prices", "social", "branding"],
   staff: ["staff", "users"],
@@ -100,6 +103,7 @@ const NAV_LIST: (
   { type: "tab", key: "countries", label: "Страны и регионы" },
   { type: "tab", key: "app-prices", label: "Цены (в долларах)" },
   { type: "tab", key: "rating-admin", label: "Рейтинг и титулы" },
+  { type: "tab", key: "reports", label: "Жалобы" },
   { type: "group", key: "users-group", label: "Пользователи" },
   { type: "tab", key: "partners", label: "Партнёры" },
   { type: "group", key: "ads-group", label: "Реклама" },
@@ -341,6 +345,7 @@ export default function AdminPage() {
         {tab === "tasks" && <TasksAdminTab />}
         {tab === "black-marks" && <AdminBlackMarksPanel />}
         {tab === "rating-admin" && <AdminRatingPanel />}
+        {tab === "reports" && <AdminReportsPanel />}
         {tab === "countries" && <CountriesTab />}
         {tab === "app-prices" && <AdminPricesPanel />}
         {tab === "documents" && <DocumentsTab />}

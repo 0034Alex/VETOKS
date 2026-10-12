@@ -8,6 +8,7 @@ import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import VoteModal from "@/components/VoteModal";
+import ReportButton from "@/components/ReportButton";
 import {
   IconHeart,
   IconComment,
@@ -290,6 +291,8 @@ export default function ParticipantVideosPage() {
                 <IconShare />
                 <span className="text-white text-[10px] mt-0.5">Поделиться</span>
               </button>
+
+              <ReportButton postId={p.id} loggedIn={!!me} />
 
               <button
                 onClick={() => setVoteModalOpen(true)}

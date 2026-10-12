@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
+import { apiPost } from "@/lib/authClient";
+import { bunnyUpload, videoDuration } from "@/lib/bunnyUpload";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 
@@ -17,6 +19,7 @@ export default function AddVideoPage() {
   const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState<number | null>(null);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const libraryInputRef = useRef<HTMLInputElement>(null);
@@ -59,6 +62,53 @@ export default function AddVideoPage() {
       setError("Этот раздел доступен только участницам.");
       setUploading(false);
       return;
+    }
+
+    // Видео — не длиннее 60 секунд.
+    if (kind === "video") {
+      const dur = await videoDuration(file);
+      if (dur > 60.5) {
+        setError("Видео длиннее 60 секунд. Выберите ролик покороче.");
+        setUploading(false);
+        return;
+      }
+
+      // Основной путь: загрузка в Bunny.
+      const up = await apiPost("/api/video/create-upload", {});
+      if (up?.ok && up.configured) {
+        try {
+          setProgress(0);
+          await bunnyUpload(
+            file,
+            { videoId: up.videoId, libraryId: up.libraryId, signature: up.signature, expire: up.expire },
+            setProgress
+          );
+        } catch (e: any) {
+          setError(e?.message || "Ошибка загрузки");
+          setUploading(false);
+          setProgress(null);
+          return;
+        }
+        const pub = await apiPost("/api/video/publish", { videoId: up.videoId, caption });
+        setProgress(null);
+        if (!pub?.ok) {
+          setError(
+            pub?.error === "too_long"
+              ? "Видео длиннее 60 секунд."
+              : "Не удалось опубликовать. Попробуйте ещё раз."
+          );
+          setUploading(false);
+          return;
+        }
+        router.push("/media");
+        return;
+      }
+      if (up && up.ok === false) {
+        setError(up.error === "not_participant" ? "Этот раздел доступен только участницам." : "Сервис видео временно недоступен.");
+        setUploading(false);
+        return;
+      }
+      // Bunny не настроен — старый способ ниже.
     }
 
     const fileExt = file.name.split(".").pop();
@@ -114,8 +164,9 @@ export default function AddVideoPage() {
           Добавить фото или видео
         </h1>
         <p className="text-muted text-xs text-center mb-6">
-          Видео попадёт в общую ленту «Медиа», фото — в фотоленту вашего
-          профиля.
+          Видео (до 60 секунд) попадёт в общую ленту «Медиа», фото — в
+          фотоленту вашего профиля. После загрузки видео обрабатывается
+          около минуты.
         </p>
 
         <div className="w-full max-w-sm aspect-[9/16] bg-bgSurface border border-muted rounded-xl overflow-hidden flex items-center justify-center mb-4">
@@ -186,7 +237,9 @@ export default function AddVideoPage() {
           className="w-full max-w-sm bg-gold text-bgPrimary font-semibold py-3 rounded-full disabled:opacity-50"
         >
           {uploading
-            ? "Публикуем..."
+            ? progress !== null
+              ? `Загружаем ${progress}%`
+              : "Публикуем..."
             : kind === "photo"
             ? "Опубликовать фото"
             : "Опубликовать видео"}
