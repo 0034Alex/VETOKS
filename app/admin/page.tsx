@@ -19,6 +19,7 @@ import AdminClanPanel from "@/components/AdminClanPanel";
 import AdminReferralsPanel from "@/components/AdminReferralsPanel";
 import AdminDashboard from "@/components/AdminDashboard";
 import AdminPeoplePanel from "@/components/AdminPeoplePanel";
+import AdminActionLogPanel from "@/components/AdminActionLogPanel";
 
 type Tab =
   | "dashboard"
@@ -51,7 +52,8 @@ type Tab =
   | "ad-stats"
   | "home-settings"
   | "clan"
-  | "referrals";
+  | "referrals"
+  | "action-log";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -85,6 +87,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "home-settings", label: "Главная" },
   { key: "clan", label: "Чат кланов" },
   { key: "referrals", label: "Рефералы" },
+  { key: "action-log", label: "Журнал действий" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
@@ -101,7 +104,7 @@ const PERMISSION_TABS: Record<string, Tab[]> = {
 // списком. Вкладка, попавшая в группу, в общем экране больше не
 // показывается отдельным квадратом — только внутри своей группы.
 const TAB_GROUPS: { key: string; label: string; tabs: Tab[] }[] = [
-  { key: "users-group", label: "Пользователи", tabs: ["users", "staff", "participants", "applications"] },
+  { key: "users-group", label: "Пользователи", tabs: ["users", "staff", "action-log", "participants", "applications"] },
   {
     key: "ads-group",
     label: "Реклама",
@@ -372,6 +375,7 @@ export default function AdminPage() {
         {tab === "home-settings" && <AdminHomeSettingsPanel />}
         {tab === "clan" && <AdminClanPanel />}
         {tab === "referrals" && <AdminReferralsPanel />}
+        {tab === "action-log" && <AdminActionLogPanel />}
         {tab === "countries" && <CountriesTab />}
         {tab === "app-prices" && <AdminPricesPanel />}
         {tab === "documents" && <AdminDocumentsPanel />}
