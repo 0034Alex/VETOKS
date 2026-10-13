@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 type Item = {
@@ -16,23 +16,11 @@ type Item = {
 
 const ICON: Record<string, string> = { gift: "🎁", boost: "🚀", card: "🃏", donate: "💝" };
 
-function ago(iso: string): string {
-  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (m < 1) return "только что";
-  if (m < 60) return `${m} мин назад`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h} ч назад`;
-  return `${Math.round(h / 24)} дн назад`;
-}
-
-// «Живая Фан-Зона» — бегущая строка самых дорогих подарков и покупок. Лёгкая: опрос раз в 6 сек, пауза когда вкладка скрыта.
+// «Живая Фан-Зона» — бегущая строка: все дорогие подарки и покупки идут подряд по кругу.
+// Лёгкая: опрос раз в 8 сек (пауза, когда вкладка скрыта), движение — чистый CSS.
 export default function FanZoneStrip() {
   const [items, setItems] = useState<Item[]>([]);
   const [enabled, setEnabled] = useState(true);
-  const [idx, setIdx] = useState(0);
-  const [open, setOpen] = useState(false);
-  const [fresh, setFresh] = useState(false);
-  const topId = useRef<string | null>(null);
 
   useEffect(() => {
     let stop = false;
@@ -43,67 +31,67 @@ export default function FanZoneStrip() {
         const j = await r.json();
         if (stop) return;
         setEnabled(j.enabled !== false);
-        const list: Item[] = j.items ?? [];
-        if (list.length && topId.current && list[0].id !== topId.current) {
-          setIdx(0);
-          setFresh(true);
-          setTimeout(() => setFresh(false), 2500);
-        }
-        topId.current = list[0]?.id ?? null;
-        setItems(list);
+        setItems(j.items ?? []);
       } catch {}
     }
     load();
-    const t = setInterval(load, 6000);
+    const t = setInterval(load, 8000);
     return () => {
       stop = true;
       clearInterval(t);
     };
   }, []);
 
-  useEffect(() => {
-    if (items.length < 2 || open) return;
-    const t = setInterval(() => setIdx((i) => (i + 1) % items.length), 3800);
-    return () => clearInterval(t);
-  }, [items.length, open]);
-
   if (!enabled) return null;
 
-  const line = (it: Item) => (
-    <>
-      {ICON[it.kind] ?? "🎁"} <b>{it.sender_name}</b> → <b>{it.participant_name}</b> · {it.label}
-    </>
+  // Чтобы лента не «обрывалась» при малом числе событий, повторяем набор до нужной длины.
+  const base = items;
+  const reps = base.length === 0 ? 0 : Math.max(2, Math.ceil(10 / base.length));
+  const chain: Item[] = [];
+  for (let i = 0; i < reps; i++) chain.push(...base);
+  const duration = Math.max(20, base.length * reps * 3.2);
+
+  const one = (it: Item, key: string) => (
+    <Link
+      key={key}
+      href={`/participant/${it.participant_id}`}
+      className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm text-offwhite px-4"
+    >
+      <span>{ICON[it.kind] ?? "🎁"}</span>
+      <b>{it.sender_name}</b>
+      <span className="text-[#EC4899]">→</span>
+      <b>{it.participant_name}</b>
+      <span className="text-goldSoft">· {it.label}</span>
+      <span className="text-muted pl-3">✦</span>
+    </Link>
   );
 
   return (
     <div className="px-6 mb-4">
-      <div
-        className={`rounded-2xl border ${fresh ? "border-[#EC4899]" : "border-muted"} bg-bgSurface overflow-hidden transition-colors`}
-      >
-        <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-2 px-3 py-2 text-left">
-          <span className="text-xs font-semibold whitespace-nowrap text-[#EC4899]">
-            <span className="inline-block w-2 h-2 rounded-full bg-[#EC4899] mr-1 animate-pulse" />
-            Живая Фан-Зона
-          </span>
-          <span className="text-offwhite text-sm truncate flex-1" key={items[idx]?.id ?? "none"}>
-            {items.length ? line(items[Math.min(idx, items.length - 1)]) : "Пока тихо — станьте первыми!"}
-          </span>
-          <span className="text-muted text-xs">{open ? "▴" : "▾"}</span>
-        </button>
-        {open && items.length > 0 && (
-          <div className="border-t border-muted px-3 py-2 flex flex-col gap-2 max-h-64 overflow-y-auto">
-            {items.map((it) => (
-              <Link
-                key={it.id}
-                href={`/participant/${it.participant_id}`}
-                className="flex items-center justify-between gap-2 text-sm text-offwhite"
-              >
-                <span className="truncate">{line(it)}</span>
-                <span className="text-muted text-xs whitespace-nowrap">{ago(it.created_at)}</span>
-              </Link>
-            ))}
-          </div>
-        )}
+      <style>{`
+        @keyframes fzRun { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .fz-track { display:flex; width:max-content; animation: fzRun var(--fz-dur) linear infinite; }
+        .fz-wrap:active .fz-track { animation-play-state: paused; }
+        @media (prefers-reduced-motion: reduce) { .fz-track { animation: none; } }
+      `}</style>
+      <div className="rounded-2xl border border-muted bg-bgSurface overflow-hidden flex items-center">
+        <span className="text-xs font-semibold whitespace-nowrap text-[#EC4899] pl-3 pr-2 py-2.5 z-10 bg-bgSurface">
+          <span className="inline-block w-2 h-2 rounded-full bg-[#EC4899] mr-1 animate-pulse" />
+          Живая Фан-Зона
+        </span>
+        <div
+          className="fz-wrap flex-1 min-w-0 overflow-hidden"
+          style={{ maskImage: "linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent)", WebkitMaskImage: "linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent)" }}
+        >
+          {chain.length === 0 ? (
+            <span className="text-offwhite text-sm px-3 whitespace-nowrap">Пока тихо — станьте первыми!</span>
+          ) : (
+            <div className="fz-track" style={{ ["--fz-dur" as any]: `${duration}s` }}>
+              <div className="flex">{chain.map((it, i) => one(it, `a${i}`))}</div>
+              <div className="flex" aria-hidden="true">{chain.map((it, i) => one(it, `b${i}`))}</div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

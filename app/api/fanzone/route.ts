@@ -18,6 +18,6 @@ export async function GET() {
     .select("id, created_at, sender_name, participant_id, participant_name, kind, label, amount")
     .gte("created_at", since)
     .order("created_at", { ascending: false })
-    .limit(15);
+    .limit(30);
   return NextResponse.json({ enabled: true, items: data ?? [] });
 }
