@@ -1,5 +1,6 @@
 "use client";
 
+import { apiPost } from "@/lib/authClient";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -18,6 +19,8 @@ export default function EditProfilePage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [regionId, setRegionId] = useState("");
+  const [origRegion, setOrigRegion] = useState("");
+  const [lockedUntil, setLockedUntil] = useState<Date | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -52,7 +55,7 @@ export default function EditProfilePage() {
 
       const { data: row } = await supabase
         .from("users")
-        .select("first_name, phone, email, region_id, photo_url")
+        .select("first_name, phone, email, region_id, photo_url, region_changed_at")
         .eq("id", u.id)
         .maybeSingle();
 
@@ -61,6 +64,11 @@ export default function EditProfilePage() {
         setPhone(row.phone ?? "");
         setEmail(row.email ?? "");
         setRegionId(row.region_id ?? "");
+        setOrigRegion(row.region_id ?? "");
+        if ((row as any).region_changed_at) {
+          const until = new Date(new Date((row as any).region_changed_at).getTime() + 42 * 86400000);
+          if (until.getTime() > Date.now()) setLockedUntil(until);
+        }
         setPhotoUrl(row.photo_url ?? null);
       }
       setLoading(false);
@@ -99,13 +107,27 @@ export default function EditProfilePage() {
       newPhotoUrl = publicUrlData.publicUrl;
     }
 
+    if (regionId && regionId !== origRegion) {
+      const rr = await apiPost("/api/profile/region", { regionId });
+      if (!rr.ok) {
+        setNotice(
+          rr.error === "locked"
+            ? "Регион можно менять только раз в сезон (6 недель)."
+            : "Не удалось сменить регион. Попробуйте ещё раз."
+        );
+        setSaving(false);
+        return;
+      }
+      setOrigRegion(regionId);
+      setLockedUntil(new Date(Date.now() + 42 * 86400000));
+    }
+
     const { error } = await supabase
       .from("users")
       .update({
         first_name: firstName,
         phone,
         email,
-        region_id: regionId || null,
         photo_url: newPhotoUrl,
       })
       .eq("id", userId);
@@ -196,7 +218,8 @@ export default function EditProfilePage() {
             <select
               value={regionId}
               onChange={(e) => setRegionId(e.target.value)}
-              className="bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3"
+              disabled={!!lockedUntil}
+              className="bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 disabled:opacity-60"
             >
               <option value="">— не выбран —</option>
               {regions.map((r) => (
@@ -205,6 +228,11 @@ export default function EditProfilePage() {
                 </option>
               ))}
             </select>
+            <p className="text-muted text-xs">
+              {lockedUntil
+                ? `Регион можно сменить после ${lockedUntil.toLocaleDateString("ru-RU")} — менять можно раз в сезон (6 недель).`
+                : "Регион можно менять раз в сезон (6 недель)."}
+            </p>
           </div>
 
           <button

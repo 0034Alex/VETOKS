@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 type Item = {
   id: string;
@@ -26,7 +27,12 @@ export default function FanZoneStrip() {
     async function load() {
       if (document.hidden) return;
       try {
-        const r = await fetch("/api/fanzone", { cache: "no-store" });
+        const { data: sess } = await supabase.auth.getSession();
+        const token = sess.session?.access_token;
+        const r = await fetch("/api/fanzone", {
+          cache: "no-store",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         const j = await r.json();
         if (stop) return;
         setEnabled(j.enabled !== false);

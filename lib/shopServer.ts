@@ -116,7 +116,9 @@ export async function fanEvent(
     const min = Number(m.fanzone_min_amount);
     if (amount < (Number.isFinite(min) && m.fanzone_min_amount !== "" ? min : 50)) return;
     const { data: u } = await supabaseAdmin.from("users").select("first_name").eq("id", userId).maybeSingle();
+    const { data: pr } = await supabaseAdmin.from("participants").select("region_id").eq("id", participantId).maybeSingle();
     await supabaseAdmin.from("fan_feed").insert({
+      region_id: pr?.region_id ?? null,
       sender_name: (u?.first_name as string) || "Гость",
       participant_id: participantId,
       participant_name: participantName,
