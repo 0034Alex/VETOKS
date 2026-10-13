@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 
 type Item = {
   id: string;
@@ -52,10 +51,9 @@ export default function FanZoneStrip() {
   const duration = Math.max(20, base.length * reps * 3.2);
 
   const one = (it: Item, key: string) => (
-    <Link
+    <span
       key={key}
-      href={`/participant/${it.participant_id}`}
-      className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm text-offwhite px-4"
+      className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm text-offwhite px-4 select-none"
     >
       <span>{ICON[it.kind] ?? "🎁"}</span>
       <b>{it.sender_name}</b>
@@ -63,7 +61,7 @@ export default function FanZoneStrip() {
       <b>{it.participant_name}</b>
       <span className="text-goldSoft">· {it.label}</span>
       <span className="text-muted pl-3">✦</span>
-    </Link>
+    </span>
   );
 
   return (
@@ -71,20 +69,15 @@ export default function FanZoneStrip() {
       <style>{`
         @keyframes fzRun { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         .fz-track { display:flex; width:max-content; animation: fzRun var(--fz-dur) linear infinite; }
-        .fz-wrap:active .fz-track { animation-play-state: paused; }
-        @media (prefers-reduced-motion: reduce) { .fz-track { animation: none; } }
+                @media (prefers-reduced-motion: reduce) { .fz-track { animation: none; } }
       `}</style>
       <div className="rounded-2xl border border-muted bg-bgSurface overflow-hidden flex items-center">
-        <span className="text-xs font-semibold whitespace-nowrap text-[#EC4899] pl-3 pr-2 py-2.5 z-10 bg-bgSurface">
-          <span className="inline-block w-2 h-2 rounded-full bg-[#EC4899] mr-1 animate-pulse" />
-          Живая Фан-Зона
-        </span>
         <div
-          className="fz-wrap flex-1 min-w-0 overflow-hidden"
+          className="fz-wrap flex-1 min-w-0 overflow-hidden py-2.5 pointer-events-none"
           style={{ maskImage: "linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent)", WebkitMaskImage: "linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent)" }}
         >
           {chain.length === 0 ? (
-            <span className="text-offwhite text-sm px-3 whitespace-nowrap">Пока тихо — станьте первыми!</span>
+            <span className="text-offwhite text-sm px-4 whitespace-nowrap">Пока тихо — станьте первыми!</span>
           ) : (
             <div className="fz-track" style={{ ["--fz-dur" as any]: `${duration}s` }}>
               <div className="flex">{chain.map((it, i) => one(it, `a${i}`))}</div>
