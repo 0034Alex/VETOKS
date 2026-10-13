@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     gift: gift.name,
     qty,
   });
-  if (!res.ok) return bad(res.error, res.error === "not_enough" ? 402 : 500, { balance: res.balance });
+  if (!res.ok) return bad(res.error, res.error === "not_enough" ? 402 : 500, { balance: res.balance, detail: (res as any).detail });
 
   const { error } = await supabaseAdmin.from("gifts").insert({
     sender_id: uid,
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   });
   if (error) {
     await refund(uid, total, participantId, res.earning);
-    return bad("server", 500);
+    return bad("server", 500, { detail: error.message });
   }
 
   await fanEvent(uid, participantId, owner.display_name, "gift", `${gift.name}${qty > 1 ? ` ×${qty}` : ""}`, total);

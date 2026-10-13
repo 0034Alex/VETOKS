@@ -57,7 +57,7 @@ export async function pay(
   meta: object = {}
 ): Promise<
   | { ok: true; tx_id: string; earning: number; balance: number }
-  | { ok: false; error: string; balance?: number }
+  | { ok: false; error: string; balance?: number; detail?: string }
 > {
   const { data, error } = await supabaseAdmin.rpc("vt_pay", {
     p_user: userId,
@@ -67,7 +67,7 @@ export async function pay(
     p_share: share,
     p_meta: meta,
   });
-  if (error || !data) return { ok: false, error: "pay_failed" };
+  if (error || !data) return { ok: false, error: "pay_failed", detail: error?.message };
   return data as any;
 }
 

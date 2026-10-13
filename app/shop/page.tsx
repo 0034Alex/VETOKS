@@ -212,7 +212,7 @@ function ShopContent() {
       setErrorMessage(
         r.error === "not_enough"
           ? "Недостаточно средств. Пополните баланс."
-          : "Не удалось отправить подарок. Попробуйте ещё раз."
+          : `Не удалось отправить подарок. Попробуйте ещё раз. (${r.error ?? "?"}${r.detail ? ": " + r.detail : ""})`
       );
       if (typeof r.balance === "number") setBalance(r.balance);
       return;
