@@ -568,6 +568,31 @@ function CardsSection() {
   const [loading, setLoading] = useState(true);
   const [currencySymbol, setCurrencySymbol] = useState("₴");
   const [cardPrice, setCardPrice] = useState(120);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [buying, setBuying] = useState(false);
+  const [buyMsg, setBuyMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function buyCard(id: string) {
+    setBuying(true);
+    setBuyMsg(null);
+    const r = await apiPost("/api/shop/buy-card", { cardId: id });
+    setBuying(false);
+    if (r?.ok) {
+      setCards((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, status: "sold", sold_at: new Date().toISOString() } : c))
+      );
+      setBuyMsg({ ok: true, text: "Карточка куплена! Спасибо за поддержку участницы." });
+      setConfirmId(null);
+    } else if (r?.error === "not_enough") {
+      setBuyMsg({ ok: false, text: "Недостаточно средств. Пополните баланс в разделе «Подарки»." });
+    } else if (r?.error === "sold") {
+      setBuyMsg({ ok: false, text: "Эту карточку уже купили." });
+      setCards((prev) => prev.map((c) => (c.id === id ? { ...c, status: "sold", sold_at: new Date().toISOString() } : c)));
+      setConfirmId(null);
+    } else {
+      setBuyMsg({ ok: false, text: "Не удалось купить карточку. Попробуйте ещё раз." });
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -613,9 +638,16 @@ function CardsSection() {
 
   function CardTile({ c }: { c: (typeof searched)[number] }) {
     return (
-      <a
-        href={`/participant/${c.participant_id}`}
-        className="bg-bgSurface border border-muted rounded-xl overflow-hidden"
+      <div
+        onClick={() => {
+          if (c.status === "ready") {
+            setBuyMsg(null);
+            setConfirmId(c.id);
+          }
+        }}
+        className={`bg-bgSurface border border-muted rounded-xl overflow-hidden ${
+          c.status === "ready" ? "cursor-pointer active:scale-[0.98] transition-transform" : "opacity-80"
+        }`}
       >
         <div className="aspect-[3/4] bg-black/40">
           {c.final_image_url && (
@@ -642,7 +674,7 @@ function CardsSection() {
               : `${cardPrice.toLocaleString("ru-RU")} ${currencySymbol}`}
           </p>
         </div>
-      </a>
+      </div>
     );
   }
 
@@ -695,6 +727,56 @@ function CardsSection() {
           ))}
         </div>
       )}
+
+      {buyMsg && !confirmId && (
+        <p className={`text-center text-sm mt-4 ${buyMsg.ok ? "text-success" : "text-danger"}`}>{buyMsg.text}</p>
+      )}
+
+      {confirmId && (() => {
+        const c = cards.find((x) => x.id === confirmId);
+        if (!c) return null;
+        return (
+          <div className="fixed inset-0 z-[60] bg-black/70 flex items-end sm:items-center justify-center p-4" onClick={() => !buying && setConfirmId(null)}>
+            <div className="bg-bgSurface border border-gold/40 rounded-2xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+              <div className="flex gap-3 mb-4">
+                <div className="w-20 aspect-[3/4] bg-black/40 rounded-lg overflow-hidden flex-shrink-0">
+                  {c.final_image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={c.final_image_url} alt="" className="w-full h-full object-cover" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-offwhite font-semibold">{c.participants?.display_name ?? "—"}</p>
+                  <p className="text-muted text-xs mb-2">{STAGE_LABELS[c.stage] ?? c.stage}</p>
+                  <p className="text-gold font-semibold">
+                    {cardPrice.toLocaleString("ru-RU")} {currencySymbol}
+                  </p>
+                  <a href={`/participant/${c.participant_id}`} className="text-muted text-xs underline">
+                    Профиль участницы
+                  </a>
+                </div>
+              </div>
+              {buyMsg && !buyMsg.ok && <p className="text-danger text-sm mb-3">{buyMsg.text}</p>}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmId(null)}
+                  disabled={buying}
+                  className="flex-1 border border-muted text-offwhite rounded-full py-3 text-sm font-semibold disabled:opacity-50"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={() => buyCard(c.id)}
+                  disabled={buying}
+                  className="flex-1 bg-gold text-bgPrimary rounded-full py-3 text-sm font-semibold disabled:opacity-50"
+                >
+                  {buying ? "Покупаем..." : "Купить"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
