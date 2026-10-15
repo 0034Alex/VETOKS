@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import SocialLinksBar from "@/components/SocialLinksBar";
+import AccountSwitcher from "@/components/AccountSwitcher";
 import { getCurrencySymbol } from "@/lib/currency";
 import { useT } from "@/lib/i18n";
 
@@ -248,6 +249,7 @@ export default function ProfilePage() {
         </div>
 
         <div className="px-6">
+          <AccountSwitcher />
           {user && !user.phone_verified && !phoneDone && (
             <div className="rounded-xl p-4 mb-4 border border-gold bg-gradient-to-r from-[#7C3AED]/30 to-[#EC4899]/30">
               <p className="text-offwhite font-semibold text-sm mb-1">{t("profile.verifyTitle")}</p>
