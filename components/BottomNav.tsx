@@ -77,11 +77,14 @@ function Icon({ id }: { id: string }) {
 
 const CSS = `
 .vn{position:relative;width:100%;height:74px}
-.vn-bg{position:absolute;left:0;top:0;height:74px;overflow:visible;pointer-events:none;z-index:0}
-.vn-p,.vn-f{fill:#161618;stroke:rgba(255,255,255,.06);stroke-width:1;transition:opacity .35s}
-.vn-f{opacity:0}
-.vn.dk .vn-p{opacity:0}
-.vn.dk .vn-f{opacity:1}
+.vn-bg{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:0}
+.vn-p,.vn-f{fill:#161618;stroke:none;transition:opacity .35s}
+.vn-n{fill:#0B0B0D;stroke:none;transition:opacity .35s}
+.vn-s{fill:none;stroke:rgba(255,255,255,.10);stroke-width:1;transition:opacity .35s}
+.vn-f,.vn-s2{opacity:0}
+.vn-s2{fill:none;stroke:rgba(255,255,255,.10);stroke-width:1;transition:opacity .35s}
+.vn.dk .vn-p,.vn.dk .vn-s,.vn.dk .vn-n{opacity:0}
+.vn.dk .vn-f,.vn.dk .vn-s2{opacity:1}
 .vn-row{position:absolute;inset:0;display:flex;justify-content:center;z-index:2}
 .vn-in{width:100%;max-width:48rem;display:flex}
 .vn-ind{position:absolute;top:6px;left:0;width:calc(100%/5);height:48px;display:flex;justify-content:center;pointer-events:none;transition:transform .45s cubic-bezier(.3,1.3,.5,1);z-index:1}
@@ -93,7 +96,7 @@ const CSS = `
 .vn-btn.on svg{transform:translateY(-1px)}
 .vn-btn span{font-size:10px;line-height:1;max-height:0;opacity:0;overflow:hidden;transition:max-height .3s,opacity .3s;text-align:center}
 .vn-btn.on span{max-height:12px;opacity:1}
-.vn-cb{font-style:normal;position:absolute;left:50%;bottom:34px;width:52px;height:52px;margin-left:-26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#E8D48A;background:radial-gradient(70% 70% at 50% 30%,#3a2a55,#1b1030);box-shadow:inset 0 0 0 1.8px #C9A227,0 0 14px rgba(201,162,39,.35);transition:bottom .4s cubic-bezier(.3,1.3,.5,1),width .35s,height .35s,margin-left .35s,background .35s,box-shadow .35s}
+.vn-cb{font-style:normal;position:absolute;left:50%;bottom:22px;width:52px;height:52px;margin-left:-26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#E8D48A;background:radial-gradient(70% 70% at 50% 30%,#3a2a55,#1b1030);box-shadow:inset 0 0 0 1.8px #C9A227,0 0 14px rgba(201,162,39,.35);transition:bottom .4s cubic-bezier(.3,1.3,.5,1),width .35s,height .35s,margin-left .35s,background .35s,box-shadow .35s}
 .vn-cb svg{width:28px;height:28px}
 .vn-btn.vn-c span.vn-clab{position:absolute;left:0;right:0;bottom:24px}
 .vn-btn.vn-c.on .vn-cb{bottom:30px;width:40px;height:40px;margin-left:-20px;background:transparent;box-shadow:none}
@@ -172,28 +175,41 @@ export default function BottomNav() {
   const docked = active === 2;
 
   // Фон меню: ровная полоса, плавный спуск, круглая «чаша» под кнопкой «Медиа».
-  const H = 74;
-  const cx = w / 2;
-  const R = 40;
-  const yc = 16;
+    const cx = w / 2;
+  const R = 34;
+  const yc = 26;
   const k = 22;
   const x1 = cx - R - k;
   const x2 = cx + R + k;
-  const bowl =
+  const E = 150; // фон тянется до самого низа экрана
+  const edge =
     `M0,0 L${x1},0 C${x1 + 14},0 ${cx - R},${yc - 14} ${cx - R},${yc} ` +
-    `A${R},${R} 0 0 0 ${cx + R},${yc} C${cx + R},${yc - 14} ${x2 - 14},0 ${x2},0 ` +
-    `L${w},0 L${w},${H} L0,${H} Z`;
-  const flat = `M0,0 L${w},0 L${w},${H} L0,${H} Z`;
+    `A${R},${R} 0 0 0 ${cx + R},${yc} C${cx + R},${yc - 14} ${x2 - 14},0 ${x2},0 L${w},0`;
+  const bowl = `${edge} L${w},${E} L0,${E} Z`;
+  const notch =
+    `M${x1},0 C${x1 + 14},0 ${cx - R},${yc - 14} ${cx - R},${yc} ` +
+    `A${R},${R} 0 0 0 ${cx + R},${yc} C${cx + R},${yc - 14} ${x2 - 14},0 ${x2},0 Z`;
+  const flat = `M0,0 L${w},0 L${w},${E} L0,${E} Z`;
 
   return (
     <nav
-      style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50 }}
+      style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
+        paddingBottom: "max(0px, calc(env(safe-area-inset-bottom) - 16px))",
+      }}
     >
       <style>{CSS}</style>
       <div ref={box} className={`vn ${docked ? "dk" : ""}`}>
-        <svg className="vn-bg" width={w} height={H} aria-hidden="true">
+        <svg className="vn-bg" width={w} height={E} aria-hidden="true">
+          <path className="vn-n" d={notch} />
           <path className="vn-p" d={bowl} />
           <path className="vn-f" d={flat} />
+          <path className="vn-s" d={edge} />
+          <path className="vn-s2" d={`M0,0 L${w},0`} />
         </svg>
         <div className="vn-row">
           <div className="vn-wrap">
@@ -243,7 +259,6 @@ export default function BottomNav() {
           </div>
         </div>
       </div>
-      <div style={{ height: "env(safe-area-inset-bottom)", background: "#161618" }} />
     </nav>
   );
 }
