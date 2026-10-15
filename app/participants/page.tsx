@@ -8,6 +8,7 @@ import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
 import PromoBannerCarousel from "@/components/PromoBannerCarousel";
 import { formatCompact } from "@/lib/formatCompact";
+import RatingView from "@/components/RatingView";
 import TickerBar from "@/components/TickerBar";
 import VoteModal from "@/components/VoteModal";
 import BlackMarkModal from "@/components/BlackMarkModal";
@@ -42,6 +43,7 @@ export default function ParticipantsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [tab, setTab] = useState<"people" | "rating">("people");
 
   async function loadData() {
     setLoading(true);
@@ -142,6 +144,7 @@ export default function ParticipantsPage() {
   }
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "rating") setTab("rating");
     loadData();
     getCurrentUser().then(async (u) => {
       setMe(u);
@@ -193,12 +196,34 @@ export default function ParticipantsPage() {
         <PromoBannerCarousel />
 
         <div className="px-6 mb-4">
-          <h1 className="text-2xl font-semibold text-offwhite mb-1">
-            Участницы
-          </h1>
-          <p className="text-muted text-sm">MISS · {filtered.length} анкет</p>
+          <div className="flex items-baseline gap-5">
+            {(["people", "rating"] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => {
+                  setTab(k);
+                  window.history.replaceState(null, "", k === "rating" ? "/participants?tab=rating" : "/participants");
+                }}
+                className={`text-2xl font-semibold mb-1 relative ${
+                  tab === k ? "text-offwhite" : "text-muted"
+                }`}
+              >
+                {k === "people" ? "Участницы" : "Рейтинг"}
+                {tab === k && (
+                  <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 rounded bg-gold" />
+                )}
+              </button>
+            ))}
+          </div>
+          {tab === "people" && (
+            <p className="text-muted text-sm">MISS · {filtered.length} анкет</p>
+          )}
         </div>
 
+        {tab === "rating" ? (
+          <RatingView />
+        ) : (
+          <>
         <div className="px-6 mb-4 flex gap-2">
           <button
             onClick={() => setScope("region")}
@@ -345,6 +370,8 @@ export default function ParticipantsPage() {
             </div>
           ))}
         </div>
+          </>
+        )}
       </div>
 
       {voteModalParticipant && (

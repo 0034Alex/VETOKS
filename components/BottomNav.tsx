@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useT } from "@/lib/i18n";
 
 // Меню рисуется на каждой странице заново, поэтому прошлую позицию помним здесь:
@@ -14,7 +14,6 @@ const items = [
   { href: "/participants", label: "nav.participants", id: "people" },
   { href: "/media", label: "nav.media", id: "media" },
   { href: "/shop", label: "nav.shop", id: "gift" },
-  { href: "/rating", label: "nav.rating", id: "rating" },
   { href: "/profile", label: "nav.profile", id: "profile" },
 ];
 
@@ -77,17 +76,28 @@ function Icon({ id }: { id: string }) {
 }
 
 const CSS = `
-.vn{position:relative}
-.vn-ind{position:absolute;top:6px;left:0;width:calc(100%/6);height:48px;display:flex;justify-content:center;pointer-events:none;transition:transform .45s cubic-bezier(.3,1.3,.5,1)}
+.vn{position:relative;width:100%;height:74px}
+.vn-bg{position:absolute;left:0;top:0;height:74px;overflow:visible;pointer-events:none;z-index:0}
+.vn-p,.vn-f{fill:#161618;stroke:rgba(255,255,255,.06);stroke-width:1;transition:opacity .35s}
+.vn-f{opacity:0}
+.vn.dk .vn-p{opacity:0}
+.vn.dk .vn-f{opacity:1}
+.vn-row{position:absolute;inset:0;display:flex;justify-content:center;z-index:2}
+.vn-in{width:100%;max-width:48rem;display:flex}
+.vn-ind{position:absolute;top:6px;left:0;width:calc(100%/5);height:48px;display:flex;justify-content:center;pointer-events:none;transition:transform .45s cubic-bezier(.3,1.3,.5,1);z-index:1}
 .vn-ind i{display:block;width:54px;height:48px;border-radius:18px;background:radial-gradient(80% 90% at 50% 20%,rgba(201,162,39,.30),rgba(201,162,39,.08));border:1px solid rgba(201,162,39,.35);box-shadow:0 0 18px rgba(201,162,39,.25)}
-.vn-glow{position:absolute;top:-1px;left:0;width:calc(100%/6);height:2px;display:flex;justify-content:center;pointer-events:none;transition:transform .45s cubic-bezier(.3,1.3,.5,1)}
-.vn-glow i{display:block;width:28px;height:2px;border-radius:2px;background:#E8D48A;box-shadow:0 0 10px #C9A227}
-.vn-btn{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 4px;color:#8A8A8E}
+.vn-wrap{position:relative;width:100%;max-width:48rem;margin:0 auto;height:74px}
+.vn-btn{position:relative;flex:1;min-width:0;height:74px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:11px 0 9px;color:#8A8A8E}
 .vn-btn.on{color:#E8D48A}
 .vn-btn svg{width:26px;height:26px;overflow:visible;transition:transform .3s}
 .vn-btn.on svg{transform:translateY(-1px)}
 .vn-btn span{font-size:10px;line-height:1;max-height:0;opacity:0;overflow:hidden;transition:max-height .3s,opacity .3s;text-align:center}
 .vn-btn.on span{max-height:12px;opacity:1}
+.vn-cb{font-style:normal;position:absolute;left:50%;bottom:34px;width:52px;height:52px;margin-left:-26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#E8D48A;background:radial-gradient(70% 70% at 50% 30%,#3a2a55,#1b1030);box-shadow:inset 0 0 0 1.8px #C9A227,0 0 14px rgba(201,162,39,.35);transition:bottom .4s cubic-bezier(.3,1.3,.5,1),width .35s,height .35s,margin-left .35s,background .35s,box-shadow .35s}
+.vn-cb svg{width:28px;height:28px}
+.vn-btn.vn-c span.vn-clab{position:absolute;left:0;right:0;bottom:24px}
+.vn-btn.vn-c.on .vn-cb{bottom:30px;width:40px;height:40px;margin-left:-20px;background:transparent;box-shadow:none}
+.vn-btn.vn-c.on .vn-cb svg{width:26px;height:26px}
 .vn-btn svg *{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transform-box:fill-box;transform-origin:center}
 .vn-btn svg .fl{fill:currentColor;stroke:none}
 .vn-btn svg .b1,.vn-btn svg .b2,.vn-btn svg .b3{transform-origin:50% 100%}
@@ -121,11 +131,24 @@ const CSS = `
 export default function BottomNav() {
   const pathname = usePathname();
   const { t } = useT();
-  const active = items.findIndex((i) => i.href === pathname);
+  // «Рейтинг» теперь живёт внутри «Участниц», поэтому подсвечиваем их же.
+  const key = pathname === "/rating" ? "/participants" : pathname;
+  const active = items.findIndex((i) => i.href === key);
   // Стартуем со старой позиции, чтобы подсветка поехала к новой.
   const [pos, setPos] = useState<number>(lastIndex ?? active);
   const [go, setGo] = useState(false);
+  const [w, setW] = useState(400);
   const first = useRef(true);
+  const box = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (box.current) setW(box.current.clientWidth);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
 
   useEffect(() => {
     if (active < 0) return;
@@ -146,54 +169,81 @@ export default function BottomNav() {
   }, [active]);
 
   const shift = `translateX(${Math.max(pos, 0) * 100}%)`;
+  const docked = active === 2;
+
+  // Фон меню: ровная полоса, плавный спуск, круглая «чаша» под кнопкой «Медиа».
+  const H = 74;
+  const cx = w / 2;
+  const R = 40;
+  const yc = 16;
+  const k = 22;
+  const x1 = cx - R - k;
+  const x2 = cx + R + k;
+  const bowl =
+    `M0,0 L${x1},0 C${x1 + 14},0 ${cx - R},${yc - 14} ${cx - R},${yc} ` +
+    `A${R},${R} 0 0 0 ${cx + R},${yc} C${cx + R},${yc - 14} ${x2 - 14},0 ${x2},0 ` +
+    `L${w},0 L${w},${H} L0,${H} Z`;
+  const flat = `M0,0 L${w},0 L${w},${H} L0,${H} Z`;
 
   return (
     <nav
-      style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 50,
-        paddingBottom: "env(safe-area-inset-bottom)",
-      }}
-      className="bg-bgSurface border-t border-muted flex justify-center"
+      style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50 }}
     >
       <style>{CSS}</style>
-      <div className="vn w-full max-w-3xl flex items-stretch">
-        {active >= 0 && (
-          <>
-            <div className="vn-glow" style={{ transform: shift }}>
-              <i />
+      <div ref={box} className={`vn ${docked ? "dk" : ""}`}>
+        <svg className="vn-bg" width={w} height={H} aria-hidden="true">
+          <path className="vn-p" d={bowl} />
+          <path className="vn-f" d={flat} />
+        </svg>
+        <div className="vn-row">
+          <div className="vn-wrap">
+            {active >= 0 && (
+              <div className="vn-ind" style={{ transform: shift }}>
+                <i />
+              </div>
+            )}
+            <div className="vn-in">
+              {items.map((item, i) => {
+                const on = i === active;
+                const center = i === 2;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => {
+                      if (on) {
+                        setGo(false);
+                        requestAnimationFrame(() => {
+                          setGo(true);
+                          setTimeout(() => setGo(false), 900);
+                        });
+                      }
+                    }}
+                    className={`vn-btn ${center ? "vn-c" : ""} ${on ? "on" : ""} ${
+                      on && go ? "go" : ""
+                    }`}
+                  >
+                    {center ? (
+                      <>
+                        <i className="vn-cb">
+                          <Icon id={item.id} />
+                        </i>
+                        <span className="vn-clab">{t(item.label)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Icon id={item.id} />
+                        <span>{t(item.label)}</span>
+                      </>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
-            <div className="vn-ind" style={{ transform: shift }}>
-              <i />
-            </div>
-          </>
-        )}
-        {items.map((item, i) => {
-          const on = i === active;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => {
-                if (on) {
-                  setGo(false);
-                  requestAnimationFrame(() => {
-                    setGo(true);
-                    setTimeout(() => setGo(false), 900);
-                  });
-                }
-              }}
-              className={`vn-btn ${on ? "on" : ""} ${on && go ? "go" : ""}`}
-            >
-              <Icon id={item.id} />
-              <span>{t(item.label)}</span>
-            </Link>
-          );
-        })}
+          </div>
+        </div>
       </div>
+      <div style={{ height: "env(safe-area-inset-bottom)", background: "#161618" }} />
     </nav>
   );
 }
