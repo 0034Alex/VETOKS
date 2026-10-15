@@ -13,6 +13,7 @@ import TickerBar from "@/components/TickerBar";
 import VoteModal from "@/components/VoteModal";
 import BlackMarkModal from "@/components/BlackMarkModal";
 import { getVoteTotals } from "@/lib/voteTotals";
+import { apiPost } from "@/lib/authClient";
 
 type Participant = {
   id: string;
@@ -42,6 +43,7 @@ export default function ParticipantsPage() {
   const [myParticipantId, setMyParticipantId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [nickHits, setNickHits] = useState<{ nick: string; name: string; photoUrl: string | null; isParticipant: boolean }[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [tab, setTab] = useState<"people" | "rating">("people");
 
@@ -161,6 +163,20 @@ export default function ParticipantsPage() {
     if (stored) setVotedIds(JSON.parse(stored));
   }, []);
 
+  // Поиск людей по нику (по начальным буквам).
+  useEffect(() => {
+    const q = search.trim().replace(/^@/, "");
+    if (q.length < 2 || !/^[A-Za-z0-9_]+$/.test(q)) {
+      setNickHits([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      const r = await apiPost("/api/profile/search", { q });
+      setNickHits(r?.ok ? r.items : []);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
   function handleVote(participantId: string) {
     setVoteModalParticipant(participantId);
   }
@@ -251,9 +267,33 @@ export default function ParticipantsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск участницы"
+            placeholder="Поиск по имени или @нику"
             className="w-full md:max-w-md bg-bgSurface text-offwhite border border-muted rounded-full px-5 py-3 text-sm"
           />
+          {nickHits.length > 0 && (
+            <div className="mt-3 flex flex-col md:max-w-md bg-bgSurface border border-muted rounded-2xl overflow-hidden">
+              {nickHits.map((h) => (
+                <a
+                  key={h.nick}
+                  href={`/n/${h.nick}`}
+                  className="flex items-center gap-3 px-4 py-3 border-b border-muted/40 last:border-0"
+                >
+                  <span className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-[#7C3AED] to-[#EC4899] text-white flex items-center justify-center font-semibold flex-none">
+                    {h.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={h.photoUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      h.name.slice(0, 1).toUpperCase()
+                    )}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-offwhite text-sm truncate">{h.name}</span>
+                    <span className="block text-muted text-xs">@{h.nick}{h.isParticipant ? " · участница" : ""}</span>
+                  </span>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="px-6 mb-6 flex gap-2 overflow-x-auto">

@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
   const { data: u } = await supabaseAdmin
     .from("users")
-    .select("id, first_name, phone_verified, photo_url, bio, social_links, privacy, referral_code, is_banned, region_id, regions(name)")
+    .select("id, first_name, phone_verified, photo_url, bio, social_links, privacy, nick, is_banned, region_id, regions(name)")
     .eq("id", id)
     .maybeSingle();
   if (!u || u.is_banned) return bad("not_found", 404);
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     photoUrl: u.photo_url ?? null,
     bio: u.bio ?? "",
     city: priv.region === false ? null : (u as any).regions?.name ?? null,
-    handle: u.referral_code ? "@" + String(u.referral_code).toLowerCase() : null,
+    nick: (u as any).nick ?? null,
     socials: links,
     following,
     canWrite: priv.dm !== false,

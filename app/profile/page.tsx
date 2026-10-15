@@ -60,6 +60,7 @@ export default function ProfilePage() {
   const [phoneDone, setPhoneDone] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [bio, setBio] = useState("");
+  const [nick, setNick] = useState<string | null>(null);
   const [socials, setSocials] = useState<string[]>([]);
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
@@ -232,7 +233,7 @@ export default function ProfilePage() {
     (async () => {
       const { data: row } = await supabase
         .from("users")
-        .select("photo_url, bio, social_links")
+        .select("photo_url, bio, social_links, nick")
         .eq("id", user.id)
         .maybeSingle();
       const { count: fl } = await supabase
@@ -241,6 +242,7 @@ export default function ProfilePage() {
         .eq("user_id", user.id);
       setFollowing(fl ?? 0);
       setSocials(parseLinks((row as any)?.social_links));
+      setNick(((row as any)?.nick as string | null) ?? null);
       let ph: string | null = (row as any)?.photo_url ?? null;
       let b: string = (row as any)?.bio ?? "";
       if (participant) {
@@ -285,7 +287,7 @@ export default function ProfilePage() {
 
   async function share() {
     if (!user) return;
-    const path = participant ? `/participant/${participant.id}` : `/u/${user.id}`;
+    const path = nick ? `/n/${nick}` : participant ? `/participant/${participant.id}` : `/u/${user.id}`;
     const r = await shareLink(window.location.origin + path, user.first_name ?? "VETOKS");
     if (r === "copied") {
       setToast("Ссылка скопирована");
@@ -331,7 +333,6 @@ export default function ProfilePage() {
           city={user?.regions?.name ?? null}
           rank={participant && rank ? `№${rank} в рейтинге · ${voteCount} голосов` : null}
           bio={bio}
-          handle={user?.referral_code ? "@" + String(user.referral_code).toLowerCase() : null}
           socials={socials}
           stats={
             participant

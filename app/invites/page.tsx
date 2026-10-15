@@ -25,7 +25,7 @@ export default function InvitesPage() {
 
   if (!d) return <main className="min-h-screen flex items-center justify-center text-muted">Загрузка...</main>;
 
-  const link = typeof window !== "undefined" ? `${window.location.origin}/r/${d.code}` : "";
+  const link = typeof window !== "undefined" ? `${window.location.origin}/r/${d.nick || d.code}` : "";
   const text = "Присоединяйся к VETOKS — голосуй за участниц конкурса!";
 
   async function copy() {

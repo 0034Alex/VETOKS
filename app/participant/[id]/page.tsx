@@ -60,7 +60,7 @@ export default function ParticipantProfilePage() {
     bio: string;
     city: string | null;
     socials: string[];
-    handle: string | null;
+    nick: string | null;
     following: number | null;
   } | null>(null);
   const [toast, setToast] = useState("");
@@ -120,7 +120,7 @@ export default function ParticipantProfilePage() {
     if (p) {
       const { data: ou } = await supabase
         .from("users")
-        .select("photo_url, bio, social_links, privacy, referral_code, regions(name)")
+        .select("photo_url, bio, social_links, privacy, nick, regions(name)")
         .eq("id", (p as Participant).user_id)
         .maybeSingle();
       const priv = (((ou as any)?.privacy ?? {}) as Record<string, boolean>) || {};
@@ -137,7 +137,7 @@ export default function ParticipantProfilePage() {
         bio: (ou as any)?.bio ?? "",
         city: priv.region === false ? null : (ou as any)?.regions?.name ?? null,
         socials: parseLinks((ou as any)?.social_links),
-        handle: (ou as any)?.referral_code ? "@" + String((ou as any).referral_code).toLowerCase() : null,
+        nick: ((ou as any)?.nick as string | null) ?? null,
         following: fl,
       });
     }
@@ -386,7 +386,7 @@ export default function ParticipantProfilePage() {
 
   async function share() {
     if (!participant) return;
-    const r = await shareLink(window.location.origin + `/participant/${id}`, participant.display_name);
+    const r = await shareLink(window.location.origin + (owner?.nick ? `/n/${owner.nick}` : `/participant/${id}`), participant.display_name);
     if (r === "copied") {
       setToast("Ссылка скопирована");
       setTimeout(() => setToast(""), 2000);
@@ -495,7 +495,6 @@ export default function ParticipantProfilePage() {
               : `${voteCount} голосов`
           }
           bio={owner?.bio || participant.bio || ""}
-          handle={owner?.handle ?? null}
           socials={owner?.socials ?? []}
           stats={[
             { value: followerCount, label: "Подписчики" },

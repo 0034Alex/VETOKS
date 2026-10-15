@@ -14,7 +14,7 @@ type Data = {
   photoUrl: string | null;
   bio: string;
   city: string | null;
-  handle: string | null;
+  nick: string | null;
   socials: string[];
   following: number | null;
   canWrite: boolean;
@@ -58,7 +58,7 @@ export default function PublicUserPage() {
   if (!d) return <main className="min-h-screen flex items-center justify-center text-muted">Загрузка...</main>;
 
   async function share() {
-    const r = await shareLink(window.location.href, d!.name);
+    const r = await shareLink(d!.nick ? window.location.origin + `/n/${d!.nick}` : window.location.href, d!.name);
     if (r === "copied") {
       setToast("Ссылка скопирована");
       setTimeout(() => setToast(""), 2000);
@@ -73,7 +73,6 @@ export default function PublicUserPage() {
           name={d.name}
           city={d.city}
           bio={d.bio}
-          handle={d.handle}
           verified={d.verified}
           socials={d.socials}
           stats={d.following === null ? [] : [{ value: d.following, label: "Подписки" }]}

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
-  const { data: me } = await supabaseAdmin.from("users").select("referral_code").eq("id", uid).maybeSingle();
+  const { data: me } = await supabaseAdmin.from("users").select("referral_code, nick").eq("id", uid).maybeSingle();
   const { data: rows } = await supabaseAdmin
     .from("referrals")
     .select("referred_id, status, reward_referrer, created_at, users:referred_id(first_name)")
@@ -23,6 +23,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     code: me?.referral_code ?? "",
+    nick: (me as any)?.nick ?? null,
     enabled: s.enabled,
     rewardReferrer: s.rewardReferrer,
     rewardInvited: s.rewardInvited,
