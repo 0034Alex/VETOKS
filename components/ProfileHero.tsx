@@ -257,7 +257,7 @@ export function ProfileActions({ children }: { children: ReactNode }) {
     <div
       className="fixed left-0 right-0 z-40 px-4 pt-8 pb-3 pointer-events-none"
       style={{
-        bottom: "calc(72px + env(safe-area-inset-bottom))",
+        bottom: "calc(80px + max(0px, env(safe-area-inset-bottom) - 16px))",
         background: "linear-gradient(180deg,rgba(11,11,13,0),rgba(11,11,13,.92) 55%)",
       }}
     >
