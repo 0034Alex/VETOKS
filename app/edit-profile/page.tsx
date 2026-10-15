@@ -18,6 +18,7 @@ export default function EditProfilePage() {
   const [firstName, setFirstName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [bio, setBio] = useState("");
   const [regionId, setRegionId] = useState("");
   const [origRegion, setOrigRegion] = useState("");
   const [lockedUntil, setLockedUntil] = useState<Date | null>(null);
@@ -55,7 +56,7 @@ export default function EditProfilePage() {
 
       const { data: row } = await supabase
         .from("users")
-        .select("first_name, phone, email, region_id, photo_url, region_changed_at")
+        .select("first_name, phone, email, region_id, photo_url, region_changed_at, bio")
         .eq("id", u.id)
         .maybeSingle();
 
@@ -63,6 +64,7 @@ export default function EditProfilePage() {
         setFirstName(row.first_name ?? "");
         setPhone(row.phone ?? "");
         setEmail(row.email ?? "");
+        setBio(((row as any).bio as string) ?? "");
         setRegionId(row.region_id ?? "");
         setOrigRegion(row.region_id ?? "");
         if ((row as any).region_changed_at) {
@@ -129,6 +131,7 @@ export default function EditProfilePage() {
         phone,
         email,
         photo_url: newPhotoUrl,
+        bio: bio.trim().slice(0, 300) || null,
       })
       .eq("id", userId);
 
@@ -188,6 +191,19 @@ export default function EditProfilePage() {
               onChange={(e) => setFirstName(e.target.value)}
               className="bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3"
             />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-offwhite text-sm">О себе</label>
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              maxLength={300}
+              rows={3}
+              placeholder="Пара слов о вас. Видно в профиле."
+              className="bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 text-sm"
+            />
+            <p className="text-muted text-[11px] text-right">{bio.length}/300</p>
           </div>
 
           <div className="flex flex-col gap-1">

@@ -7,8 +7,18 @@ import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import { useT, LANGS } from "@/lib/i18n";
+import { SocialIcon, socialKind, normalizeLink, parseLinks } from "@/lib/socialLinks";
 
 const TOGGLES: string[] = ["gifts", "tasks", "support"];
+
+// Приватность: true = открыто (по умолчанию всё открыто).
+const PRIVACY: { key: string; label: string; hint?: string }[] = [
+  { key: "feed", label: "Показывать моё имя в живой ленте подарков", hint: "Если выключить — в ленте будет «Аноним»" },
+  { key: "region", label: "Показывать мой регион в профиле" },
+  { key: "online", label: "Показывать, что я в сети" },
+  { key: "follows", label: "Показывать, на кого я подписан" },
+  { key: "dm", label: "Разрешить писать мне личные сообщения", hint: "Если выключить — писать вам не смогут" },
+];
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -19,6 +29,10 @@ export default function SettingsPage() {
   const [tgLinked, setTgLinked] = useState(false);
   const [phone, setPhone] = useState<string | null>(null);
   const [prefs, setPrefs] = useState<Record<string, boolean>>({});
+  const [priv, setPriv] = useState<Record<string, boolean>>({});
+  const [links, setLinks] = useState<string[]>([]);
+  const [linkInput, setLinkInput] = useState("");
+  const [linkErr, setLinkErr] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -30,9 +44,11 @@ export default function SettingsPage() {
       setUserId(u.id);
       setVerified(!!u.phone_verified);
       setPhone(u.phone);
-      const { data } = await supabase.from("users").select("telegram_id, notify_tg").eq("id", u.id).maybeSingle();
+      const { data } = await supabase.from("users").select("telegram_id, notify_tg, privacy, social_links").eq("id", u.id).maybeSingle();
       setTgLinked(!!data?.telegram_id);
       setPrefs((data?.notify_tg as Record<string, boolean>) ?? {});
+      setPriv((data?.privacy as Record<string, boolean>) ?? {});
+      setLinks(parseLinks((data as any)?.social_links));
       setLoading(false);
     })();
     const onVerified = () => setVerified(true);
@@ -44,6 +60,36 @@ export default function SettingsPage() {
     const next = { ...prefs, [key]: prefs[key] === false };
     setPrefs(next);
     await supabase.from("users").update({ notify_tg: next }).eq("id", userId);
+  }
+
+  async function togglePriv(key: string) {
+    const next = { ...priv, [key]: priv[key] === false };
+    setPriv(next);
+    await supabase.from("users").update({ privacy: next }).eq("id", userId);
+  }
+
+  async function saveLinks(next: string[]) {
+    setLinks(next);
+    await supabase.from("users").update({ social_links: next }).eq("id", userId);
+  }
+
+  async function addLink() {
+    setLinkErr("");
+    const v = normalizeLink(linkInput);
+    if (!v) {
+      setLinkErr("Это не похоже на ссылку. Вставьте адрес вашей страницы.");
+      return;
+    }
+    if (links.includes(v)) {
+      setLinkErr("Эта ссылка уже добавлена.");
+      return;
+    }
+    if (links.length >= 6) {
+      setLinkErr("Можно добавить до 6 ссылок.");
+      return;
+    }
+    await saveLinks([...links, v]);
+    setLinkInput("");
   }
 
   if (loading) return <main className="min-h-screen flex items-center justify-center text-muted">Загрузка...</main>;
@@ -91,6 +137,61 @@ export default function SettingsPage() {
                 <label key={k} className="flex items-center justify-between gap-3 text-offwhite text-sm">
                   <span>{t("settings.n." + k)}</span>
                   <input type="checkbox" checked={prefs[k] !== false} onChange={() => toggle(k)} />
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-bgSurface border border-muted rounded-xl p-4">
+            <p className="text-offwhite font-semibold text-sm mb-1">Соцсети</p>
+            <p className="text-muted text-xs mb-3">
+              Вставьте ссылку на свою страницу. Значок сети появится в вашем профиле сам.
+            </p>
+            <div className="flex gap-2">
+              <input
+                value={linkInput}
+                onChange={(e) => setLinkInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addLink()}
+                placeholder="https://instagram.com/ваш_ник"
+                className="flex-1 min-w-0 bg-bgPrimary text-offwhite border border-muted rounded-xl px-3 py-2.5 text-sm"
+              />
+              <button onClick={addLink} className="bg-gold text-bgPrimary font-semibold rounded-xl px-4 text-sm">
+                Добавить
+              </button>
+            </div>
+            {linkErr && <p className="text-danger text-xs mt-2">{linkErr}</p>}
+            {links.length > 0 && (
+              <div className="mt-3 flex flex-col">
+                {links.map((u) => (
+                  <div key={u} className="flex items-center gap-3 py-2.5 border-t border-muted/40">
+                    <span className="w-9 h-9 rounded-full bg-bgPrimary border border-muted/60 flex items-center justify-center text-offwhite flex-none">
+                      <SocialIcon kind={socialKind(u)} size={18} />
+                    </span>
+                    <span className="flex-1 min-w-0 truncate text-muted text-xs">{u.replace(/^https?:\/\//, "")}</span>
+                    <button onClick={() => saveLinks(links.filter((x) => x !== u))} className="text-danger text-xs">
+                      Убрать
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-bgSurface border border-muted rounded-xl p-4">
+            <p className="text-offwhite font-semibold text-sm mb-3">Приватность</p>
+            <div className="flex flex-col gap-3">
+              {PRIVACY.map((p) => (
+                <label key={p.key} className="flex items-start justify-between gap-3 text-offwhite text-sm">
+                  <span>
+                    {p.label}
+                    {p.hint && <span className="block text-muted text-xs mt-0.5">{p.hint}</span>}
+                  </span>
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={priv[p.key] !== false}
+                    onChange={() => togglePriv(p.key)}
+                  />
                 </label>
               ))}
             </div>

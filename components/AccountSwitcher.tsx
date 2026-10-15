@@ -6,7 +6,7 @@ import { apiPost, openSession } from "@/lib/authClient";
 type Acc = { id: string; name: string; main: boolean; current: boolean };
 
 // Переключатель «Мои аккаунты» в профиле.
-export default function AccountSwitcher() {
+export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
   const [accounts, setAccounts] = useState<Acc[]>([]);
   const [canAdd, setCanAdd] = useState(false);
   const [needVerify, setNeedVerify] = useState(false);
@@ -67,17 +67,28 @@ export default function AccountSwitcher() {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="w-full flex items-center justify-between gap-3 bg-bgSurface border border-muted rounded-xl px-4 py-3 mb-4 text-left"
-      >
-        <span className="text-sm text-offwhite">
-          <span className="text-muted text-xs block">Мои аккаунты</span>
+      {chip ? (
+        <button
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-1.5 text-xs text-offwhite px-3 py-1.5 rounded-full bg-black/45 backdrop-blur border border-white/15"
+        >
+          <span className="text-gold">⇄</span>
           {current?.name ?? "Аккаунт"}
-          {current && !current.main && <span className="text-muted text-xs"> · дополнительный</span>}
-        </span>
-        <span className="text-gold text-lg">⇄</span>
-      </button>
+        </button>
+      ) : (
+      <button
+          onClick={() => setOpen(true)}
+          className="w-full flex items-center justify-between gap-3 bg-bgSurface border border-muted rounded-xl px-4 py-3 mb-4 text-left"
+        >
+          <span className="text-sm text-offwhite">
+            <span className="text-muted text-xs block">Мои аккаунты</span>
+            {current?.name ?? "Аккаунт"}
+            {current && !current.main && <span className="text-muted text-xs"> · дополнительный</span>}
+          </span>
+          <span className="text-gold text-lg">⇄</span>
+        </button>
+  
+      )}
 
       {open && (
         <div

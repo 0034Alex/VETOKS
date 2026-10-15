@@ -146,10 +146,12 @@ export default function ChatPage() {
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
       >
         <button onClick={() => router.push("/chats")} className="text-offwhite text-xl">←</button>
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] text-white flex items-center justify-center font-semibold">
-          {(name || "?").slice(0, 1).toUpperCase()}
-        </div>
-        <p className="text-offwhite font-semibold flex-1 truncate">{name}</p>
+        <button onClick={() => router.push(`/u/${other}`)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] text-white flex items-center justify-center font-semibold flex-none">
+            {(name || "?").slice(0, 1).toUpperCase()}
+          </div>
+          <p className="text-offwhite font-semibold flex-1 truncate">{name}</p>
+        </button>
         <button onClick={() => setMenu((v) => !v)} className="text-offwhite text-2xl leading-none px-2">⋯</button>
         {menu && (
           <div className="absolute right-4 top-full mt-1 bg-bgSurface border border-muted rounded-xl overflow-hidden z-30 w-56">

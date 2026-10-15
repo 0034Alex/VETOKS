@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
-import Logo from "@/components/Logo";
-import PageHeader from "@/components/PageHeader";
+import ProfileHero, { ProfileActions, BigBtn, RoundBtn, TopBtn, IconMail, shareLink } from "@/components/ProfileHero";
+import { GiftIcon, parseLinks } from "@/lib/socialLinks";
 import VoteModal from "@/components/VoteModal";
 import { getAppPrices, getCurrencySymbol } from "@/lib/currency";
 import { apiPost } from "@/lib/authClient";
@@ -53,7 +53,17 @@ const BOOST_VOTES = 1000;
 
 export default function ParticipantProfilePage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
+  const [owner, setOwner] = useState<{
+    photoUrl: string | null;
+    bio: string;
+    city: string | null;
+    socials: string[];
+    handle: string | null;
+    following: number | null;
+  } | null>(null);
+  const [toast, setToast] = useState("");
 
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [voteCount, setVoteCount] = useState(0);
@@ -106,6 +116,31 @@ export default function ParticipantProfilePage() {
       .eq("id", id)
       .maybeSingle();
     setParticipant(p as Participant | null);
+
+    if (p) {
+      const { data: ou } = await supabase
+        .from("users")
+        .select("photo_url, bio, social_links, privacy, referral_code, regions(name)")
+        .eq("id", (p as Participant).user_id)
+        .maybeSingle();
+      const priv = (((ou as any)?.privacy ?? {}) as Record<string, boolean>) || {};
+      let fl: number | null = null;
+      if (priv.follows !== false) {
+        const { count } = await supabase
+          .from("participant_follows")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", (p as Participant).user_id);
+        fl = count ?? 0;
+      }
+      setOwner({
+        photoUrl: (ou as any)?.photo_url ?? null,
+        bio: (ou as any)?.bio ?? "",
+        city: priv.region === false ? null : (ou as any)?.regions?.name ?? null,
+        socials: parseLinks((ou as any)?.social_links),
+        handle: (ou as any)?.referral_code ? "@" + String((ou as any).referral_code).toLowerCase() : null,
+        following: fl,
+      });
+    }
 
     // Голоса — из базы с учётом штрафов за чёрные метки.
     const totals = await getVoteTotals();
@@ -349,6 +384,15 @@ export default function ParticipantProfilePage() {
     setThread((data as ThreadMessage[]) ?? []);
   }
 
+  async function share() {
+    if (!participant) return;
+    const r = await shareLink(window.location.origin + `/participant/${id}`, participant.display_name);
+    if (r === "copied") {
+      setToast("Ссылка скопирована");
+      setTimeout(() => setToast(""), 2000);
+    }
+  }
+
   function purchaseError(r: any, fallback: string) {
     if (r?.error === "not_enough") return "Недостаточно средств. Пополните баланс в разделе «Подарки».";
     if (r?.error === "sold") return "Эту карточку уже купили.";
@@ -437,47 +481,43 @@ export default function ParticipantProfilePage() {
   const boostsLeft = BOOST_LIMIT - boostCount;
 
   return (
-    <main className="min-h-screen pb-40">
-      <PageHeader />
-
+    <main className="min-h-screen pb-52">
       <div className="max-w-md mx-auto">
-        <div className="aspect-[3/4] bg-black/40 rounded-2xl mx-6 overflow-hidden mb-4">
-          {participant.photo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={participant.photo_url}
-              alt={participant.display_name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted text-sm">
-              Нет фото
-            </div>
-          )}
-        </div>
-
-        <div className="px-6">
-          <h1 className="text-2xl text-offwhite font-semibold mb-2">
-            {participant.display_name}
-          </h1>
-
-          <div className="flex gap-4 text-sm mb-4">
-            <span className="text-rose">♥ {voteCount} голосов</span>
-            <Link href={`/participant/${id}/gifts`} className="text-gold underline">
-              🎁 {giftCount} подарков
-            </Link>
-            <span className="text-muted">👥 {followerCount} подписчиков</span>
-          </div>
-
-          {rankPosition !== null && (
-            <p className="text-muted text-sm mb-4">
-              #{rankPosition} в общем рейтинге
-              {votesToNextRank !== null && votesToNextRank > 0 && (
-                <> · до топ-25: +{votesToNextRank} голосов</>
+        <ProfileHero
+          photoUrl={participant.photo_url ?? owner?.photoUrl ?? null}
+          name={participant.display_name}
+          status="👑 Участница"
+          city={owner?.city ?? null}
+          rank={
+            rankPosition !== null
+              ? `№${rankPosition} в рейтинге · ${voteCount} голосов` +
+                (votesToNextRank !== null && votesToNextRank > 0 ? ` · до топ-25: +${votesToNextRank}` : "")
+              : `${voteCount} голосов`
+          }
+          bio={owner?.bio || participant.bio || ""}
+          handle={owner?.handle ?? null}
+          socials={owner?.socials ?? []}
+          stats={[
+            { value: followerCount, label: "Подписчики" },
+            ...(owner?.following != null ? [{ value: owner.following, label: "Подписки" }] : []),
+          ]}
+          onShare={share}
+          verified
+          topRight={
+            <>
+              {userId && !isOwner && (
+                <TopBtn href={`/chats/${participant.user_id}`} label="Написать">
+                  <IconMail />
+                </TopBtn>
               )}
-            </p>
-          )}
+              <TopBtn onClick={() => router.back()} label="Назад">
+                <span className="text-xl leading-none">←</span>
+              </TopBtn>
+            </>
+          }
+        />
 
+        <div className="px-6 mt-5">
           {isOwner && giftTotal > 0 && (
             <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
               <p className="text-muted text-xs mb-1">
@@ -539,33 +579,6 @@ export default function ParticipantProfilePage() {
             </div>
           )}
 
-          {participant.bio && (
-            <p className="text-offwhite text-sm mb-6">{participant.bio}</p>
-          )}
-
-          <div
-            className="fixed left-0 right-0 z-40 px-6"
-            style={{ bottom: "calc(60px + env(safe-area-inset-bottom))" }}
-          >
-          <div className="max-w-md mx-auto flex gap-3 bg-bgPrimary/90 backdrop-blur rounded-full p-1">
-            <button
-              onClick={() => setVoteModalOpen(true)}
-              disabled={!userId}
-              className="flex-1 bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold py-3 rounded-full text-sm disabled:opacity-40"
-            >
-              🗳️ Проголосовать
-            </button>
-            <Link
-              href={`/shop?participant=${participant.id}&name=${encodeURIComponent(
-                participant.display_name
-              )}`}
-              className="flex-1 bg-bgPrimary border border-gold text-gold font-semibold py-3 rounded-full text-sm text-center"
-            >
-              🎁 Подарить
-            </Link>
-          </div>
-          </div>
-
           {cards.length > 0 && (
             <div className="mb-4">
               <p className="text-offwhite text-sm font-semibold mb-2">
@@ -608,51 +621,6 @@ export default function ParticipantProfilePage() {
             </div>
           )}
 
-          {userId && participant && participant.user_id !== userId && (
-            <a
-              href={`/chats/${participant.user_id}`}
-              className="block w-full text-center border border-gold text-gold font-semibold py-3 rounded-full text-sm mb-3"
-            >
-              ✉️ Написать
-            </a>
-          )}
-
-          {isFollowing ? (
-            <button
-              onClick={toggleFollow}
-              disabled={busy || !userId}
-              className="w-full border border-muted text-muted font-semibold py-3 rounded-full text-sm disabled:opacity-40 mb-3"
-            >
-              Отписаться
-            </button>
-          ) : (
-            <div
-              className="rounded-full p-[2px] mb-3"
-              style={{
-                background:
-                  "conic-gradient(from var(--vetoks-follow-angle, 0deg), transparent 0%, #C9A227 12%, #F5E6A8 18%, #C9A227 24%, transparent 36%)",
-                animation: "vetoks-follow-border-spin 3s linear infinite",
-              }}
-            >
-              <button
-                onClick={toggleFollow}
-                disabled={busy || !userId}
-                className="w-full bg-bgPrimary text-gold font-semibold py-3 rounded-full text-sm disabled:opacity-40"
-              >
-                Подписаться
-              </button>
-            </div>
-          )}
-          <style>{`
-            @property --vetoks-follow-angle {
-              syntax: '<angle>';
-              initial-value: 0deg;
-              inherits: false;
-            }
-            @keyframes vetoks-follow-border-spin {
-              to { --vetoks-follow-angle: 360deg; }
-            }
-          `}</style>
 
           {!isOwner && thread.length > 0 && (
             <div className="bg-bgSurface border border-muted rounded-xl p-4 mb-3">
@@ -786,6 +754,38 @@ export default function ParticipantProfilePage() {
           )}
         </div>
       </div>
+
+      <ProfileActions>
+        {isOwner ? (
+          <>
+            <BigBtn href="/edit-profile">Править профиль</BigBtn>
+            <RoundBtn href={`/participant/${id}/gifts`} label="Подарки">
+              <GiftIcon />
+            </RoundBtn>
+          </>
+        ) : (
+          <>
+            <BigBtn variant={isFollowing ? "on" : "gold"} onClick={toggleFollow} disabled={busy || !userId}>
+              {isFollowing ? "✓ Вы подписаны" : "Подписаться"}
+            </BigBtn>
+            <BigBtn variant="vote" onClick={() => setVoteModalOpen(true)} disabled={!userId}>
+              Голосовать
+            </BigBtn>
+            <RoundBtn
+              href={`/shop?participant=${participant.id}&name=${encodeURIComponent(participant.display_name)}`}
+              label="Подарить"
+            >
+              <GiftIcon />
+            </RoundBtn>
+          </>
+        )}
+      </ProfileActions>
+
+      {toast && (
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-44 z-50 bg-bgSurface border border-gold text-gold text-sm px-4 py-2 rounded-full">
+          {toast}
+        </div>
+      )}
 
       {voteModalOpen && (
         <VoteModal
