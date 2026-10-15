@@ -608,6 +608,15 @@ export default function ParticipantProfilePage() {
             </div>
           )}
 
+          {userId && participant && participant.user_id !== userId && (
+            <a
+              href={`/chats/${participant.user_id}`}
+              className="block w-full text-center border border-gold text-gold font-semibold py-3 rounded-full text-sm mb-3"
+            >
+              ✉️ Написать
+            </a>
+          )}
+
           {isFollowing ? (
             <button
               onClick={toggleFollow}

@@ -5,6 +5,7 @@ import { apiPost } from "@/lib/authClient";
 
 export const ACTION_LABELS: Record<string, string> = {
   ban: "Блокировка",
+  dm_report_close: "Жалоба на переписку закрыта",
   unban: "Разблокировка",
   hide_from_contest: "Скрыта из конкурса",
   show_in_contest: "Возвращена в конкурс",

@@ -12,6 +12,7 @@ import SocialLinksBar from "@/components/SocialLinksBar";
 import AccountSwitcher from "@/components/AccountSwitcher";
 import { getCurrencySymbol } from "@/lib/currency";
 import { useT } from "@/lib/i18n";
+import { apiPost } from "@/lib/authClient";
 
 type Participant = { id: string; display_name: string };
 
@@ -42,6 +43,7 @@ export default function ProfilePage() {
   const [balance, setBalance] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [dmUnread, setDmUnread] = useState(0);
   const [goalText, setGoalText] = useState("");
   const [goalTarget, setGoalTarget] = useState(5000);
   const [goalCollected, setGoalCollected] = useState(0);
@@ -57,6 +59,12 @@ export default function ProfilePage() {
     const done = () => setPhoneDone(true);
     window.addEventListener("vetoks:verified", done);
     return () => window.removeEventListener("vetoks:verified", done);
+  }, []);
+
+  useEffect(() => {
+    apiPost("/api/dm/unread").then((r) => {
+      if (r?.ok) setDmUnread(r.count);
+    });
   }, []);
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -227,16 +235,14 @@ export default function ProfilePage() {
                 +
               </Link>
             )}
-            {participant && (
-              <Link href="/messages" className="relative text-xl">
-                ✉️
-                {unreadMessages > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-danger text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
-                    {unreadMessages > 9 ? "9+" : unreadMessages}
-                  </span>
-                )}
-              </Link>
-            )}
+            <Link href="/chats" className="relative text-xl">
+              ✉️
+              {dmUnread + unreadMessages > 0 && (
+                <span className="absolute -top-1 -right-1 bg-danger text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
+                  {dmUnread + unreadMessages > 9 ? "9+" : dmUnread + unreadMessages}
+                </span>
+              )}
+            </Link>
             <Link href="/notifications" className="relative text-xl">
               🔔
               {unreadCount > 0 && (

@@ -19,6 +19,77 @@ type Item = {
   post: { video_url: string | null; photo_url: string | null; caption: string | null; participants: { display_name: string } | null } | null;
 };
 
+type DmItem = {
+  id: string;
+  reporter_id: string;
+  reported_id: string;
+  reason: string;
+  details: string | null;
+  created_at: string;
+  messages: { sender_id: string; body: string; created_at: string }[];
+};
+
+const DM_LABELS: Record<string, string> = { spam: "спам", insult: "оскорбления", scam: "мошенничество", nudity: "неприемлемое", other: "другое" };
+
+// Жалобы на личные переписки
+function DmReports() {
+  const [items, setItems] = useState<DmItem[]>([]);
+  const [names, setNames] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    const r = await apiPost("/api/admin/dm-reports", {});
+    setItems(r?.items ?? []);
+    setNames(r?.names ?? {});
+    setLoading(false);
+  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function act(action: "close" | "ban", id: string) {
+    if (action === "ban" && !confirm("Заблокировать этого пользователя?")) return;
+    await apiPost("/api/admin/dm-reports", { action, id });
+    await load();
+  }
+
+  if (loading || items.length === 0) return null;
+  return (
+    <div className="max-w-lg flex flex-col gap-4 mb-8">
+      <p className="text-offwhite font-semibold">✉️ Жалобы на переписки</p>
+      {items.map((it) => (
+        <div key={it.id} className="bg-bgSurface border border-muted rounded-xl p-3">
+          <p className="text-offwhite text-sm font-semibold">
+            На {names[it.reported_id] ?? "пользователя"} · от {names[it.reporter_id] ?? "пользователя"}
+          </p>
+          <p className="text-muted text-xs mb-2">
+            {DM_LABELS[it.reason] ?? it.reason}
+            {it.details ? ` · «${it.details}»` : ""}
+          </p>
+          <div className="bg-bgPrimary rounded-lg p-2 mb-2 max-h-56 overflow-y-auto">
+            {it.messages.map((m, i) => (
+              <p key={i} className="text-xs mb-1">
+                <span className={m.sender_id === it.reported_id ? "text-danger" : "text-muted"}>
+                  {names[m.sender_id] ?? (m.sender_id === it.reported_id ? "Обвиняемый" : "Жалобщик")}:
+                </span>{" "}
+                <span className="text-offwhite">{m.body}</span>
+              </p>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => act("close", it.id)} className="flex-1 border border-muted text-offwhite rounded-full py-2 text-sm">
+              Закрыть
+            </button>
+            <button onClick={() => act("ban", it.id)} className="flex-1 bg-danger text-white rounded-full py-2 text-sm">
+              Заблокировать
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // CRM → «Жалобы»
 export default function AdminReportsPanel() {
   const [items, setItems] = useState<Item[]>([]);
@@ -41,9 +112,18 @@ export default function AdminReportsPanel() {
   }
 
   if (loading) return <p className="text-muted text-sm">Загрузка...</p>;
-  if (items.length === 0) return <p className="text-muted text-sm">Новых жалоб нет 🎉</p>;
+
+  if (items.length === 0)
+    return (
+      <>
+        <DmReports />
+        <p className="text-muted text-sm">Новых жалоб на ролики нет 🎉</p>
+      </>
+    );
 
   return (
+    <>
+    <DmReports />
     <div className="max-w-lg flex flex-col gap-4">
       {items.map((it) => (
         <div key={it.post_id} className="bg-bgSurface border border-muted rounded-xl p-3">
@@ -77,5 +157,6 @@ export default function AdminReportsPanel() {
         </div>
       ))}
     </div>
+    </>
   );
 }
