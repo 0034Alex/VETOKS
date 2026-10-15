@@ -88,7 +88,7 @@ const CSS = `
 .vn-row{position:absolute;inset:0;display:flex;justify-content:center;z-index:2}
 .vn-in{width:100%;max-width:48rem;display:flex}
 .vn-ind{position:absolute;top:6px;left:0;width:calc(100%/5);height:48px;display:flex;justify-content:center;pointer-events:none;transition:transform .45s cubic-bezier(.3,1.3,.5,1);z-index:1}
-.vn-ind i{display:block;width:54px;height:48px;border-radius:18px;background:radial-gradient(80% 90% at 50% 20%,rgba(201,162,39,.30),rgba(201,162,39,.08));border:1px solid rgba(201,162,39,.35);box-shadow:0 0 18px rgba(201,162,39,.25)}
+.vn-ind i{display:block;width:68px;height:48px;border-radius:18px;background:radial-gradient(80% 90% at 50% 20%,rgba(201,162,39,.30),rgba(201,162,39,.08));border:1px solid rgba(201,162,39,.35);box-shadow:0 0 18px rgba(201,162,39,.25)}
 .vn-wrap{position:relative;width:100%;max-width:48rem;margin:0 auto;height:74px}
 .vn-btn{position:relative;flex:1;min-width:0;height:74px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:11px 0 9px;color:#8A8A8E}
 .vn-btn.on{color:#E8D48A}

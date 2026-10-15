@@ -196,7 +196,7 @@ export default function ParticipantsPage() {
         <PromoBannerCarousel />
 
         <div className="px-6 mb-4">
-          <div className="flex items-baseline gap-5">
+          <div className="flex items-baseline justify-between">
             {(["people", "rating"] as const).map((k) => (
               <button
                 key={k}
