@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff, logAction } from "@/lib/staffServer";
+import { notify } from "@/lib/shopServer";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
   if (a === "list") {
     const { data: rows } = await supabaseAdmin
       .from("sponsors")
-      .select("id, name, amount, status, package_type, user_id, contact_info, stage, notes, follow_up_at, created_at")
+      .select("id, name, amount, status, package_type, user_id, contact_info, stage, notes, follow_up_at, created_at, referrer_participant_id, referral_percent, referral_amount, referral_paid_at")
       .order("created_at", { ascending: false });
     const ids = (rows ?? []).map((r: any) => r.id);
     const { data: pays } = ids.length
@@ -31,7 +32,13 @@ export async function POST(req: Request) {
           .in("sponsor_id", ids)
           .order("paid_at", { ascending: false })
       : { data: [] as any[] };
-    return NextResponse.json({ ok: true, rows: rows ?? [], payments: pays ?? [] });
+    const refIds = Array.from(new Set((rows ?? []).map((r: any) => r.referrer_participant_id).filter(Boolean)));
+    const refNames: Record<string, string> = {};
+    if (refIds.length) {
+      const { data: ps } = await supabaseAdmin.from("participants").select("id, display_name").in("id", refIds);
+      (ps ?? []).forEach((p: any) => (refNames[p.id] = p.display_name));
+    }
+    return NextResponse.json({ ok: true, rows: rows ?? [], payments: pays ?? [], refNames });
   }
 
   if (a === "create") {
@@ -47,8 +54,84 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  if (a === "find_participant") {
+    const qv = String(body.query ?? "").trim();
+    if (qv.length < 2) return NextResponse.json({ ok: true, items: [] });
+    const { data } = await supabaseAdmin
+      .from("participants")
+      .select("id, display_name, regions(name)")
+      .ilike("display_name", `%${qv}%`)
+      .limit(8);
+    return NextResponse.json({ ok: true, items: data ?? [] });
+  }
+
   const id = String(body.id ?? "");
   if (!id) return NextResponse.json({ ok: false }, { status: 400 });
+
+  // Участница, которая привела рекламодателя, и процент бонуса.
+  if (a === "set_referrer") {
+    const { data: cur } = await supabaseAdmin.from("sponsors").select("referral_paid_at").eq("id", id).maybeSingle();
+    if (cur?.referral_paid_at) return NextResponse.json({ ok: false, error: "already_paid" }, { status: 400 });
+    const pct = Math.min(100, Math.max(0, Number(body.percent) || 0));
+    await supabaseAdmin
+      .from("sponsors")
+      .update({ referrer_participant_id: body.participantId ? String(body.participantId) : null, referral_percent: pct })
+      .eq("id", id);
+    await logAction(uid, "partner_referrer", null, { sponsor: id, participant: body.participantId ?? null, percent: pct });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Зачислить бонус один раз. Только финансовый админ или владелец.
+  if (a === "pay_referrer") {
+    const { data: me } = await supabaseAdmin.from("users").select("role").eq("id", uid).maybeSingle();
+    if (!me || !["finance_admin", "super_admin"].includes(me.role as string)) {
+      return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+    }
+    const { data: sp } = await supabaseAdmin
+      .from("sponsors")
+      .select("id, name, amount, referrer_participant_id, referral_percent, referral_paid_at")
+      .eq("id", id)
+      .maybeSingle();
+    if (!sp?.referrer_participant_id || !(Number(sp.referral_percent) > 0)) {
+      return NextResponse.json({ ok: false, error: "no_referrer" }, { status: 400 });
+    }
+    if (sp.referral_paid_at) return NextResponse.json({ ok: false, error: "already_paid" }, { status: 400 });
+    const total = Number(sp.amount) || 0;
+    const bonus = Math.round(((total * Number(sp.referral_percent)) / 100) * 100) / 100;
+    if (!(bonus > 0)) return NextResponse.json({ ok: false, error: "no_payments" }, { status: 400 });
+
+    // Занимаем «один раз» прежде чем платить — повторный клик не начислит второй раз.
+    const { data: claimed } = await supabaseAdmin
+      .from("sponsors")
+      .update({ referral_paid_at: new Date().toISOString(), referral_amount: bonus })
+      .eq("id", id)
+      .is("referral_paid_at", null)
+      .select("id");
+    if (!claimed || claimed.length === 0) return NextResponse.json({ ok: false, error: "already_paid" }, { status: 400 });
+
+    const { data: part } = await supabaseAdmin
+      .from("participants")
+      .select("user_id")
+      .eq("id", sp.referrer_participant_id)
+      .maybeSingle();
+    if (!part?.user_id) {
+      await supabaseAdmin.from("sponsors").update({ referral_paid_at: null, referral_amount: null }).eq("id", id);
+      return NextResponse.json({ ok: false, error: "no_participant" }, { status: 400 });
+    }
+    const { error } = await supabaseAdmin.rpc("vt_credit", {
+      p_user: part.user_id,
+      p_amount: bonus,
+      p_type: "advertiser_bonus",
+      p_meta: { sponsor: sp.id, sponsor_name: sp.name, percent: sp.referral_percent },
+    });
+    if (error) {
+      await supabaseAdmin.from("sponsors").update({ referral_paid_at: null, referral_amount: null }).eq("id", id);
+      return NextResponse.json({ ok: false, error: "credit_failed", detail: error.message }, { status: 500 });
+    }
+    await notify(part.user_id as string, `💰 Вам начислено ${bonus} ₴ — бонус за приведённого рекламодателя`, "/history", "other");
+    await logAction(uid, "partner_bonus", part.user_id as string, { sponsor: id, amount: bonus });
+    return NextResponse.json({ ok: true, amount: bonus });
+  }
 
   if (a === "update") {
     const patch: Record<string, any> = {};

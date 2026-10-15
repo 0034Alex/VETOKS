@@ -24,6 +24,7 @@ const TYPE_LABELS: Record<string, string> = {
   boost_purchase: "Буст в топ",
   refund: "Возврат",
   referral_reward: "Награда за приглашение",
+  advertiser_bonus: "Бонус за приведённого рекламодателя",
 };
 
 export default function HistoryPage() {

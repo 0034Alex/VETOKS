@@ -16,6 +16,8 @@ export const ACTION_LABELS: Record<string, string> = {
   partner_create: "Партнёр создан",
   partner_stage: "Стадия партнёра",
   partner_payment: "Платёж партнёра",
+  partner_referrer: "Участница привела рекламодателя",
+  partner_bonus: "Бонус участнице за рекламодателя",
   partner_link: "Партнёр привязан к аккаунту",
   doc_edit: "Документ изменён",
   doc_restore: "Версия документа восстановлена",

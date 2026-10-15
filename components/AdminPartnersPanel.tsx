@@ -17,6 +17,12 @@ const STAGES: [string, string][] = [
 export default function AdminPartnersPanel() {
   const [rows, setRows] = useState<any[]>([]);
   const [pays, setPays] = useState<any[]>([]);
+  const [refNames, setRefNames] = useState<Record<string, string>>({});
+  const [pQuery, setPQuery] = useState("");
+  const [pFound, setPFound] = useState<any[]>([]);
+  const [pPicked, setPPicked] = useState<{ id: string; name: string } | null>(null);
+  const [pct, setPct] = useState("10");
+  const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [stageFilter, setStageFilter] = useState("all");
   const [name, setName] = useState("");
@@ -32,6 +38,7 @@ export default function AdminPartnersPanel() {
     const r = await apiPost("/api/admin/partners", { action: "list" });
     setRows(r?.rows ?? []);
     setPays(r?.payments ?? []);
+    setRefNames(r?.refNames ?? {});
     setLoading(false);
   }
   useEffect(() => {
@@ -61,6 +68,28 @@ export default function AdminPartnersPanel() {
   async function findUser() {
     const r = await apiPost("/api/admin/partners", { action: "find_user", id: open, query: linkQ });
     setLinkUser(r?.user ?? null);
+  }
+
+  async function searchParticipant() {
+    const r = await apiPost("/api/admin/partners", { action: "find_participant", query: pQuery });
+    setPFound(r?.items ?? []);
+  }
+
+  async function saveReferrer(id: string) {
+    setMsg("");
+    await act({ action: "set_referrer", id, participantId: pPicked?.id ?? null, percent: Number(pct) });
+    setPPicked(null);
+    setPFound([]);
+    setPQuery("");
+  }
+
+  async function payReferrer(s: any, mine: any[]) {
+    const total = mine.reduce((t, p) => t + Number(p.amount), 0);
+    const bonus = Math.round(((total * Number(s.referral_percent)) / 100) * 100) / 100;
+    if (!confirm(`Зачислить ${bonus} ₴ участнице ${refNames[s.referrer_participant_id] ?? ""}? Это делается один раз.`)) return;
+    const r = await apiPost("/api/admin/partners", { action: "pay_referrer", id: s.id });
+    setMsg(r?.ok ? `Зачислено ${r.amount} ₴` : r?.error === "forbidden" ? "Зачислять может только финансовый админ или владелец." : r?.error === "no_payments" ? "Сначала внесите платёж рекламодателя." : "Не получилось зачислить.");
+    await load();
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -161,6 +190,51 @@ export default function AdminPartnersPanel() {
                       <input value={payNote} onChange={(e) => setPayNote(e.target.value)} placeholder="Комментарий" className="flex-1 bg-bgPrimary border border-muted rounded-lg px-2 py-1.5 text-xs" />
                       <button onClick={() => addPayment(s.id)} className="bg-success text-bgPrimary px-3 rounded-full text-xs font-semibold">Внести</button>
                     </div>
+                  </div>
+
+                  <div>
+                    <p className="text-offwhite text-xs font-semibold mb-1">Бонус участнице за этого рекламодателя</p>
+                    {s.referral_paid_at ? (
+                      <p className="text-success text-xs">
+                        Зачислено {Math.round(Number(s.referral_amount) * 100) / 100} ₴ участнице {refNames[s.referrer_participant_id] ?? ""} ·{" "}
+                        {new Date(s.referral_paid_at).toLocaleDateString("ru-RU")}. Повторно не начисляется.
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {s.referrer_participant_id ? (
+                          <p className="text-offwhite text-xs">
+                            Привела: <b>{refNames[s.referrer_participant_id] ?? "участница"}</b> · {Number(s.referral_percent)}% от платежей
+                          </p>
+                        ) : (
+                          <p className="text-muted text-xs">Участница не выбрана.</p>
+                        )}
+                        <div className="flex gap-2">
+                          <input value={pQuery} onChange={(e) => setPQuery(e.target.value)} placeholder="Имя участницы" className="flex-1 bg-bgPrimary border border-muted rounded-lg px-2 py-1.5 text-xs" />
+                          <button onClick={searchParticipant} className="border border-gold text-gold px-3 rounded-full text-xs">Найти</button>
+                        </div>
+                        {pFound.map((p) => (
+                          <button key={p.id} onClick={() => { setPPicked({ id: p.id, name: p.display_name }); setPFound([]); }} className="text-left bg-bgPrimary rounded-lg p-2 text-xs text-offwhite">
+                            {p.display_name} <span className="text-muted">{p.regions?.name ?? ""}</span>
+                          </button>
+                        ))}
+                        {pPicked && <p className="text-xs text-gold">Выбрана: {pPicked.name}</p>}
+                        <div className="flex gap-2 items-center">
+                          <input value={pct} onChange={(e) => setPct(e.target.value)} type="number" className="w-20 bg-bgPrimary border border-muted rounded-lg px-2 py-1.5 text-xs" />
+                          <span className="text-muted text-xs">% от платежей</span>
+                          <button onClick={() => saveReferrer(s.id)} className="bg-gold text-bgPrimary px-3 py-1.5 rounded-full text-xs font-semibold">Сохранить</button>
+                        </div>
+                        {s.referrer_participant_id && Number(s.referral_percent) > 0 && (
+                          <button
+                            onClick={() => payReferrer(s, mine)}
+                            className="bg-success text-bgPrimary px-4 py-2 rounded-full text-xs font-semibold"
+                          >
+                            Зачислить {Math.round((mine.reduce((t, p) => t + Number(p.amount), 0) * Number(s.referral_percent)) ) / 100} ₴ участнице (один раз)
+                          </button>
+                        )}
+                        <p className="text-muted text-[11px]">Нажмите «Зачислить», когда договорились и оплата прошла. Сумма считается от внесённых платежей на момент нажатия, начисляется один раз, без продлений.</p>
+                      </div>
+                    )}
+                    {msg && <p className="text-gold text-xs mt-1">{msg}</p>}
                   </div>
 
                   <div>
