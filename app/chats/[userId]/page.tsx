@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { apiPost } from "@/lib/authClient";
-import BottomNav from "@/components/BottomNav";
+import { chatGiftEmoji } from "@/lib/chatGifts";
 
 type Msg = { id: string; sender_id: string; body: string; kind: string; meta: any; created_at: string };
 
@@ -44,6 +44,13 @@ export default function ChatPage() {
   const [reason, setReason] = useState("spam");
   const [details, setDetails] = useState("");
   const [reported, setReported] = useState(false);
+  const [accepted, setAccepted] = useState(false);
+  const [hasThread, setHasThread] = useState(false);
+  const [giftOpen, setGiftOpen] = useState(false);
+  const [gifts, setGifts] = useState<{ id: string; name: string; price: number }[]>([]);
+  const [balance, setBalance] = useState(0);
+  const [giftMsg, setGiftMsg] = useState("");
+  const [giftBusy, setGiftBusy] = useState("");
   const bottom = useRef<HTMLDivElement>(null);
   const count = useRef(0);
 
@@ -57,6 +64,8 @@ export default function ChatPage() {
     setBlockedByMe(r.blockedByMe);
     setBlockedMe(r.blockedMe);
     setDmClosed(r.dmClosed);
+    setAccepted(!!r.accepted);
+    setHasThread(!!r.hasThread);
   }, [other]);
 
   useEffect(() => {
@@ -90,6 +99,32 @@ export default function ChatPage() {
       await load();
     } else setErr(ERRORS[r?.error] ?? "Не удалось отправить. Попробуйте ещё раз.");
     setBusy(false);
+  }
+
+  async function openGifts() {
+    setGiftMsg("");
+    setGiftOpen(true);
+    const r = await apiPost("/api/dm/gift-catalog");
+    if (r?.ok) {
+      setGifts(r.items);
+      setBalance(r.balance);
+    }
+  }
+
+  async function sendGift(id: string) {
+    setGiftBusy(id);
+    setGiftMsg("");
+    const r = await apiPost("/api/dm/gift", { toUserId: other, giftId: id, qty: 1 });
+    setGiftBusy("");
+    if (r?.ok) {
+      setBalance(r.balance);
+      setGiftOpen(false);
+      await load();
+    } else if (r?.error === "not_enough") {
+      setGiftMsg("Недостаточно средств. Пополните баланс в разделе «Подарки».");
+    } else {
+      setGiftMsg(ERRORS[r?.error] ?? "Не удалось отправить подарок.");
+    }
   }
 
   async function act(action: string, extra: object = {}) {
@@ -178,7 +213,7 @@ export default function ChatPage() {
               m.sender_id === me ? "self-end bg-gold text-bgPrimary" : "self-start bg-bgSurface text-offwhite border border-muted"
             }`}
           >
-            {m.body}
+            {m.kind === "gift" ? <span className="text-lg">{m.body}</span> : m.body}
             <span className={`block text-[10px] mt-0.5 ${m.sender_id === me ? "text-bgPrimary/60" : "text-muted"}`}>
               {new Date(m.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
             </span>
@@ -201,6 +236,15 @@ export default function ChatPage() {
           <>
             {err && <p className="text-danger text-xs mb-2">{err}</p>}
             <div className="flex gap-2 max-w-3xl mx-auto">
+              {hasThread && accepted && !isRequestForMe && (
+                <button
+                  onClick={openGifts}
+                  aria-label="Подарок"
+                  className="border border-gold text-xl rounded-full w-11 flex-shrink-0"
+                >
+                  🎁
+                </button>
+              )}
               <input
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -220,6 +264,38 @@ export default function ChatPage() {
           </>
         )}
       </div>
+
+      {giftOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/70 flex items-end justify-center" onClick={() => setGiftOpen(false)}>
+          <div
+            className="w-full max-w-md bg-bgSurface rounded-t-2xl p-5"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-offwhite font-semibold">Подарок для {name}</p>
+              <button onClick={() => setGiftOpen(false)} className="text-muted text-xl">✕</button>
+            </div>
+            <p className="text-muted text-xs mb-3">Ваш баланс: {balance} ₴</p>
+            <div className="grid grid-cols-3 gap-2">
+              {gifts.map((g) => (
+                <button
+                  key={g.id}
+                  disabled={!!giftBusy}
+                  onClick={() => sendGift(g.id)}
+                  className="bg-bgPrimary border border-muted rounded-xl py-3 flex flex-col items-center gap-1 disabled:opacity-50"
+                >
+                  <span className="text-3xl">{chatGiftEmoji(g.name)}</span>
+                  <span className="text-offwhite text-xs">{g.name}</span>
+                  <span className="text-gold text-xs font-semibold">{giftBusy === g.id ? "..." : `${g.price} ₴`}</span>
+                </button>
+              ))}
+            </div>
+            {gifts.length === 0 && <p className="text-muted text-sm text-center py-4">Подарков пока нет.</p>}
+            {giftMsg && <p className="text-danger text-xs mt-3">{giftMsg}</p>}
+          </div>
+        </div>
+      )}
 
       {report && (
         <div className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center px-4" onClick={() => setReport(false)}>

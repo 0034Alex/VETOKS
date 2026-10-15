@@ -13,6 +13,7 @@ import AccountSwitcher from "@/components/AccountSwitcher";
 import { getCurrencySymbol } from "@/lib/currency";
 import { useT } from "@/lib/i18n";
 import { apiPost } from "@/lib/authClient";
+import { chatGiftEmoji } from "@/lib/chatGifts";
 
 type Participant = { id: string; display_name: string };
 
@@ -44,6 +45,7 @@ export default function ProfilePage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
+  const [chatGifts, setChatGifts] = useState<{ name: string; qty: number }[]>([]);
   const [goalText, setGoalText] = useState("");
   const [goalTarget, setGoalTarget] = useState(5000);
   const [goalCollected, setGoalCollected] = useState(0);
@@ -64,6 +66,9 @@ export default function ProfilePage() {
   useEffect(() => {
     apiPost("/api/dm/unread").then((r) => {
       if (r?.ok) setDmUnread(r.count);
+    });
+    apiPost("/api/dm/gifts-received").then((r) => {
+      if (r?.ok) setChatGifts(r.items);
     });
   }, []);
 
@@ -256,6 +261,18 @@ export default function ProfilePage() {
 
         <div className="px-6">
           <AccountSwitcher />
+          {chatGifts.length > 0 && (
+            <div className="bg-bgSurface border border-muted rounded-xl px-4 py-3 mb-4">
+              <p className="text-muted text-xs mb-1">Подарки вам в чатах</p>
+              <p className="text-offwhite text-sm flex flex-wrap gap-x-3 gap-y-1">
+                {chatGifts.map((g) => (
+                  <span key={g.name}>
+                    {chatGiftEmoji(g.name)} {g.name} ×{g.qty}
+                  </span>
+                ))}
+              </p>
+            </div>
+          )}
           {user && !user.phone_verified && !phoneDone && (
             <div className="rounded-xl p-4 mb-4 border border-gold bg-gradient-to-r from-[#7C3AED]/30 to-[#EC4899]/30">
               <p className="text-offwhite font-semibold text-sm mb-1">{t("profile.verifyTitle")}</p>

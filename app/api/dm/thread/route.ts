@@ -41,6 +41,7 @@ export async function POST(req: Request) {
     name: (ou.first_name as string) || "Гость",
     messages,
     accepted: thread ? !!thread.accepted : true,
+    hasThread: !!thread,
     isRequestForMe: !!thread && !thread.accepted && thread.initiator !== uid,
     blockedByMe: bs.blockedByMe,
     blockedMe: bs.blockedMe,

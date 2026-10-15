@@ -18,6 +18,7 @@ type Gift = {
   usd_price?: number | null;
   category: string;
   participant_share_percent: number;
+  chat_only?: boolean;
 };
 
 type Participant = { id: string; display_name: string; user_id: string; photo_url?: string | null };
@@ -111,11 +112,11 @@ function ShopContent() {
 
       const { data: giftsData } = await supabase
         .from("gift_catalog")
-        .select("id, name, price, usd_price, category, participant_share_percent")
+        .select("id, name, price, usd_price, category, participant_share_percent, chat_only")
         .eq("is_active", true);
       // Цена подарка задаётся в CRM в долларах; пересчитываем по курсу.
       const rate = await getUsdRate();
-      const priced = ((giftsData as Gift[]) ?? []).map((g) => ({
+      const priced = ((giftsData as Gift[]) ?? []).filter((g) => !g.chat_only).map((g) => ({
         ...g,
         price:
           Number(g.usd_price) > 0

@@ -31,6 +31,7 @@ type GiftRow = {
   usd_price: string;
   share: string;
   is_active: boolean;
+  chat_only?: boolean;
 };
 
 export default function AdminPricesPanel() {
@@ -76,7 +77,7 @@ export default function AdminPricesPanel() {
 
     const { data: g } = await supabase
       .from("gift_catalog")
-      .select("id, name, category, price, usd_price, participant_share_percent, is_active")
+      .select("id, name, category, price, usd_price, participant_share_percent, is_active, chat_only")
       .order("price");
     setGifts(
       (g ?? []).map((x: any) => ({
@@ -87,6 +88,7 @@ export default function AdminPricesPanel() {
         usd_price: x.usd_price == null ? "" : String(x.usd_price),
         share: String(x.participant_share_percent ?? 50),
         is_active: !!x.is_active,
+        chat_only: !!x.chat_only,
       }))
     );
     setLoading(false);
@@ -199,7 +201,7 @@ export default function AdminPricesPanel() {
           <div key={g.id} className="bg-bgSurface border border-muted rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-offwhite text-sm font-semibold">
-                {g.name} <span className="text-muted text-xs">({g.category})</span>
+                {g.name} <span className="text-muted text-xs">({g.chat_only ? "только в чате" : g.category})</span>
               </p>
               <label className="text-muted text-xs flex items-center gap-1">
                 <input
