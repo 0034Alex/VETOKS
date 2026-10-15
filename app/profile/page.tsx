@@ -8,8 +8,8 @@ import { getCurrentUser, signOutUser, CurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import SocialLinksBar from "@/components/SocialLinksBar";
-import ProfileHero, { ProfileActions, BigBtn, RoundBtn, TopBtn, Drawer, IconMail, IconBell, IconMenu, shareLink } from "@/components/ProfileHero";
-import { GiftIcon, parseLinks } from "@/lib/socialLinks";
+import ProfileHero, { TopBtn, Drawer, IconMail, IconBell, IconMenu, shareLink } from "@/components/ProfileHero";
+import { parseLinks } from "@/lib/socialLinks";
 import AccountSwitcher from "@/components/AccountSwitcher";
 import { getCurrencySymbol } from "@/lib/currency";
 import { useT } from "@/lib/i18n";
@@ -322,7 +322,7 @@ export default function ProfilePage() {
   const feed = feedTab === "video" ? videos : photos;
 
   return (
-    <main className="min-h-screen pb-52">
+    <main className="min-h-screen pb-36">
       <div className="max-w-md mx-auto">
         <ProfileHero
           photoUrl={photoUrl}
@@ -437,15 +437,6 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
-
-      <ProfileActions>
-        <BigBtn href="/edit-profile">Править профиль</BigBtn>
-        {participant && (
-          <RoundBtn href={`/participant/${participant.id}/gifts`} label="Подарки">
-            <GiftIcon />
-          </RoundBtn>
-        )}
-      </ProfileActions>
 
       {toast && (
         <div className="fixed left-1/2 -translate-x-1/2 bottom-44 z-50 bg-bgSurface border border-gold text-gold text-sm px-4 py-2 rounded-full">

@@ -66,7 +66,7 @@ export default function PublicUserPage() {
   }
 
   return (
-    <main className="min-h-screen pb-52">
+    <main className="min-h-screen pb-36">
       <div className="max-w-md mx-auto">
         <ProfileHero
           photoUrl={d.photoUrl}
@@ -84,17 +84,16 @@ export default function PublicUserPage() {
             </TopBtn>
           }
         />
+        <ProfileActions>
+          {d.canWrite ? (
+            <BigBtn href={`/chats/${id}`}>✉️ Написать</BigBtn>
+          ) : (
+            <BigBtn variant="on" disabled>
+              Личные сообщения закрыты
+            </BigBtn>
+          )}
+        </ProfileActions>
       </div>
-
-      <ProfileActions>
-        {d.canWrite ? (
-          <BigBtn href={`/chats/${id}`}>✉️ Написать</BigBtn>
-        ) : (
-          <BigBtn variant="on" disabled>
-            Личные сообщения закрыты
-          </BigBtn>
-        )}
-      </ProfileActions>
 
       {toast && (
         <div className="fixed left-1/2 -translate-x-1/2 bottom-44 z-50 bg-bgSurface border border-gold text-gold text-sm px-4 py-2 rounded-full">

@@ -481,7 +481,7 @@ export default function ParticipantProfilePage() {
   const boostsLeft = BOOST_LIMIT - boostCount;
 
   return (
-    <main className="min-h-screen pb-52">
+    <main className="min-h-screen pb-36">
       <div className="max-w-md mx-auto">
         <ProfileHero
           photoUrl={participant.photo_url ?? owner?.photoUrl ?? null}
@@ -517,6 +517,31 @@ export default function ParticipantProfilePage() {
           }
         />
 
+        <ProfileActions>
+          {isOwner ? (
+            <>
+              <BigBtn href="/edit-profile">Править профиль</BigBtn>
+              <RoundBtn href={`/participant/${id}/gifts`} label="Подарки">
+                <GiftIcon />
+              </RoundBtn>
+            </>
+          ) : (
+            <>
+              <BigBtn variant={isFollowing ? "on" : "gold"} onClick={toggleFollow} disabled={busy || !userId}>
+                {isFollowing ? "✓ Вы подписаны" : "Подписаться"}
+              </BigBtn>
+              <BigBtn variant="vote" onClick={() => setVoteModalOpen(true)} disabled={!userId}>
+                Голосовать
+              </BigBtn>
+              <RoundBtn
+                href={`/shop?participant=${participant.id}&name=${encodeURIComponent(participant.display_name)}`}
+                label="Подарить"
+              >
+                <GiftIcon />
+              </RoundBtn>
+            </>
+          )}
+        </ProfileActions>
         <div className="px-6 mt-5">
           {isOwner && giftTotal > 0 && (
             <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
@@ -754,32 +779,6 @@ export default function ParticipantProfilePage() {
           )}
         </div>
       </div>
-
-      <ProfileActions>
-        {isOwner ? (
-          <>
-            <BigBtn href="/edit-profile">Править профиль</BigBtn>
-            <RoundBtn href={`/participant/${id}/gifts`} label="Подарки">
-              <GiftIcon />
-            </RoundBtn>
-          </>
-        ) : (
-          <>
-            <BigBtn variant={isFollowing ? "on" : "gold"} onClick={toggleFollow} disabled={busy || !userId}>
-              {isFollowing ? "✓ Вы подписаны" : "Подписаться"}
-            </BigBtn>
-            <BigBtn variant="vote" onClick={() => setVoteModalOpen(true)} disabled={!userId}>
-              Голосовать
-            </BigBtn>
-            <RoundBtn
-              href={`/shop?participant=${participant.id}&name=${encodeURIComponent(participant.display_name)}`}
-              label="Подарить"
-            >
-              <GiftIcon />
-            </RoundBtn>
-          </>
-        )}
-      </ProfileActions>
 
       {toast && (
         <div className="fixed left-1/2 -translate-x-1/2 bottom-44 z-50 bg-bgSurface border border-gold text-gold text-sm px-4 py-2 rounded-full">

@@ -251,17 +251,11 @@ export default function ProfileHero({
   );
 }
 
-// Нижняя панель действий над меню.
+// Ряд кнопок под цифрами профиля (обычный блок страницы, не плавающий).
 export function ProfileActions({ children }: { children: ReactNode }) {
   return (
-    <div
-      className="fixed left-0 right-0 z-40 px-4 pt-8 pb-3 pointer-events-none"
-      style={{
-        bottom: "calc(80px + max(0px, env(safe-area-inset-bottom) - 16px))",
-        background: "linear-gradient(180deg,rgba(11,11,13,0),rgba(11,11,13,.92) 55%)",
-      }}
-    >
-      <div className="max-w-md mx-auto flex items-center gap-2.5 pointer-events-auto">{children}</div>
+    <div className="px-5 pt-5">
+      <div className="flex items-center gap-2.5">{children}</div>
     </div>
   );
 }
