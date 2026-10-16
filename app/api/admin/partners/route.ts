@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     const cid = body.countryId ? String(body.countryId) : "";
     let sq = supabaseAdmin
       .from("sponsors")
-      .select("id, name, amount, status, package_type, user_id, contact_info, stage, notes, follow_up_at, created_at, referrer_participant_id, referral_percent, referral_amount, referral_paid_at, country_id")
+      .select("id, name, amount, status, package_type, user_id, contact_info, stage, notes, follow_up_at, created_at, referrer_participant_id, referral_percent, referral_amount, referral_paid_at, country_id, region_id")
       .order("created_at", { ascending: false });
     if (cid) sq = sq.or(`country_id.is.null,country_id.eq.${cid}`);
     const { data: rows } = await sq;
@@ -41,7 +41,10 @@ export async function POST(req: Request) {
       const { data: ps } = await supabaseAdmin.from("participants").select("id, display_name").in("id", refIds);
       (ps ?? []).forEach((p: any) => (refNames[p.id] = p.display_name));
     }
-    return NextResponse.json({ ok: true, rows: rows ?? [], payments: pays ?? [], refNames });
+    let rgq = supabaseAdmin.from("regions").select("id, name").order("name");
+    if (cid) rgq = rgq.eq("country_id", cid);
+    const { data: regionList } = await rgq;
+    return NextResponse.json({ ok: true, rows: rows ?? [], payments: pays ?? [], refNames, regions: regionList ?? [] });
   }
 
   if (a === "create") {
@@ -71,6 +74,13 @@ export async function POST(req: Request) {
 
   const id = String(body.id ?? "");
   if (!id) return NextResponse.json({ ok: false }, { status: 400 });
+
+  // Область рекламодателя: по ней он видит рекламные места в своём кабинете.
+  if (a === "set_region") {
+    await supabaseAdmin.from("sponsors").update({ region_id: body.regionId ? String(body.regionId) : null }).eq("id", id);
+    await logAction(uid, "partner_region", null, { sponsor: id, region: body.regionId ?? null });
+    return NextResponse.json({ ok: true });
+  }
 
   // Участница, которая привела рекламодателя, и процент бонуса.
   if (a === "set_referrer") {

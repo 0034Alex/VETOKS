@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -16,6 +16,20 @@ export default function PartnerPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">(
     "idle"
   );
+  const [regionId, setRegionId] = useState("");
+  const [regionOpts, setRegionOpts] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const mc = await getMyCountry();
+      const u = await getCurrentUser();
+      if (mc.regionIds.length) {
+        const { data } = await supabase.from("regions").select("id, name").in("id", mc.regionIds).order("name");
+        setRegionOpts((data as any[]) ?? []);
+      }
+      if (u?.region_id) setRegionId(u.region_id);
+    })();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,6 +42,7 @@ export default function PartnerPage() {
       country_id: myC.countryId,
       name,
       status: "lead",
+      region_id: regionId || null,
       contact_info: { phone, email, message },
       user_id: u?.id ?? null,
     });
@@ -90,6 +105,21 @@ export default function PartnerPage() {
             placeholder="Почта"
             className="bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3"
           />
+          {regionOpts.length > 0 && (
+            <select
+              value={regionId}
+              onChange={(e) => setRegionId(e.target.value)}
+              className="bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3"
+              required
+            >
+              <option value="">Область, где вы работаете</option>
+              {regionOpts.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          )}
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}

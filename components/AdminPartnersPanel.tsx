@@ -19,6 +19,7 @@ export default function AdminPartnersPanel() {
   const [rows, setRows] = useState<any[]>([]);
   const [pays, setPays] = useState<any[]>([]);
   const [refNames, setRefNames] = useState<Record<string, string>>({});
+  const [regionList, setRegionList] = useState<{ id: string; name: string }[]>([]);
   const [pQuery, setPQuery] = useState("");
   const [pFound, setPFound] = useState<any[]>([]);
   const [pPicked, setPPicked] = useState<{ id: string; name: string } | null>(null);
@@ -40,6 +41,7 @@ export default function AdminPartnersPanel() {
     setRows(r?.rows ?? []);
     setPays(r?.payments ?? []);
     setRefNames(r?.refNames ?? {});
+    setRegionList(r?.regions ?? []);
     setLoading(false);
   }
   useEffect(() => {
@@ -191,6 +193,22 @@ export default function AdminPartnersPanel() {
                       <input value={payNote} onChange={(e) => setPayNote(e.target.value)} placeholder="Комментарий" className="flex-1 bg-bgPrimary border border-muted rounded-lg px-2 py-1.5 text-xs" />
                       <button onClick={() => addPayment(s.id)} className="bg-success text-bgPrimary px-3 rounded-full text-xs font-semibold">Внести</button>
                     </div>
+                  </div>
+
+                  <div>
+                    <p className="text-offwhite text-xs font-semibold mb-1">Область рекламодателя</p>
+                    <select
+                      value={s.region_id ?? ""}
+                      onChange={(e) => act({ action: "set_region", id: s.id, regionId: e.target.value })}
+                      className="bg-bgPrimary border border-muted rounded-lg px-2 py-1.5 text-xs text-offwhite"
+                    >
+                      <option value="">— не указана —</option>
+                      {regionList.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>

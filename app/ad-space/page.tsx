@@ -23,6 +23,7 @@ type Slot = {
   sold_count: number;
   all_regions: boolean;
   region_names: string[];
+  region_ids?: string[];
 };
 
 type Mode = "tiers" | "capacity" | "seats";
@@ -46,6 +47,8 @@ const DURATION_LABELS: Record<string, string> = {
   season: "на весь сезон",
 };
 
+let CUR = "₴";
+
 function isPresaleActive(slot: Slot) {
   return (
     slot.presale_price != null &&
@@ -59,10 +62,10 @@ function PriceBlock({ slot }: { slot: Slot }) {
     return (
       <div>
         <span className="text-muted text-sm line-through mr-2">
-          {Math.round(slot.full_price)} ₽
+          {Math.round(slot.full_price)} {CUR}
         </span>
         <span className="text-gold text-xl font-bold">
-          {Math.round(slot.presale_price!)} ₽
+          {Math.round(slot.presale_price!)} {CUR}
         </span>
         <p className="text-muted text-[11px] mt-1">
           Предпродажа до {new Date(slot.presale_until!).toLocaleDateString("ru-RU")}
@@ -70,7 +73,7 @@ function PriceBlock({ slot }: { slot: Slot }) {
       </div>
     );
   }
-  return <span className="text-gold text-xl font-bold">{Math.round(slot.full_price)} ₽</span>;
+  return <span className="text-gold text-xl font-bold">{Math.round(slot.full_price)} {CUR}</span>;
 }
 
 export default function AdSpacePage() {
@@ -108,18 +111,34 @@ export default function AdSpacePage() {
       setAllowed(true);
 
       const mc = await getMyCountry();
+      if (mc.countryId) {
+        const { data: cy } = await supabase.from("countries").select("currency_symbol").eq("id", mc.countryId).maybeSingle();
+        if (cy?.currency_symbol) CUR = cy.currency_symbol as string;
+      }
+      // Область рекламодателя: из его карточки партнёра, иначе из профиля.
+      const { data: spRow } = await supabase.from("sponsors").select("region_id").eq("user_id", u.id).eq("status", "approved").maybeSingle();
+      const myRegion: string | null = (spRow as any)?.region_id ?? u.region_id ?? null;
       const { data } = await orCountry(
         supabase
           .from("ad_slots")
           .select(
-            "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status, capacity, sold_count, all_regions, ad_slot_regions(regions(name))"
+            "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status, capacity, sold_count, all_regions, ad_slot_regions(region_id, regions(name))"
           )
           .order("category", { ascending: true })
           .order("slot_number", { ascending: true }),
         mc.countryId
       );
 
-      const mapped = (data as any[] ?? []).map((s) => ({
+      // Обычные места — только своей области. Баннеры (в том числе гранд-финал) —
+      // своей области и «вся страна». Если область не известна — показываем всё по стране.
+      const visible = ((data as any[]) ?? []).filter((s) => {
+        if (!myRegion) return true;
+        const mine = (s.ad_slot_regions ?? []).some((r: any) => r.region_id === myRegion);
+        if (!s.all_regions) return mine;
+        return String(s.category).startsWith("banner_");
+      });
+
+      const mapped = visible.map((s) => ({
         ...s,
         region_names: (s.ad_slot_regions ?? [])
           .map((r: any) => (Array.isArray(r.regions) ? r.regions[0]?.name : r.regions?.name))
@@ -194,8 +213,15 @@ export default function AdSpacePage() {
           const catSlots = slots.filter((s) => s.category === cat.key);
           if (catSlots.length === 0) return null;
 
+          const firstGf = cat.key === "magazine_gf" || (!slots.some((x) => x.category === "magazine_gf") && cat.key.endsWith("_gf") && CATEGORIES.filter((c) => c.key.endsWith("_gf") && slots.some((x) => x.category === c.key))[0]?.key === cat.key);
           return (
             <div key={cat.key} className="mb-8">
+              {firstGf && (
+                <div className="mx-6 mb-5 rounded-xl border border-gold/60 bg-gold/10 p-3">
+                  <p className="text-gold font-semibold text-sm">🏆 Гранд-финал</p>
+                  <p className="text-muted text-xs">Отдельные места на финал сезона — цена другая, чем в обычные недели. Можно выбрать свою область или всю страну.</p>
+                </div>
+              )}
               <h2 className="text-lg font-semibold text-gold mb-3 px-6">
                 {cat.label}
               </h2>
