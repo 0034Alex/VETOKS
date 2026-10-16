@@ -11,6 +11,7 @@ import { GiftIcon, parseLinks } from "@/lib/socialLinks";
 import { statusFor } from "@/lib/status";
 import { loadTitleBadges, TitleBadge } from "@/lib/profileExtras";
 import VoteModal from "@/components/VoteModal";
+import VoteCardModal from "@/components/VoteCardModal";
 import { getAppPrices, getCurrencySymbol } from "@/lib/currency";
 import { apiPost } from "@/lib/authClient";
 import { getVoteTotals } from "@/lib/voteTotals";
@@ -85,6 +86,7 @@ export default function ParticipantProfilePage() {
   const [feedTab, setFeedTab] = useState<"video" | "photo">("video");
   const [hasVoted, setHasVoted] = useState(false);
   const [voteModalOpen, setVoteModalOpen] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [balance, setBalance] = useState(0);
   const [boostCount, setBoostCount] = useState(0);
@@ -394,7 +396,8 @@ export default function ParticipantProfilePage() {
 
   async function share() {
     if (!participant) return;
-    const r = await shareLink(window.location.origin + (owner?.nick ? `/n/${owner.nick}` : `/participant/${id}`), participant.display_name);
+    // Ссылка ведёт на красивую страницу с карточкой — в Telegram и Instagram виден предпросмотр.
+    const r = await shareLink(window.location.origin + `/v/${id}`, participant.display_name);
     if (r === "copied") {
       setToast("Ссылка скопирована");
       setTimeout(() => setToast(""), 2000);
@@ -532,6 +535,9 @@ export default function ParticipantProfilePage() {
           {isOwner ? (
             <>
               <BigBtn href="/edit-profile">Править профиль</BigBtn>
+              <BigBtn variant="vote" onClick={() => setCardOpen(true)}>
+                Позвать голосовать
+              </BigBtn>
               <RoundBtn href={`/participant/${id}/gifts`} label="Подарки">
                 <GiftIcon />
               </RoundBtn>
@@ -796,6 +802,8 @@ export default function ParticipantProfilePage() {
           {toast}
         </div>
       )}
+
+      {cardOpen && <VoteCardModal participantId={participant.id} onClose={() => setCardOpen(false)} />}
 
       {voteModalOpen && (
         <VoteModal

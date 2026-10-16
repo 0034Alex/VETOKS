@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { blockOtherCountry, bad, requireUser } from "@/lib/shopServer";
+import { blockOtherCountry, bad, notify, participantOwner, requireUser } from "@/lib/shopServer";
+
+import { pickText } from "@/lib/pushText";
 
 export const dynamic = "force-dynamic";
 
@@ -23,5 +25,31 @@ export async function POST(req: Request) {
     p_count: count,
   });
   if (error || !data) return bad("server", 500);
+
+  // Участница узнаёт, что за неё проголосовали (не чаще раза в 30 минут, чтобы не спамить).
+  if ((data as any).ok) {
+    try {
+      const owner = await participantOwner(participantId);
+      if (owner) {
+        const since = new Date(Date.now() - 30 * 60000).toISOString();
+        const { count } = await supabaseAdmin
+          .from("notifications")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", owner.user_id)
+          .like("message", "🗳%")
+          .gte("created_at", since);
+        if (!count) {
+          const text = await pickText(owner.user_id, {
+            ru: "🗳 За вас проголосовали! Позовите друзей — каждый голос приближает вас к короне.",
+            uk: "🗳 За вас проголосували! Покличте друзів — кожен голос наближає вас до корони.",
+            en: "🗳 Someone just voted for you! Invite friends — every vote brings you closer to the crown.",
+          });
+          await notify(owner.user_id, text, `/participant/${participantId}`, "votes");
+        }
+      }
+    } catch {
+      /* уведомление не должно ломать голосование */
+    }
+  }
   return NextResponse.json(data);
 }

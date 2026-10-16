@@ -83,6 +83,8 @@ const ru: Dict = {
   "settings.n.gifts": "Подарки, донаты и покупки карточек",
   "settings.n.tasks": "Задания: одобрение и награды",
   "settings.n.support": "Ответы поддержки",
+  "settings.n.votes": "Новые голоса за вас",
+  "settings.n.rating": "Изменения вашего места в рейтинге",
   "settings.language": "Язык",
   "settings.langNote": "Перевод основных экранов. Остальные разделы пока на русском.",
 };
@@ -161,6 +163,8 @@ const uk: Dict = {
   "settings.n.gifts": "Подарунки, донати та купівля карток",
   "settings.n.tasks": "Завдання: схвалення та нагороди",
   "settings.n.support": "Відповіді підтримки",
+  "settings.n.votes": "Нові голоси за вас",
+  "settings.n.rating": "Зміни вашого місця в рейтингу",
   "settings.language": "Мова",
   "settings.langNote": "Переклад основних екранів. Інші розділи поки російською.",
 };
@@ -239,6 +243,8 @@ const en: Dict = {
   "settings.n.gifts": "Gifts, donations and card purchases",
   "settings.n.tasks": "Tasks: approvals and rewards",
   "settings.n.support": "Support replies",
+  "settings.n.votes": "New votes for you",
+  "settings.n.rating": "Changes to your rank",
   "settings.language": "Language",
   "settings.langNote": "Main screens are translated. Other sections are in Russian for now.",
 };

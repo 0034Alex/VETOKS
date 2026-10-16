@@ -14,6 +14,7 @@ const PUBLIC_PREFIXES = [
   "/legal",
   "/r/",
   "/n/",
+  "/v/",
   "/admin",
 ];
 

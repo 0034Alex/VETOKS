@@ -12,7 +12,7 @@ import { apiPost } from "@/lib/authClient";
 import { cleanNick, nickProblem, NICK_MESSAGES } from "@/lib/nick";
 import { SocialIcon, socialKind, normalizeLink, parseLinks } from "@/lib/socialLinks";
 
-const TOGGLES: string[] = ["gifts", "tasks", "support"];
+const TOGGLES: string[] = ["gifts", "votes", "rating", "tasks", "support"];
 
 // Приватность: true = открыто (по умолчанию всё открыто).
 const PRIVACY: { key: string; label: string; hint?: string }[] = [

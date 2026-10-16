@@ -1,5 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { addDays, kyivDate, kyivDayStartUtc, kyivWeekStart } from "@/lib/kyiv";
+import { notify } from "@/lib/shopServer";
+import { pickText } from "@/lib/pushText";
 
 // Ежедневный пересчёт (запускается в 00:01 по Киеву):
 //  1) штраф за чёрные метки прошедшей недели (раз в неделю),
@@ -122,6 +124,70 @@ function pickTop(
   if (!p) return null;
   const val = metric[p.id] ?? 0;
   return val > 0 ? { id: p.id, val } : null;
+}
+
+// ---------- «вы поднялись / потеряли место» ----------
+// Сравниваем место в регионе по снимку голосов за прошлый запуск и по текущим голосам.
+async function notifyRankChanges(participants: P[], totals: Record<string, number>, today: string) {
+  const { data: flag } = await supabaseAdmin.from("platform_settings").select("value").eq("key", "rank_notified_date").maybeSingle();
+  if (flag?.value === today) return 0; // сегодня уже отправляли (повторный запуск расчёта)
+
+  const { data: d } = await supabaseAdmin
+    .from("daily_vote_snapshots")
+    .select("snapshot_date")
+    .lt("snapshot_date", today)
+    .order("snapshot_date", { ascending: false })
+    .limit(1);
+  const prevDate = d?.[0]?.snapshot_date as string | undefined;
+  if (!prevDate) return 0;
+
+  const prevRows = await selectAll<{ participant_id: string; votes: number }>((a, b) =>
+    supabaseAdmin.from("daily_vote_snapshots").select("participant_id, votes").eq("snapshot_date", prevDate).range(a, b) as any
+  );
+  const prev: Record<string, number> = {};
+  prevRows.forEach((r) => (prev[r.participant_id] = Number(r.votes)));
+
+  const byRegion: Record<string, P[]> = {};
+  participants.forEach((p) => {
+    if (p.region_id) (byRegion[p.region_id] ??= []).push(p);
+  });
+
+  let sent = 0;
+  for (const list of Object.values(byRegion)) {
+    const withPrev = list.filter((p) => prev[p.id] !== undefined);
+    if (withPrev.length < 2) continue;
+    const rankOf = (votes: (id: string) => number) => {
+      const sorted = [...withPrev].sort((a, b) => votes(b.id) - votes(a.id) || a.created_at.localeCompare(b.created_at));
+      const m: Record<string, number> = {};
+      sorted.forEach((p, i) => (m[p.id] = i + 1));
+      return m;
+    };
+    const before = rankOf((id) => prev[id] ?? 0);
+    const after = rankOf((id) => totals[id] ?? 0);
+    for (const p of withPrev) {
+      const o = before[p.id], n = after[p.id];
+      if (n === o || sent >= 3000) continue;
+      const link = `/participant/${p.id}`;
+      if (n > o) {
+        const text = await pickText(p.user_id, {
+          ru: `📉 Вы потеряли место: было №${o}, стало №${n}. Позовите друзей голосовать — вернитесь наверх!`,
+          uk: `📉 Ви втратили місце: було №${o}, стало №${n}. Покличте друзів голосувати — поверніться нагору!`,
+          en: `📉 You dropped from #${o} to #${n}. Invite friends to vote and climb back up!`,
+        });
+        await notify(p.user_id, text, link, "rating");
+      } else {
+        const text = await pickText(p.user_id, {
+          ru: `🚀 Вы поднялись: было №${o}, стало №${n}. Так держать!`,
+          uk: `🚀 Ви піднялися: було №${o}, стало №${n}. Так тримати!`,
+          en: `🚀 You moved up from #${o} to #${n}. Keep it up!`,
+        });
+        await notify(p.user_id, text, link, "rating");
+      }
+      sent++;
+    }
+  }
+  await supabaseAdmin.from("platform_settings").upsert({ key: "rank_notified_date", value: today });
+  return sent;
 }
 
 export async function runDailyJob() {
@@ -247,6 +313,14 @@ export async function runDailyJob() {
   await supabaseAdmin.from("top25_daily").delete().eq("snapshot_date", today);
   if (top.length) await supabaseAdmin.from("top25_daily").insert(top);
 
+  // Сообщения о смене места (приложение + бот). Ошибки не должны ломать расчёт.
+  let rankPushes = 0;
+  try {
+    rankPushes = await notifyRankChanges(participants, totals, today);
+  } catch {
+    rankPushes = 0;
+  }
+
   // 5) снимок для стрелочек
   const snaps = participants.map((p) => ({
     participant_id: p.id,
@@ -265,6 +339,7 @@ export async function runDailyJob() {
     titles: rows.length,
     top25: top.length,
     penalties: penaltiesApplied,
+    rank_pushes: rankPushes,
     at: new Date().toISOString(),
   };
   await supabaseAdmin
