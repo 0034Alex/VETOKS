@@ -20,10 +20,13 @@ export async function POST(req: Request) {
   const a = body.action;
 
   if (a === "list") {
-    const { data: rows } = await supabaseAdmin
+    const cid = body.countryId ? String(body.countryId) : "";
+    let sq = supabaseAdmin
       .from("sponsors")
-      .select("id, name, amount, status, package_type, user_id, contact_info, stage, notes, follow_up_at, created_at, referrer_participant_id, referral_percent, referral_amount, referral_paid_at")
+      .select("id, name, amount, status, package_type, user_id, contact_info, stage, notes, follow_up_at, created_at, referrer_participant_id, referral_percent, referral_amount, referral_paid_at, country_id")
       .order("created_at", { ascending: false });
+    if (cid) sq = sq.or(`country_id.is.null,country_id.eq.${cid}`);
+    const { data: rows } = await sq;
     const ids = (rows ?? []).map((r: any) => r.id);
     const { data: pays } = ids.length
       ? await supabaseAdmin
@@ -49,6 +52,7 @@ export async function POST(req: Request) {
       package_type: String(body.packageType ?? "").trim() || null,
       status: "active",
       stage: "lead",
+      country_id: body.countryId ? String(body.countryId) : null,
     });
     await logAction(uid, "partner_create", null, { name });
     return NextResponse.json({ ok: true });

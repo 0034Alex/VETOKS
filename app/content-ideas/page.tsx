@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
+import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
@@ -23,11 +24,15 @@ export default function ContentIdeasPage() {
 
   async function load(d: string) {
     setLoading(true);
-    const { data } = await supabase
-      .from("content_suggestions")
-      .select("id, target, text, sort_order")
-      .eq("suggestion_date", d)
-      .order("sort_order", { ascending: true });
+    const mc = await getMyCountry();
+    const { data } = await orCountry(
+      supabase
+        .from("content_suggestions")
+        .select("id, target, text, sort_order")
+        .eq("suggestion_date", d)
+        .order("sort_order", { ascending: true }),
+      mc.countryId
+    );
 
     setVetoksIdeas(
       (data ?? []).filter((s: { target: string }) => s.target === "vetoks")

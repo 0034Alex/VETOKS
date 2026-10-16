@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { apiPost } from "@/lib/authClient";
+import { getCrmCountry } from "@/lib/crmCountry";
 
 const FILTERS: [string, string][] = [
   ["all", "Все"],
@@ -31,16 +32,15 @@ export default function AdminPeoplePanel() {
   const [cardLoading, setCardLoading] = useState(false);
 
   useEffect(() => {
-    supabase
-      .from("regions")
-      .select("id, name")
-      .order("name")
-      .then(({ data }) => setRegions((data as any) ?? []));
+    (getCrmCountry()
+      ? supabase.from("regions").select("id, name").eq("country_id", getCrmCountry()).order("name")
+      : supabase.from("regions").select("id, name").order("name")
+    ).then(({ data }) => setRegions((data as any) ?? []));
   }, []);
 
   async function search() {
     setLoading(true);
-    const r = await apiPost("/api/admin/people", { action: "list", q, filter, regionId: regionId || null });
+    const r = await apiPost("/api/admin/people", { action: "list", q, filter, regionId: regionId || null, countryId: getCrmCountry() });
     setRows(r?.rows ?? []);
     setLoading(false);
   }

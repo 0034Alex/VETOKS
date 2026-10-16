@@ -25,6 +25,13 @@ import AdminActionLogPanel from "@/components/AdminActionLogPanel";
 import { getCrmCountry, setCrmCountry } from "@/lib/crmCountry";
 import { loadScoped, scopedKey } from "@/lib/scopedSettings";
 
+// Список/запись «для выбранной страны CRM»: записи страны + общие.
+function orCrm<T>(q: T): T {
+  const c = getCrmCountry();
+  return c ? (q as any).or(`country_id.is.null,country_id.eq.${c}`) : q;
+}
+const crmId = () => getCrmCountry() || null;
+
 type Tab =
   | "dashboard"
   | "applications"
@@ -1187,10 +1194,10 @@ function PartnersTab() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await orCrm(supabase
       .from("sponsors")
       .select("id, name, amount, status, package_type, user_id, contact_info")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }));
     setRows((data as Sponsor[]) ?? []);
     setLoading(false);
   }
@@ -1203,6 +1210,7 @@ function PartnersTab() {
     e.preventDefault();
     if (!name) return;
     await supabase.from("sponsors").insert({
+      country_id: crmId(),
       name,
       amount: amount ? Number(amount) : null,
       package_type: packageType || null,
@@ -2495,10 +2503,10 @@ function DocumentsTab() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await orCrm(supabase
       .from("documents")
       .select("id, title, content, audience, is_active")
-      .order("sort_order", { ascending: true });
+      .order("sort_order", { ascending: true }));
     setDocs((data as DocumentRow[]) ?? []);
     setLoading(false);
   }
@@ -2510,6 +2518,7 @@ function DocumentsTab() {
   async function createDoc() {
     if (!title || !content) return;
     await supabase.from("documents").insert({
+      country_id: crmId(),
       title,
       content,
       audience,
@@ -2617,11 +2626,11 @@ function CalendarTab() {
 
   async function load(d: string) {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await orCrm(supabase
       .from("content_suggestions")
       .select("id, target, text")
       .eq("suggestion_date", d)
-      .order("sort_order", { ascending: true });
+      .order("sort_order", { ascending: true }));
     setItems((data as SuggestionRow[]) ?? []);
     setLoading(false);
   }
@@ -2634,6 +2643,7 @@ function CalendarTab() {
   async function addItem() {
     if (!newText) return;
     await supabase.from("content_suggestions").insert({
+      country_id: crmId(),
       suggestion_date: date,
       target: newTarget,
       text: newText,
@@ -2747,10 +2757,10 @@ function PartnerLogosTab() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await orCrm(supabase
       .from("partner_logos")
-      .select("id, name, logo_url, link_url, is_active")
-      .order("sort_order", { ascending: true });
+      .select("id, name, logo_url, link_url, is_active, country_id")
+      .order("sort_order", { ascending: true }));
     setRows((data as PartnerLogoRow[]) ?? []);
     setLoading(false);
   }
@@ -2772,6 +2782,7 @@ function PartnerLogosTab() {
     }
     const { data: publicUrlData } = supabase.storage.from("partner-logos").getPublicUrl(filePath);
     await supabase.from("partner_logos").insert({
+      country_id: crmId(),
       name,
       logo_url: publicUrlData.publicUrl,
       link_url: linkUrl || null,
@@ -2953,10 +2964,12 @@ function AdSpaceTab() {
   const [priceAutoFilled, setPriceAutoFilled] = useState(false);
 
   async function loadRegions() {
-    const { data } = await supabase
+    let rq = supabase
       .from("regions")
       .select("id, name, grade, grade_coefficient")
       .order("name");
+    if (getCrmCountry()) rq = rq.eq("country_id", getCrmCountry());
+    const { data } = await rq;
     setRegions((data as RegionOption[]) ?? []);
   }
 
@@ -3020,23 +3033,23 @@ function AdSpaceTab() {
   const [sellPartnerId, setSellPartnerId] = useState("");
 
   async function loadPartners() {
-    const { data } = await supabase
+    const { data } = await orCrm(supabase
       .from("sponsors")
       .select("user_id, name")
       .eq("status", "approved")
-      .not("user_id", "is", null);
+      .not("user_id", "is", null));
     setApprovedPartners((data as any[]) ?? []);
   }
 
   async function loadSlots() {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await orCrm(supabase
       .from("ad_slots")
       .select(
         "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status, capacity, sold_count, all_regions, ad_slot_regions(regions(name))"
       )
       .order("category", { ascending: true })
-      .order("slot_number", { ascending: true });
+      .order("slot_number", { ascending: true }));
 
     const mapped = (data as any[] ?? []).map((s) => ({
       ...s,
@@ -3096,6 +3109,7 @@ function AdSpaceTab() {
             ? Number(capacity || DEFAULT_CAPACITY[addCategory] || 20)
             : null,
         all_regions: addAllRegions,
+        country_id: crmId(),
       })
       .select("id")
       .single();
@@ -3658,7 +3672,9 @@ function SocialLinksTab() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from("social_links").select("key, url");
+    const cc = getCrmCountry();
+    const { data: rawLinks } = await supabase.from("social_links").select("key, url");
+    const data = (rawLinks ?? []).filter((r: any) => (cc ? String(r.key).endsWith(":" + cc) : !String(r.key).includes(":"))).map((r: any) => ({ key: cc ? String(r.key).slice(0, -(cc.length + 1)) : r.key, url: r.url }));
     (data ?? []).forEach((row: { key: string; url: string | null }) => {
       if (row.key === "telegram") setTelegram(row.url ?? "");
       if (row.key === "instagram") setInstagram(row.url ?? "");
@@ -3672,9 +3688,9 @@ function SocialLinksTab() {
   }, []);
 
   async function save() {
-    await supabase.from("social_links").upsert({ key: "telegram", url: telegram || null });
-    await supabase.from("social_links").upsert({ key: "instagram", url: instagram || null });
-    await supabase.from("social_links").upsert({ key: "tiktok", url: tiktok || null });
+    await supabase.from("social_links").upsert({ key: scopedKey("telegram", getCrmCountry() || null), url: telegram || null });
+    await supabase.from("social_links").upsert({ key: scopedKey("instagram", getCrmCountry() || null), url: instagram || null });
+    await supabase.from("social_links").upsert({ key: scopedKey("tiktok", getCrmCountry() || null), url: tiktok || null });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
@@ -3744,10 +3760,10 @@ function MediaMaterialsTab() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await orCrm(supabase
       .from("media_materials")
       .select("id, type, file_url, title")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }));
     setRows((data as MaterialRow[]) ?? []);
     setLoading(false);
   }
@@ -3769,6 +3785,7 @@ function MediaMaterialsTab() {
     }
     const { data: publicUrlData } = supabase.storage.from("media-materials").getPublicUrl(filePath);
     await supabase.from("media_materials").insert({
+      country_id: crmId(),
       type,
       file_url: publicUrlData.publicUrl,
       title: title || null,
@@ -3878,7 +3895,9 @@ function MagazineAdsTab() {
   const [selectedRegionIds, setSelectedRegionIds] = useState<string[]>([]);
 
   async function loadRegions() {
-    const { data } = await supabase.from("regions").select("id, name").order("name");
+    let rq = supabase.from("regions").select("id, name").order("name");
+    if (getCrmCountry()) rq = rq.eq("country_id", getCrmCountry());
+    const { data } = await rq;
     setRegions((data as RegionOption[]) ?? []);
   }
 
@@ -3890,12 +3909,12 @@ function MagazineAdsTab() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await orCrm(supabase
       .from("magazine_ads")
       .select(
         "id, image_url, description, button_text, button_link, is_active, sort_order, all_regions, magazine_ad_regions(regions(name))"
       )
-      .order("sort_order", { ascending: true });
+      .order("sort_order", { ascending: true }));
 
     const mapped = (data as any[] ?? []).map((a) => ({
       ...a,
@@ -3933,6 +3952,7 @@ function MagazineAdsTab() {
         button_link: buttonLink,
         sort_order: ads.length,
         all_regions: allRegions,
+        country_id: crmId(),
       })
       .select("id")
       .single();

@@ -37,3 +37,9 @@ export async function loadGoalSettings(countryId: string | null): Promise<Record
   const { loadScoped } = await import("@/lib/scopedSettings");
   return loadScoped(GOAL_KEYS, countryId);
 }
+
+// Показывать записи своей страны + общие (country_id пустой).
+export function orCountry<T>(q: T, countryId: string | null | undefined): T {
+  if (!countryId) return q;
+  return (q as any).or(`country_id.is.null,country_id.eq.${countryId}`);
+}

@@ -14,7 +14,7 @@ import { formatCompact } from "@/lib/formatCompact";
 import PartnersShowcase from "@/components/PartnersShowcase";
 import LoadingScreen from "@/components/LoadingScreen";
 import EntryPopup from "@/components/EntryPopup";
-import { getMyCountry } from "@/lib/myCountry";
+import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { loadScoped } from "@/lib/scopedSettings";
 
 // Настоящий 3D-переворот страниц — библиотека работает только в браузере,
@@ -147,13 +147,21 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
         ];
       }
 
-      const { data: adsData } = await supabase
-        .from("magazine_ads")
-        .select("id, image_url, description, button_text, button_link")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true });
-
-      const ads = adsData ?? [];
+      const { data: adsRaw } = await orCountry(
+        supabase
+          .from("magazine_ads")
+          .select("id, image_url, description, button_text, button_link, all_regions, magazine_ad_regions(region_id)")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true }),
+        mc.countryId
+      );
+      // Реклама журнала: «все регионы» или регион зрителя в списке выбранных.
+      const ads = (adsRaw ?? []).filter(
+        (a: any) =>
+          a.all_regions ||
+          !userRegionId ||
+          (a.magazine_ad_regions ?? []).some((r: any) => r.region_id === userRegionId)
+      );
 
       // Каждая участница — разворот: текст (левая страница) + фото (правая).
       // Каждый 10-й разворот — реклама, тем же принципом: слева текст с

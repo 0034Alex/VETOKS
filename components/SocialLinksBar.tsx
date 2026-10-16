@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function SocialLinksBar() {
@@ -8,11 +9,18 @@ export default function SocialLinksBar() {
 
   useEffect(() => {
     (async () => {
+      const cid = (await getMyCountry()).countryId;
       const { data } = await supabase.from("social_links").select("key, url");
       const map: Record<string, string | null> = {};
+      // Сначала общие ссылки, поверх — ссылки своей страны (ключ вида telegram:<id страны>).
       (data ?? []).forEach((row: { key: string; url: string | null }) => {
-        map[row.key] = row.url;
+        if (!String(row.key).includes(":")) map[row.key] = row.url;
       });
+      if (cid) {
+        (data ?? []).forEach((row: { key: string; url: string | null }) => {
+          if (String(row.key).endsWith(":" + cid) && row.url) map[String(row.key).slice(0, -(cid.length + 1))] = row.url;
+        });
+      }
       setLinks(map);
     })();
   }, []);

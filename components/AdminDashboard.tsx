@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { apiPost } from "@/lib/authClient";
+import { getCrmCountry } from "@/lib/crmCountry";
 
 type Stats = Record<string, number>;
 const PERIODS: [string, string][] = [
@@ -24,11 +25,10 @@ export default function AdminDashboard({ onGo }: { onGo: (tab: string) => void }
   const [err, setErr] = useState(false);
 
   useEffect(() => {
-    supabase
-      .from("regions")
-      .select("id, name")
-      .order("name")
-      .then(({ data }) => setRegions((data as any) ?? []));
+    (getCrmCountry()
+      ? supabase.from("regions").select("id, name").eq("country_id", getCrmCountry()).order("name")
+      : supabase.from("regions").select("id, name").order("name")
+    ).then(({ data }) => setRegions((data as any) ?? []));
   }, []);
 
   useEffect(() => {

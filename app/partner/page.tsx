@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
@@ -21,8 +22,10 @@ export default function PartnerPage() {
     setStatus("loading");
 
     const u = await getCurrentUser();
+    const myC = await getMyCountry();
 
     const { error } = await supabase.from("sponsors").insert({
+      country_id: myC.countryId,
       name,
       status: "lead",
       contact_info: { phone, email, message },

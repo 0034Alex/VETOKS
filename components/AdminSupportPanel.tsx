@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
+import { getCrmCountry } from "@/lib/crmCountry";
 
 const FILTERS: [string, string][] = [
   ["open", "Открытые"],
@@ -20,7 +21,7 @@ export default function AdminSupportPanel() {
   const [note, setNote] = useState<Record<string, string>>({});
 
   async function load() {
-    const r = await apiPost("/api/admin/support", { action: "list" });
+    const r = await apiPost("/api/admin/support", { action: "list", countryId: getCrmCountry() });
     setRows(r?.rows ?? []);
     setLoading(false);
   }

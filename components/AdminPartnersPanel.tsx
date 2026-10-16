@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
+import { getCrmCountry } from "@/lib/crmCountry";
 
 const STAGES: [string, string][] = [
   ["lead", "Знакомство"],
@@ -35,7 +36,7 @@ export default function AdminPartnersPanel() {
   const [linkUser, setLinkUser] = useState<{ id: string; first_name: string | null } | null | undefined>(undefined);
 
   async function load() {
-    const r = await apiPost("/api/admin/partners", { action: "list" });
+    const r = await apiPost("/api/admin/partners", { action: "list", countryId: getCrmCountry() });
     setRows(r?.rows ?? []);
     setPays(r?.payments ?? []);
     setRefNames(r?.refNames ?? {});
@@ -46,7 +47,7 @@ export default function AdminPartnersPanel() {
   }, []);
 
   const act = async (body: object) => {
-    await apiPost("/api/admin/partners", body);
+    await apiPost("/api/admin/partners", { ...body, countryId: getCrmCountry() });
     await load();
   };
 

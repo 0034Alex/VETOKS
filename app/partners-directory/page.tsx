@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
@@ -19,11 +20,15 @@ export default function PartnersDirectoryPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("partner_logos")
-        .select("id, name, logo_url, link_url")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true });
+      const mc = await getMyCountry();
+      const { data } = await orCountry(
+        supabase
+          .from("partner_logos")
+          .select("id, name, logo_url, link_url")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true }),
+        mc.countryId
+      );
       setPartners((data as Partner[]) ?? []);
       setLoading(false);
     })();

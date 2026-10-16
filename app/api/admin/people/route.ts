@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff, logAction } from "@/lib/staffServer";
+import { regionIdsOfCountry } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
       );
     }
     if (region) query = query.eq("region_id", region);
+    else if (body.countryId) query = query.in("region_id", await regionIdsOfCountry(String(body.countryId)));
     if (filter === "banned") query = query.eq("is_banned", true);
     if (filter === "unverified") query = query.eq("phone_verified", false);
     if (filter === "new7") query = query.gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString());

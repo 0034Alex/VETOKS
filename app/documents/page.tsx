@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getCurrentUser } from "@/lib/currentUser";
+import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
@@ -29,12 +30,16 @@ export default function DocumentsPage() {
 
       const audiences = isParticipant ? ["all", "participants"] : ["all"];
 
-      const { data } = await supabase
-        .from("documents")
-        .select("id, title, content")
-        .eq("is_active", true)
-        .in("audience", audiences)
-        .order("sort_order", { ascending: true });
+      const mc = await getMyCountry();
+      const { data } = await orCountry(
+        supabase
+          .from("documents")
+          .select("id, title, content")
+          .eq("is_active", true)
+          .in("audience", audiences)
+          .order("sort_order", { ascending: true }),
+        mc.countryId
+      );
 
       setDocs((data as DocRow[]) ?? []);
       setLoading(false);

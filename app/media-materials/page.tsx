@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
+import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
@@ -30,10 +31,14 @@ export default function MediaMaterialsPage() {
       setIsParticipant(!!p);
 
       if (p) {
-        const { data } = await supabase
-          .from("media_materials")
-          .select("id, type, file_url, title")
-          .order("created_at", { ascending: false });
+        const mc = await getMyCountry();
+        const { data } = await orCountry(
+          supabase
+            .from("media_materials")
+            .select("id, type, file_url, title")
+            .order("created_at", { ascending: false }),
+          mc.countryId
+        );
         setMaterials((data as Material[]) ?? []);
       }
       setLoading(false);

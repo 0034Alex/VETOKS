@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff, logAction } from "@/lib/staffServer";
 import { notify } from "@/lib/shopServer";
+import { regionIdsOfCountry } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,19 @@ export async function POST(req: Request) {
       .select("id, name, phone, email, message, status, created_at, user_id, reply, replied_at")
       .order("created_at", { ascending: false })
       .limit(200);
-    return NextResponse.json({ ok: true, rows: data ?? [] });
+    let rows: any[] = data ?? [];
+    // Заявки только пользователей выбранной страны (без привязанного пользователя — остаются).
+    if (body.countryId) {
+      const rids = await regionIdsOfCountry(String(body.countryId));
+      const uids = Array.from(new Set(rows.map((r) => r.user_id).filter(Boolean)));
+      const ok = new Set<string>();
+      if (uids.length && rids.length) {
+        const { data: us } = await supabaseAdmin.from("users").select("id").in("id", uids).in("region_id", rids);
+        (us ?? []).forEach((u: any) => ok.add(u.id));
+      }
+      rows = rows.filter((r) => !r.user_id || ok.has(r.user_id));
+    }
+    return NextResponse.json({ ok: true, rows });
   }
 
   const id = String(body.id ?? "");

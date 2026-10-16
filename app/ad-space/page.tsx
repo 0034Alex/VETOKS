@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
@@ -106,13 +107,17 @@ export default function AdSpacePage() {
       }
       setAllowed(true);
 
-      const { data } = await supabase
-        .from("ad_slots")
-        .select(
-          "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status, capacity, sold_count, all_regions, ad_slot_regions(regions(name))"
-        )
-        .order("category", { ascending: true })
-        .order("slot_number", { ascending: true });
+      const mc = await getMyCountry();
+      const { data } = await orCountry(
+        supabase
+          .from("ad_slots")
+          .select(
+            "id, category, slot_number, title, description, full_price, presale_price, presale_until, duration, status, capacity, sold_count, all_regions, ad_slot_regions(regions(name))"
+          )
+          .order("category", { ascending: true })
+          .order("slot_number", { ascending: true }),
+        mc.countryId
+      );
 
       const mapped = (data as any[] ?? []).map((s) => ({
         ...s,
