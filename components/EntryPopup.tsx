@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getMyCountry } from "@/lib/myCountry";
+import { loadScoped } from "@/lib/scopedSettings";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 
@@ -20,11 +22,19 @@ export default function EntryPopup() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("popup_settings")
-        .select("enabled, image_url, text, button_text, button_link")
-        .eq("id", 1)
-        .maybeSingle();
+      let data: any = null;
+      const cid = (await getMyCountry()).countryId;
+      const pj = await loadScoped(["popup_json"], cid);
+      if (pj.popup_json) {
+        try { data = JSON.parse(pj.popup_json); } catch { data = null; }
+      } else {
+        const r = await supabase
+          .from("popup_settings")
+          .select("enabled, image_url, text, button_text, button_link")
+          .eq("id", 1)
+          .maybeSingle();
+        data = r.data;
+      }
 
       if (!data || !data.enabled) return;
       setSettings(data as Settings);

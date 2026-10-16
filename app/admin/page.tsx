@@ -22,6 +22,8 @@ import AdminTranslationsPanel from "@/components/AdminTranslationsPanel";
 import AdminDashboard from "@/components/AdminDashboard";
 import AdminPeoplePanel from "@/components/AdminPeoplePanel";
 import AdminActionLogPanel from "@/components/AdminActionLogPanel";
+import { getCrmCountry, setCrmCountry } from "@/lib/crmCountry";
+import { loadScoped, scopedKey } from "@/lib/scopedSettings";
 
 type Tab =
   | "dashboard"
@@ -165,6 +167,34 @@ function getAllowedTabs(user: CurrentUser): Tab[] {
   return [...allowed];
 }
 
+// Страна, с которой сейчас работает CRM: баннеры, тексты, партнёры и цены
+// ниже сохраняются и показываются именно для неё.
+function CrmCountrySwitch() {
+  const [list, setList] = useState<{ id: string; name: string }[]>([]);
+  const [val, setVal] = useState("");
+  useEffect(() => {
+    setVal(getCrmCountry());
+    supabase.from("countries").select("id, name").order("name").then(({ data }) => setList((data as any) ?? []));
+  }, []);
+  return (
+    <select
+      value={val}
+      onChange={(e) => {
+        setCrmCountry(e.target.value);
+        setVal(e.target.value);
+        window.location.reload();
+      }}
+      className="ml-auto bg-bgPrimary border border-gold/60 text-gold rounded-lg px-2 py-1.5 text-xs max-w-[45%]"
+      aria-label="Страна CRM"
+    >
+      <option value="">🌐 Общие (все страны)</option>
+      {list.map((c) => (
+        <option key={c.id} value={c.id}>{c.name}</option>
+      ))}
+    </select>
+  );
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("dashboard");
@@ -244,6 +274,7 @@ export default function AdminPage() {
           ☰
         </button>
         <h1 className="text-xl font-semibold text-gold">VETOKS CRM</h1>
+        <CrmCountrySwitch />
       </div>
 
       {menuOpen && (
@@ -2219,25 +2250,25 @@ function BannersTab() {
   const [placement, setPlacement] = useState("main");
 
   async function loadRegions() {
-    const { data } = await supabase.from("regions").select("id, name").order("name");
+    let rq = supabase.from("regions").select("id, name").order("name");
+    if (getCrmCountry()) rq = rq.eq("country_id", getCrmCountry());
+    const { data } = await rq;
     setRegions((data as RegionOption[]) ?? []);
   }
 
   async function load() {
     setLoading(true);
-    const { data: settingRow } = await supabase
-      .from("platform_settings")
-      .select("value")
-      .eq("key", "banners_enabled")
-      .maybeSingle();
-    setEnabled(settingRow?.value !== "false");
+    const bm = await loadScoped(["banners_enabled"], getCrmCountry() || null);
+    setEnabled(bm.banners_enabled !== "false");
 
-    const { data } = await supabase
+    let bq = supabase
       .from("promo_banners")
       .select(
-        "id, image_url, link_url, is_active, sort_order, all_regions, placement, promo_banner_regions(regions(name))"
+        "id, image_url, link_url, is_active, sort_order, all_regions, placement, country_id, promo_banner_regions(regions(name))"
       )
       .order("sort_order", { ascending: true });
+    if (getCrmCountry()) bq = bq.or(`country_id.is.null,country_id.eq.${getCrmCountry()}`);
+    const { data } = await bq;
 
     const mapped = (data as any[] ?? []).map((b) => ({
       id: b.id,
@@ -2270,7 +2301,7 @@ function BannersTab() {
     const newValue = !enabled;
     await supabase
       .from("platform_settings")
-      .upsert({ key: "banners_enabled", value: newValue ? "true" : "false" });
+      .upsert({ key: scopedKey("banners_enabled", getCrmCountry() || null), value: newValue ? "true" : "false" });
     setEnabled(newValue);
   }
 
@@ -2294,6 +2325,7 @@ function BannersTab() {
         sort_order: banners.filter((b) => b.placement === placement).length,
         all_regions: allRegions,
         placement,
+        country_id: getCrmCountry() || null,
       })
       .select("id")
       .single();
@@ -4315,11 +4347,19 @@ function BrandingTab() {
   const [popupSaved, setPopupSaved] = useState(false);
 
   async function loadPopup() {
-    const { data } = await supabase
-      .from("popup_settings")
-      .select("enabled, image_url, text, button_text, button_link")
-      .eq("id", 1)
-      .maybeSingle();
+    const cc = getCrmCountry();
+    let data: any = null;
+    if (cc) {
+      const pj = await loadScoped(["popup_json"], cc);
+      try { data = pj.popup_json ? JSON.parse(pj.popup_json) : null; } catch { data = null; }
+    } else {
+      const r = await supabase
+        .from("popup_settings")
+        .select("enabled, image_url, text, button_text, button_link")
+        .eq("id", 1)
+        .maybeSingle();
+      data = r.data;
+    }
     if (data) {
       setPopupEnabled(data.enabled);
       setPopupImageUrl(data.image_url);
@@ -4345,24 +4385,36 @@ function BrandingTab() {
   }
 
   async function savePopup() {
-    await supabase.from("popup_settings").upsert({
-      id: 1,
-      enabled: popupEnabled,
-      image_url: popupImageUrl,
-      text: popupText,
-      button_text: popupButtonText || null,
-      button_link: popupButtonLink || null,
-    });
+    const cc = getCrmCountry();
+    if (cc) {
+      await supabase.from("platform_settings").upsert({
+        key: scopedKey("popup_json", cc),
+        value: JSON.stringify({
+          enabled: popupEnabled,
+          image_url: popupImageUrl,
+          text: popupText,
+          button_text: popupButtonText || null,
+          button_link: popupButtonLink || null,
+        }),
+      });
+    } else {
+      await supabase.from("popup_settings").upsert({
+        id: 1,
+        enabled: popupEnabled,
+        image_url: popupImageUrl,
+        text: popupText,
+        button_text: popupButtonText || null,
+        button_link: popupButtonLink || null,
+      });
+    }
     setPopupSaved(true);
     setTimeout(() => setPopupSaved(false), 2000);
   }
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
-      .from("platform_settings")
-      .select("key, value")
-      .in("key", [
+    const map = await loadScoped(
+      [
         "sponsor_logo_url",
         "ticker_text",
         "ticker_enabled",
@@ -4372,11 +4424,9 @@ function BrandingTab() {
         "welcome_countdown_title",
         "welcome_countdown_subtitle",
         "welcome_countdown_button_text",
-      ]);
-    const map: Record<string, string> = {};
-    (data ?? []).forEach((r: { key: string; value: string }) => {
-      map[r.key] = r.value;
-    });
+      ],
+      getCrmCountry() || null
+    );
     setSponsorLogoUrl(map.sponsor_logo_url ?? null);
     setTickerText(map.ticker_text ?? "");
     setTickerEnabled(map.ticker_enabled === "true");
@@ -4414,13 +4464,13 @@ function BrandingTab() {
     const { data: publicUrlData } = supabase.storage.from("promo-banners").getPublicUrl(filePath);
     await supabase
       .from("platform_settings")
-      .upsert({ key: "sponsor_logo_url", value: publicUrlData.publicUrl });
+      .upsert({ key: scopedKey("sponsor_logo_url", getCrmCountry() || null), value: publicUrlData.publicUrl });
     setSponsorLogoUrl(publicUrlData.publicUrl);
     setUploadingLogo(false);
   }
 
   async function removeSponsorLogo() {
-    await supabase.from("platform_settings").upsert({ key: "sponsor_logo_url", value: null });
+    await supabase.from("platform_settings").upsert({ key: scopedKey("sponsor_logo_url", getCrmCountry() || null), value: null });
     setSponsorLogoUrl(null);
   }
 
@@ -4437,14 +4487,14 @@ function BrandingTab() {
   async function saveCountdown() {
     await supabase.from("platform_settings").upsert([
       {
-        key: "welcome_countdown_enabled",
+        key: scopedKey("welcome_countdown_enabled", getCrmCountry() || null),
         value: countdownEnabled ? "true" : "false",
       },
-      { key: "welcome_countdown_target_at", value: countdownTargetAt },
-      { key: "welcome_countdown_title", value: countdownTitle },
-      { key: "welcome_countdown_subtitle", value: countdownSubtitle },
+      { key: scopedKey("welcome_countdown_target_at", getCrmCountry() || null), value: countdownTargetAt },
+      { key: scopedKey("welcome_countdown_title", getCrmCountry() || null), value: countdownTitle },
+      { key: scopedKey("welcome_countdown_subtitle", getCrmCountry() || null), value: countdownSubtitle },
       {
-        key: "welcome_countdown_button_text",
+        key: scopedKey("welcome_countdown_button_text", getCrmCountry() || null),
         value: countdownButtonText,
       },
     ]);
@@ -4453,10 +4503,10 @@ function BrandingTab() {
   }
 
   async function saveTicker() {
-    await supabase.from("platform_settings").upsert({ key: "ticker_text", value: tickerText });
+    await supabase.from("platform_settings").upsert({ key: scopedKey("ticker_text", getCrmCountry() || null), value: tickerText });
     await supabase
       .from("platform_settings")
-      .upsert({ key: "ticker_enabled", value: tickerEnabled ? "true" : "false" });
+      .upsert({ key: scopedKey("ticker_enabled", getCrmCountry() || null), value: tickerEnabled ? "true" : "false" });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }

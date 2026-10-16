@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { getMyCountry } from "@/lib/myCountry";
+import { loadScoped } from "@/lib/scopedSettings";
 
 export default function TickerBar() {
   const [text, setText] = useState("");
@@ -9,14 +10,7 @@ export default function TickerBar() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("platform_settings")
-        .select("key, value")
-        .in("key", ["ticker_text", "ticker_enabled"]);
-      const map: Record<string, string> = {};
-      (data ?? []).forEach((r: { key: string; value: string }) => {
-        map[r.key] = r.value;
-      });
+      const map = await loadScoped(["ticker_text", "ticker_enabled"], (await getMyCountry()).countryId);
       setText(map.ticker_text ?? "");
       setEnabled(map.ticker_enabled === "true" && !!map.ticker_text);
     })();

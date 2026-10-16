@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { getCrmCountry } from "@/lib/crmCountry";
+import { loadScoped, scopedKey } from "@/lib/scopedSettings";
 
 const KEYS = ["strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text", "fanzone_enabled", "fanzone_min_amount", "media_season_id"];
 
@@ -16,11 +18,10 @@ export default function AdminHomeSettingsPanel() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("platform_settings").select("key, value").in("key", KEYS);
-      const m: Record<string, string> = {};
-      (data ?? []).forEach((r: any) => (m[r.key] = r.value ?? ""));
-      setV(m);
-      const { data: sn } = await supabase.from("seasons").select("id, title").order("created_at", { ascending: false });
+      setV(await loadScoped(KEYS, getCrmCountry() || null));
+      let sq = supabase.from("seasons").select("id, title").order("created_at", { ascending: false });
+      if (getCrmCountry()) sq = sq.eq("country_id", getCrmCountry());
+      const { data: sn } = await sq;
       setSeasons((sn as SeasonOpt[]) ?? []);
       setLoading(false);
     })();
@@ -30,7 +31,7 @@ export default function AdminHomeSettingsPanel() {
 
   async function save() {
     await supabase.from("platform_settings").upsert(
-      KEYS.map((k) => ({ key: k, value: v[k] ?? "" }))
+      KEYS.map((k) => ({ key: scopedKey(k, getCrmCountry() || null), value: v[k] ?? "" }))
     );
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);

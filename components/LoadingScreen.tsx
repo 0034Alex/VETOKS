@@ -1,19 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { getMyCountry } from "@/lib/myCountry";
+import { loadScoped } from "@/lib/scopedSettings";
 
 export default function LoadingScreen() {
   const [sponsorLogo, setSponsorLogo] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("platform_settings")
-        .select("value")
-        .eq("key", "sponsor_logo_url")
-        .maybeSingle();
-      if (data?.value) setSponsorLogo(data.value);
+      const m = await loadScoped(["sponsor_logo_url"], (await getMyCountry()).countryId);
+      if (m.sponsor_logo_url) setSponsorLogo(m.sponsor_logo_url);
     })();
   }, []);
 

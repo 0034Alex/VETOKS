@@ -8,6 +8,7 @@ import BottomNav from "@/components/BottomNav";
 import VoteModal from "@/components/VoteModal";
 import ReportButton from "@/components/ReportButton";
 import { getMyCountry } from "@/lib/myCountry";
+import { loadScoped } from "@/lib/scopedSettings";
 import {
   IconHeart,
   IconComment,
@@ -66,12 +67,8 @@ export default function MediaPage() {
       // «Медиа» показывает только текущее шоу: сезон, выбранный в CRM,
       // а если не выбран — самый свежий. Старые ролики остаются на
       // страницах участниц.
-      const { data: setRow } = await supabase
-        .from("platform_settings")
-        .select("value")
-        .eq("key", "media_season_id")
-        .maybeSingle();
       const mcM = await getMyCountry();
+      const setRow = { value: (await loadScoped(["media_season_id"], mcM.countryId)).media_season_id };
       let seasonId = (setRow?.value as string) || "";
       if (seasonId && mcM.countryId) {
         // Выбранный в CRM сезон должен быть из моей страны.

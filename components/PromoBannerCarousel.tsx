@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { getMyCountry } from "@/lib/myCountry";
+import { loadScoped } from "@/lib/scopedSettings";
 import { getCurrentUser } from "@/lib/currentUser";
 import { trackAd } from "@/lib/track";
 
@@ -22,26 +24,23 @@ export default function PromoBannerCarousel({
 
   useEffect(() => {
     (async () => {
-      const { data: settingRow, error: settingError } = await supabase
-        .from("platform_settings")
-        .select("value")
-        .eq("key", "banners_enabled")
-        .maybeSingle();
-      if (settingError) {
-        console.error("[PromoBannerCarousel] platform_settings error:", settingError);
-      }
-      setEnabled(settingRow?.value !== "false");
+      const mc = await getMyCountry();
+      const sm = await loadScoped(["banners_enabled"], mc.countryId);
+      setEnabled(sm.banners_enabled !== "false");
 
       const u = await getCurrentUser();
       const myRegionId = u?.region_id ?? null;
 
       // Общероссийские баннеры этого места показа — видны всем.
-      const { data: nationwide, error: nationwideError } = await supabase
+      // «Все регионы» означает все регионы СВОЕЙ страны (country_id), а не всех стран.
+      let nq = supabase
         .from("promo_banners")
-        .select("id, image_url, link_url, sort_order")
+        .select("id, image_url, link_url, sort_order, country_id")
         .eq("is_active", true)
         .eq("placement", placement)
         .eq("all_regions", true);
+      if (mc.countryId) nq = nq.or(`country_id.is.null,country_id.eq.${mc.countryId}`);
+      const { data: nationwide, error: nationwideError } = await nq;
       if (nationwideError) {
         console.error("[PromoBannerCarousel] nationwide error:", nationwideError);
       }

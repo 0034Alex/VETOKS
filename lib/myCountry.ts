@@ -30,21 +30,10 @@ export async function getMyCountry(): Promise<MyCountry> {
   }
 }
 
-// Цель недели: у каждой страны своя (ключи вида weekly_goal_text:<id страны>);
-// если для страны ничего не задано — берётся общая настройка.
+// Цель недели: у каждой страны своя (см. lib/scopedSettings.ts).
 export const GOAL_KEYS = ["weekly_goal_text", "weekly_goal_target", "weekly_goal_enabled"];
 
 export async function loadGoalSettings(countryId: string | null): Promise<Record<string, string>> {
-  const keys = [...GOAL_KEYS];
-  if (countryId) GOAL_KEYS.forEach((k) => keys.push(`${k}:${countryId}`));
-  const { data } = await supabase.from("platform_settings").select("key, value").in("key", keys);
-  const raw: Record<string, string> = {};
-  (data ?? []).forEach((s: { key: string; value: string }) => { raw[s.key] = s.value; });
-  const out: Record<string, string> = {};
-  GOAL_KEYS.forEach((k) => {
-    const v = countryId ? raw[`${k}:${countryId}`] : undefined;
-    if (v !== undefined) out[k] = v;
-    else if (raw[k] !== undefined) out[k] = raw[k];
-  });
-  return out;
+  const { loadScoped } = await import("@/lib/scopedSettings");
+  return loadScoped(GOAL_KEYS, countryId);
 }

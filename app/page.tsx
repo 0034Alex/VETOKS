@@ -15,6 +15,7 @@ import PartnersShowcase from "@/components/PartnersShowcase";
 import LoadingScreen from "@/components/LoadingScreen";
 import EntryPopup from "@/components/EntryPopup";
 import { getMyCountry } from "@/lib/myCountry";
+import { loadScoped } from "@/lib/scopedSettings";
 
 // Настоящий 3D-переворот страниц — библиотека работает только в браузере,
 // поэтому подключаем её динамически, без серверной отрисовки.
@@ -565,11 +566,8 @@ function Survey() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("platform_settings")
-        .select("value")
-        .eq("key", "survey_question")
-        .maybeSingle();
+      const sq = await loadScoped(["survey_question"], (await getMyCountry()).countryId);
+      const data = sq.survey_question ? { value: sq.survey_question } : null;
       setQuestion(data?.value ?? "");
       const u = await getCurrentUser();
       if (u && data?.value) {
@@ -664,12 +662,10 @@ export default function Home() {
       setUser(u);
       setChecked(true);
 
-      const { data: cfg } = await supabase
-        .from("platform_settings")
-        .select("key, value")
-        .in("key", ["strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text"]);
-      const cm: Record<string, string> = {};
-      (cfg ?? []).forEach((r: any) => (cm[r.key] = r.value ?? ""));
+      const cm = await loadScoped(
+        ["strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text"],
+        (await getMyCountry()).countryId
+      );
       setHomeCfg(cm);
 
       if (u.region_id) {
