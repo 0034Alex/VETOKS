@@ -7,6 +7,7 @@ import VerifyPhonePopup from "@/components/VerifyPhonePopup";
 import ReferralCapture from "@/components/ReferralCapture";
 import { LangProvider } from "@/lib/i18n";
 import AutoTranslate from "@/components/AutoTranslate";
+import ChunkReload from "@/components/ChunkReload";
 
 export const metadata: Metadata = {
   title: "VETOKS",
@@ -49,6 +50,7 @@ export default function RootLayout({
         <ReferralCapture />
         <AutoTranslate />
         <ServiceWorkerRegister />
+        <ChunkReload />
       </LangProvider>
       </body>
     </html>

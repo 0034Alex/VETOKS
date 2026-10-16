@@ -13,6 +13,7 @@ const PUBLIC_PREFIXES = [
   "/reset-password",
   "/legal",
   "/r/",
+  "/n/",
   "/admin",
 ];
 

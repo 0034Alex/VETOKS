@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
   const { data } = await supabaseAdmin
     .from("users")
-    .select("phone, phone_verified")
+    .select("phone, phone_verified, created_at, verify_prompt_at, verify_dismiss_at")
     .eq("id", userId)
     .maybeSingle();
 
@@ -18,5 +18,8 @@ export async function POST(req: NextRequest) {
     status: "ok",
     verified: !!data?.phone_verified,
     phone: data?.phone_verified ? data.phone : null,
+    createdAt: data?.created_at ?? null,
+    promptAt: (data as any)?.verify_prompt_at ?? null,
+    dismissAt: (data as any)?.verify_dismiss_at ?? null,
   });
 }

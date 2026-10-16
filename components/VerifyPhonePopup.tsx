@@ -6,10 +6,22 @@ import { supabase } from "@/lib/supabaseClient";
 import { getInitData, postJson } from "@/lib/authClient";
 
 const HIDE_ON = ["/login", "/register", "/forgot-password", "/reset-password", "/admin"];
-const DISMISS_KEY = "vt_verify_dismissed";
+const AUTO_SHOWN_KEY = "vt_verify_auto_shown"; // окно «через сутки» уже показано
+const DISMISS_AT_KEY = "vt_verify_dismiss_at"; // когда окно закрыли в последний раз
+const DAY = 24 * 60 * 60 * 1000;
 
-// Окно «Подтвердите номер в Telegram». Показывается при входе, пока номер
-// не подтверждён. Любое место приложения может открыть его событием:
+function lsGet(k: string): string | null {
+  try { return localStorage.getItem(k); } catch { return null; }
+}
+function lsSet(k: string, v: string) {
+  try { localStorage.setItem(k, v); } catch {}
+}
+
+// Окно «Подтвердите номер в Telegram».
+// — Само появляется один раз: через сутки после регистрации.
+// — Дальше только в момент действия (голос, подарок...) и не чаще раза в сутки;
+//   если окно недавно закрывали, показываем короткую подсказку вместо него.
+// Любое место приложения может открыть его событием:
 // window.dispatchEvent(new Event("vetoks:verify-phone"))
 export default function VerifyPhonePopup() {
   const pathname = usePathname() || "/";
@@ -18,45 +30,73 @@ export default function VerifyPhonePopup() {
   const [state, setState] = useState<"idle" | "waiting" | "done" | "error">("idle");
   const [link, setLink] = useState("");
   const [msg, setMsg] = useState("");
+  const [toast, setToast] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const hidden = HIDE_ON.some((p) => pathname.startsWith(p));
+
+  // Помним на сервере, а не в браузере: в PWA и Telegram локальная память
+  // может сбрасываться, и окно появлялось бы заново при каждом входе.
+  const mark = useCallback(async (kind: "auto" | "dismiss") => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (token) await postJson("/api/verify/mark", { kind }, token);
+    } catch {}
+  }, []);
 
   const stop = () => {
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
   };
 
-  const check = useCallback(async (): Promise<{ loggedIn: boolean; verified: boolean }> => {
+  const check = useCallback(async (): Promise<{ loggedIn: boolean; verified: boolean; createdAt: string | null; promptAt: string | null; dismissAt: string | null }> => {
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
-    if (!token) return { loggedIn: false, verified: false };
+    if (!token) return { loggedIn: false, verified: false, createdAt: null, promptAt: null, dismissAt: null };
     const r = await postJson("/api/verify/status", {}, token);
-    return { loggedIn: true, verified: !!r.verified };
+    return {
+      loggedIn: true,
+      verified: !!r.verified,
+      createdAt: (r.createdAt as string) ?? null,
+      promptAt: (r.promptAt as string) ?? null,
+      dismissAt: (r.dismissAt as string) ?? null,
+    };
   }, []);
 
-  // При заходе — показать, если номер не подтверждён (один раз за открытие).
+  // Один раз: через сутки после регистрации.
   useEffect(() => {
     if (hidden) return;
     let cancelled = false;
     (async () => {
-      let dismissed = false;
-      try { dismissed = sessionStorage.getItem(DISMISS_KEY) === "1"; } catch {}
-      if (dismissed) return;
+      if (lsGet(AUTO_SHOWN_KEY) === "1") return;
       const s = await check();
-      if (cancelled) return;
-      if (s.loggedIn && !s.verified) {
-        setReason("login");
-        setOpen(true);
+      if (cancelled || !s.loggedIn || s.verified || !s.createdAt) return;
+      if (s.promptAt) {
+        lsSet(AUTO_SHOWN_KEY, "1");
+        return;
       }
+      if (Date.now() - new Date(s.createdAt).getTime() < DAY) return;
+      lsSet(AUTO_SHOWN_KEY, "1");
+      mark("auto");
+      setReason("login");
+      setOpen(true);
     })();
     return () => { cancelled = true; };
-  }, [hidden, check]);
+  }, [hidden, check, mark]);
 
-  // Открытие по требованию (например, при нажатии «Проголосовать»).
+  // По требованию (нажали «Проголосовать» и т.п.). Если окно закрывали меньше
+  // суток назад — вместо него короткая подсказка.
   useEffect(() => {
     async function onRequest() {
       const s = await check();
       if (s.loggedIn && !s.verified) {
+        const serverLast = s.dismissAt ? new Date(s.dismissAt).getTime() : 0;
+        const last = Math.max(Number(lsGet(DISMISS_AT_KEY) || 0), serverLast);
+        if (last && Date.now() - last < DAY) {
+          setToast(true);
+          setTimeout(() => setToast(false), 4500);
+          return;
+        }
         setReason("action");
         setState("idle");
         setOpen(true);
@@ -70,7 +110,8 @@ export default function VerifyPhonePopup() {
 
   function dismiss() {
     stop();
-    try { sessionStorage.setItem(DISMISS_KEY, "1"); } catch {}
+    lsSet(DISMISS_AT_KEY, String(Date.now()));
+    mark("dismiss");
     setOpen(false);
     setState("idle");
   }
@@ -134,6 +175,25 @@ export default function VerifyPhonePopup() {
     poll();
     if (initData && tg?.openTelegramLink) tg.openTelegramLink(r.link);
     else window.location.href = r.link;
+  }
+
+  if (toast && !open && !hidden) {
+    return (
+      <button
+        onClick={() => {
+          setToast(false);
+          lsSet(DISMISS_AT_KEY, "0");
+          mark("dismiss");
+          setReason("action");
+          setState("idle");
+          setOpen(true);
+        }}
+        className="fixed left-4 right-4 z-[100] bg-bgSurface border border-gold text-offwhite text-sm rounded-xl px-4 py-3 text-left"
+        style={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
+      >
+        Для этого нужно подтвердить номер. <span className="text-gold underline">Подтвердить</span>
+      </button>
+    );
   }
 
   if (!open || hidden) return null;
