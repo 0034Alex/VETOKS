@@ -1,12 +1,22 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { notify } from "@/lib/shopServer";
+import { countryOfUser } from "@/lib/countryServer";
 
 export const REF_KEYS = ["referral_enabled", "referral_reward_referrer", "referral_reward_invited", "referral_daily_limit", "referral_max_rewarded"];
 
-export async function getRefSettings() {
-  const { data } = await supabaseAdmin.from("platform_settings").select("key, value").in("key", REF_KEYS);
+// Награды и лимиты у каждой страны свои (ключ "<ключ>:<id страны>"), иначе общие.
+export async function getRefSettings(countryId?: string | null) {
+  const all = [...REF_KEYS];
+  if (countryId) REF_KEYS.forEach((k) => all.push(`${k}:${countryId}`));
+  const { data } = await supabaseAdmin.from("platform_settings").select("key, value").in("key", all);
+  const raw: Record<string, string> = {};
+  (data ?? []).forEach((r: any) => (raw[r.key] = r.value ?? ""));
   const m: Record<string, string> = {};
-  (data ?? []).forEach((r: any) => (m[r.key] = r.value ?? ""));
+  REF_KEYS.forEach((k) => {
+    const own = countryId ? raw[`${k}:${countryId}`] : undefined;
+    if (own !== undefined) m[k] = own;
+    else if (raw[k] !== undefined) m[k] = raw[k];
+  });
   const num = (k: string, d: number) => {
     const n = Number(m[k]);
     return m[k] !== undefined && m[k] !== "" && isFinite(n) ? n : d;
@@ -23,7 +33,7 @@ export async function getRefSettings() {
 // Друг подтвердил номер — засчитываем приглашение и начисляем награды (один раз).
 export async function qualifyReferral(userId: string) {
   try {
-    const s = await getRefSettings();
+    const s = await getRefSettings(await countryOfUser(userId));
     if (!s.enabled) return;
     const { data } = await supabaseAdmin.rpc("vt_qualify_referral", {
       p_referred: userId,

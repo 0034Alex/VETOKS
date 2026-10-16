@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
+import { getCrmCountry } from "@/lib/crmCountry";
 
 // CRM → «Рефералы»: награды, лимиты и лучшие приглашающие.
 export default function AdminReferralsPanel() {
@@ -10,7 +11,7 @@ export default function AdminReferralsPanel() {
   const [saved, setSaved] = useState(false);
 
   async function load() {
-    const r = await apiPost("/api/admin/referrals", { action: "get" });
+    const r = await apiPost("/api/admin/referrals", { action: "get", countryId: getCrmCountry() });
     setD(r);
     if (r?.settings) {
       setV({
@@ -27,7 +28,7 @@ export default function AdminReferralsPanel() {
   }, []);
 
   async function save() {
-    await apiPost("/api/admin/referrals", { action: "save", values: v });
+    await apiPost("/api/admin/referrals", { action: "save", values: v, countryId: getCrmCountry() });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }

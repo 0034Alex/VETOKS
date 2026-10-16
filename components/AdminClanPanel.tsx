@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { apiPost } from "@/lib/authClient";
+import { getCrmCountry } from "@/lib/crmCountry";
 
 // CRM → «Чат кланов»: жалобы и последние сообщения, скрыть / заглушить / заблокировать.
 export default function AdminClanPanel() {
@@ -18,7 +19,7 @@ export default function AdminClanPanel() {
 
   async function load() {
     setLoading(true);
-    const r = await apiPost("/api/admin/clan", { action: "list", regionId: regionId || null, onlyReported });
+    const r = await apiPost("/api/admin/clan", { action: "list", regionId: regionId || null, onlyReported, countryId: getCrmCountry() });
     setRows(r?.rows ?? []);
     setLoading(false);
   }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
+import { getCrmCountry } from "@/lib/crmCountry";
 
 const LABELS: Record<string, string> = {
   spam: "спам",
@@ -97,7 +98,7 @@ export default function AdminReportsPanel() {
 
   async function load() {
     setLoading(true);
-    const r = await apiPost("/api/admin/reports", { action: "list" });
+    const r = await apiPost("/api/admin/reports", { action: "list", countryId: getCrmCountry() });
     setItems(r?.items ?? []);
     setLoading(false);
   }

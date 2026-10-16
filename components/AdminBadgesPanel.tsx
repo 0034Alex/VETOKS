@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
+import { getCrmCountry } from "@/lib/crmCountry";
 import { CONTESTS, STAGE_OPTIONS, CROWN_OPTIONS } from "@/lib/status";
 
 // CRM → «Галочки и статусы»: золотая галочка вручную и статус участницы.
@@ -35,7 +36,7 @@ export default function AdminBadgesPanel() {
 
   async function find() {
     setMsg("");
-    const r = await apiPost("/api/admin/badges", { action: "find", query: q });
+    const r = await apiPost("/api/admin/badges", { action: "find", query: q, countryId: getCrmCountry() });
     if (r?.ok) {
       setItems(r.items);
       if (r.items.length === 0) setMsg("Никого не нашли.");
@@ -71,7 +72,7 @@ export default function AdminBadgesPanel() {
   }
 
   async function bulk() {
-    const r = await apiPost("/api/admin/badges", { action: "bulk_stage", stage: bulkStage });
+    const r = await apiPost("/api/admin/badges", { action: "bulk_stage", stage: bulkStage, countryId: getCrmCountry() });
     setBulkAsk(false);
     flash(r?.ok ? `Готово: этап обновлён у ${r.count} участниц.` : "Не получилось (нужен владелец).");
   }

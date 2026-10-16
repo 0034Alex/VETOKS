@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireUser } from "@/lib/shopServer";
 import { getRefSettings } from "@/lib/referral";
+import { countryOfUser } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
     const u = Array.isArray(r.users) ? r.users[0] : r.users;
     return { name: u?.first_name ?? "Гость", status: r.status, reward: Number(r.reward_referrer), created_at: r.created_at };
   });
-  const s = await getRefSettings();
+  const s = await getRefSettings(await countryOfUser(uid));
   return NextResponse.json({
     ok: true,
     code: me?.referral_code ?? "",

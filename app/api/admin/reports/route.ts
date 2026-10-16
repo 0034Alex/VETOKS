@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { userIdFromBearer } from "@/lib/authServer";
 import { bunnyDeleteVideo } from "@/lib/bunny";
+import { regionIdsOfCountry } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
 
@@ -35,12 +36,18 @@ export async function POST(req: Request) {
     const { data: posts } = ids.length
       ? await supabaseAdmin
           .from("content_posts")
-          .select("id, video_url, photo_url, caption, participants(display_name)")
+          .select("id, video_url, photo_url, caption, participants(display_name, region_id)")
           .in("id", ids)
       : { data: [] as any[] };
     const pm = new Map((posts ?? []).map((p: any) => [p.id, p]));
+    const rids = body.countryId ? new Set(await regionIdsOfCountry(String(body.countryId))) : null;
     const items = Array.from(byPost.values())
       .map((g) => ({ ...g, post: pm.get(g.post_id) ?? null }))
+      .filter((g: any) => {
+        if (!rids) return true;
+        const pp = Array.isArray(g.post?.participants) ? g.post.participants[0] : g.post?.participants;
+        return !pp?.region_id || rids.has(pp.region_id);
+      })
       .sort((a, b) => b.count - a.count);
     return NextResponse.json({ ok: true, items });
   }

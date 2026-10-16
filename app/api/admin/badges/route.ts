@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { regionIdsOfCountry } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff, logAction } from "@/lib/staffServer";
 import { notify } from "@/lib/shopServer";
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
     if (!list.length) return NextResponse.json({ ok: true, items: [] });
     const { data: users } = await supabaseAdmin
       .from("users")
-      .select("id, first_name, nick, phone, email, verified_badge, badge_note, regions(name)")
+      .select("id, first_name, nick, phone, email, verified_badge, badge_note, region_id, regions(name)")
       .in("id", list);
     const { data: parts } = await supabaseAdmin
       .from("participants")
@@ -42,7 +43,8 @@ export async function POST(req: Request) {
       .in("user_id", list);
     const byUser: Record<string, any> = {};
     (parts ?? []).forEach((p: any) => (byUser[p.user_id] = p));
-    const items = (users ?? []).map((u: any) => ({
+    const rids = body.countryId ? new Set(await regionIdsOfCountry(String(body.countryId))) : null;
+    const items = (users ?? []).filter((u: any) => !rids || !u.region_id || rids.has(u.region_id)).map((u: any) => ({
       userId: u.id,
       name: byUser[u.id]?.display_name ?? u.first_name ?? "Без имени",
       nick: u.nick ?? null,
@@ -110,6 +112,8 @@ export async function POST(req: Request) {
     if (!STAGE_OPTIONS.some((s) => s.key === stage)) return NextResponse.json({ ok: false, error: "bad_value" }, { status: 400 });
     let q = supabaseAdmin.from("participants").update({ stage_key: stage }).eq("is_eliminated", false).is("crown", null);
     if (body.contest && CONTESTS[String(body.contest)]) q = q.eq("contest", String(body.contest));
+    // Этап меняется только у участниц выбранной страны CRM.
+    if (body.countryId) q = q.in("region_id", await regionIdsOfCountry(String(body.countryId)));
     const { data } = await q.select("id");
     await logAction(uid, "participant_bulk_stage", null, { stage, contest: body.contest ?? null, count: (data ?? []).length });
     return NextResponse.json({ ok: true, count: (data ?? []).length });

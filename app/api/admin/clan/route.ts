@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff, logAction } from "@/lib/staffServer";
+import { regionIdsOfCountry } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
       .order("created_at", { ascending: false })
       .limit(100);
     if (region) q = q.eq("region_id", region);
+    else if (body.countryId) q = q.in("region_id", await regionIdsOfCountry(String(body.countryId)));
     if (onlyReported) {
       if (reportedIds.length === 0) return NextResponse.json({ ok: true, rows: [] });
       q = q.in("id", reportedIds);

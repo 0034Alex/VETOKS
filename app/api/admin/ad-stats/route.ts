@@ -23,15 +23,21 @@ export async function POST(req: Request) {
   const bannerIds = rows.filter((r) => r.target_type === "banner").map((r) => r.target_id);
   const logoIds = rows.filter((r) => r.target_type === "logo").map((r) => r.target_id);
   const { data: banners } = bannerIds.length
-    ? await supabaseAdmin.from("promo_banners").select("id, image_url, link_url").in("id", bannerIds)
+    ? await supabaseAdmin.from("promo_banners").select("id, image_url, link_url, country_id").in("id", bannerIds)
     : { data: [] as any[] };
   const { data: logos } = logoIds.length
-    ? await supabaseAdmin.from("partner_logos").select("id, name, logo_url").in("id", logoIds)
+    ? await supabaseAdmin.from("partner_logos").select("id, name, logo_url, country_id").in("id", logoIds)
     : { data: [] as any[] };
   const bm = new Map((banners ?? []).map((b: any) => [b.id, b]));
   const lm = new Map((logos ?? []).map((l: any) => [l.id, l]));
 
+  const cid = body.countryId ? String(body.countryId) : "";
   const items = rows
+    .filter((r) => {
+      if (!cid) return true;
+      const info: any = r.target_type === "banner" ? bm.get(r.target_id) : lm.get(r.target_id);
+      return !info?.country_id || info.country_id === cid;
+    })
     .map((r) => {
       const info: any = r.target_type === "banner" ? bm.get(r.target_id) : lm.get(r.target_id);
       return {

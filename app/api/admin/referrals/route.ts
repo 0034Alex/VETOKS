@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff } from "@/lib/staffServer";
 import { REF_KEYS, getRefSettings } from "@/lib/referral";
+import { regionIdsOfCountry } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +12,21 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
 
   if (body.action === "get") {
-    const s = await getRefSettings();
+    const cid = body.countryId ? String(body.countryId) : null;
+    const s = await getRefSettings(cid);
     const { data: all } = await supabaseAdmin.from("referrals").select("referrer_id, status, created_at").limit(5000);
-    const rows = all ?? [];
+    let rows: any[] = all ?? [];
+    if (cid) {
+      // Только приглашения тех, кто из выбранной страны.
+      const rids = await regionIdsOfCountry(cid);
+      const refIds = Array.from(new Set(rows.map((r: any) => r.referrer_id)));
+      const okIds = new Set<string>();
+      for (let i = 0; i < refIds.length; i += 200) {
+        const { data: us } = await supabaseAdmin.from("users").select("id").in("id", refIds.slice(i, i + 200)).in("region_id", rids);
+        (us ?? []).forEach((u: any) => okIds.add(u.id));
+      }
+      rows = rows.filter((r: any) => okIds.has(r.referrer_id));
+    }
     const by: Record<string, { total: number; ok: number; last24: number }> = {};
     const dayAgo = Date.now() - 86400000;
     rows.forEach((r: any) => {
@@ -48,7 +61,8 @@ export async function POST(req: Request) {
 
   if (body.action === "save") {
     const v = body.values ?? {};
-    const rowsToSave = REF_KEYS.filter((k) => v[k] !== undefined).map((k) => ({ key: k, value: String(v[k]) }));
+    const sfx = body.countryId ? ":" + String(body.countryId) : "";
+    const rowsToSave = REF_KEYS.filter((k) => v[k] !== undefined).map((k) => ({ key: k + sfx, value: String(v[k]) }));
     if (rowsToSave.length) await supabaseAdmin.from("platform_settings").upsert(rowsToSave);
     return NextResponse.json({ ok: true });
   }

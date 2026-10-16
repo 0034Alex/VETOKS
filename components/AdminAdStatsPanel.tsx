@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
+import { getCrmCountry } from "@/lib/crmCountry";
 
 const PERIODS: [string, string][] = [
   ["today", "Сегодня"],
@@ -19,7 +20,7 @@ export default function AdminAdStatsPanel() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const r = await apiPost("/api/admin/ad-stats", { period });
+      const r = await apiPost("/api/admin/ad-stats", { period, countryId: getCrmCountry() });
       setItems(r?.items ?? []);
       setLoading(false);
     })();
