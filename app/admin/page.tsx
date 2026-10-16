@@ -2745,6 +2745,8 @@ type PartnerLogoRow = {
   logo_url: string;
   link_url: string | null;
   is_active: boolean;
+  all_regions?: boolean;
+  region_names?: string[];
 };
 
 function PartnerLogosTab() {
@@ -2754,19 +2756,35 @@ function PartnerLogosTab() {
   const [name, setName] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [regions, setRegions] = useState<RegionOption[]>([]);
+  const [allRegions, setAllRegions] = useState(true);
+  const [selectedRegionIds, setSelectedRegionIds] = useState<string[]>([]);
 
   async function load() {
     setLoading(true);
     const { data } = await orCrm(supabase
       .from("partner_logos")
-      .select("id, name, logo_url, link_url, is_active, country_id")
+      .select("id, name, logo_url, link_url, is_active, country_id, all_regions, partner_logo_regions(regions(name))")
       .order("sort_order", { ascending: true }));
-    setRows((data as PartnerLogoRow[]) ?? []);
+    setRows(
+      ((data as any[]) ?? []).map((a) => ({
+        ...a,
+        region_names: (a.partner_logo_regions ?? [])
+          .map((r: any) => (Array.isArray(r.regions) ? r.regions[0]?.name : r.regions?.name))
+          .filter(Boolean),
+      }))
+    );
     setLoading(false);
   }
 
   useEffect(() => {
     load();
+    (async () => {
+      let rq = supabase.from("regions").select("id, name").order("name");
+      if (getCrmCountry()) rq = rq.eq("country_id", getCrmCountry());
+      const { data } = await rq;
+      setRegions((data as RegionOption[]) ?? []);
+    })();
   }, []);
 
   async function createLogo() {
@@ -2781,13 +2799,30 @@ function PartnerLogosTab() {
       return;
     }
     const { data: publicUrlData } = supabase.storage.from("partner-logos").getPublicUrl(filePath);
-    await supabase.from("partner_logos").insert({
-      country_id: crmId(),
-      name,
-      logo_url: publicUrlData.publicUrl,
-      link_url: linkUrl || null,
-      sort_order: rows.length,
-    });
+    const { data: inserted, error: insErr } = await supabase
+      .from("partner_logos")
+      .insert({
+        country_id: crmId(),
+        name,
+        logo_url: publicUrlData.publicUrl,
+        link_url: linkUrl || null,
+        sort_order: rows.length,
+        all_regions: allRegions,
+      })
+      .select("id")
+      .single();
+    if (insErr) {
+      alert(`Не удалось сохранить: ${insErr.message}`);
+      setUploading(false);
+      return;
+    }
+    if (inserted && !allRegions && selectedRegionIds.length > 0) {
+      await supabase
+        .from("partner_logo_regions")
+        .insert(selectedRegionIds.map((region_id) => ({ logo_id: inserted.id, region_id })));
+    }
+    setAllRegions(true);
+    setSelectedRegionIds([]);
     setName("");
     setLinkUrl("");
     setFile(null);
@@ -2835,6 +2870,18 @@ function PartnerLogosTab() {
           placeholder="Ссылка на партнёра, напр. https://..."
           className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
         />
+        <RegionPicker
+          regions={regions}
+          allRegions={allRegions}
+          selectedIds={selectedRegionIds}
+          onToggleAll={() => setAllRegions((v) => !v)}
+          onToggleRegion={(id) =>
+            setSelectedRegionIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+          }
+        />
+        {!getCrmCountry() && (
+          <p className="text-gold text-xs mb-2">Сейчас выбрано «общие настройки» — логотип увидят во всех странах. Выберите страну сверху.</p>
+        )}
         <button
           onClick={createLogo}
           disabled={uploading || !file || !name}
@@ -2859,6 +2906,9 @@ function PartnerLogosTab() {
             <div className="flex-1">
               <p className="text-offwhite text-sm font-semibold">{r.name}</p>
               <p className="text-muted text-xs truncate">{r.link_url || "без ссылки"}</p>
+              <p className="text-muted text-xs">
+                {r.all_regions === false ? `Регионы: ${(r.region_names ?? []).join(", ") || "—"}` : "Все регионы страны"}
+              </p>
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={() => toggleActive(r)}
