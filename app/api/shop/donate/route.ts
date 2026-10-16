@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { countryOfUser } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { blockOtherCountry, bad, kyivWeekStart, notify, fanEvent, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
 import { getShare } from "@/lib/pricing";
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
   const owner = await participantOwner(participantId);
   if (!owner) return bad("no_participant", 404);
 
-  const share = await getShare("weekly_goal");
+  const share = await getShare("weekly_goal", await countryOfUser(uid));
   const res = await pay(uid, amount, "gift_sent", participantId, share, { kind: "weekly_goal" });
   if (!res.ok) return bad(res.error, res.error === "not_enough" ? 402 : 500, { balance: res.balance });
 

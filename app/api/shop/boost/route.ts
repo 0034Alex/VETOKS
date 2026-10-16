@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     .eq("boost_type", "rating_bump");
   if ((count ?? 0) >= BOOST_LIMIT) return bad("limit", 409);
 
-  const p = await getAppPrice("boost", await getUsdRate(await countryOfUser(uid)));
+  const p = await getAppPrice("boost", undefined, await countryOfUser(uid));
   if (!p || p.price < 1) return bad("no_price", 500);
 
   const res = await pay(uid, p.price, "boost_purchase", participantId, p.share, { kind: "boost" });

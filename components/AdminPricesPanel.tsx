@@ -37,6 +37,8 @@ type GiftRow = {
 };
 
 export default function AdminPricesPanel() {
+  const cc = getCrmCountry() || null;
+  const [sym, setSym] = useState("₴");
   const [rate, setRate] = useState(41);
   const [rows, setRows] = useState<PriceRow[]>(PRICE_DEFAULTS);
   const [gifts, setGifts] = useState<GiftRow[]>([]);
@@ -59,11 +61,23 @@ export default function AdminPricesPanel() {
     setFreeVotes(m.free_votes_total ?? "3");
     setTopupOn(m.test_topup_enabled !== "false");
 
+    if (cc) {
+      const { data: c } = await supabase.from("countries").select("currency_symbol").eq("id", cc).maybeSingle();
+      setSym(c?.currency_symbol ?? "₴");
+    }
     const { data: prices } = await supabase
       .from("app_prices")
       .select("key, label, usd_price, participant_share_percent");
     const byKey: Record<string, any> = {};
-    (prices ?? []).forEach((p: any) => (byKey[p.key] = p));
+    // Общие строки, поверх — строки выбранной страны ("<ключ>:<id страны>").
+    (prices ?? []).forEach((p: any) => {
+      if (!String(p.key).includes(":")) byKey[p.key] = p;
+    });
+    if (cc) {
+      (prices ?? []).forEach((p: any) => {
+        if (String(p.key).endsWith(":" + cc)) byKey[String(p.key).slice(0, -(cc.length + 1))] = p;
+      });
+    }
     setRows(
       PRICE_DEFAULTS.map((d) => ({
         ...d,
@@ -76,8 +90,22 @@ export default function AdminPricesPanel() {
       .from("gift_catalog")
       .select("id, name, category, price, usd_price, participant_share_percent, is_active, chat_only")
       .order("price");
+    let ov = new Map<string, any>();
+    if (cc) {
+      const { data: o } = await supabase
+        .from("gift_country_prices")
+        .select("gift_id, usd_price, participant_share_percent, is_active")
+        .eq("country_id", cc);
+      ov = new Map(((o ?? []) as any[]).map((r) => [r.gift_id, r]));
+    }
     setGifts(
-      (g ?? []).map((x: any) => ({
+      (g ?? []).map((x0: any) => {
+        const o = ov.get(x0.id);
+        const x = o
+          ? { ...x0, usd_price: o.usd_price ?? x0.usd_price, participant_share_percent: o.participant_share_percent ?? x0.participant_share_percent, is_active: o.is_active ?? x0.is_active }
+          : x0;
+        return x;
+      }).map((x: any) => ({
         id: x.id,
         name: x.name,
         category: x.category,
@@ -103,7 +131,7 @@ export default function AdminPricesPanel() {
 
   async function saveRow(row: PriceRow) {
     await supabase.from("app_prices").upsert({
-      key: row.key,
+      key: cc ? `${row.key}:${cc}` : row.key,
       label: row.label,
       usd_price: Number(row.usd) || 0,
       participant_share_percent: row.hasShare ? clampShare(row.share) : 0,
@@ -114,6 +142,18 @@ export default function AdminPricesPanel() {
 
   async function saveGift(g: GiftRow) {
     const usd = Number(g.usd_price);
+    if (cc) {
+      // Для выбранной страны — своя цена/доля/«в магазине», общий каталог не трогаем.
+      await supabase.from("gift_country_prices").upsert({
+        gift_id: g.id,
+        country_id: cc,
+        usd_price: Number.isFinite(usd) && usd > 0 ? usd : null,
+        participant_share_percent: clampShare(g.share),
+        is_active: g.is_active,
+      });
+      flash(g.id);
+      return;
+    }
     await supabase
       .from("gift_catalog")
       .update({
@@ -142,7 +182,10 @@ export default function AdminPricesPanel() {
   return (
     <div className="max-w-xl">
       <p className="text-muted text-xs mb-4">
-        Цена задаётся в долларах и показывается в гривнах по курсу {rate} ₴ за
+        {cc
+          ? "Вы правите цены ТОЛЬКО выбранной страны (другие страны не затрагиваются). Если для позиции ничего не сохранено, действует общая цена. "
+          : "Это общие цены — они действуют в странах, где не заданы свои. Чтобы задать цены одной страны, выберите её вверху CRM. "}
+        Цена задаётся в долларах и показывается в местной валюте по курсу {rate} {sym} за
         $1 (курс меняется на вкладке «Страны и регионы»). «Доля участницы» —
         сколько процентов от цены получает участница, которой подарили /
         купили. Остальное остаётся платформе.
@@ -166,7 +209,7 @@ export default function AdminPricesPanel() {
                     }}
                     className={inputCls}
                   />
-                  <span className="text-muted text-xs">= {uah(row.usd)} ₴</span>
+                  <span className="text-muted text-xs">= {uah(row.usd)} {sym}</span>
                 </>
               )}
               {row.hasShare && (
@@ -226,7 +269,7 @@ export default function AdminPricesPanel() {
                 className={inputCls}
               />
               <span className="text-muted text-xs">
-                = {g.usd_price ? uah(g.usd_price) : g.price} ₴
+                = {g.usd_price ? uah(g.usd_price) : g.price} {sym}
                 {!g.usd_price && " (старая цена)"}
               </span>
               <span className="text-muted text-xs ml-2">доля участницы</span>

@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   const amount = Math.floor(Number(body.amount));
   if (!amount || amount < 1 || amount > 5000) return bad("bad_request");
 
-  const p = await getAppPrice("vote", await getUsdRate(await countryOfUser(uid)));
+  const p = await getAppPrice("vote", undefined, await countryOfUser(uid));
   if (!p || p.price < 1) return bad("no_price", 500);
   const total = p.price * amount;
 

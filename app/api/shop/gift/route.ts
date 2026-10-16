@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { countryOfUser } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { blockOtherCountry, bad, fanEvent, notify, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
-import { getUsdRate, giftUahPrice } from "@/lib/pricing";
+import { applyGiftOverrides, getUsdRate, giftUahPrice } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -22,14 +22,16 @@ export async function POST(req: Request) {
   const owner = await participantOwner(participantId);
   if (!owner) return bad("no_participant", 404);
 
-  const { data: gift } = await supabaseAdmin
+  const { data: giftRaw } = await supabaseAdmin
     .from("gift_catalog")
     .select("id, name, price, usd_price, participant_share_percent, is_active")
     .eq("id", giftId)
     .maybeSingle();
+  const cid = await countryOfUser(uid);
+  const gift = giftRaw ? (await applyGiftOverrides([giftRaw as any], cid))[0] : null;
   if (!gift || !gift.is_active) return bad("no_gift", 404);
 
-  const rate = await getUsdRate(await countryOfUser(uid));
+  const rate = await getUsdRate(cid);
   const unit = giftUahPrice(gift, rate);
   const total = unit * qty;
   const share = Number(gift.participant_share_percent) || 0;

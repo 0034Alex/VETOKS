@@ -8,7 +8,7 @@ import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
 import FanZoneStrip from "@/components/FanZoneStrip";
-import { getAppPrices, getCurrencySymbol, getUsdRate } from "@/lib/currency";
+import { applyGiftOverrides, getAppPrices, getCurrencySymbol, getUsdRate } from "@/lib/currency";
 import { apiPost } from "@/lib/authClient";
 import { getMyCountry } from "@/lib/myCountry";
 
@@ -113,11 +113,11 @@ function ShopContent() {
 
       const { data: giftsData } = await supabase
         .from("gift_catalog")
-        .select("id, name, price, usd_price, category, participant_share_percent, chat_only")
-        .eq("is_active", true);
+        .select("id, name, price, usd_price, category, participant_share_percent, chat_only, is_active");
       // Цена подарка задаётся в CRM в долларах; пересчитываем по курсу.
       const rate = await getUsdRate();
-      const priced = ((giftsData as Gift[]) ?? []).filter((g) => !g.chat_only).map((g) => ({
+      const withCountry = (await applyGiftOverrides((giftsData as any[]) ?? [])).filter((g: any) => g.is_active);
+      const priced = (withCountry as Gift[]).filter((g) => !g.chat_only).map((g) => ({
         ...g,
         price:
           Number(g.usd_price) > 0

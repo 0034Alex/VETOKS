@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   }
 
 
-  const p = await getAppPrice("collectible_card", await getUsdRate(await countryOfUser(uid)));
+  const p = await getAppPrice("collectible_card", undefined, await countryOfUser(uid));
   if (!p || p.price < 1) return bad("no_price", 500);
 
   // Сначала «занимаем» карточку: два покупателя не купят одну и ту же.

@@ -3,7 +3,7 @@ import { countryOfUser } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sameCountry } from "@/lib/countryServer";
 import { bad, fanEvent, notify, pay, refund, requireUser } from "@/lib/shopServer";
-import { getUsdRate, giftUahPrice } from "@/lib/pricing";
+import { applyGiftOverrides, getUsdRate, giftUahPrice } from "@/lib/pricing";
 import { blockState, findThread } from "@/lib/dmServer";
 import { chatGiftEmoji } from "@/lib/chatGifts";
 
@@ -37,14 +37,16 @@ export async function POST(req: Request) {
   const thread = await findThread(uid, to);
   if (!thread || !thread.accepted) return bad("need_chat", 403);
 
-  const { data: gift } = await supabaseAdmin
+  const { data: giftRaw } = await supabaseAdmin
     .from("gift_catalog")
     .select("id, name, price, usd_price, participant_share_percent, is_active, chat_only")
     .eq("id", giftId)
     .maybeSingle();
+  const cid = await countryOfUser(uid);
+  const gift = giftRaw ? (await applyGiftOverrides([giftRaw as any], cid))[0] : null;
   if (!gift || !gift.is_active || !gift.chat_only) return bad("no_gift", 404);
 
-  const rate = await getUsdRate(await countryOfUser(uid));
+  const rate = await getUsdRate(cid);
   const total = giftUahPrice(gift as any, rate) * qty;
   const share = Number(gift.participant_share_percent) || 0;
 
