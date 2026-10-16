@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
   const { data: u } = await supabaseAdmin
     .from("users")
-    .select("id, first_name, phone_verified, photo_url, bio, social_links, privacy, nick, is_banned, region_id, regions(name)")
+    .select("id, first_name, verified_badge, photo_url, bio, social_links, privacy, nick, is_banned, region_id, regions(name)")
     .eq("id", id)
     .maybeSingle();
   if (!u || u.is_banned) return bad("not_found", 404);
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     isSelf: me === id,
-    verified: !!u.phone_verified,
+    verified: !!(u as any).verified_badge,
     name: u.first_name ?? "Гость",
     photoUrl: u.photo_url ?? null,
     bio: u.bio ?? "",

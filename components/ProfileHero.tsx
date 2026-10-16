@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { SocialIcon, socialKind } from "@/lib/socialLinks";
+import type { StatusTone } from "@/lib/status";
 
 export function Crown({ size = 46 }: { size?: number }) {
   return (
@@ -106,6 +108,9 @@ type Props = {
   topRight: ReactNode;
   belowCrown?: ReactNode;
   verified?: boolean;
+  statusTone?: StatusTone;
+  statusTalent?: boolean;
+  badges?: { icon: string; label: string; hint: string }[];
 };
 
 // Верх профиля: большое фото на весь экран, текст поверх тёмного затухания,
@@ -123,8 +128,12 @@ export default function ProfileHero({
   onShare,
   topRight,
   belowCrown,
-  verified = true,
+  verified = false,
+  statusTone = "base",
+  statusTalent = false,
+  badges = [],
 }: Props) {
+  const [badgesOpen, setBadgesOpen] = useState(false);
   const initial = (name || "?").trim().slice(0, 1).toUpperCase();
   return (
     <div>
@@ -172,7 +181,19 @@ export default function ProfileHero({
 
         <div className="absolute left-0 right-0 bottom-0 px-5 pb-2 z-10">
           {status && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#E8D48A]/55 bg-black/35 backdrop-blur px-4 py-1.5 text-[13px] text-[#E8D48A]">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-[13px] backdrop-blur ${
+                statusTone === "win"
+                  ? statusTalent
+                    ? "border-transparent bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-bold"
+                    : "border-transparent bg-gradient-to-r from-[#8a6d12] via-[#F5E6A8] to-[#8a6d12] text-[#1a1405] font-bold"
+                  : statusTone === "fin"
+                  ? "border-[#E8D48A] bg-[#C9A227]/30 text-white"
+                  : statusTalent
+                  ? "border-[#EC4899]/70 bg-black/35 text-[#f5b8d6]"
+                  : "border-[#E8D48A]/55 bg-black/35 text-[#E8D48A]"
+              }`}
+            >
               {status}
             </span>
           )}
@@ -199,6 +220,26 @@ export default function ProfileHero({
             </p>
           )}
           {rank && <p className="mt-1.5 text-[13px] text-[#E8D48A]">🏆 {rank}</p>}
+          {badges.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {badges.slice(0, 3).map((b) => (
+                <button
+                  key={b.label}
+                  type="button"
+                  onClick={() => setBadgesOpen(true)}
+                  className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-black/55 border border-muted/50 text-offwhite backdrop-blur"
+                >
+                  <span>{b.icon}</span>
+                  {b.label}
+                </button>
+              ))}
+              {badges.length > 3 && (
+                <button type="button" onClick={() => setBadgesOpen(true)} className="text-xs px-3 py-1.5 rounded-full border border-muted/50 text-muted">
+                  Все ›
+                </button>
+              )}
+            </div>
+          )}
           {bio && <p className="mt-3.5 text-[15px] leading-relaxed text-[#e6e6ea] whitespace-pre-line">{bio}</p>}
         </div>
       </div>
@@ -230,6 +271,30 @@ export default function ProfileHero({
           Поделиться
         </button>
       </div>
+
+      {badgesOpen && (
+        <div className="fixed inset-0 z-[70] bg-black/65 flex items-end justify-center" onClick={() => setBadgesOpen(false)}>
+          <div
+            className="w-full max-w-md bg-bgSurface rounded-t-2xl p-5"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-offwhite font-semibold">Достижения</p>
+              <button onClick={() => setBadgesOpen(false)} className="text-muted text-xl" aria-label="Закрыть">✕</button>
+            </div>
+            {badges.map((b) => (
+              <div key={b.label} className="flex items-center gap-3 py-2.5 border-t border-muted/40">
+                <span className="w-10 h-10 rounded-full bg-bgPrimary flex items-center justify-center text-xl">{b.icon}</span>
+                <span className="text-offwhite text-sm">
+                  {b.label}
+                  <span className="block text-muted text-xs">{b.hint} · считается каждую ночь</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {stats.length > 0 && (
         <div className="flex px-5 pt-5">

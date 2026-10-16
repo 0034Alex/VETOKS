@@ -8,6 +8,8 @@ import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import ProfileHero, { ProfileActions, BigBtn, RoundBtn, TopBtn, IconMail, shareLink } from "@/components/ProfileHero";
 import { GiftIcon, parseLinks } from "@/lib/socialLinks";
+import { statusFor } from "@/lib/status";
+import { loadTitleBadges, TitleBadge } from "@/lib/profileExtras";
 import VoteModal from "@/components/VoteModal";
 import { getAppPrices, getCurrencySymbol } from "@/lib/currency";
 import { apiPost } from "@/lib/authClient";
@@ -62,6 +64,10 @@ export default function ParticipantProfilePage() {
     socials: string[];
     nick: string | null;
     following: number | null;
+    verified: boolean;
+    regionName: string | null;
+    status: { contest?: string; stage_key?: string; crown?: string | null } | null;
+    titles: TitleBadge[];
   } | null>(null);
   const [toast, setToast] = useState("");
 
@@ -132,7 +138,14 @@ export default function ParticipantProfilePage() {
           .eq("user_id", (p as Participant).user_id);
         fl = count ?? 0;
       }
+      const { data: vb } = await supabase.from("users").select("verified_badge").eq("id", (p as Participant).user_id).maybeSingle();
+      const { data: stRow } = await supabase.from("participants").select("contest, stage_key, crown").eq("id", id).maybeSingle();
+      const titles = await loadTitleBadges(id);
       setOwner({
+        verified: !!(vb as any)?.verified_badge,
+        regionName: (Array.isArray((ou as any)?.regions) ? (ou as any).regions[0]?.name : (ou as any)?.regions?.name) ?? null,
+        status: (stRow as any) ?? null,
+        titles,
         photoUrl: (ou as any)?.photo_url ?? null,
         bio: (ou as any)?.bio ?? "",
         city: priv.region === false ? null : (ou as any)?.regions?.name ?? null,
@@ -478,6 +491,7 @@ export default function ParticipantProfilePage() {
   }
 
   const isOwner = userId === participant.user_id;
+  const ps = statusFor(owner?.status?.contest, owner?.status?.stage_key, owner?.status?.crown, owner?.regionName ?? null);
   const boostsLeft = BOOST_LIMIT - boostCount;
 
   return (
@@ -486,7 +500,10 @@ export default function ParticipantProfilePage() {
         <ProfileHero
           photoUrl={participant.photo_url ?? owner?.photoUrl ?? null}
           name={participant.display_name}
-          status="👑 Участница"
+          status={ps.text}
+          statusTone={ps.tone}
+          statusTalent={ps.talent}
+          badges={owner?.titles ?? []}
           city={owner?.city ?? null}
           rank={
             rankPosition !== null
@@ -501,7 +518,7 @@ export default function ParticipantProfilePage() {
             ...(owner?.following != null ? [{ value: owner.following, label: "Подписки" }] : []),
           ]}
           onShare={share}
-          verified
+          verified={owner?.verified ?? false}
           topRight={
             <>
               {userId && !isOwner && (

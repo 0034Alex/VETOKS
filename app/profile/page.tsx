@@ -10,6 +10,8 @@ import BottomNav from "@/components/BottomNav";
 import SocialLinksBar from "@/components/SocialLinksBar";
 import ProfileHero, { TopBtn, Drawer, IconMail, IconBell, IconMenu, shareLink } from "@/components/ProfileHero";
 import { parseLinks } from "@/lib/socialLinks";
+import { statusFor } from "@/lib/status";
+import { loadTitleBadges, TitleBadge } from "@/lib/profileExtras";
 import AccountSwitcher from "@/components/AccountSwitcher";
 import { getCurrencySymbol } from "@/lib/currency";
 import { useT } from "@/lib/i18n";
@@ -61,6 +63,9 @@ export default function ProfilePage() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [bio, setBio] = useState("");
   const [nick, setNick] = useState<string | null>(null);
+  const [badgeOn, setBadgeOn] = useState(false);
+  const [statusRaw, setStatusRaw] = useState<{ contest?: string; stage_key?: string; crown?: string | null } | null>(null);
+  const [titleBadges, setTitleBadges] = useState<TitleBadge[]>([]);
   const [socials, setSocials] = useState<string[]>([]);
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
@@ -243,6 +248,8 @@ export default function ProfilePage() {
       setFollowing(fl ?? 0);
       setSocials(parseLinks((row as any)?.social_links));
       setNick(((row as any)?.nick as string | null) ?? null);
+      const { data: vb } = await supabase.from("users").select("verified_badge").eq("id", user.id).maybeSingle();
+      setBadgeOn(!!(vb as any)?.verified_badge);
       let ph: string | null = (row as any)?.photo_url ?? null;
       let b: string = (row as any)?.bio ?? "";
       if (participant) {
@@ -253,6 +260,13 @@ export default function ProfilePage() {
           .maybeSingle();
         ph = (pr as any)?.photo_url ?? ph;
         b = b || (pr as any)?.bio || "";
+        const { data: st } = await supabase
+          .from("participants")
+          .select("contest, stage_key, crown")
+          .eq("id", participant.id)
+          .maybeSingle();
+        setStatusRaw((st as any) ?? null);
+        setTitleBadges(await loadTitleBadges(participant.id));
         const { count: fc } = await supabase
           .from("participant_follows")
           .select("id", { count: "exact", head: true })
@@ -311,7 +325,7 @@ export default function ProfilePage() {
 
   const menuBadge = 0;
   const initialsName = user?.first_name ?? "";
-  const statusLabel = participant ? "👑 " + t("profile.participant") : null;
+  const st = participant ? statusFor(statusRaw?.contest, statusRaw?.stage_key, statusRaw?.crown, user?.regions?.name ?? null) : null;
   const goalPct = Math.min(100, goalTarget ? (goalCollected / goalTarget) * 100 : 0);
 
   const Row = ({ href, label, right }: { href: string; label: string; right?: string }) => (
@@ -329,7 +343,10 @@ export default function ProfilePage() {
         <ProfileHero
           photoUrl={photoUrl}
           name={initialsName}
-          status={statusLabel}
+          status={st?.text ?? null}
+          statusTone={st?.tone}
+          statusTalent={st?.talent}
+          badges={titleBadges}
           city={user?.regions?.name ?? null}
           rank={participant && rank ? `№${rank} в рейтинге · ${voteCount} голосов` : null}
           bio={bio}
@@ -343,7 +360,7 @@ export default function ProfilePage() {
               : [{ value: following, label: "Подписки", onClick: () => router.push("/my-follows") }]
           }
           onShare={share}
-          verified={!!participant || !!user?.phone_verified}
+          verified={badgeOn}
           belowCrown={<AccountSwitcher chip />}
           topRight={
             <>
