@@ -528,10 +528,47 @@ type Application = {
   created_at: string;
 };
 
+type CrmCountryOpt = { id: string; name: string };
+
+// Выбор страны для списков в CRM: страны не смешиваются.
+function useCountries() {
+  const [list, setList] = useState<CrmCountryOpt[]>([]);
+  const [regionCountry, setRegionCountry] = useState<Record<string, string>>({});
+  const [pick, setPick] = useState<string>("");
+  useEffect(() => {
+    (async () => {
+      const { data: c } = await supabase.from("countries").select("id, name").order("name");
+      setList((c as CrmCountryOpt[]) ?? []);
+      const { data: r } = await supabase.from("regions").select("id, country_id");
+      const m: Record<string, string> = {};
+      (r ?? []).forEach((x: any) => { if (x.country_id) m[x.id] = x.country_id; });
+      setRegionCountry(m);
+    })();
+  }, []);
+  return { list, regionCountry, pick, setPick };
+}
+
+function CountryPicker({ list, pick, setPick }: { list: CrmCountryOpt[]; pick: string; setPick: (v: string) => void }) {
+  return (
+    <select
+      value={pick}
+      onChange={(e) => setPick(e.target.value)}
+      className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-4"
+    >
+      <option value="">Все страны</option>
+      {list.map((c) => (
+        <option key={c.id} value={c.id}>{c.name}</option>
+      ))}
+    </select>
+  );
+}
+
 function Applications() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const ctry = useCountries();
+  const [userRegion, setUserRegion] = useState<Record<string, string>>({});
 
   async function load() {
     setLoading(true);
@@ -540,7 +577,15 @@ function Applications() {
       .select("id, status, form_data, season_id, user_id, created_at")
       .eq("status", "submitted")
       .order("created_at", { ascending: false });
-    setApplications((data as Application[]) ?? []);
+    const apps = (data as Application[]) ?? [];
+    setApplications(apps);
+    const ids = Array.from(new Set(apps.map((a) => a.user_id)));
+    if (ids.length) {
+      const { data: us } = await supabase.from("users").select("id, region_id").in("id", ids);
+      const m: Record<string, string> = {};
+      (us ?? []).forEach((u: any) => { if (u.region_id) m[u.id] = u.region_id; });
+      setUserRegion(m);
+    }
     setLoading(false);
   }
 
@@ -592,9 +637,15 @@ function Applications() {
   if (applications.length === 0)
     return <p className="text-muted">Новых анкет нет.</p>;
 
+  const shownApps = applications.filter(
+    (a) => !ctry.pick || ctry.regionCountry[userRegion[a.user_id]] === ctry.pick
+  );
+
   return (
+    <div>
+    <CountryPicker list={ctry.list} pick={ctry.pick} setPick={ctry.setPick} />
     <div className="grid md:grid-cols-2 gap-4">
-      {applications.map((app) => (
+      {shownApps.map((app) => (
         <div
           key={app.id}
           className="bg-bgSurface border border-muted rounded-xl p-5"
@@ -607,6 +658,9 @@ function Applications() {
               {new Date(app.created_at).toLocaleDateString("ru-RU")}
             </span>
           </div>
+          <p className="text-xs text-gold mb-1">
+            {ctry.list.find((c) => c.id === ctry.regionCountry[userRegion[app.user_id]])?.name ?? "страна не определена"}
+          </p>
           <p className="text-sm mb-1">
             Возраст: {app.form_data.age ?? "—"} · Город:{" "}
             {app.form_data.city ?? "—"}
@@ -633,6 +687,7 @@ function Applications() {
         </div>
       ))}
     </div>
+    </div>
   );
 }
 
@@ -645,6 +700,8 @@ type ParticipantRow = {
   display_name: string;
   user_id: string;
   is_editors_choice: boolean;
+  region_id: string | null;
+  season_id: string | null;
   users: {
     is_banned: boolean;
     last_login_at: string | null;
@@ -652,6 +709,8 @@ type ParticipantRow = {
 };
 
 function ParticipantsTab() {
+  const ctry = useCountries();
+  const [seasonList, setSeasonList] = useState<{ id: string; title: string; country_id: string | null }[]>([]);
   const [rows, setRows] = useState<ParticipantRow[]>([]);
   const [balances, setBalances] = useState<Record<string, number>>({});
   const [giftCounts, setGiftCounts] = useState<Record<string, number>>({});
@@ -662,10 +721,12 @@ function ParticipantsTab() {
     const { data } = await supabase
       .from("participants")
       .select(
-        "id, display_name, user_id, is_editors_choice, users(is_banned, last_login_at)"
+        "id, display_name, user_id, is_editors_choice, region_id, season_id, users(is_banned, last_login_at)"
       );
     const list = (data as unknown as ParticipantRow[]) ?? [];
     setRows(list);
+    const { data: sl } = await supabase.from("seasons").select("id, title, country_id");
+    setSeasonList((sl as any) ?? []);
 
     const { data: walletsData } = await supabase
       .from("wallets")
@@ -721,9 +782,19 @@ function ParticipantsTab() {
   if (loading) return <p className="text-muted">Загрузка...</p>;
   if (rows.length === 0) return <p className="text-muted">Участниц пока нет.</p>;
 
+  async function moveSeason(participantId: string, seasonId: string) {
+    if (!seasonId) return;
+    await supabase.from("participants").update({ season_id: seasonId }).eq("id", participantId);
+    await load();
+  }
+
+  const shownRows = rows.filter((r) => !ctry.pick || (r.region_id && ctry.regionCountry[r.region_id] === ctry.pick));
+
   return (
+    <div>
+    <CountryPicker list={ctry.list} pick={ctry.pick} setPick={ctry.setPick} />
     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {rows.map((r) => (
+      {shownRows.map((r) => (
         <div
           key={r.id}
           className="bg-bgSurface border border-muted rounded-xl p-5"
@@ -737,6 +808,24 @@ function ParticipantsTab() {
               ? new Date(r.users.last_login_at).toLocaleString("ru-RU")
               : "—"}
           </p>
+          <p className="text-xs text-gold mb-1">
+            {ctry.list.find((c) => c.id === (r.region_id ? ctry.regionCountry[r.region_id] : ""))?.name ?? "страна не определена"}
+          </p>
+          <label className="block text-xs text-muted mb-2">
+            Сезон:
+            <select
+              value={r.season_id ?? ""}
+              onChange={(e) => moveSeason(r.id, e.target.value)}
+              className="ml-2 bg-bgPrimary border border-muted rounded px-2 py-1 text-xs max-w-[60%]"
+            >
+              <option value="">— без сезона —</option>
+              {seasonList
+                .filter((s) => !s.country_id || !r.region_id || s.country_id === ctry.regionCountry[r.region_id] || s.id === r.season_id)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>{s.title}</option>
+                ))}
+            </select>
+          </label>
           <p className="text-sm mb-1">
             Баланс: {Math.round(balances[r.user_id] ?? 0)} ₽
           </p>
@@ -771,6 +860,7 @@ function ParticipantsTab() {
           </div>
         </div>
       ))}
+    </div>
     </div>
   );
 }

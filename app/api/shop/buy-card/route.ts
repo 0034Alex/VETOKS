@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { bad, notify, fanEvent, participantOwner, pay, requireUser } from "@/lib/shopServer";
+import { blockOtherCountry, bad, notify, fanEvent, participantOwner, pay, requireUser } from "@/lib/shopServer";
 import { getAppPrice } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +21,12 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const cardId = String(body.cardId || "");
   if (!cardId) return bad("bad_request");
+  const { data: cc } = await supabaseAdmin.from("collectible_cards").select("participant_id").eq("id", cardId).maybeSingle();
+  if (cc?.participant_id) {
+    const oc = await blockOtherCountry(uid, cc.participant_id as string);
+    if (oc) return oc;
+  }
+
 
   const p = await getAppPrice("collectible_card");
   if (!p || p.price < 1) return bad("no_price", 500);

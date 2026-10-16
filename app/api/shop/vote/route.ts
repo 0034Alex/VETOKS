@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { bad, requireUser } from "@/lib/shopServer";
+import { blockOtherCountry, bad, requireUser } from "@/lib/shopServer";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,9 @@ export async function POST(req: Request) {
   const participantId = String(body.participantId || "");
   const count = Math.floor(Number(body.count) || 1);
   if (!participantId) return bad("bad_request");
+  const oc = await blockOtherCountry(uid, participantId);
+  if (oc) return oc;
+
 
   const { data, error } = await supabaseAdmin.rpc("vt_cast_votes", {
     p_user: uid,

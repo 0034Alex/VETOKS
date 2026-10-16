@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { bad, fanEvent, notify, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
+import { blockOtherCountry, bad, fanEvent, notify, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
 import { getUsdRate, giftUahPrice } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +14,9 @@ export async function POST(req: Request) {
   const participantId = String(body.participantId || "");
   const qty = Math.floor(Number(body.qty) || 1);
   if (!giftId || !participantId || qty < 1 || qty > 99) return bad("bad_request");
+  const oc = await blockOtherCountry(uid, participantId);
+  if (oc) return oc;
+
 
   const owner = await participantOwner(participantId);
   if (!owner) return bad("no_participant", 404);

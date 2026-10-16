@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { bad, notify, fanEvent, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
+import { blockOtherCountry, bad, notify, fanEvent, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
 import { getAppPrice } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +15,9 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const participantId = String(body.participantId || "");
   if (!participantId) return bad("bad_request");
+  const oc = await blockOtherCountry(uid, participantId);
+  if (oc) return oc;
+
 
   const owner = await participantOwner(participantId);
   if (!owner) return bad("no_participant", 404);

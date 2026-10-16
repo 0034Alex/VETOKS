@@ -94,6 +94,15 @@ export async function participantOwner(participantId: string) {
   return data as { user_id: string; display_name: string } | null;
 }
 
+// Участница чужой страны недоступна для голосов, подарков, донатов, буста и карточек.
+export async function blockOtherCountry(uid: string, participantId: string) {
+  const o = await participantOwner(participantId);
+  if (!o) return bad("no_participant", 404);
+  const { sameCountry } = await import("@/lib/countryServer");
+  if (!(await sameCountry(uid, o.user_id))) return bad("other_country", 403);
+  return null;
+}
+
 export { kyivWeekStart } from "@/lib/kyiv";
 
 // Живая Фан-Зона: запись о дорогой покупке в общую ленту (если включено в CRM и сумма не меньше порога).
@@ -115,11 +124,12 @@ export async function fanEvent(
     if (m.fanzone_enabled === "false") return;
     const min = Number(m.fanzone_min_amount);
     if (amount < (Number.isFinite(min) && m.fanzone_min_amount !== "" ? min : 50)) return;
-    const { data: u } = await supabaseAdmin.from("users").select("first_name").eq("id", userId).maybeSingle();
+    const { data: u } = await supabaseAdmin.from("users").select("first_name, privacy").eq("id", userId).maybeSingle();
+    const hideName = (u?.privacy as any)?.feed === false;
     const { data: pr } = await supabaseAdmin.from("participants").select("region_id").eq("id", participantId).maybeSingle();
     await supabaseAdmin.from("fan_feed").insert({
       region_id: pr?.region_id ?? null,
-      sender_name: (u?.first_name as string) || "Гость",
+      sender_name: hideName ? "Аноним" : (u?.first_name as string) || "Гость",
       participant_id: participantId,
       participant_name: participantName,
       kind,
