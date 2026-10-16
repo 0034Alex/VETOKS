@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import { getMyCountry } from "@/lib/myCountry";
 
 type Stage = {
   stage_number: number;
@@ -29,12 +30,14 @@ export default function PromoPage() {
 
       // Один общий национальный сезон на всю страну — как и на главной,
       // регион пользователя тут ни на что не влияет.
-      const { data: season } = await supabase
+      const mcP = await getMyCountry();
+      let pq0 = supabase
         .from("seasons")
         .select("id")
         .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      if (mcP.countryId) pq0 = pq0.eq("country_id", mcP.countryId);
+      const { data: season } = await pq0.maybeSingle();
 
       if (season) {
         const { data: stages } = await supabase

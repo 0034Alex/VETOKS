@@ -1644,7 +1644,13 @@ function GoalTab() {
 // ЭТАПЫ СЕЗОНА
 // ---------------------------------------------------------------------
 
-type SeasonRow = { id: string; title: string };
+type SeasonRow = { id: string; title: string; status?: string | null; country_id?: string | null };
+type CountryOpt = { id: string; name: string };
+const SEASON_STATUSES: { v: string; l: string }[] = [
+  { v: "registration", l: "Идёт регистрация" },
+  { v: "active", l: "Идёт шоу" },
+  { v: "final", l: "Гранд-финал" },
+];
 type StageRow = {
   id: string;
   stage_number: number;
@@ -1672,8 +1678,39 @@ function StagesTab() {
   const [saved, setSaved] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
 
+  const [countriesList, setCountriesList] = useState<CountryOpt[]>([]);
+  const [newTitle, setNewTitle] = useState("");
+  const [newCountry, setNewCountry] = useState("");
+  const [seasonMsg, setSeasonMsg] = useState("");
+
+  async function createSeason() {
+    setSeasonMsg("");
+    if (!newTitle.trim() || !newCountry) {
+      setSeasonMsg("Укажите название и страну.");
+      return;
+    }
+    const { error } = await supabase
+      .from("seasons")
+      .insert({ title: newTitle.trim(), country_id: newCountry, status: "registration" });
+    if (error) {
+      setSeasonMsg("Не получилось: " + error.message);
+      return;
+    }
+    setNewTitle("");
+    setSeasonMsg("Сезон создан.");
+    loadSeasons();
+  }
+
+  async function setSeasonStatus(id: string, status: string) {
+    const { error } = await supabase.from("seasons").update({ status }).eq("id", id);
+    if (error) setSeasonMsg("Не получилось: " + error.message);
+    else setSeasons((a) => a.map((x) => (x.id === id ? { ...x, status } : x)));
+  }
+
   async function loadSeasons() {
-    const { data } = await supabase.from("seasons").select("id, title");
+    const { data: cs } = await supabase.from("countries").select("id, name").order("name");
+    setCountriesList((cs as CountryOpt[]) ?? []);
+    const { data } = await supabase.from("seasons").select("id, title, status, country_id").order("created_at", { ascending: false });
     setSeasons((data as SeasonRow[]) ?? []);
     if (data && data.length > 0 && !selectedSeason) {
       setSelectedSeason((data[0] as SeasonRow).id);
@@ -1804,9 +1841,9 @@ function StagesTab() {
   return (
     <div className="max-w-lg">
       <p className="text-muted text-xs bg-bgSurface border border-gold/30 rounded-xl p-3 mb-4">
-        Этапы здесь — общие на всю страну и действуют одновременно во всех
-        регионах. Регион участницы влияет только на то, в каких списках и
-        рейтингах она отображается — сами этапы, даты и баннер у всех одни.
+        Этапы здесь — общие для всей страны выбранного сезона и действуют
+        одновременно во всех её регионах. У каждой страны свой сезон, свои
+        этапы, даты и баннер.
       </p>
 
       <p className="text-muted text-sm mb-4">
@@ -1815,6 +1852,62 @@ function StagesTab() {
         датам автоматически.
       </p>
 
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
+        <p className="text-offwhite text-sm font-semibold mb-2">Сезоны по странам</p>
+        <p className="text-muted text-xs mb-3">
+          У каждой страны свой сезон, свои этапы и свои даты. Страна видит только свой сезон.
+        </p>
+        <div className="flex flex-col gap-2 mb-3">
+          {seasons.map((s) => (
+            <div key={s.id} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2">
+              <p className="text-offwhite text-sm">
+                {s.title}{" "}
+                <span className="text-muted text-xs">
+                  · {countriesList.find((c) => c.id === s.country_id)?.name ?? "страна не указана"}
+                </span>
+              </p>
+              <select
+                value={s.status ?? "registration"}
+                onChange={(e) => setSeasonStatus(s.id, e.target.value)}
+                className="w-full bg-bgSurface border border-muted rounded-lg px-2 py-1 text-xs mt-1"
+              >
+                {SEASON_STATUSES.map((o) => (
+                  <option key={o.v} value={o.v}>
+                    {o.l}
+                  </option>
+                ))}
+                {s.status && !SEASON_STATUSES.some((o) => o.v === s.status) && (
+                  <option value={s.status}>{s.status}</option>
+                )}
+              </select>
+            </div>
+          ))}
+        </div>
+        <p className="text-offwhite text-xs mb-1">Новый сезон</p>
+        <input
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          placeholder="Название, напр. VETOKS Miss Украина — сезон 1"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        />
+        <select
+          value={newCountry}
+          onChange={(e) => setNewCountry(e.target.value)}
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        >
+          <option value="">— страна —</option>
+          {countriesList.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <button onClick={createSeason} className="bg-gold text-bgPrimary font-semibold px-4 py-2 rounded-full text-sm">
+          Создать сезон
+        </button>
+        {seasonMsg && <p className="text-muted text-xs mt-2">{seasonMsg}</p>}
+      </div>
+
       <select
         value={selectedSeason}
         onChange={(e) => setSelectedSeason(e.target.value)}
@@ -1822,7 +1915,7 @@ function StagesTab() {
       >
         {seasons.map((s) => (
           <option key={s.id} value={s.id}>
-            {s.title}
+            {s.title} · {countriesList.find((c) => c.id === s.country_id)?.name ?? "—"}
           </option>
         ))}
       </select>

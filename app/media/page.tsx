@@ -71,14 +71,17 @@ export default function MediaPage() {
         .select("value")
         .eq("key", "media_season_id")
         .maybeSingle();
+      const mcM = await getMyCountry();
       let seasonId = (setRow?.value as string) || "";
+      if (seasonId && mcM.countryId) {
+        // Выбранный в CRM сезон должен быть из моей страны.
+        const { data: chosen } = await supabase.from("seasons").select("country_id").eq("id", seasonId).maybeSingle();
+        if (chosen && chosen.country_id && chosen.country_id !== mcM.countryId) seasonId = "";
+      }
       if (!seasonId) {
-        const { data: last } = await supabase
-          .from("seasons")
-          .select("id")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        let lq = supabase.from("seasons").select("id").order("created_at", { ascending: false }).limit(1);
+        if (mcM.countryId) lq = lq.eq("country_id", mcM.countryId);
+        const { data: last } = await lq.maybeSingle();
         seasonId = (last?.id as string) || "";
       }
 

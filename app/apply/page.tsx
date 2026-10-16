@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import { getMyCountry } from "@/lib/myCountry";
 
 export default function ApplyPage() {
   const [displayName, setDisplayName] = useState("");
@@ -72,13 +73,15 @@ export default function ApplyPage() {
     // Один общий национальный сезон — идёт одновременно во всех регионах,
     // регион не влияет на выбор сезона, только на то, где участница
     // отображается в списках/рейтинге.
-    const { data: season } = await supabase
+    const mcA = await getMyCountry();
+    let seQ = supabase
       .from("seasons")
       .select("id")
       .eq("status", "registration")
       .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+    if (mcA.countryId) seQ = seQ.eq("country_id", mcA.countryId);
+    const { data: season } = await seQ.maybeSingle();
 
     if (!season) {
       setStatus("error");

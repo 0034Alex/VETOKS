@@ -3,13 +3,16 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-const KEYS = ["strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text", "fanzone_enabled", "fanzone_min_amount"];
+const KEYS = ["strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text", "fanzone_enabled", "fanzone_min_amount", "media_season_id"];
+
+type SeasonOpt = { id: string; title: string };
 
 // CRM → «Главная»: красная полоса и кнопка «Как это работает».
 export default function AdminHomeSettingsPanel() {
   const [v, setV] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [seasons, setSeasons] = useState<SeasonOpt[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -17,6 +20,8 @@ export default function AdminHomeSettingsPanel() {
       const m: Record<string, string> = {};
       (data ?? []).forEach((r: any) => (m[r.key] = r.value ?? ""));
       setV(m);
+      const { data: sn } = await supabase.from("seasons").select("id, title").order("created_at", { ascending: false });
+      setSeasons((sn as SeasonOpt[]) ?? []);
       setLoading(false);
     })();
   }, []);
@@ -83,6 +88,25 @@ export default function AdminHomeSettingsPanel() {
           className="w-40 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
         />
         <p className="text-muted text-xs mt-1">Минимальная сумма покупки (₴), чтобы она попала в ленту. Пусто — 50 ₴. Меняется сразу для новых покупок.</p>
+      </div>
+
+      <div className="bg-bgSurface border border-muted rounded-xl p-4">
+        <p className="text-offwhite font-semibold text-sm mb-2">🎬 Какое шоу показывает раздел «Медиа»</p>
+        <select
+          value={v.media_season_id ?? ""}
+          onChange={(e) => set("media_season_id", e.target.value)}
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite"
+        >
+          <option value="">Автоматически — самый свежий сезон каждой страны</option>
+          {seasons.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.title}
+            </option>
+          ))}
+        </select>
+        <p className="text-muted text-xs mt-1">
+          В «Медиа» видны только ролики участниц этого шоу. Старые фото и видео остаются на страницах участниц. Выбранный сезон действует только для своей страны, остальные страны используют свой самый свежий сезон. Когда начнётся новое шоу, выберите его здесь (или оставьте «Автоматически»).
+        </p>
       </div>
 
       <button onClick={save} className="bg-gold text-bgPrimary font-semibold py-2.5 rounded-full text-sm">

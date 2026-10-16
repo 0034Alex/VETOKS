@@ -691,14 +691,16 @@ export default function Home() {
         .maybeSingle();
       setIsParticipant(!!myParticipant);
 
-      // Один общий национальный сезон и общие этапы — одинаковые для всей
+      // У каждой страны свой сезон и свои этапы — одинаковые для всей
       // страны одновременно, регион здесь ни на что не влияет.
-      const { data: seasonData } = await supabase
+      const mcS = await getMyCountry();
+      let sq0 = supabase
         .from("seasons")
         .select("id, title, status")
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      if (mcS.countryId) sq0 = sq0.eq("country_id", mcS.countryId);
+      const { data: seasonData } = await sq0.maybeSingle();
       setSeason(seasonData as Season | null);
 
       if (seasonData) {

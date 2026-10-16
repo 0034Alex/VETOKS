@@ -15,22 +15,19 @@ export async function GET(req: Request) {
     .maybeSingle();
   if (st?.value === "false") return NextResponse.json({ enabled: false, items: [] });
 
-  const { data: season } = await supabaseAdmin
-    .from("seasons")
-    .select("status")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const uid0 = await userIdFromBearer(req);
+  const cid0 = uid0 ? await countryOfUser(uid0) : null;
+  let seQ = supabaseAdmin.from("seasons").select("status").order("created_at", { ascending: false }).limit(1);
+  if (cid0) seQ = seQ.eq("country_id", cid0);
+  const { data: season } = await seQ.maybeSingle();
   const grand = season?.status === "final";
 
   let regionId: string | null = null;
   let countryRegions: string[] | null = null;
   if (grand) {
     // На гранд-финале — вся страна, но только своя.
-    const uid0 = await userIdFromBearer(req);
-    const cid = uid0 ? await countryOfUser(uid0) : null;
-    if (!cid) return NextResponse.json({ enabled: true, items: [] });
-    countryRegions = await regionIdsOfCountry(cid);
+    if (!cid0) return NextResponse.json({ enabled: true, items: [] });
+    countryRegions = await regionIdsOfCountry(cid0);
   }
   if (!grand) {
     const uid = await userIdFromBearer(req);
