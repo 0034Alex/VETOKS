@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { countryOfUser } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { blockOtherCountry, bad, notify, fanEvent, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
-import { getAppPrice } from "@/lib/pricing";
+import { getAppPrice, getUsdRate } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
     .eq("boost_type", "rating_bump");
   if ((count ?? 0) >= BOOST_LIMIT) return bad("limit", 409);
 
-  const p = await getAppPrice("boost");
+  const p = await getAppPrice("boost", await getUsdRate(await countryOfUser(uid)));
   if (!p || p.price < 1) return bad("no_price", 500);
 
   const res = await pay(uid, p.price, "boost_purchase", participantId, p.share, { kind: "boost" });

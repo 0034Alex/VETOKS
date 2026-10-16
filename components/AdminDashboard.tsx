@@ -35,7 +35,7 @@ export default function AdminDashboard({ onGo }: { onGo: (tab: string) => void }
     (async () => {
       setLoading(true);
       setErr(false);
-      const r = await apiPost("/api/admin/dashboard", { period, regionId: regionId || null });
+      const r = await apiPost("/api/admin/dashboard", { period, regionId: regionId || null, countryId: getCrmCountry() });
       if (!r?.ok) setErr(true);
       else {
         setStats(r.stats ?? {});

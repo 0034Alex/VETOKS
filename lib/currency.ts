@@ -8,28 +8,39 @@
 // чтобы не дёргать базу на каждый рендер.
 
 import { supabase } from "@/lib/supabaseClient";
+import { getMyCountry } from "@/lib/myCountry";
+import { loadScoped } from "@/lib/scopedSettings";
 
 let cachedSymbol: string | null = null;
 let cachedRate: number | null = null;
 let cachedPrices: Record<string, number> | null = null;
+let cachedFor: string | null | undefined = undefined;
 
+// Валюта и курс — по стране пользователя (у каждой страны свои).
 async function ensureRateAndSymbol() {
-  if (cachedSymbol !== null && cachedRate !== null) return;
+  const mc = await getMyCountry();
+  if (cachedSymbol !== null && cachedRate !== null && cachedFor === mc.countryId) return;
+  cachedPrices = null;
+  cachedFor = mc.countryId;
 
-  const { data: country } = await supabase
-    .from("countries")
-    .select("currency_symbol")
-    .eq("enabled", true)
-    .limit(1)
-    .maybeSingle();
-  cachedSymbol = country?.currency_symbol ?? "₴";
+  let sym: string | null = null;
+  if (mc.countryId) {
+    const { data: c } = await supabase.from("countries").select("currency_symbol").eq("id", mc.countryId).maybeSingle();
+    sym = c?.currency_symbol ?? null;
+  }
+  if (!sym) {
+    const { data: country } = await supabase
+      .from("countries")
+      .select("currency_symbol")
+      .eq("enabled", true)
+      .limit(1)
+      .maybeSingle();
+    sym = country?.currency_symbol ?? "₴";
+  }
+  cachedSymbol = sym;
 
-  const { data: rateRow } = await supabase
-    .from("platform_settings")
-    .select("value")
-    .eq("key", "usd_to_uah_rate")
-    .maybeSingle();
-  const parsed = Number(rateRow?.value);
+  const m = await loadScoped(["usd_to_uah_rate"], mc.countryId);
+  const parsed = Number(m.usd_to_uah_rate);
   cachedRate = Number.isFinite(parsed) && parsed > 0 ? parsed : 41;
 }
 
@@ -59,6 +70,7 @@ export async function getAppPrices(): Promise<Record<string, number>> {
 
 /** Сбросить кеш — например, сразу после сохранения новых цен в CRM. */
 export function clearPricingCache() {
+  cachedFor = undefined;
   cachedSymbol = null;
   cachedRate = null;
   cachedPrices = null;

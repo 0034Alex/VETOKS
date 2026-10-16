@@ -3,13 +3,16 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 // Цены на сервере. Источник правды — CRM: цена в долларах × курс.
 // Клиент цену не присылает — мы берём её сами, поэтому подменить нельзя.
 
-export async function getUsdRate(): Promise<number> {
-  const { data } = await supabaseAdmin
-    .from("platform_settings")
-    .select("value")
-    .eq("key", "usd_to_uah_rate")
-    .maybeSingle();
-  const n = Number(data?.value);
+// Курс доллара у каждой страны свой (ключ usd_to_uah_rate:<id страны>);
+// если для страны не задан — берётся общий.
+export async function getUsdRate(countryId?: string | null): Promise<number> {
+  const keys = ["usd_to_uah_rate"];
+  if (countryId) keys.push(`usd_to_uah_rate:${countryId}`);
+  const { data } = await supabaseAdmin.from("platform_settings").select("key, value").in("key", keys);
+  const m: Record<string, string> = {};
+  (data ?? []).forEach((r: any) => (m[r.key] = r.value));
+  const own = countryId ? Number(m[`usd_to_uah_rate:${countryId}`]) : NaN;
+  const n = Number.isFinite(own) && own > 0 ? own : Number(m.usd_to_uah_rate);
   return Number.isFinite(n) && n > 0 ? n : 41;
 }
 

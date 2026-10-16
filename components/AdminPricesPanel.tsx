@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { getCrmCountry } from "@/lib/crmCountry";
+import { loadScoped } from "@/lib/scopedSettings";
 import { clearPricingCache } from "@/lib/currency";
 
 // CRM → «Цены»: всё платное в одном месте. У каждой позиции — цена в
@@ -51,12 +53,7 @@ export default function AdminPricesPanel() {
   async function load() {
     setLoading(true);
 
-    const { data: set } = await supabase
-      .from("platform_settings")
-      .select("key, value")
-      .in("key", ["usd_to_uah_rate", "free_votes_total", "test_topup_enabled"]);
-    const m: Record<string, string> = {};
-    (set ?? []).forEach((r: { key: string; value: string }) => (m[r.key] = r.value));
+    const m = await loadScoped(["usd_to_uah_rate", "free_votes_total", "test_topup_enabled"], getCrmCountry() || null);
     const r = Number(m.usd_to_uah_rate);
     setRate(Number.isFinite(r) && r > 0 ? r : 41);
     setFreeVotes(m.free_votes_total ?? "3");

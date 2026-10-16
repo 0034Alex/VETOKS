@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { countryOfUser } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sameCountry } from "@/lib/countryServer";
 import { bad, fanEvent, notify, pay, refund, requireUser } from "@/lib/shopServer";
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
     .maybeSingle();
   if (!gift || !gift.is_active || !gift.chat_only) return bad("no_gift", 404);
 
-  const rate = await getUsdRate();
+  const rate = await getUsdRate(await countryOfUser(uid));
   const total = giftUahPrice(gift as any, rate) * qty;
   const share = Number(gift.participant_share_percent) || 0;
 

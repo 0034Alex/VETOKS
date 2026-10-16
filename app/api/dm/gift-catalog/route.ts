@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { countryOfUser } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireUser } from "@/lib/shopServer";
 import { getUsdRate, giftUahPrice } from "@/lib/pricing";
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
     .select("id, name, price, usd_price")
     .eq("chat_only", true)
     .eq("is_active", true);
-  const rate = await getUsdRate();
+  const rate = await getUsdRate(await countryOfUser(uid));
   const items = ((data ?? []) as any[])
     .map((g) => ({ id: g.id, name: g.name, price: giftUahPrice(g, rate) }))
     .sort((a, b) => a.price - b.price);

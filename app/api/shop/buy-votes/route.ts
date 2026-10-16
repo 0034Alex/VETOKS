@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { countryOfUser } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, pay, refund, requireUser } from "@/lib/shopServer";
-import { getAppPrice } from "@/lib/pricing";
+import { getAppPrice, getUsdRate } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
   const amount = Math.floor(Number(body.amount));
   if (!amount || amount < 1 || amount > 5000) return bad("bad_request");
 
-  const p = await getAppPrice("vote");
+  const p = await getAppPrice("vote", await getUsdRate(await countryOfUser(uid)));
   if (!p || p.price < 1) return bad("no_price", 500);
   const total = p.price * amount;
 

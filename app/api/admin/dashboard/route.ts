@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff } from "@/lib/staffServer";
+import { regionIdsOfCountry } from "@/lib/countryServer";
 import { kyivDate, kyivDayStartUtc, addDays } from "@/lib/kyiv";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,8 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const period = String(body.period ?? "7d");
   const region = body.regionId ? String(body.regionId) : null;
+  const country = body.countryId ? String(body.countryId) : null;
+  const rids = country ? await regionIdsOfCountry(country) : [];
 
   const today = kyivDate();
   let from: Date;
@@ -27,12 +30,21 @@ export async function POST(req: Request) {
   const { data: stats } = await supabaseAdmin.rpc("vt_dash", {
     p_from: from.toISOString(),
     p_region: region,
+    p_country: country,
   });
 
   const attention = {
-    applications: await cnt(supabaseAdmin.from("applications").select("id", { count: "exact", head: true }).eq("status", "submitted")),
+    applications: await cnt(
+      country
+        ? supabaseAdmin.from("applications").select("id, users!inner(region_id)", { count: "exact", head: true }).eq("status", "submitted").in("users.region_id", rids)
+        : supabaseAdmin.from("applications").select("id", { count: "exact", head: true }).eq("status", "submitted")
+    ),
     reports: await cnt(supabaseAdmin.from("content_reports").select("id", { count: "exact", head: true }).eq("status", "open")),
-    tasks: await cnt(supabaseAdmin.from("task_completions").select("id", { count: "exact", head: true }).eq("status", "pending")),
+    tasks: await cnt(
+      country
+        ? supabaseAdmin.from("task_completions").select("id, participants!inner(region_id)", { count: "exact", head: true }).eq("status", "pending").in("participants.region_id", rids)
+        : supabaseAdmin.from("task_completions").select("id", { count: "exact", head: true }).eq("status", "pending")
+    ),
     partners: await cnt(
       supabaseAdmin.from("sponsors").select("id", { count: "exact", head: true }).lte("follow_up_at", today).not("stage", "in", "(done,lost)")
     ),

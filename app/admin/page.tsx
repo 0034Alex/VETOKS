@@ -4134,12 +4134,8 @@ function CountriesTab() {
       }))
     );
 
-    const { data: rateRow } = await supabase
-      .from("platform_settings")
-      .select("value")
-      .eq("key", "usd_to_uah_rate")
-      .maybeSingle();
-    setUsdRate(rateRow?.value ?? "");
+    const rateMap = await loadScoped(["usd_to_uah_rate"], getCrmCountry() || null);
+    setUsdRate(rateMap.usd_to_uah_rate ?? "");
 
     setLoading(false);
   }
@@ -4164,7 +4160,7 @@ function CountriesTab() {
     setRateSaving(true);
     await supabase
       .from("platform_settings")
-      .upsert({ key: "usd_to_uah_rate", value: usdRate });
+      .upsert({ key: scopedKey("usd_to_uah_rate", getCrmCountry() || null), value: usdRate });
     setRateSaving(false);
     setRateSaved(true);
     setTimeout(() => setRateSaved(false), 2000);

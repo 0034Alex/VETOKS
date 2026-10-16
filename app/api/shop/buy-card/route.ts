@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { countryOfUser } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { blockOtherCountry, bad, notify, fanEvent, participantOwner, pay, requireUser } from "@/lib/shopServer";
-import { getAppPrice } from "@/lib/pricing";
+import { getAppPrice, getUsdRate } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
   }
 
 
-  const p = await getAppPrice("collectible_card");
+  const p = await getAppPrice("collectible_card", await getUsdRate(await countryOfUser(uid)));
   if (!p || p.price < 1) return bad("no_price", 500);
 
   // Сначала «занимаем» карточку: два покупателя не купят одну и ту же.
