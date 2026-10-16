@@ -101,7 +101,9 @@ export async function POST(req: Request) {
     }
     if (sp.referral_paid_at) return NextResponse.json({ ok: false, error: "already_paid" }, { status: 400 });
     const total = Number(sp.amount) || 0;
-    const bonus = Math.round(((total * Number(sp.referral_percent)) / 100) * 100) / 100;
+    const { ambassadorBonus } = await import("@/lib/ambassador");
+    const effPct = Math.min(100, Number(sp.referral_percent) + (await ambassadorBonus(String(sp.referrer_participant_id))));
+    const bonus = Math.round(((total * effPct) / 100) * 100) / 100;
     if (!(bonus > 0)) return NextResponse.json({ ok: false, error: "no_payments" }, { status: 400 });
 
     // Занимаем «один раз» прежде чем платить — повторный клик не начислит второй раз.
@@ -126,7 +128,7 @@ export async function POST(req: Request) {
       p_user: part.user_id,
       p_amount: bonus,
       p_type: "advertiser_bonus",
-      p_meta: { sponsor: sp.id, sponsor_name: sp.name, percent: sp.referral_percent },
+      p_meta: { sponsor: sp.id, sponsor_name: sp.name, percent: effPct },
     });
     if (error) {
       await supabaseAdmin.from("sponsors").update({ referral_paid_at: null, referral_amount: null }).eq("id", id);

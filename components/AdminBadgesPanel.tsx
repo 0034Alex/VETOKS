@@ -14,7 +14,7 @@ type Item = {
   region: string | null;
   badge: boolean;
   badgeNote: string;
-  participant: { id: string; contest: string; stage: string; crown: string; eliminated: boolean } | null;
+  participant: { id: string; contest: string; stage: string; crown: string; eliminated: boolean; ambassador: boolean; ambBonus: number | null } | null;
 };
 
 export default function AdminBadgesPanel() {
@@ -25,6 +25,43 @@ export default function AdminBadgesPanel() {
   const [msg, setMsg] = useState("");
   const [bulkStage, setBulkStage] = useState("r4");
   const [bulkAsk, setBulkAsk] = useState(false);
+  const [ambDef, setAmbDef] = useState("0");
+  const [ambList, setAmbList] = useState<{ id: string; name: string; nick: string | null; bonus: number | null }[]>([]);
+  const [ambBonus, setAmbBonus] = useState<Record<string, string>>({});
+
+  async function loadAmb() {
+    const r = await apiPost("/api/admin/badges", { action: "amb_info" });
+    if (r?.ok) {
+      setAmbDef(String(r.def ?? 0));
+      setAmbList(r.items);
+    }
+  }
+  useEffect(() => {
+    loadAmb();
+  }, []);
+
+  async function saveAmbDef() {
+    const r = await apiPost("/api/admin/badges", { action: "amb_default", value: Number(ambDef) });
+    flash(r?.ok ? "Общий процент сохранён." : "Это может только владелец.");
+  }
+
+  async function setAmb(it: Item, on: boolean) {
+    if (!it.participant) return;
+    const raw = ambBonus[it.userId] ?? (it.participant.ambBonus !== null ? String(it.participant.ambBonus) : "");
+    const r = await apiPost("/api/admin/badges", { action: "set_ambassador", participantId: it.participant.id, on, bonus: raw === "" ? null : Number(raw) });
+    if (r?.ok) {
+      flash(on ? "Назначена амбассадором, галочка выдана." : "Амбассадор снят.");
+      setItems((arr) =>
+        arr.map((i) =>
+          i.userId === it.userId && i.participant
+            ? { ...i, badge: on ? true : i.badge, participant: { ...i.participant, ambassador: on, ambBonus: on && raw !== "" ? Number(raw) : null } }
+            : i
+        )
+      );
+      loadAmb();
+      loadGiven();
+    } else flash(r?.error === "owner_only" ? "Это может только владелец." : "Не получилось.");
+  }
 
   async function loadGiven() {
     const r = await apiPost("/api/admin/badges", { action: "list_badges" });
@@ -140,6 +177,36 @@ export default function AdminBadgesPanel() {
 
           {it.participant && (
             <div className="border-t border-muted/40 pt-3">
+              <p className="text-offwhite text-sm mb-1">Амбассадор шоу {it.participant.ambassador && <span className="text-gold">✔</span>}</p>
+              <p className="text-muted text-xs mb-2">Повышенный процент выплат + золотая галочка сразу. Пусто = общий процент ({ambDef}%).</p>
+              <div className="flex gap-2 items-center">
+                <input
+                  value={ambBonus[it.userId] ?? (it.participant.ambBonus !== null ? String(it.participant.ambBonus) : "")}
+                  onChange={(e) => setAmbBonus((n) => ({ ...n, [it.userId]: e.target.value }))}
+                  type="number"
+                  placeholder="+ %"
+                  className="w-24 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite"
+                />
+                {it.participant.ambassador ? (
+                  <>
+                    <button onClick={() => setAmb(it, true)} className="border border-gold text-gold rounded-lg px-4 py-2 text-xs">
+                      Сохранить %
+                    </button>
+                    <button onClick={() => setAmb(it, false)} className="border border-danger text-danger rounded-lg px-4 py-2 text-xs">
+                      Снять
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => setAmb(it, true)} className="bg-gold text-bgPrimary font-semibold rounded-lg px-4 py-2 text-sm">
+                    Назначить амбассадором
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {it.participant && (
+            <div className="border-t border-muted/40 pt-3">
               <p className="text-offwhite text-sm mb-2">
                 Статус участницы {it.participant.eliminated && <span className="text-muted text-xs">(выбыла)</span>}
               </p>
@@ -170,6 +237,34 @@ export default function AdminBadgesPanel() {
           )}
         </div>
       ))}
+
+      <div className="bg-bgSurface border border-muted rounded-xl p-4">
+        <p className="text-offwhite font-semibold text-sm mb-1">Амбассадоры шоу ({ambList.length})</p>
+        <p className="text-muted text-xs mb-3">
+          Бонус прибавляется к обычной доле участницы: с подарков, донатов, бустов и с бонуса за приведённого рекламодателя. Начисляется на внутренний баланс.
+        </p>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-offwhite text-sm">Общий бонус, +%</span>
+          <input value={ambDef} onChange={(e) => setAmbDef(e.target.value)} type="number" className="w-20 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" />
+          <button onClick={saveAmbDef} className="bg-gold text-bgPrimary font-semibold rounded-lg px-4 py-2 text-sm">
+            Сохранить
+          </button>
+        </div>
+        {ambList.length === 0 ? (
+          <p className="text-muted text-xs">Пока никого.</p>
+        ) : (
+          ambList.map((a) => (
+            <div key={a.id} className="flex items-center gap-3 py-2 border-t border-muted/40 text-sm">
+              <span className="text-gold">✔</span>
+              <span className="flex-1 text-offwhite">
+                {a.name}
+                <span className="text-muted text-xs">{a.nick ? ` · @${a.nick}` : ""}</span>
+              </span>
+              <span className="text-muted text-xs">+{a.bonus ?? ambDef}%{a.bonus === null ? " (общий)" : ""}</span>
+            </div>
+          ))
+        )}
+      </div>
 
       <div className="bg-bgSurface border border-muted rounded-xl p-4">
         <p className="text-offwhite font-semibold text-sm mb-1">Выданные галочки ({given.length})</p>

@@ -59,12 +59,18 @@ export async function pay(
   | { ok: true; tx_id: string; earning: number; balance: number }
   | { ok: false; error: string; balance?: number; detail?: string }
 > {
+  // Амбассадорам к доле добавляется их бонус (только если доля вообще положена).
+  let finalShare = share;
+  if (participantId && share > 0) {
+    const { ambassadorBonus } = await import("@/lib/ambassador");
+    finalShare = Math.min(100, share + (await ambassadorBonus(participantId)));
+  }
   const { data, error } = await supabaseAdmin.rpc("vt_pay", {
     p_user: userId,
     p_amount: amount,
     p_type: type,
     p_participant: participantId,
-    p_share: share,
+    p_share: finalShare,
     p_meta: meta,
   });
   if (error || !data) return { ok: false, error: "pay_failed", detail: error?.message };
