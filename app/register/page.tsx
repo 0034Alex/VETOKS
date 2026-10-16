@@ -6,8 +6,10 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { getInitData, openSession, postJson } from "@/lib/authClient";
 import TelegramLoginButton from "@/components/TelegramLoginButton";
+import { useT } from "@/lib/i18n";
+import { langsForCountry } from "@/lib/langs";
 
-type Region = { id: string; name: string };
+type Region = { id: string; name: string; country_id?: string | null };
 
 function RegisterForm() {
   const router = useRouter();
@@ -16,6 +18,8 @@ function RegisterForm() {
 
   const [initData, setInitData] = useState("");
   const [regions, setRegions] = useState<Region[]>([]);
+  const [countryCodes, setCountryCodes] = useState<Record<string, string>>({});
+  const { setLang } = useT();
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,11 +50,14 @@ function RegisterForm() {
       // «Страны и регионы»).
       const { data: enabledCountries } = await supabase
         .from("countries")
-        .select("id")
+        .select("id, code")
         .eq("enabled", true);
       const countryIds = (enabledCountries ?? []).map((c: { id: string }) => c.id);
+      const codes: Record<string, string> = {};
+      (enabledCountries ?? []).forEach((c: any) => (codes[c.id] = c.code));
+      setCountryCodes(codes);
 
-      let query = supabase.from("regions").select("id, name").order("name");
+      let query = supabase.from("regions").select("id, name, country_id").order("name");
       if (countryIds.length > 0) {
         query = query.in("country_id", countryIds);
       }
@@ -136,8 +143,14 @@ function RegisterForm() {
     <div>
       <label className="text-offwhite text-sm">Регион</label>
       <select
+        data-tr
         value={regionId}
-        onChange={(e) => setRegionId(e.target.value)}
+        onChange={(e) => {
+          setRegionId(e.target.value);
+          const rg = regions.find((r) => r.id === e.target.value);
+          const code = rg?.country_id ? countryCodes[rg.country_id] : null;
+          if (code) setLang(langsForCountry(code)[0]);
+        }}
         className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
         required
       >

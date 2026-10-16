@@ -232,6 +232,7 @@ export default function EditProfilePage() {
           <div className="flex flex-col gap-1">
             <label className="text-offwhite text-sm">Регион</label>
             <select
+              data-tr
               value={regionId}
               onChange={(e) => setRegionId(e.target.value)}
               disabled={!!lockedUntil}

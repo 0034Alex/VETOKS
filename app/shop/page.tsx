@@ -490,7 +490,7 @@ function ShopContent() {
               className="bg-bgSurface border border-muted rounded-xl p-3 flex flex-col items-center gap-1"
             >
               <span className="text-3xl">{GIFT_EMOJI[g.name] ?? "🎁"}</span>
-              <span className="text-offwhite text-xs text-center">
+              <span data-tr className="text-offwhite text-xs text-center">
                 {g.name}
               </span>
               <span className="text-gold text-xs font-semibold">

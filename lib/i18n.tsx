@@ -3,12 +3,9 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-export type Lang = "ru" | "uk" | "en";
-export const LANGS: { code: Lang; label: string }[] = [
-  { code: "ru", label: "Русский" },
-  { code: "uk", label: "Українська" },
-  { code: "en", label: "English" },
-];
+import { ALL_LANGS, LANG_LABELS, isLang, Lang } from "@/lib/langs";
+export type { Lang };
+export const LANGS: { code: Lang; label: string }[] = ALL_LANGS.map((code) => ({ code, label: LANG_LABELS[code] }));
 
 type Dict = Record<string, string>;
 
@@ -246,7 +243,7 @@ const en: Dict = {
   "settings.langNote": "Main screens are translated. Other sections are in Russian for now.",
 };
 
-const DICTS: Record<Lang, Dict> = { ru, uk, en };
+const DICTS: Partial<Record<Lang, Dict>> = { ru, uk, en };
 
 type Ctx = { lang: Lang; setLang: (l: Lang) => void; t: (key: string, vars?: Record<string, string | number>) => string };
 
@@ -259,10 +256,9 @@ const LangContext = createContext<Ctx>({
 function detect(): Lang {
   try {
     const saved = localStorage.getItem("vt_lang");
-    if (saved === "ru" || saved === "uk" || saved === "en") return saved;
-    const nav = (navigator.language || "ru").toLowerCase();
-    if (nav.startsWith("uk")) return "uk";
-    if (nav.startsWith("en")) return "en";
+    if (isLang(saved)) return saved;
+    const nav = (navigator.language || "ru").toLowerCase().slice(0, 2);
+    if (isLang(nav)) return nav;
   } catch {}
   return "ru";
 }
@@ -278,7 +274,7 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
       if (!data.user) return;
       const { data: row } = await supabase.from("users").select("language").eq("id", data.user.id).maybeSingle();
       const l = row?.language;
-      if (l === "ru" || l === "uk" || l === "en") {
+      if (isLang(l)) {
         setLangState(l);
         try { localStorage.setItem("vt_lang", l); } catch {}
       }
@@ -300,7 +296,7 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
 
   const t = useCallback(
     (key: string, vars?: Record<string, string | number>) => {
-      let s = DICTS[lang][key] ?? ru[key] ?? key;
+      let s = (DICTS as Record<string, Dict | undefined>)[lang]?.[key] ?? ru[key] ?? key;
       if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, String(v));
       return s;
     },

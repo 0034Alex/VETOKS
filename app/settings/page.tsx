@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import { useT, LANGS } from "@/lib/i18n";
+import { useCountryLangs } from "@/lib/useCountryLangs";
 import { apiPost } from "@/lib/authClient";
 import { cleanNick, nickProblem, NICK_MESSAGES } from "@/lib/nick";
 import { SocialIcon, socialKind, normalizeLink, parseLinks } from "@/lib/socialLinks";
@@ -25,6 +26,7 @@ const PRIVACY: { key: string; label: string; hint?: string }[] = [
 export default function SettingsPage() {
   const router = useRouter();
   const { t, lang, setLang } = useT();
+  const langsAllowed = useCountryLangs();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState("");
   const [verified, setVerified] = useState(false);
@@ -299,7 +301,7 @@ export default function SettingsPage() {
           <div className="bg-bgSurface border border-muted rounded-xl p-4">
             <p className="text-offwhite font-semibold text-sm mb-2">{t("settings.language")}</p>
             <div className="flex flex-wrap gap-2">
-              {LANGS.map((l) => (
+              {LANGS.filter((l) => langsAllowed.includes(l.code) || l.code === lang).map((l) => (
                 <button
                   key={l.code}
                   onClick={() => setLang(l.code)}

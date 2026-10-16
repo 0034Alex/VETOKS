@@ -53,6 +53,58 @@ function tr(text: string, d: Dict): string | null {
   return null;
 }
 
+// ── Автоперевод текстов из CRM (внутри элементов с data-tr) ──────────────────
+const dyn = new Map<string, string>(); // "lang|текст" -> перевод (или он же, если перевода нет)
+const dynQueue = new Map<string, Set<string>>();
+let dynTimer: any = null;
+let dynListeners = new Set<() => void>();
+
+const UK_ONLY = /[іїєґІЇЄҐ]/;
+const CYR = /[А-Яа-яЁёІіЇїЄєҐґ]/;
+
+function needsDyn(core: string, lang: string): boolean {
+  if (lang === "ru") return UK_ONLY.test(core);
+  if (lang === "uk") return CYR.test(core) && !UK_ONLY.test(core);
+  return CYR.test(core);
+}
+
+function dynLookup(core: string, lang: string): string | null {
+  const k = lang + "|" + core;
+  const v = dyn.get(k);
+  if (v !== undefined) return v;
+  let set = dynQueue.get(lang);
+  if (!set) { set = new Set(); dynQueue.set(lang, set); }
+  set.add(core);
+  if (!dynTimer) dynTimer = setTimeout(flushDyn, 80);
+  return null;
+}
+
+async function flushDyn() {
+  dynTimer = null;
+  const jobs = Array.from(dynQueue.entries());
+  dynQueue.clear();
+  for (const [lang, set] of jobs) {
+    const all = Array.from(set);
+    for (let i = 0; i < all.length; i += 40) {
+      const chunk = all.slice(i, i + 40);
+      let map: Record<string, string> = {};
+      try {
+        const r = await fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lang, texts: chunk }),
+        });
+        const j = await r.json();
+        map = j?.map ?? {};
+      } catch {}
+      for (const t of chunk) dyn.set(lang + "|" + t, map[t] ?? t);
+    }
+  }
+  dynListeners.forEach((f) => f());
+}
+
+const inTr = (el: Element | null) => !!el && !!el.closest("[data-tr]");
+
 export default function AutoTranslate() {
   const { lang } = useT();
   const path = usePathname() || "";
@@ -86,6 +138,22 @@ export default function AutoTranslate() {
       if (lang !== "ru" && dict) {
         const r = tr(ent.orig, dict);
         if (r != null) want = r;
+      }
+      const par = n.parentElement;
+      if (want === ent.orig && par && inTr(par)) {
+        const core = ent.orig.trim().replace(/\s+/g, " ");
+        if (core && needsDyn(core, lang)) {
+          const d = dynLookup(core, lang);
+          if (d == null) {
+            // ждём перевод — текст на секунду скрыт, чтобы не мелькал чужой язык
+            par.setAttribute("data-trpending", "1");
+          } else {
+            const lead = ent.orig.match(/^\s*/)![0];
+            const trail = ent.orig.match(/\s*$/)![0];
+            want = lead + d + trail;
+            par.removeAttribute("data-trpending");
+          }
+        }
       }
       if (want !== n.data) n.data = want;
       ent.out = want;
@@ -147,6 +215,7 @@ export default function AutoTranslate() {
         if (!cache[lang]) {
           try {
             const r = await fetch(`/i18n/${lang}.json`);
+            if (!r.ok) throw new Error("no dict");
             cache[lang] = buildDict(await r.json());
           } catch { cache[lang] = { exact: new Map(), patterns: [] }; }
         }
@@ -154,6 +223,7 @@ export default function AutoTranslate() {
       }
       if (cancelled) return;
       obs = new MutationObserver(schedule);
+      dynListeners.add(schedule);
       run();
     };
 
@@ -163,10 +233,11 @@ export default function AutoTranslate() {
     start();
     return () => {
       cancelled = true;
+      dynListeners.delete(schedule);
       if (timer) clearTimeout(timer);
       obs?.disconnect();
     };
   }, [lang, path, off]);
 
-  return null;
+  return <style>{"[data-trpending]{visibility:hidden}"}</style>;
 }

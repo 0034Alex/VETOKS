@@ -230,8 +230,8 @@ export default function TasksPage() {
                 className="bg-bgSurface border border-muted rounded-xl p-4 flex items-center justify-between gap-3"
               >
                 <div className="min-w-0">
-                  <p className="text-offwhite font-semibold text-sm">{task.title}</p>
-                  <p className="text-muted text-xs">{task.description}</p>
+                  <p data-tr className="text-offwhite font-semibold text-sm">{task.title}</p>
+                  <p data-tr className="text-muted text-xs">{task.description}</p>
                   <p className="text-gold text-xs mt-1">
                     +{Math.round(task.reward)} {currencySymbol}
                     {task.deadline && (

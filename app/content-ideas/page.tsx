@@ -110,7 +110,7 @@ export default function ContentIdeasPage() {
                   {vetoksIdeas.map((s) => (
                     <div
                       key={s.id}
-                      className="bg-bgSurface border border-gold/40 rounded-xl p-3 text-offwhite text-sm"
+                      data-tr className="bg-bgSurface border border-gold/40 rounded-xl p-3 text-offwhite text-sm"
                     >
                       {s.text}
                     </div>
