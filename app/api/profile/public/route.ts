@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireUser, bad } from "@/lib/shopServer";
+import { sameCountry } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
     .eq("id", id)
     .maybeSingle();
   if (!u || u.is_banned) return bad("not_found", 404);
+  if (me !== id && !(await sameCountry(me, id))) return bad("not_found", 404);
 
   const { data: part } = await supabaseAdmin.from("participants").select("id").eq("user_id", id).maybeSingle();
   if (part) return NextResponse.json({ ok: true, participantId: part.id });

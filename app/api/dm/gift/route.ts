@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { sameCountry } from "@/lib/countryServer";
 import { bad, fanEvent, notify, pay, refund, requireUser } from "@/lib/shopServer";
 import { getUsdRate, giftUahPrice } from "@/lib/pricing";
 import { blockState, findThread } from "@/lib/dmServer";
@@ -25,6 +26,7 @@ export async function POST(req: Request) {
     .eq("id", to)
     .maybeSingle();
   if (!target || target.is_banned) return bad("no_user", 404);
+  if (!(await sameCountry(uid, to))) return bad("no_user", 404);
   if ((target.privacy as any)?.dm === false) return bad("dm_closed", 403);
 
   const bs = await blockState(uid, to);

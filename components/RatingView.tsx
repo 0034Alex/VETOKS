@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import { formatCompact } from "@/lib/formatCompact";
+import { getMyCountry } from "@/lib/myCountry";
 
 type Ranking = {
   title_key: string;
@@ -41,6 +42,7 @@ export default function RatingView() {
       .order("sort_order");
     setTitles((titlesData as TitleSetting[]) ?? []);
 
+    const mc = await getMyCountry();
     // Берём самый свежий итог, который посчитал сервер (раз в сутки в 00:01).
     let q = supabase
       .from("title_rankings_v2")
@@ -49,6 +51,7 @@ export default function RatingView() {
       .order("snapshot_date", { ascending: false })
       .limit(1);
     if (scope === "region" && me?.region_id) q = q.eq("region_id", me.region_id);
+    else if (mc.countryId) q = q.eq("country_id", mc.countryId);
     const { data: latest } = await q.maybeSingle();
 
     if (latest?.snapshot_date) {
@@ -59,6 +62,7 @@ export default function RatingView() {
         .eq("scope", scope === "region" && me?.region_id ? "region" : "country")
         .eq("snapshot_date", latest.snapshot_date);
       if (scope === "region" && me?.region_id) r = r.eq("region_id", me.region_id);
+      else if (mc.countryId) r = r.eq("country_id", mc.countryId);
       const { data: rows } = await r;
       const list = (rows as Ranking[]) ?? [];
       setRankings(list);
@@ -79,11 +83,12 @@ export default function RatingView() {
       setParticipants({});
     }
 
-    const { data: editorsData } = await supabase
+    let eq2 = supabase
       .from("participants")
       .select("id, display_name, photo_url")
-      .eq("is_editors_choice", true)
-      .maybeSingle();
+      .eq("is_editors_choice", true);
+    if (mc.countryId) eq2 = eq2.in("region_id", mc.regionIds);
+    const { data: editorsData } = await eq2.limit(1).maybeSingle();
     setEditorsChoice((editorsData as Participant) ?? null);
 
     setLoading(false);

@@ -10,6 +10,7 @@ import PageHeader from "@/components/PageHeader";
 import FanZoneStrip from "@/components/FanZoneStrip";
 import { getAppPrices, getCurrencySymbol, getUsdRate } from "@/lib/currency";
 import { apiPost } from "@/lib/authClient";
+import { getMyCountry } from "@/lib/myCountry";
 
 type Gift = {
   id: string;
@@ -127,10 +128,13 @@ function ShopContent() {
       setGifts(priced);
 
       if (!participantId) {
-        const { data: participantsData } = await supabase
+        const mcs = await getMyCountry();
+        let sq = supabase
           .from("participants")
           .select("id, display_name, user_id, photo_url, season_id, region_id, regions(name)")
           .eq("is_eliminated", false);
+        if (mcs.countryId) sq = sq.in("region_id", mcs.regionIds);
+        const { data: participantsData } = await sq;
         setParticipants((participantsData as unknown as Participant[]) ?? []);
 
         const regionMap: Record<string, string> = {};

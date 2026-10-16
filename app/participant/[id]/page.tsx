@@ -14,6 +14,7 @@ import VoteModal from "@/components/VoteModal";
 import { getAppPrices, getCurrencySymbol } from "@/lib/currency";
 import { apiPost } from "@/lib/authClient";
 import { getVoteTotals } from "@/lib/voteTotals";
+import { getMyCountry } from "@/lib/myCountry";
 
 type CollectibleCard = {
   id: string;
@@ -118,9 +119,14 @@ export default function ParticipantProfilePage() {
 
     const { data: p } = await supabase
       .from("participants")
-      .select("id, display_name, bio, photo_url, user_id")
+      .select("id, display_name, bio, photo_url, user_id, region_id")
       .eq("id", id)
       .maybeSingle();
+    const mcp = await getMyCountry();
+    if (p && mcp.countryId && (!(p as any).region_id || !mcp.regionIds.includes((p as any).region_id))) {
+      setParticipant(null);
+      return;
+    }
     setParticipant(p as Participant | null);
 
     if (p) {

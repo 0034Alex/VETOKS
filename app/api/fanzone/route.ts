@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { userIdFromBearer } from "@/lib/authServer";
+import { countryOfUser, regionIdsOfCountry } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,14 @@ export async function GET(req: Request) {
   const grand = season?.status === "final";
 
   let regionId: string | null = null;
+  let countryRegions: string[] | null = null;
+  if (grand) {
+    // На гранд-финале — вся страна, но только своя.
+    const uid0 = await userIdFromBearer(req);
+    const cid = uid0 ? await countryOfUser(uid0) : null;
+    if (!cid) return NextResponse.json({ enabled: true, items: [] });
+    countryRegions = await regionIdsOfCountry(cid);
+  }
   if (!grand) {
     const uid = await userIdFromBearer(req);
     if (uid) {
@@ -40,6 +49,7 @@ export async function GET(req: Request) {
     .order("created_at", { ascending: false })
     .limit(30);
   if (regionId) q = q.eq("region_id", regionId);
+  else if (countryRegions) q = q.in("region_id", countryRegions);
   const { data } = await q;
   return NextResponse.json({ enabled: true, items: data ?? [] });
 }

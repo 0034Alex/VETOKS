@@ -14,6 +14,7 @@ import VoteModal from "@/components/VoteModal";
 import BlackMarkModal from "@/components/BlackMarkModal";
 import { getVoteTotals } from "@/lib/voteTotals";
 import { apiPost } from "@/lib/authClient";
+import { getMyCountry } from "@/lib/myCountry";
 
 type Participant = {
   id: string;
@@ -50,10 +51,13 @@ export default function ParticipantsPage() {
   async function loadData() {
     setLoading(true);
 
-    const { data: participantsData } = await supabase
+    const mc = await getMyCountry();
+    let pq = supabase
       .from("participants")
       .select("id, display_name, bio, photo_url, created_at, season_id, region_id")
       .eq("is_eliminated", false);
+    if (mc.countryId) pq = pq.in("region_id", mc.regionIds);
+    const { data: participantsData } = await pq;
 
     const list = (participantsData as Participant[]) ?? [];
     setParticipants(list);

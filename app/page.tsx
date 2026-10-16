@@ -14,6 +14,7 @@ import { formatCompact } from "@/lib/formatCompact";
 import PartnersShowcase from "@/components/PartnersShowcase";
 import LoadingScreen from "@/components/LoadingScreen";
 import EntryPopup from "@/components/EntryPopup";
+import { getMyCountry } from "@/lib/myCountry";
 
 // Настоящий 3D-переворот страниц — библиотека работает только в браузере,
 // поэтому подключаем её динамически, без серверной отрисовки.
@@ -120,12 +121,15 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
 
   useEffect(() => {
     (async () => {
-      const { data: participantsData } = await supabase
+      const mc = await getMyCountry();
+      let mq = supabase
         .from("participants")
         .select(
           "id, display_name, photo_url, region_id, magazine_answers(q1_question, q1_answer, q2_question, q2_answer, q3_question, q3_answer)"
         )
         .eq("is_eliminated", false);
+      if (mc.countryId) mq = mq.in("region_id", mc.regionIds);
+      const { data: participantsData } = await mq;
 
       const filteredParticipants =
         scope === "region" && userRegionId
@@ -714,10 +718,13 @@ export default function Home() {
         setCurrentStage((current as Stage) ?? null);
       }
 
-      const { data: participantsData } = await supabase
+      const mc2 = await getMyCountry();
+      let hq = supabase
         .from("participants")
         .select("id, display_name, photo_url, season_id, region_id")
         .eq("is_eliminated", false);
+      if (mc2.countryId) hq = hq.in("region_id", mc2.regionIds);
+      const { data: participantsData } = await hq;
 
       const counts = await getVoteTotals();
 
@@ -759,9 +766,9 @@ export default function Home() {
       );
       setAllParticipants(list);
 
-      const { count: usersCount } = await supabase
-        .from("users")
-        .select("id", { count: "exact", head: true });
+      let uq = supabase.from("users").select("id", { count: "exact", head: true });
+      if (mc2.countryId) uq = uq.in("region_id", mc2.regionIds);
+      const { count: usersCount } = await uq;
       setActiveUsersCount(usersCount ?? 0);
 
       const { count: postsCount } = await supabase

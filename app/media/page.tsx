@@ -7,6 +7,7 @@ import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import VoteModal from "@/components/VoteModal";
 import ReportButton from "@/components/ReportButton";
+import { getMyCountry } from "@/lib/myCountry";
 import {
   IconHeart,
   IconComment,
@@ -21,7 +22,7 @@ type Post = {
   video_url: string;
   caption: string | null;
   participant_id: string;
-  participants: { display_name: string; photo_url: string | null; region_id: string | null } | null;
+  participants: { display_name: string; photo_url: string | null; region_id: string | null; season_id: string | null } | null;
 };
 
 type Comment = {
@@ -62,14 +63,37 @@ export default function MediaPage() {
 
   useEffect(() => {
     (async () => {
+      // «Медиа» показывает только текущее шоу: сезон, выбранный в CRM,
+      // а если не выбран — самый свежий. Старые ролики остаются на
+      // страницах участниц.
+      const { data: setRow } = await supabase
+        .from("platform_settings")
+        .select("value")
+        .eq("key", "media_season_id")
+        .maybeSingle();
+      let seasonId = (setRow?.value as string) || "";
+      if (!seasonId) {
+        const { data: last } = await supabase
+          .from("seasons")
+          .select("id")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        seasonId = (last?.id as string) || "";
+      }
+
       const { data } = await supabase
         .from("content_posts")
         .select(
-          "id, video_url, caption, participant_id, participants(display_name, photo_url, region_id)"
+          "id, video_url, caption, participant_id, participants(display_name, photo_url, region_id, season_id)"
         )
         .not("video_url", "is", null)
         .order("submitted_at", { ascending: false });
-      setAllPosts((data as unknown as Post[]) ?? []);
+      const mc = await getMyCountry();
+      const mine = new Set(mc.regionIds);
+      const all0 = (data as unknown as Post[]) ?? [];
+      const all = mc.countryId ? all0.filter((p) => !!p.participants?.region_id && mine.has(p.participants.region_id)) : all0;
+      setAllPosts(seasonId ? all.filter((p) => p.participants?.season_id === seasonId) : all);
 
       const { data: likesData } = await supabase.from("media_likes").select("post_id, user_id");
       const counts: Record<string, number> = {};

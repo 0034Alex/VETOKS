@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireUser } from "@/lib/shopServer";
 import { cleanNick } from "@/lib/nick";
+import { countryOfUser, regionIdsOfCountry } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +14,16 @@ export async function POST(req: Request) {
   const q = cleanNick(body.q);
   if (q.length < 2 || q.length > 20 || !/^[a-z0-9_]+$/.test(q)) return NextResponse.json({ ok: true, items: [] });
   const pattern = q.replace(/_/g, "\\_") + "%";
-  const { data: users } = await supabaseAdmin
+  // Ищем только среди людей своей страны.
+  const myCountry = await countryOfUser(me);
+  let uq = supabaseAdmin
     .from("users")
     .select("id, first_name, nick, photo_url")
     .ilike("nick", pattern)
     .eq("is_banned", false)
-    .not("nick", "is", null)
-    .limit(8);
+    .not("nick", "is", null);
+  if (myCountry) uq = uq.in("region_id", await regionIdsOfCountry(myCountry));
+  const { data: users } = await uq.limit(8);
   const ids = (users ?? []).map((u: any) => u.id);
   const { data: parts } = ids.length
     ? await supabaseAdmin.from("participants").select("id, user_id, photo_url").in("user_id", ids)

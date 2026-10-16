@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import { msToNextUpdate } from "@/lib/kyiv";
+import { getMyCountry } from "@/lib/myCountry";
 
 type Row = {
   rank: number;
@@ -46,12 +47,14 @@ export default function Top25Page() {
     (async () => {
       // Таблицу Топ-25 раз в сутки в 00:01 составляет сервер по
       // бесплатным голосам за прошедшие сутки.
-      const { data: latest } = await supabase
+      const mc = await getMyCountry();
+      let lq = supabase
         .from("top25_daily")
         .select("snapshot_date")
         .order("snapshot_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      if (mc.countryId) lq = lq.eq("country_id", mc.countryId);
+      const { data: latest } = await lq.maybeSingle();
 
       if (!latest?.snapshot_date) {
         setLoading(false);
@@ -59,11 +62,13 @@ export default function Top25Page() {
       }
       setDate(latest.snapshot_date);
 
-      const { data: top } = await supabase
+      let tq = supabase
         .from("top25_daily")
         .select("rank, participant_id, votes")
         .eq("snapshot_date", latest.snapshot_date)
         .order("rank");
+      if (mc.countryId) tq = tq.eq("country_id", mc.countryId);
+      const { data: top } = await tq;
       const list = (top ?? []) as { rank: number; participant_id: string; votes: number }[];
 
       const ids = list.map((r) => r.participant_id);
