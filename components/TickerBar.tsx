@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getMyCountry } from "@/lib/myCountry";
 import { loadScoped } from "@/lib/scopedSettings";
+import { getCurrentUser } from "@/lib/currentUser";
 
 export default function TickerBar() {
   const [text, setText] = useState("");
@@ -10,7 +11,8 @@ export default function TickerBar() {
 
   useEffect(() => {
     (async () => {
-      const map = await loadScoped(["ticker_text", "ticker_enabled"], (await getMyCountry()).countryId);
+      const me = await getCurrentUser();
+      const map = await loadScoped(["ticker_text", "ticker_enabled"], (await getMyCountry()).countryId, me?.region_id ?? null);
       setText(map.ticker_text ?? "");
       setEnabled(map.ticker_enabled === "true" && !!map.ticker_text);
     })();

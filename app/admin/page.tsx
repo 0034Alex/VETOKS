@@ -23,7 +23,7 @@ import AdminDashboard from "@/components/AdminDashboard";
 import AdminPeoplePanel from "@/components/AdminPeoplePanel";
 import AdminActionLogPanel from "@/components/AdminActionLogPanel";
 import { getCrmCountry, setCrmCountry } from "@/lib/crmCountry";
-import { loadScoped, scopedKey } from "@/lib/scopedSettings";
+import { loadScoped, loadOwn, loadOwnRegion, scopedKey } from "@/lib/scopedSettings";
 
 // Список/запись «для выбранной страны CRM»: записи страны + общие.
 function orCrm<T>(q: T): T {
@@ -4412,11 +4412,30 @@ function BrandingTab() {
   const [popupButtonLink, setPopupButtonLink] = useState("");
   const [popupSaved, setPopupSaved] = useState(false);
 
+  // Область для строки и окна: пусто = вся страна.
+  const [area, setArea] = useState("");
+  const [areaList, setAreaList] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    const cc = getCrmCountry();
+    if (!cc) return;
+    supabase.from("regions").select("id, name").eq("country_id", cc).order("name").then(({ data }) => setAreaList((data as any[]) ?? []));
+  }, []);
+  useEffect(() => {
+    loadPopup();
+    (async () => {
+      const cc = getCrmCountry();
+      if (!cc) return;
+      const m = area ? await loadOwnRegion(["ticker_text", "ticker_enabled"], cc, area) : await loadOwn(["ticker_text", "ticker_enabled"], cc);
+      setTickerText(m.ticker_text ?? "");
+      setTickerEnabled(m.ticker_enabled === "true");
+    })();
+  }, [area]);
+
   async function loadPopup() {
     const cc = getCrmCountry();
     let data: any = null;
     if (cc) {
-      const pj = await loadScoped(["popup_json"], cc);
+      const pj = area ? await loadOwnRegion(["popup_json"], cc, area) : await loadScoped(["popup_json"], cc);
       try { data = pj.popup_json ? JSON.parse(pj.popup_json) : null; } catch { data = null; }
     } else {
       const r = await supabase
@@ -4454,7 +4473,7 @@ function BrandingTab() {
     const cc = getCrmCountry();
     if (cc) {
       await supabase.from("platform_settings").upsert({
-        key: scopedKey("popup_json", cc),
+        key: scopedKey("popup_json", cc, area || null),
         value: JSON.stringify({
           enabled: popupEnabled,
           image_url: popupImageUrl,
@@ -4494,8 +4513,10 @@ function BrandingTab() {
       getCrmCountry() || null
     );
     setSponsorLogoUrl(map.sponsor_logo_url ?? null);
-    setTickerText(map.ticker_text ?? "");
-    setTickerEnabled(map.ticker_enabled === "true");
+    if (!getCrmCountry()) {
+      setTickerText(map.ticker_text ?? "");
+      setTickerEnabled(map.ticker_enabled === "true");
+    }
     setPaidMessagesEnabled(map.paid_messages_enabled === "true");
     setCountdownEnabled(map.welcome_countdown_enabled === "true");
     setCountdownTargetAt(map.welcome_countdown_target_at ?? "");
@@ -4569,10 +4590,10 @@ function BrandingTab() {
   }
 
   async function saveTicker() {
-    await supabase.from("platform_settings").upsert({ key: scopedKey("ticker_text", getCrmCountry() || null), value: tickerText });
+    await supabase.from("platform_settings").upsert({ key: scopedKey("ticker_text", getCrmCountry() || null, area || null), value: tickerText });
     await supabase
       .from("platform_settings")
-      .upsert({ key: scopedKey("ticker_enabled", getCrmCountry() || null), value: tickerEnabled ? "true" : "false" });
+      .upsert({ key: scopedKey("ticker_enabled", getCrmCountry() || null, area || null), value: tickerEnabled ? "true" : "false" });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
@@ -4616,6 +4637,27 @@ function BrandingTab() {
           </button>
         )}
       </div>
+
+      {getCrmCountry() && (
+        <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+          <p className="text-offwhite text-sm font-semibold mb-1">Для кого строка и окно при входе</p>
+          <select
+            value={area}
+            onChange={(e) => setArea(e.target.value)}
+            className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+          >
+            <option value="">Вся страна</option>
+            {areaList.map((r) => (
+              <option key={r.id} value={r.id}>
+                Только область: {r.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-muted text-xs mt-2">
+            Текст области главнее текста страны. Пустой текст у области — строка в ней не показывается.
+          </p>
+        </div>
+      )}
 
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
         <div className="flex items-center justify-between mb-2">

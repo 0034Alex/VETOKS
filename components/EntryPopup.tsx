@@ -24,7 +24,8 @@ export default function EntryPopup() {
     (async () => {
       let data: any = null;
       const cid = (await getMyCountry()).countryId;
-      const pj = await loadScoped(["popup_json"], cid);
+      const me0 = await getCurrentUser();
+      const pj = await loadScoped(["popup_json"], cid, me0?.region_id ?? null);
       if (pj.popup_json) {
         try { data = JSON.parse(pj.popup_json); } catch { data = null; }
       } else {
