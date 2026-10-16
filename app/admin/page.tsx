@@ -1636,96 +1636,101 @@ function GoalTab() {
   const [enabled, setEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [countries, setCountries] = useState<{ id: string; name: string }[]>([]);
+  const [cid, setCid] = useState<string>(""); // "" = общая настройка
+  const sfx = cid ? ":" + cid : "";
+
+  useEffect(() => {
+    supabase.from("countries").select("id, name").order("name").then(({ data }) => setCountries((data as any) ?? []));
+  }, []);
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
-      .from("platform_settings")
-      .select("key, value")
-      .in("key", ["weekly_goal_text", "weekly_goal_target", "weekly_goal_enabled"]);
-    (data ?? []).forEach((s: { key: string; value: string }) => {
-      if (s.key === "weekly_goal_text") setText(s.value);
-      if (s.key === "weekly_goal_target") setTarget(s.value);
-      if (s.key === "weekly_goal_enabled") setEnabled(s.value !== "false");
-    });
+    const keys = ["weekly_goal_text", "weekly_goal_target", "weekly_goal_enabled"].map((k) => k + sfx);
+    const { data } = await supabase.from("platform_settings").select("key, value").in("key", keys);
+    const m: Record<string, string> = {};
+    (data ?? []).forEach((s: { key: string; value: string }) => { m[s.key] = s.value; });
+    setText(m["weekly_goal_text" + sfx] ?? "");
+    setTarget(m["weekly_goal_target" + sfx] ?? "5000");
+    setEnabled(m["weekly_goal_enabled" + sfx] !== "false");
     setLoading(false);
   }
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cid]);
 
   async function toggleEnabled() {
     const newValue = !enabled;
-    await supabase
-      .from("platform_settings")
-      .upsert({ key: "weekly_goal_enabled", value: newValue ? "true" : "false" });
+    await supabase.from("platform_settings").upsert({ key: "weekly_goal_enabled" + sfx, value: newValue ? "true" : "false" });
     setEnabled(newValue);
   }
 
   async function save() {
-    await supabase
-      .from("platform_settings")
-      .upsert({ key: "weekly_goal_text", value: text });
-    await supabase
-      .from("platform_settings")
-      .upsert({ key: "weekly_goal_target", value: target });
+    await supabase.from("platform_settings").upsert({ key: "weekly_goal_text" + sfx, value: text });
+    await supabase.from("platform_settings").upsert({ key: "weekly_goal_target" + sfx, value: target });
+    await supabase.from("platform_settings").upsert({ key: "weekly_goal_enabled" + sfx, value: enabled ? "true" : "false" });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
 
-  if (loading) return <p className="text-muted">Загрузка...</p>;
-
   return (
     <div className="max-w-md">
-      <div className="bg-bgSurface border border-muted rounded-xl p-4 mb-4 flex items-center justify-between">
-        <div>
-          <p className="text-offwhite text-sm font-semibold">
-            Донаты на цель недели
-          </p>
-          <p className="text-muted text-xs">
-            {enabled
-              ? "Сейчас включены у всех участниц"
-              : "Сейчас выключены у всех участниц"}
-          </p>
-        </div>
-        <button
-          onClick={toggleEnabled}
-          className={`px-4 py-2 rounded-full text-sm font-semibold ${
-            enabled
-              ? "bg-success text-bgPrimary"
-              : "bg-bgPrimary border border-muted text-muted"
-          }`}
-        >
-          {enabled ? "Включено" : "Выключено"}
-        </button>
-      </div>
-
-      <p className="text-muted text-sm mb-4">
-        Этот текст и сумма показываются одинаковыми у всех участниц на
-        странице цели недели.
-      </p>
-      <label className="text-offwhite text-sm">Текст цели</label>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={3}
-        className="w-full bg-bgSurface border border-muted rounded-lg px-3 py-2 text-sm mt-1 mb-4"
-      />
-      <label className="text-offwhite text-sm">Сумма цели, ₽</label>
-      <input
-        type="number"
-        value={target}
-        onChange={(e) => setTarget(e.target.value)}
-        className="w-full bg-bgSurface border border-muted rounded-lg px-3 py-2 text-sm mt-1 mb-4"
-      />
-      <button
-        onClick={save}
-        className="bg-gold text-bgPrimary font-semibold px-6 py-2 rounded-full text-sm"
+      <select
+        value={cid}
+        onChange={(e) => setCid(e.target.value)}
+        className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-4"
       >
-        Сохранить
-      </button>
-      {saved && <span className="text-success text-sm ml-3">Сохранено!</span>}
+        <option value="">Общая (для стран без своей цели)</option>
+        {countries.map((c) => (
+          <option key={c.id} value={c.id}>{c.name}</option>
+        ))}
+      </select>
+      {loading ? (
+        <p className="text-muted">Загрузка...</p>
+      ) : (
+        <>
+          <div className="bg-bgSurface border border-muted rounded-xl p-4 mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-offwhite text-sm font-semibold">Донаты на цель недели</p>
+              <p className="text-muted text-xs">
+                {enabled ? "Сейчас включены" : "Сейчас выключены"}
+                {cid ? " для этой страны" : " (общая настройка)"}
+              </p>
+            </div>
+            <button
+              onClick={toggleEnabled}
+              className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                enabled ? "bg-success text-bgPrimary" : "bg-bgPrimary border border-muted text-muted"
+              }`}
+            >
+              {enabled ? "Включено" : "Выключено"}
+            </button>
+          </div>
+          <p className="text-muted text-sm mb-4">
+            Текст и сумма показываются у участниц выбранной страны. Если для страны ничего не сохранено — берётся общая цель.
+          </p>
+          <label className="text-offwhite text-sm">Текст цели</label>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={3}
+            className="w-full bg-bgSurface border border-muted rounded-lg px-3 py-2 text-sm mt-1 mb-4"
+          />
+          <label className="text-offwhite text-sm">Сумма цели, ₽</label>
+          <input
+            type="number"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            className="w-full bg-bgSurface border border-muted rounded-lg px-3 py-2 text-sm mt-1 mb-4"
+          />
+          <button onClick={save} className="bg-gold text-bgPrimary font-semibold px-6 py-2 rounded-full text-sm">
+            Сохранить
+          </button>
+          {saved && <span className="text-success text-sm ml-3">Сохранено!</span>}
+        </>
+      )}
     </div>
   );
 }
@@ -4975,6 +4980,7 @@ type CustomTaskRow = {
   deadline: string | null;
   is_active: boolean;
   region_id?: string | null;
+  country_id?: string | null;
 };
 
 type PendingCompletion = {
@@ -4996,15 +5002,19 @@ function TasksAdminTab() {
   const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [regionId, setRegionId] = useState("");
-  const [regionList, setRegionList] = useState<{ id: string; name: string }[]>([]);
+  const [regionList, setRegionList] = useState<{ id: string; name: string; country_id?: string | null }[]>([]);
+  const [countryId, setCountryId] = useState("");
+  const [countryList, setCountryList] = useState<{ id: string; name: string }[]>([]);
 
   async function load() {
     setLoading(true);
-    const { data: regs } = await supabase.from("regions").select("id, name").order("name");
+    const { data: regs } = await supabase.from("regions").select("id, name, country_id").order("name");
     setRegionList((regs as any) ?? []);
+    const { data: cs } = await supabase.from("countries").select("id, name").order("name");
+    setCountryList((cs as any) ?? []);
     const { data: tasksData } = await supabase
       .from("custom_tasks")
-      .select("id, title, description, reward, deadline, is_active, region_id")
+      .select("id, title, description, reward, deadline, is_active, region_id, country_id")
       .order("created_at", { ascending: false });
     setTasks((tasksData as CustomTaskRow[]) ?? []);
 
@@ -5032,6 +5042,7 @@ function TasksAdminTab() {
         reward: Number(reward),
         deadline: deadline ? new Date(deadline).toISOString() : null,
         region_id: regionId || null,
+        country_id: countryId || null,
       })
       .select("id")
       .single();
@@ -5045,6 +5056,7 @@ function TasksAdminTab() {
     // Пуш всем участницам
     let pq = supabase.from("participants").select("user_id").eq("is_eliminated", false);
     if (regionId) pq = pq.eq("region_id", regionId);
+    else if (countryId) pq = pq.in("region_id", regionList.filter((r) => r.country_id === countryId).map((r) => r.id));
     const { data: participantsData } = await pq;
     const notifRows = (participantsData ?? [])
       .filter((p: { user_id: string | null }) => p.user_id)
@@ -5062,6 +5074,7 @@ function TasksAdminTab() {
     setReward("");
     setDeadline("");
     setRegionId("");
+    setCountryId("");
     await load();
     setCreating(false);
   }
@@ -5115,12 +5128,22 @@ function TasksAdminTab() {
           />
         </div>
         <select
+          value={countryId}
+          onChange={(e) => { setCountryId(e.target.value); setRegionId(""); }}
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
+        >
+          <option value="">Все страны</option>
+          {countryList.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        <select
           value={regionId}
           onChange={(e) => setRegionId(e.target.value)}
           className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
         >
-          <option value="">Все регионы</option>
-          {regionList.map((r) => (
+          <option value="">Все регионы{countryId ? " страны" : ""}</option>
+          {regionList.filter((r) => !countryId || r.country_id === countryId).map((r) => (
             <option key={r.id} value={r.id}>{r.name}</option>
           ))}
         </select>

@@ -14,7 +14,7 @@ import VoteModal from "@/components/VoteModal";
 import { getAppPrices, getCurrencySymbol } from "@/lib/currency";
 import { apiPost } from "@/lib/authClient";
 import { getVoteTotals } from "@/lib/voteTotals";
-import { getMyCountry } from "@/lib/myCountry";
+import { getMyCountry, loadGoalSettings } from "@/lib/myCountry";
 
 type CollectibleCard = {
   id: string;
@@ -241,18 +241,7 @@ export default function ParticipantProfilePage() {
     const u = await getCurrentUser();
 
     // Еженедельная цель.
-    const { data: settingsData } = await supabase
-      .from("platform_settings")
-      .select("key, value")
-      .in("key", [
-        "weekly_goal_text",
-        "weekly_goal_target",
-        "weekly_goal_enabled",
-      ]);
-    const settingsMap: Record<string, string> = {};
-    (settingsData ?? []).forEach((s: { key: string; value: string }) => {
-      settingsMap[s.key] = s.value;
-    });
+    const settingsMap = await loadGoalSettings((await getMyCountry()).countryId);
     setGoalText(settingsMap.weekly_goal_text ?? "");
     setGoalTarget(Number(settingsMap.weekly_goal_target ?? 5000));
     setGoalEnabled(settingsMap.weekly_goal_enabled !== "false");

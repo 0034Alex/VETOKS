@@ -1,5 +1,6 @@
 "use client";
 
+import { getMyCountry, loadGoalSettings } from "@/lib/myCountry";
 import { getVoteTotals } from "@/lib/voteTotals";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -175,14 +176,7 @@ export default function ProfilePage() {
           .eq("is_read", false);
         setUnreadMessages(unreadMsgs ?? 0);
 
-        const { data: settingsData } = await supabase
-          .from("platform_settings")
-          .select("key, value")
-          .in("key", ["weekly_goal_text", "weekly_goal_target", "weekly_goal_enabled"]);
-        const settingsMap: Record<string, string> = {};
-        (settingsData ?? []).forEach((s: { key: string; value: string }) => {
-          settingsMap[s.key] = s.value;
-        });
+        const settingsMap = await loadGoalSettings((await getMyCountry()).countryId);
         setGoalText(settingsMap.weekly_goal_text ?? "");
         setGoalTarget(Number(settingsMap.weekly_goal_target ?? 5000));
         setGoalEnabled(settingsMap.weekly_goal_enabled !== "false");

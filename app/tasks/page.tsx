@@ -8,6 +8,7 @@ import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import { getCurrencySymbol } from "@/lib/currency";
 import { apiPost } from "@/lib/authClient";
+import { getMyCountry } from "@/lib/myCountry";
 
 type Participant = {
   id: string;
@@ -24,6 +25,7 @@ type CustomTask = {
   reward: number;
   deadline: string | null;
   region_id: string | null;
+  country_id?: string | null;
 };
 
 const PROFILE_TASK_REWARD = 100;
@@ -99,10 +101,17 @@ export default function TasksPage() {
 
       const { data: tasksData } = await supabase
         .from("custom_tasks")
-        .select("id, title, description, reward, deadline, region_id")
+        .select("id, title, description, reward, deadline, region_id, country_id")
         .eq("is_active", true)
         .order("created_at", { ascending: false });
-      setCustomTasks(((tasksData as CustomTask[]) ?? []).filter((t) => !t.region_id || t.region_id === p.region_id));
+      const myC = await getMyCountry();
+      setCustomTasks(
+        ((tasksData as CustomTask[]) ?? []).filter((t) =>
+          t.region_id
+            ? t.region_id === p.region_id
+            : !t.country_id || !myC.countryId || t.country_id === myC.countryId
+        )
+      );
 
       const { data: completionsData } = await supabase
         .from("task_completions")
