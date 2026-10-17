@@ -7,6 +7,7 @@ import { apiPost } from "@/lib/authClient";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import ProfileHero, { ProfileActions, BigBtn, TopBtn, shareLink } from "@/components/ProfileHero";
+import FollowsSheet from "@/components/FollowsSheet";
 import ProfileTabs from "@/components/ProfileTabs";
 
 type Data = {
@@ -30,6 +31,7 @@ export default function PublicUserPage() {
   const [d, setD] = useState<Data | null>(null);
   const [missing, setMissing] = useState(false);
   const [toast, setToast] = useState("");
+  const [sheet, setSheet] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -77,7 +79,7 @@ export default function PublicUserPage() {
           bio={d.bio}
           verified={d.verified}
           socials={d.socials}
-          stats={d.following === null ? [] : [{ value: d.following, label: "Подписки" }]}
+          stats={d.following === null ? [] : [{ value: d.following, label: "Подписки", onClick: () => setSheet(true) }]}
           onShare={share}
           topRight={
             <TopBtn onClick={() => router.back()} label="Назад">
@@ -96,6 +98,8 @@ export default function PublicUserPage() {
         </ProfileActions>
         <ProfileTabs userId={id} />
       </div>
+
+      {sheet && <FollowsSheet userId={id} kind="following" onClose={() => setSheet(false)} />}
 
       {toast && (
         <div className="fixed left-1/2 -translate-x-1/2 bottom-44 z-50 bg-bgSurface border border-gold text-gold text-sm px-4 py-2 rounded-full">

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
+import FollowsSheet from "@/components/FollowsSheet";
 import ProfileHero, { ProfileActions, BigBtn, RoundBtn, TopBtn, IconMail, shareLink, KpiCrown, KpiHeart, KpiGift } from "@/components/ProfileHero";
 import ProfileTabs from "@/components/ProfileTabs";
 import { GiftIcon, parseLinks } from "@/lib/socialLinks";
@@ -74,6 +75,7 @@ export default function ParticipantProfilePage() {
     titles: TitleBadge[];
   } | null>(null);
   const [toast, setToast] = useState("");
+  const [followSheet, setFollowSheet] = useState<"followers" | "following" | null>(null);
 
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [voteCount, setVoteCount] = useState(0);
@@ -473,8 +475,8 @@ export default function ParticipantProfilePage() {
           socials={owner?.socials ?? []}
           stats={[
             { value: videoPosts.length + photoPosts.length, label: "Публикации" },
-            { value: followerCount, label: "Подписчики" },
-            ...(owner?.following != null ? [{ value: owner.following, label: "Подписки" }] : []),
+            { value: followerCount, label: "Подписчики", onClick: () => setFollowSheet("followers") },
+            ...(owner?.following != null ? [{ value: owner.following, label: "Подписки", onClick: () => setFollowSheet("following") }] : []),
           ]}
           onShare={share}
           verified={owner?.verified ?? false}
@@ -649,6 +651,10 @@ export default function ParticipantProfilePage() {
           )}
         </div>
       </div>
+
+      {followSheet && participant && (
+        <FollowsSheet userId={participant.user_id} kind={followSheet} onClose={() => setFollowSheet(null)} />
+      )}
 
       {toast && (
         <div className="fixed left-1/2 -translate-x-1/2 bottom-44 z-50 bg-bgSurface border border-gold text-gold text-sm px-4 py-2 rounded-full">

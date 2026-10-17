@@ -10,6 +10,7 @@ import { getCurrentUser, signOutUser, CurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import SocialLinksBar from "@/components/SocialLinksBar";
+import FollowsSheet from "@/components/FollowsSheet";
 import ProfileHero, { TopBtn, Drawer, IconMail, IconBell, IconMenu, IconSend, shareLink, KpiCrown, KpiHeart, KpiGift } from "@/components/ProfileHero";
 import ProfileTabs from "@/components/ProfileTabs";
 import { parseLinks } from "@/lib/socialLinks";
@@ -77,6 +78,7 @@ export default function ProfilePage() {
   const [photos, setPhotos] = useState<Post[]>([]);
   const [feedTab, setFeedTab] = useState<"video" | "photo">("video");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [followSheet, setFollowSheet] = useState<"followers" | "following" | null>(null);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
@@ -348,7 +350,7 @@ export default function ProfilePage() {
             participant
               ? [
                   { value: videos.length + photos.length, label: "Публикации" },
-                  { value: followers, label: "Подписчики" },
+                  { value: followers, label: "Подписчики", onClick: () => setFollowSheet("followers") },
                   { value: following, label: "Подписки", onClick: () => router.push("/my-follows") },
                 ]
               : [{ value: following, label: "Подписки", onClick: () => router.push("/my-follows") }]
@@ -434,6 +436,8 @@ export default function ProfilePage() {
           {toast}
         </div>
       )}
+
+      {followSheet && <FollowsSheet kind={followSheet} onClose={() => setFollowSheet(null)} />}
 
       <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} title="Меню">
         <div className="text-muted text-xs leading-relaxed mb-1">
