@@ -338,7 +338,7 @@ export default function ProfileHero({
       )}
 
       {stats.length > 0 && (
-        <div className="flex mx-5 mt-8 pt-7 border-t border-muted/25">
+        <div className="flex mx-5 mt-7 pt-6 border-t border-muted/25">
           {stats.map((s2, i) => (
             <button
               key={s2.label}
@@ -355,7 +355,7 @@ export default function ProfileHero({
       )}
 
       {kpis.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 px-5 pt-8">
+        <div className="grid grid-cols-3 gap-3 px-5 pt-6">
           {kpis.map((k) => (
             <div
               key={k.label}
@@ -370,7 +370,7 @@ export default function ProfileHero({
         </div>
       )}
 
-      {actions && <div className="px-5 pt-8 pb-3 flex items-center gap-2.5">{actions}</div>}
+      {actions && <div className="px-5 pt-6 pb-2 flex items-center gap-3">{actions}</div>}
     </div>
   );
 }
@@ -387,8 +387,8 @@ export function IconSend() {
 
 export function ProfileActions({ children }: { children: ReactNode }) {
   return (
-    <div className="px-5 pt-8 pb-2">
-      <div className="flex items-center gap-2.5">{children}</div>
+    <div className="px-5 pt-6 pb-2">
+      <div className="flex items-center gap-3">{children}</div>
     </div>
   );
 }
