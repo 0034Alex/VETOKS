@@ -5,12 +5,12 @@ import { sameCountry } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
 
-type Item = { id: string; postId: string; participantId: string | null; kind: "video" | "photo"; url: string; label?: string; tagId?: string };
+type Item = { id: string; postId: string; views: number; participantId: string | null; kind: "video" | "photo"; url: string; label?: string; tagId?: string };
 
 function toItem(p: any, extra: Partial<Item> = {}): Item | null {
   const url = p.video_url || p.photo_url;
   if (!url) return null;
-  return { id: p.id, postId: p.id, participantId: p.participant_id ?? null, kind: p.video_url ? "video" : "photo", url, ...extra };
+  return { id: p.id, postId: p.id, views: Number(p.views) || 0, participantId: p.participant_id ?? null, kind: p.video_url ? "video" : "photo", url, ...extra };
 }
 
 // Имя автора публикации: участница или обычный человек.
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     const filter = part ? `user_id.eq.${target},participant_id.eq.${part.id}` : `user_id.eq.${target}`;
     const { data } = await supabaseAdmin
       .from("content_posts")
-      .select("id, participant_id, user_id, video_url, photo_url")
+      .select("id, participant_id, user_id, video_url, photo_url, views")
       .or(filter)
       .order("submitted_at", { ascending: false })
       .limit(300);
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   if (rIds.length) {
     const { data: posts } = await supabaseAdmin
       .from("content_posts")
-      .select("id, participant_id, user_id, video_url, photo_url, participants(display_name)")
+      .select("id, participant_id, user_id, video_url, photo_url, views, participants(display_name)")
       .in("id", rIds);
     const byId: Record<string, any> = {};
     (posts ?? []).forEach((p: any) => (byId[p.id] = p));
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
     if (!ids.length) return [] as Item[];
     const { data: posts } = await supabaseAdmin
       .from("content_posts")
-      .select("id, participant_id, user_id, video_url, photo_url, participants(display_name)")
+      .select("id, participant_id, user_id, video_url, photo_url, views, participants(display_name)")
       .in("id", ids);
     const byId: Record<string, any> = {};
     (posts ?? []).forEach((p: any) => (byId[p.id] = p));
@@ -112,6 +112,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     isSelf,
+    userId: target,
     isParticipant: !!part,
     feed: own,
     videos: own.filter((i) => i.kind === "video"),

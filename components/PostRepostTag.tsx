@@ -7,8 +7,20 @@ import { IconRepost, IconTagTab } from "@/components/ProfileIcons";
 type Found = { nick: string; name: string; photoUrl: string | null; isParticipant: boolean };
 
 // Кнопки «Репост» (для всех, кроме автора) и «Отметить» (для автора) в просмотре фото и видео.
-export default function PostRepostTag({ postId, ownerUserId, meId }: { postId: string; ownerUserId: string | null; meId: string | null }) {
-  const [reposted, setReposted] = useState(false);
+export default function PostRepostTag({
+  postId,
+  ownerUserId,
+  meId,
+  compact = false,
+  initialReposted = false,
+}: {
+  postId: string;
+  ownerUserId: string | null;
+  meId: string | null;
+  compact?: boolean;
+  initialReposted?: boolean;
+}) {
+  const [reposted, setReposted] = useState(initialReposted);
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [found, setFound] = useState<Found[]>([]);
@@ -58,13 +70,13 @@ export default function PostRepostTag({ postId, ownerUserId, meId }: { postId: s
     <>
       {isOwner ? (
         <button onClick={() => setOpen(true)} className="flex flex-col items-center text-white" aria-label="Отметить человека">
-          <IconTagTab size={28} />
-          <span className="text-[10px] mt-0.5">Отметить</span>
+          <IconTagTab size={compact ? 26 : 28} />
+          {!compact && <span className="text-[10px] mt-0.5">Отметить</span>}
         </button>
       ) : (
         <button onClick={repost} className={`flex flex-col items-center ${reposted ? "text-[#E8D48A]" : "text-white"}`} aria-label="Репост">
-          <IconRepost size={28} />
-          <span className="text-[10px] mt-0.5">{reposted ? "В репостах" : "Репост"}</span>
+          <IconRepost size={compact ? 26 : 28} />
+          {!compact && <span className="text-[10px] mt-0.5">{reposted ? "В репостах" : "Репост"}</span>}
         </button>
       )}
 

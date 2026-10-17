@@ -5,8 +5,9 @@ import Link from "next/link";
 import { apiPost } from "@/lib/authClient";
 import { IconGrid, IconVideoTab, IconRepost, IconTagTab, IconPlaySmall } from "@/components/ProfileIcons";
 
-type Item = { id: string; postId: string; participantId: string | null; kind: "video" | "photo"; url: string; label?: string; tagId?: string };
+type Item = { id: string; postId: string; views?: number; participantId: string | null; kind: "video" | "photo"; url: string; label?: string; tagId?: string };
 type Data = {
+  userId?: string;
   isSelf: boolean;
   isParticipant: boolean;
   feed: Item[];
@@ -129,7 +130,7 @@ export default function ProfileTabs({ userId }: { userId?: string }) {
           {items.map((it) => (
             <div key={`${tab}-${it.id}-${it.tagId ?? ""}`} className="relative aspect-[3/4] bg-black overflow-hidden">
               <Link
-                href={it.participantId ? `/participant/${it.participantId}/${it.kind === "video" ? "videos" : "photos"}?post=${it.postId}` : `/post/${it.postId}`}
+                href={`/post/${it.postId}?u=${d?.userId ?? ""}&tab=${tab}`}
                 className="block w-full h-full"
               >
                 {it.kind === "video" ? (
@@ -139,12 +140,13 @@ export default function ProfileTabs({ userId }: { userId?: string }) {
                   <img src={it.url} alt="" className="w-full h-full object-cover pointer-events-none" />
                 )}
                 {it.kind === "video" && (
-                  <span className="absolute top-1.5 right-1.5 drop-shadow">
-                    <IconPlaySmall />
+                  <span className="absolute left-1.5 bottom-1 flex items-center gap-1 text-[12px] font-semibold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.8)]">
+                    <IconPlaySmall size={14} />
+                    {(it.views ?? 0).toLocaleString("ru-RU")}
                   </span>
                 )}
                 {it.label && (
-                  <span className="absolute left-1.5 right-1.5 bottom-1 text-[10px] text-white truncate [text-shadow:0_1px_3px_rgba(0,0,0,.8)]">
+                  <span className={`absolute left-1.5 right-1.5 ${it.kind === "video" ? "bottom-6" : "bottom-1"} text-[10px] text-white truncate [text-shadow:0_1px_3px_rgba(0,0,0,.8)]`}>
                     {it.label}
                   </span>
                 )}
