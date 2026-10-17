@@ -106,6 +106,7 @@ type Props = {
   socials: string[];
   stats: HeroStat[];
   onShare: () => void;
+  hideShare?: boolean;
   topRight: ReactNode;
   belowCrown?: ReactNode;
   verified?: boolean;
@@ -151,6 +152,7 @@ export default function ProfileHero({
   socials,
   stats,
   onShare,
+  hideShare = false,
   topRight,
   belowCrown,
   verified = false,
@@ -281,7 +283,7 @@ export default function ProfileHero({
         </div>
       </div>
 
-      {(socials.length > 0 || !actions) && (
+      {(socials.length > 0 || (!actions && !hideShare)) && (
         <div className="flex items-center gap-2.5 px-5 pt-4">
           {socials.length > 0 && (
             <div className="flex flex-wrap gap-2.5">
@@ -299,7 +301,7 @@ export default function ProfileHero({
               ))}
             </div>
           )}
-          {!actions && (
+          {!actions && !hideShare && (
             <button
               type="button"
               onClick={onShare}

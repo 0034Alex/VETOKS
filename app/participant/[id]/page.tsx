@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import FollowsSheet from "@/components/FollowsSheet";
-import ProfileHero, { ProfileActions, BigBtn, RoundBtn, TopBtn, IconMail, shareLink, KpiCrown, KpiHeart, KpiGift } from "@/components/ProfileHero";
+import ProfileHero, { ProfileActions, BigBtn, RoundBtn, TopBtn, IconMail, IconSend, shareLink, KpiCrown, KpiHeart, KpiGift } from "@/components/ProfileHero";
 import ProfileTabs from "@/components/ProfileTabs";
 import { GiftIcon, parseLinks } from "@/lib/socialLinks";
 import { statusFor } from "@/lib/status";
@@ -479,6 +479,7 @@ export default function ParticipantProfilePage() {
             ...(owner?.following != null ? [{ value: owner.following, label: "Подписки", onClick: () => setFollowSheet("following") }] : []),
           ]}
           onShare={share}
+          hideShare
           verified={owner?.verified ?? false}
           topRight={
             <>
@@ -489,40 +490,71 @@ export default function ParticipantProfilePage() {
           }
         />
 
-        <ProfileActions>
-          {isOwner ? (
-            <>
-              <BigBtn href="/edit-profile">Править профиль</BigBtn>
-              <BigBtn variant="vote" onClick={() => setCardOpen(true)}>
-                Позвать голосовать
-              </BigBtn>
-              <RoundBtn href={`/participant/${id}/gifts`} label="Подарки">
-                <GiftIcon />
-              </RoundBtn>
-            </>
-          ) : (
-            <>
-              <BigBtn variant={isFollowing ? "on" : "gold"} onClick={toggleFollow} disabled={busy || !userId}>
-                {isFollowing ? "✓ Вы подписаны" : "Подписаться"}
-              </BigBtn>
-              <BigBtn variant="vote" onClick={() => setVoteModalOpen(true)} disabled={!userId}>
-                Голосовать
-              </BigBtn>
-              <RoundBtn
-                href={`/shop?participant=${participant.id}&name=${encodeURIComponent(participant.display_name)}`}
-                label="Подарить"
+        {isOwner ? (
+          <ProfileActions>
+            <BigBtn href="/edit-profile">Править профиль</BigBtn>
+            <BigBtn variant="vote" onClick={() => setCardOpen(true)}>
+              Позвать голосовать
+            </BigBtn>
+            <RoundBtn href={`/participant/${id}/gifts`} label="Подарки">
+              <GiftIcon />
+            </RoundBtn>
+            <RoundBtn onClick={share} label="Поделиться">
+              <IconSend />
+            </RoundBtn>
+          </ProfileActions>
+        ) : (
+          <div className="px-5 pt-6">
+            <div
+              className="rounded-3xl border border-[#C9A227]/30 p-3 flex flex-col gap-3"
+              style={{ background: "linear-gradient(160deg,rgba(124,58,237,.14),rgba(22,22,24,.9))" }}
+            >
+              <button
+                type="button"
+                onClick={() => setVoteModalOpen(true)}
+                disabled={!userId}
+                className="w-full h-[52px] rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40"
               >
-                <GiftIcon />
-              </RoundBtn>
-              {userId && (
-                <RoundBtn href={`/chats/${participant.user_id}`} label="Написать">
-                  <IconMail />
-                </RoundBtn>
-              )}
-            </>
-          )}
-        </ProfileActions>
-        <ProfileTabs userId={participant.user_id} />
+                ♥ Проголосовать
+              </button>
+              <div className="grid grid-cols-2 gap-3">
+                {userId ? (
+                  <Link
+                    href={`/chats/${participant.user_id}`}
+                    className="h-11 rounded-full border border-muted/60 bg-bgPrimary text-offwhite text-[13px] flex items-center justify-center gap-2"
+                  >
+                    <IconMail /> Написать
+                  </Link>
+                ) : (
+                  <span className="h-11 rounded-full border border-muted/30 text-muted text-[13px] flex items-center justify-center">Написать</span>
+                )}
+                <Link
+                  href={`/shop?participant=${participant.id}&name=${encodeURIComponent(participant.display_name)}`}
+                  className="h-11 rounded-full border border-muted/60 bg-bgPrimary text-offwhite text-[13px] flex items-center justify-center gap-2"
+                >
+                  <GiftIcon /> Подарить
+                </Link>
+                <button
+                  type="button"
+                  onClick={share}
+                  className="h-11 rounded-full border border-muted/60 bg-bgPrimary text-offwhite text-[13px] flex items-center justify-center gap-2"
+                >
+                  <IconSend /> Поделиться
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleFollow}
+                  disabled={busy || !userId}
+                  className={`h-11 rounded-full border text-[13px] flex items-center justify-center gap-2 disabled:opacity-40 ${
+                    isFollowing ? "border-muted/60 bg-bgPrimary text-muted" : "border-gold bg-gold text-bgPrimary font-semibold"
+                  }`}
+                >
+                  {isFollowing ? "Отписаться" : "＋ Подписаться"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="px-6 mt-5">
           {isOwner && giftTotal > 0 && (
             <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
@@ -650,6 +682,7 @@ export default function ParticipantProfilePage() {
             <p className="text-gold text-sm text-center mb-4">{notice}</p>
           )}
         </div>
+        <ProfileTabs userId={participant.user_id} />
       </div>
 
       {followSheet && participant && (
