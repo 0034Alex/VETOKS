@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { apiPost, openSession } from "@/lib/authClient";
 
 type Acc = { id: string; name: string; main: boolean; current: boolean };
@@ -15,6 +16,8 @@ export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   async function load() {
     const r = await apiPost("/api/accounts/list");
@@ -90,9 +93,9 @@ export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
   
       )}
 
-      {open && (
+      {open && mounted && createPortal(
         <div
-          className="fixed inset-0 z-[90] bg-black/70 flex items-end justify-center"
+          className="fixed inset-0 z-[200] bg-black/70 flex items-end justify-center"
           onClick={() => !busy && setOpen(false)}
         >
           <div
@@ -160,7 +163,7 @@ export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
             </p>
           </div>
         </div>
-      )}
+      , document.body)}
     </>
   );
 }
