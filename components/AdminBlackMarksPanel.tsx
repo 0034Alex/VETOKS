@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { crmRegionIds } from "@/lib/crmCountry";
 import { kyivWeekStart } from "@/lib/kyiv";
 
 // CRM → «Чёрная метка»: что происходит на этой неделе и история штрафов.
@@ -20,16 +21,22 @@ export default function AdminBlackMarksPanel() {
       setLoading(true);
       const weekStart = kyivWeekStart();
 
-      const { data: marks } = await supabase
+      const rids0 = await crmRegionIds();
+      let mq = supabase
         .from("black_marks")
         .select("target_participant_id, region_id")
         .eq("week_start", weekStart);
-
-      const { data: pens } = await supabase
+      let pq = supabase
         .from("black_mark_penalties")
         .select("participant_id, region_id, week_start, marks_count, penalty_votes")
         .order("week_start", { ascending: false })
         .limit(60);
+      if (rids0) {
+        mq = mq.in("region_id", rids0);
+        pq = pq.in("region_id", rids0);
+      }
+      const { data: marks } = await mq;
+      const { data: pens } = await pq;
 
       const pIds = new Set<string>();
       const rIds = new Set<string>();

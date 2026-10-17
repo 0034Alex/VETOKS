@@ -23,7 +23,7 @@ import AdminTranslationsPanel from "@/components/AdminTranslationsPanel";
 import AdminDashboard from "@/components/AdminDashboard";
 import AdminPeoplePanel from "@/components/AdminPeoplePanel";
 import AdminActionLogPanel from "@/components/AdminActionLogPanel";
-import { getCrmCountry, setCrmCountry } from "@/lib/crmCountry";
+import { getCrmCountry, setCrmCountry, crmRegionIds } from "@/lib/crmCountry";
 import { loadScoped, loadOwn, loadOwnRegion, scopedKey } from "@/lib/scopedSettings";
 
 // Список/запись «для выбранной страны CRM»: записи страны + общие.
@@ -591,15 +591,17 @@ function Applications() {
       .select("id, status, form_data, season_id, user_id, created_at")
       .eq("status", "submitted")
       .order("created_at", { ascending: false });
-    const apps = (data as Application[]) ?? [];
-    setApplications(apps);
+    let apps = (data as Application[]) ?? [];
     const ids = Array.from(new Set(apps.map((a) => a.user_id)));
+    const m: Record<string, string> = {};
     if (ids.length) {
       const { data: us } = await supabase.from("users").select("id, region_id").in("id", ids);
-      const m: Record<string, string> = {};
       (us ?? []).forEach((u: any) => { if (u.region_id) m[u.id] = u.region_id; });
       setUserRegion(m);
     }
+    const rids = await crmRegionIds();
+    if (rids) apps = apps.filter((a) => rids.includes(m[a.user_id]));
+    setApplications(apps);
     setLoading(false);
   }
 
@@ -732,11 +734,14 @@ function ParticipantsTab() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
+    let pq = supabase
       .from("participants")
       .select(
         "id, display_name, user_id, is_editors_choice, region_id, season_id, users(is_banned, last_login_at)"
       );
+    const prids = await crmRegionIds();
+    if (prids) pq = pq.in("region_id", prids);
+    const { data } = await pq;
     const list = (data as unknown as ParticipantRow[]) ?? [];
     setRows(list);
     const { data: sl } = await supabase.from("seasons").select("id, title, country_id");
@@ -1463,10 +1468,13 @@ function CardsTab() {
     const { data } = await supabase
       .from("collectible_cards")
       .select(
-        "id, stage, raw_photo_url, final_image_url, status, participant_id, participants(display_name)"
+        "id, stage, raw_photo_url, final_image_url, status, participant_id, participants(display_name, region_id)"
       )
       .order("created_at", { ascending: false });
-    setRows((data as unknown as CardRow[]) ?? []);
+    const crids = await crmRegionIds();
+    let cardRows = (data as unknown as CardRow[]) ?? [];
+    if (crids) cardRows = cardRows.filter((r: any) => crids.includes((Array.isArray(r.participants) ? r.participants[0] : r.participants)?.region_id));
+    setRows(cardRows);
     setLoading(false);
   }
 
@@ -1653,7 +1661,7 @@ function GoalTab() {
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [countries, setCountries] = useState<{ id: string; name: string }[]>([]);
-  const [cid, setCid] = useState<string>(""); // "" = общая настройка
+  const [cid, setCid] = useState<string>(getCrmCountry()); // "" = общая настройка
   const sfx = cid ? ":" + cid : "";
 
   useEffect(() => {
@@ -1822,9 +1830,11 @@ function StagesTab() {
     const { data: cs } = await supabase.from("countries").select("id, name").order("name");
     setCountriesList((cs as CountryOpt[]) ?? []);
     const { data } = await supabase.from("seasons").select("id, title, status, country_id").order("created_at", { ascending: false });
-    setSeasons((data as SeasonRow[]) ?? []);
-    if (data && data.length > 0 && !selectedSeason) {
-      setSelectedSeason((data[0] as SeasonRow).id);
+    const cc = getCrmCountry();
+    const seasonsList = ((data as SeasonRow[]) ?? []).filter((x) => !cc || x.country_id === cc);
+    setSeasons(seasonsList);
+    if (seasonsList.length > 0 && !selectedSeason) {
+      setSelectedSeason(seasonsList[0].id);
     }
   }
 
@@ -5147,18 +5157,19 @@ function TasksAdminTab() {
     setRegionList((regs as any) ?? []);
     const { data: cs } = await supabase.from("countries").select("id, name").order("name");
     setCountryList((cs as any) ?? []);
-    const { data: tasksData } = await supabase
+    const { data: tasksData } = await orCrm(supabase
       .from("custom_tasks")
       .select("id, title, description, reward, deadline, is_active, region_id, country_id")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }));
     setTasks((tasksData as CustomTaskRow[]) ?? []);
 
     const { data: pendingData } = await supabase
       .from("task_completions")
-      .select("id, task_id, participant_id, submitted_at, custom_tasks(title, reward), participants(display_name)")
+      .select("id, task_id, participant_id, submitted_at, custom_tasks(title, reward), participants(display_name, region_id)")
       .eq("status", "pending")
       .order("submitted_at", { ascending: true });
-    setPending((pendingData as any) ?? []);
+    const trids = await crmRegionIds();
+    setPending(((pendingData as any) ?? []).filter((r: any) => !trids || trids.includes((Array.isArray(r.participants) ? r.participants[0] : r.participants)?.region_id)));
     setLoading(false);
   }
 
