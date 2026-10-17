@@ -258,7 +258,7 @@ export default function ProfileHero({
           )}
           {rank && <p className="mt-1.5 text-[13px] text-[#E8D48A]">🏆 {rank}</p>}
           {badges.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="mt-4 flex flex-wrap gap-2">
               {badges.slice(0, 3).map((b) => (
                 <button
                   key={b.label}
@@ -277,7 +277,7 @@ export default function ProfileHero({
               )}
             </div>
           )}
-          {bio && <p className="mt-3.5 text-[15px] leading-relaxed text-[#e6e6ea] whitespace-pre-line">{bio}</p>}
+          {bio && <p className="mt-4 text-[15px] leading-relaxed text-[#e6e6ea] whitespace-pre-line">{bio}</p>}
         </div>
       </div>
 
@@ -338,7 +338,7 @@ export default function ProfileHero({
       )}
 
       {stats.length > 0 && (
-        <div className="flex px-5 pt-5">
+        <div className="flex px-5 pt-8">
           {stats.map((s2, i) => (
             <button
               key={s2.label}
@@ -348,37 +348,46 @@ export default function ProfileHero({
               className={`flex-1 text-center ${i > 0 ? "border-l border-muted/40" : ""}`}
             >
               <span className="block text-[22px] font-semibold tabular-nums text-offwhite">{s2.value}</span>
-              <span className="text-[12px] text-muted">{s2.label}</span>
+              <span className="block mt-1 text-[12px] text-muted">{s2.label}</span>
             </button>
           ))}
         </div>
       )}
 
       {kpis.length > 0 && (
-        <div className="grid grid-cols-3 gap-2 px-5 pt-4">
+        <div className="grid grid-cols-3 gap-3 px-5 pt-7">
           {kpis.map((k) => (
             <div
               key={k.label}
-              className="rounded-2xl border border-[#C9A227]/35 py-3 px-1 text-center"
+              className="rounded-2xl border border-[#C9A227]/35 py-4 px-1 text-center"
               style={{ background: "linear-gradient(160deg,rgba(124,58,237,.18),rgba(11,11,13,.9))" }}
             >
-              <div className="flex justify-center mb-1">{k.icon}</div>
+              <div className="flex justify-center mb-2">{k.icon}</div>
               <b className="block text-[16px] tabular-nums text-[#E8D48A]">{k.value}</b>
-              <span className="text-[10.5px] text-muted">{k.label}</span>
+              <span className="block mt-0.5 text-[10.5px] text-muted">{k.label}</span>
             </div>
           ))}
         </div>
       )}
 
-      {actions && <div className="px-5 pt-4 flex items-center gap-2">{actions}</div>}
+      {actions && <div className="px-5 pt-6 pb-1 flex items-center gap-2.5">{actions}</div>}
     </div>
   );
 }
 
 // Ряд кнопок под цифрами профиля (обычный блок страницы, не плавающий).
+export function IconSend() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.5 3 10.5 13.5" />
+      <path d="M21.5 3 14.5 21l-4-7.5L3 9.5 21.5 3z" />
+    </svg>
+  );
+}
+
 export function ProfileActions({ children }: { children: ReactNode }) {
   return (
-    <div className="px-5 pt-5">
+    <div className="px-5 pt-6">
       <div className="flex items-center gap-2.5">{children}</div>
     </div>
   );

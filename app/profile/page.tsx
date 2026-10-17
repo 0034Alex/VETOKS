@@ -10,7 +10,7 @@ import { getCurrentUser, signOutUser, CurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import SocialLinksBar from "@/components/SocialLinksBar";
-import ProfileHero, { TopBtn, Drawer, IconMail, IconBell, IconMenu, shareLink, KpiCrown, KpiHeart, KpiGift } from "@/components/ProfileHero";
+import ProfileHero, { TopBtn, Drawer, IconMail, IconBell, IconMenu, IconSend, shareLink, KpiCrown, KpiHeart, KpiGift } from "@/components/ProfileHero";
 import ProfileTabs from "@/components/ProfileTabs";
 import { parseLinks } from "@/lib/socialLinks";
 import { statusFor } from "@/lib/status";
@@ -367,29 +367,29 @@ export default function ProfilePage() {
             <>
               <Link
                 href="/edit-profile"
-                className="flex-1 min-w-0 h-11 rounded-xl border border-muted/60 bg-bgSurface text-offwhite text-[13px] font-semibold flex items-center justify-center px-2 text-center"
+                className="flex-1 min-w-0 h-11 rounded-xl border border-muted/60 bg-bgSurface text-offwhite text-[14px] font-semibold flex items-center justify-center"
               >
-                Редактировать профиль
+                Редактировать
               </Link>
-              <button
-                type="button"
-                onClick={share}
-                className="h-11 rounded-xl border border-muted/60 bg-bgSurface text-offwhite text-[13px] font-semibold px-4"
-              >
-                Поделиться
-              </button>
               <Link
                 href="/chats"
-                aria-label="Сообщения"
-                className="relative flex-none w-11 h-11 rounded-xl border border-muted/60 bg-bgSurface text-offwhite flex items-center justify-center"
+                className="relative flex-1 min-w-0 h-11 rounded-xl border border-muted/60 bg-bgSurface text-offwhite text-[14px] font-semibold flex items-center justify-center"
               >
-                <IconMail />
+                Сообщения
                 {dmUnread > 0 && (
                   <span className="absolute -top-1.5 -right-1 bg-danger text-white text-[10px] min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center">
                     {dmUnread > 9 ? "9+" : dmUnread}
                   </span>
                 )}
               </Link>
+              <button
+                type="button"
+                onClick={share}
+                aria-label="Поделиться"
+                className="flex-none w-11 h-11 rounded-xl border border-muted/60 bg-bgSurface text-offwhite flex items-center justify-center"
+              >
+                <IconSend />
+              </button>
             </>
           }
           verified={badgeOn}
