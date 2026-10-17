@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { getMyCountry, loadGoalSettings } from "@/lib/myCountry";
 import { getVoteTotals } from "@/lib/voteTotals";
 import { useEffect, useState } from "react";
@@ -310,15 +311,13 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center text-muted">
-        Загрузка...
-      </main>
+      <LoadingScreen />
     );
   }
 
 
   const menuBadge = 0;
-  const initialsName = user?.first_name ?? "";
+  const initialsName = user?.first_name || nick || "";
   const st = participant ? statusFor(statusRaw?.contest, statusRaw?.stage_key, statusRaw?.crown, user?.regions?.name ?? null) : null;
   const goalPct = Math.min(100, goalTarget ? (goalCollected / goalTarget) * 100 : 0);
 

@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -84,7 +85,7 @@ export default function GoalDonorsPage() {
         За эту неделю — видно только вам
       </p>
 
-      {loading && <p className="text-muted text-center">Загрузка...</p>}
+      {loading && <LoadingScreen inline />}
       {!loading && donors.length === 0 && (
         <p className="text-muted text-center px-6">
           Пока никто не задонатил на этой неделе.

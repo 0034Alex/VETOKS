@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getMyCountry, orCountry } from "@/lib/myCountry";
@@ -52,7 +53,7 @@ export default function PartnersDirectoryPage() {
         🤝 Хотите стать партнёром? Оставить заявку
       </Link>
 
-      {loading && <p className="text-muted text-center">Загрузка...</p>}
+      {loading && <LoadingScreen inline />}
       {!loading && partners.length === 0 && (
         <p className="text-muted text-center px-6">Пока нет партнёров.</p>
       )}

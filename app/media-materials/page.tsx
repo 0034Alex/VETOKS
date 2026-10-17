@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -73,7 +74,7 @@ export default function MediaMaterialsPage() {
           короткие видео VETOKS.
         </p>
 
-        {loading && <p className="text-muted text-center">Загрузка...</p>}
+        {loading && <LoadingScreen inline />}
 
         {!loading && videos.length > 0 && (
           <div className="mb-8">

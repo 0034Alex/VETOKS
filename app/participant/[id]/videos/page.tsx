@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -200,9 +201,7 @@ export default function ParticipantVideosPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center text-muted bg-black">
-        Загрузка...
-      </main>
+      <LoadingScreen />
     );
   }
 

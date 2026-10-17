@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -101,7 +102,7 @@ export default function ChatsPage() {
           </Link>
         )}
 
-        {loading && <p className="text-muted text-center">Загрузка...</p>}
+        {loading && <LoadingScreen inline />}
         {!loading && list.length === 0 && (
           <p className="text-muted text-center px-6">
             {tab === "chats" ? "Пока нет переписок. Откройте профиль участницы и нажмите «Написать»." : "Новых запросов нет."}

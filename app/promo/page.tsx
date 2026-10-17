@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -70,7 +71,7 @@ export default function PromoPage() {
           {stage ? stage.title : "Текущий этап"}
         </p>
 
-        {loading && <p className="text-muted text-center">Загрузка...</p>}
+        {loading && <LoadingScreen inline />}
 
         {!loading && stage?.promo_video_url ? (
           <video

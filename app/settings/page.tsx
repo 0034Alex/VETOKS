@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -154,7 +155,7 @@ export default function SettingsPage() {
     setLinkInput("");
   }
 
-  if (loading) return <main className="min-h-screen flex items-center justify-center text-muted">Загрузка...</main>;
+  if (loading) return <LoadingScreen />;
 
   return (
     <main className="min-h-screen pb-28">

@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiPost } from "@/lib/authClient";
@@ -55,7 +56,7 @@ export default function PublicUserPage() {
 
   if (missing)
     return <main className="min-h-screen flex items-center justify-center text-muted">Профиль не найден.</main>;
-  if (!d) return <main className="min-h-screen flex items-center justify-center text-muted">Загрузка...</main>;
+  if (!d) return <LoadingScreen />;
 
   async function share() {
     const r = await shareLink(d!.nick ? window.location.origin + `/n/${d!.nick}` : window.location.href, d!.name);

@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -29,9 +30,10 @@ export default function NickLanding() {
     })();
   }, [nick, router]);
 
+  if (!missing) return <LoadingScreen />;
   return (
     <main className="min-h-screen flex items-center justify-center text-muted">
-      {missing ? "Профиль с таким ником не найден." : "Загрузка..."}
+      Профиль с таким ником не найден.
     </main>
   );
 }

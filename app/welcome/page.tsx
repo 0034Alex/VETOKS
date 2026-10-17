@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -86,9 +87,7 @@ export default function WelcomePage() {
 
   if (loading || !enabled) {
     return (
-      <main className="min-h-screen flex items-center justify-center text-muted bg-bgPrimary">
-        Загрузка...
-      </main>
+      <LoadingScreen />
     );
   }
 

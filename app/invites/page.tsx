@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -23,7 +24,7 @@ export default function InvitesPage() {
     })();
   }, [router]);
 
-  if (!d) return <main className="min-h-screen flex items-center justify-center text-muted">Загрузка...</main>;
+  if (!d) return <LoadingScreen />;
 
   const link = typeof window !== "undefined" ? `${window.location.origin}/r/${d.nick || d.code}` : "";
   const text = "Присоединяйся к VETOKS — голосуй за участниц конкурса!";

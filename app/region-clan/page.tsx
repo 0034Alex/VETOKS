@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
@@ -106,9 +107,7 @@ export default function RegionClanPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center text-muted">
-        Загрузка...
-      </main>
+      <LoadingScreen />
     );
   }
 

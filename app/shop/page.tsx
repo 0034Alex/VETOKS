@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -692,7 +693,7 @@ function CardsSection() {
         className="w-full bg-bgSurface text-offwhite border border-muted rounded-full px-5 py-3 text-sm mb-4"
       />
 
-      {loading && <p className="text-muted text-center">Загрузка...</p>}
+      {loading && <LoadingScreen inline />}
       {!loading && searched.length === 0 && (
         <p className="text-muted text-center">
           Пока нет опубликованных карточек — они появятся, когда участницы

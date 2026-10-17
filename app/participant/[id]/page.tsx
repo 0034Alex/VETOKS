@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -474,9 +475,7 @@ export default function ParticipantProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center text-muted">
-        Загрузка...
-      </main>
+      <LoadingScreen />
     );
   }
 

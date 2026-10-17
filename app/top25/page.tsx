@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
@@ -106,7 +107,7 @@ export default function Top25Page() {
         )}
       </div>
 
-      {loading && <p className="text-muted text-center">Загрузка...</p>}
+      {loading && <LoadingScreen inline />}
       {!loading && rows.length === 0 && (
         <p className="text-muted text-center px-6">
           Итоги ещё не подведены. Топ-25 обновляется каждую ночь в 00:01.

@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -81,7 +82,7 @@ export default function ParticipantGiftsPage() {
         </h1>
       </div>
 
-      {loading && <p className="text-muted text-center">Загрузка...</p>}
+      {loading && <LoadingScreen inline />}
       {!loading && gifts.length === 0 && (
         <p className="text-muted text-center px-6">Подарков пока нет.</p>
       )}

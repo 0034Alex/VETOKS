@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
@@ -325,7 +326,7 @@ export default function ParticipantsPage() {
           )}
         </div>
 
-        {loading && <p className="text-muted text-center">Загрузка...</p>}
+        {loading && <LoadingScreen inline />}
         {!loading && filtered.length === 0 && (
           <p className="text-muted text-center px-6">Ничего не найдено.</p>
         )}

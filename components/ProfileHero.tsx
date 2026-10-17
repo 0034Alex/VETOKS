@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { SocialIcon, socialKind } from "@/lib/socialLinks";
 import type { StatusTone } from "@/lib/status";
+import Logo from "@/components/Logo";
 
 export function Crown({ size = 46 }: { size?: number }) {
   return (
@@ -134,6 +135,15 @@ export default function ProfileHero({
   badges = [],
 }: Props) {
   const [badgesOpen, setBadgesOpen] = useState(false);
+  const VerifiedMark = (
+    <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden className="flex-none">
+              <path
+                d="M12 1.8l2.6 1.9 3.2-.2 1 3.1 2.6 1.9-1 3.1 1 3.1-2.6 1.9-1 3.1-3.2-.2L12 22.2l-2.6-1.9-3.2.2-1-3.1L2.6 15.5l1-3.1-1-3.1 2.6-1.9 1-3.1 3.2.2z"
+                fill="#E8D48A"
+              />
+              <path d="M8 12.2l2.8 2.8L16.2 9.6" fill="none" stroke="#1a1405" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+  );
   const initial = (name || "?").trim().slice(0, 1).toUpperCase();
   return (
     <div>
@@ -143,14 +153,22 @@ export default function ProfileHero({
           <img src={photoUrl} alt={name} className="absolute inset-0 w-full h-full object-cover" />
         ) : (
           <div
-            className="absolute inset-0 flex justify-center pt-36 font-serif text-white/20"
+            className="absolute inset-0 flex flex-col items-center px-6 text-center"
             style={{
-              fontSize: 200,
-              lineHeight: 1,
+              paddingTop: 190,
               background: "linear-gradient(170deg,#4b2a8f 0%,#b0306f 48%,#d98a2b 100%)",
             }}
           >
-            {initial}
+            <span
+              className="w-24 h-24 rounded-full bg-white/15 border border-white/25 flex items-center justify-center font-serif text-white/80"
+              style={{ fontSize: 48, lineHeight: 1 }}
+            >
+              {initial}
+            </span>
+            <span className="mt-4 flex items-center justify-center gap-2 font-serif text-white/90 text-3xl leading-tight break-words max-w-full">
+              {name}
+              {verified && VerifiedMark}
+            </span>
           </div>
         )}
         <div
@@ -166,14 +184,14 @@ export default function ProfileHero({
           style={{ paddingTop: "calc(env(safe-area-inset-top) + 14px)" }}
         >
           <Link href="/" aria-label="VETOKS" className="drop-shadow-[0_2px_8px_rgba(0,0,0,.6)]">
-            <Crown />
+            <Logo size={28} />
           </Link>
           <div className="flex items-center gap-1.5">{topRight}</div>
         </div>
         {belowCrown && (
           <div
             className="absolute left-4 z-10"
-            style={{ top: "calc(env(safe-area-inset-top) + 62px)" }}
+            style={{ top: "calc(env(safe-area-inset-top) + 76px)" }}
           >
             {belowCrown}
           </div>
@@ -198,16 +216,8 @@ export default function ProfileHero({
             </span>
           )}
           <h1 className="mt-3 flex items-center gap-2.5 flex-wrap font-serif text-[34px] leading-[1.1] text-offwhite">
-            <span>{name}</span>
-            {verified && (
-            <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden className="flex-none">
-              <path
-                d="M12 1.8l2.6 1.9 3.2-.2 1 3.1 2.6 1.9-1 3.1 1 3.1-2.6 1.9-1 3.1-3.2-.2L12 22.2l-2.6-1.9-3.2.2-1-3.1L2.6 15.5l1-3.1-1-3.1 2.6-1.9 1-3.1 3.2.2z"
-                fill="#E8D48A"
-              />
-              <path d="M8 12.2l2.8 2.8L16.2 9.6" fill="none" stroke="#1a1405" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            )}
+            {photoUrl && <span>{name}</span>}
+            {verified && photoUrl && VerifiedMark}
           </h1>
           {handle && <p className="mt-2 text-[15px] text-[#c9c9ce]">{handle}</p>}
           {city && (

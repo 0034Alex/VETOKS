@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { getMyCountry } from "@/lib/myCountry";
 import { loadScoped } from "@/lib/scopedSettings";
 
-export default function LoadingScreen() {
+export default function LoadingScreen({ inline = false }: { inline?: boolean }) {
   const [sponsorLogo, setSponsorLogo] = useState<string | null>(null);
 
   useEffect(() => {
+    if (inline) return;
     (async () => {
       const m = await loadScoped(["sponsor_logo_url"], (await getMyCountry()).countryId);
       if (m.sponsor_logo_url) setSponsorLogo(m.sponsor_logo_url);
@@ -15,7 +16,7 @@ export default function LoadingScreen() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-bgPrimary">
+    <div className={`${inline ? "py-12" : "min-h-screen bg-bgPrimary"} flex flex-col items-center justify-center gap-4`}>
       <svg
         width={90}
         height={54}

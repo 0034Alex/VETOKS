@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -77,7 +78,7 @@ export default function MyFollowsPage() {
           Участницы, на которых вы подписаны.
         </p>
 
-        {loading && <p className="text-muted text-center">Загрузка...</p>}
+        {loading && <LoadingScreen inline />}
         {!loading && follows.length === 0 && (
           <p className="text-muted text-center px-6">
             Вы пока ни на кого не подписаны — загляните в «Участницы» или в

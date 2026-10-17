@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -99,7 +100,7 @@ export default function ContentIdeasPage() {
         />
 
         {loading ? (
-          <p className="text-muted text-center">Загрузка...</p>
+          <LoadingScreen inline />
         ) : (
           <>
             <div className="mb-6">

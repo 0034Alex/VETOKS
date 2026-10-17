@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
@@ -246,9 +247,7 @@ export default function MediaPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center text-muted">
-        Загрузка...
-      </main>
+      <LoadingScreen />
     );
   }
 

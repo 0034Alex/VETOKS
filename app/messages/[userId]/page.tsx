@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -98,9 +99,7 @@ export default function ThreadPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center text-muted">
-        Загрузка...
-      </main>
+      <LoadingScreen />
     );
   }
 

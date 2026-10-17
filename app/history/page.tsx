@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -70,7 +71,7 @@ export default function HistoryPage() {
         История операций
       </h1>
 
-      {loading && <p className="text-muted text-center">Загрузка...</p>}
+      {loading && <LoadingScreen inline />}
       {!loading && items.length === 0 && (
         <p className="text-muted text-center px-6">Операций пока нет.</p>
       )}

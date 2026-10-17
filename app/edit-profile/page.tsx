@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { apiPost } from "@/lib/authClient";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -147,9 +148,7 @@ export default function EditProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center text-muted">
-        Загрузка...
-      </main>
+      <LoadingScreen />
     );
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getMyCountry, orCountry } from "@/lib/myCountry";
@@ -54,7 +55,7 @@ export default function DocumentsPage() {
         Документы
       </h1>
 
-      {loading && <p className="text-muted text-center">Загрузка...</p>}
+      {loading && <LoadingScreen inline />}
       {!loading && docs.length === 0 && (
         <p className="text-muted text-center px-6">Документов пока нет.</p>
       )}
