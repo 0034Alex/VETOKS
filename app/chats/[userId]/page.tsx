@@ -3,18 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import SharedPost from "@/components/SharedPost";
+import ReportSheet from "@/components/ReportSheet";
 import { apiPost } from "@/lib/authClient";
 import { chatGiftEmoji } from "@/lib/chatGifts";
 
 type Msg = { id: string; sender_id: string; body: string; kind: string; meta: any; created_at: string };
-
-const REASONS: [string, string][] = [
-  ["spam", "Спам или реклама"],
-  ["insult", "Оскорбления"],
-  ["scam", "Мошенничество"],
-  ["nudity", "Неприемлемое содержание"],
-  ["other", "Другое"],
-];
 
 const ERRORS: Record<string, string> = {
   dm_closed: "Этот человек закрыл личные сообщения.",
@@ -217,7 +211,7 @@ export default function ChatPage() {
               m.sender_id === me ? "self-end bg-gold text-bgPrimary" : "self-start bg-bgSurface text-offwhite border border-muted"
             }`}
           >
-            {m.kind === "gift" ? <span className="text-lg">{m.body}</span> : m.body}
+            {m.kind === "gift" ? <span className="text-lg">{m.body}</span> : m.kind === "post" && m.meta?.postId ? <SharedPost postId={String(m.meta.postId)} /> : m.body}
             <span className={`block text-[10px] mt-0.5 ${m.sender_id === me ? "text-bgPrimary/60" : "text-muted"}`}>
               {new Date(m.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
             </span>
@@ -301,43 +295,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      {report && (
-        <div className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center px-4" onClick={() => setReport(false)}>
-          <div className="bg-bgSurface border border-muted rounded-2xl p-5 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            {reported ? (
-              <p className="text-offwhite text-center py-4">Спасибо! Жалоба отправлена модератору.</p>
-            ) : (
-              <>
-                <h3 className="text-offwhite font-semibold mb-3">Пожаловаться на {name}</h3>
-                <div className="flex flex-col gap-2 mb-3">
-                  {REASONS.map(([k, label]) => (
-                    <label key={k} className="flex items-center gap-2 text-offwhite text-sm">
-                      <input type="radio" checked={reason === k} onChange={() => setReason(k)} />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-                <textarea
-                  value={details}
-                  onChange={(e) => setDetails(e.target.value)}
-                  rows={2}
-                  placeholder="Пояснение (необязательно)"
-                  className="w-full bg-bgPrimary text-offwhite border border-muted rounded-lg px-3 py-2 text-sm mb-3"
-                />
-                <button
-                  onClick={async () => {
-                    await apiPost("/api/dm/action", { action: "report", userId: other, reason, details });
-                    setReported(true);
-                  }}
-                  className="w-full bg-gold text-bgPrimary font-semibold py-2.5 rounded-full"
-                >
-                  Отправить
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      <ReportSheet open={report} onClose={() => setReport(false)} target={{ type: "dm", userId: other }} />
     </main>
   );
 }

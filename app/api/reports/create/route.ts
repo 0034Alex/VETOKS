@@ -4,7 +4,7 @@ import { bad, requireUser } from "@/lib/shopServer";
 
 export const dynamic = "force-dynamic";
 
-const REASONS = ["spam", "nudity", "violence", "fake", "other"];
+const REASONS = ["spam", "nudity", "violence", "hate", "scam", "fake", "minor", "illegal", "selfharm", "ip", "other"];
 
 export async function POST(req: Request) {
   const uid = await requireUser(req);

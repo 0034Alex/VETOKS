@@ -8,7 +8,13 @@ const LABELS: Record<string, string> = {
   spam: "спам",
   nudity: "неприемлемое",
   violence: "насилие",
-  fake: "обман",
+  hate: "оскорбления / травля",
+  scam: "мошенничество",
+  fake: "фейк / подмена",
+  minor: "опасно для детей",
+  illegal: "запрещённое",
+  selfharm: "самоповреждение",
+  ip: "авторские права",
   other: "другое",
 };
 
@@ -30,7 +36,7 @@ type DmItem = {
   messages: { sender_id: string; body: string; created_at: string }[];
 };
 
-const DM_LABELS: Record<string, string> = { spam: "спам", insult: "оскорбления", scam: "мошенничество", nudity: "неприемлемое", other: "другое" };
+const DM_LABELS: Record<string, string> = { ...LABELS, insult: "оскорбления" };
 
 // Жалобы на личные переписки
 function DmReports() {

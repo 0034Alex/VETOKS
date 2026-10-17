@@ -7,7 +7,8 @@ import Link from "next/link";
 import { apiPost } from "@/lib/authClient";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
-import PostRepostTag from "@/components/PostRepostTag";
+import ReportSheet from "@/components/ReportSheet";
+import ShareSheet from "@/components/ShareSheet";
 import { IconRepost } from "@/components/ProfileIcons";
 
 type P = {
@@ -29,7 +30,17 @@ type P = {
   mine: boolean;
 };
 
-type Cm = { id: string; body: string; created_at: string; users: { first_name: string | null } | { first_name: string | null }[] | null };
+type CU = { first_name: string | null; photo_url: string | null; nick: string | null };
+type Cm = { id: string; body: string; created_at: string; users: CU | CU[] | null };
+const cu = (c: Cm): CU | null => (Array.isArray(c.users) ? c.users[0] ?? null : c.users);
+const EMOJIS = ["❤️", "🙌", "🔥", "👏", "😢", "😍", "😮", "😂"];
+function ago(s: string) {
+  const m = Math.max(1, Math.floor((Date.now() - new Date(s).getTime()) / 60000));
+  if (m < 60) return `${m} мин`;
+  if (m < 1440) return `${Math.floor(m / 60)} ч`;
+  if (m < 10080) return `${Math.floor(m / 1440)} д`;
+  return `${Math.floor(m / 10080)} нед`;
+}
 
 const Heart = ({ on, size = 24 }: { on: boolean; size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={on ? "#EC4899" : "none"} stroke={on ? "#EC4899" : "currentColor"} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -62,7 +73,9 @@ export default function PostFeedPage() {
   const [missing, setMissing] = useState(false);
   const [cur, setCur] = useState(0);
   const [menuFor, setMenuFor] = useState<string | null>(null);
-  const [tagFor, setTagFor] = useState<string | null>(null);
+  const [reportFor, setReportFor] = useState<string | null>(null);
+  const [shareFor, setShareFor] = useState<P | null>(null);
+  const [myPhoto, setMyPhoto] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const [cOpen, setCOpen] = useState<string | null>(null);
   const [cList, setCList] = useState<Cm[]>([]);
@@ -112,6 +125,7 @@ export default function PostFeedPage() {
       setItems(ordered);
       setCur(Math.max(0, ordered.findIndex((p) => p.id === startId)));
       setMeId(r.meId as string);
+      supabase.from("users").select("photo_url").eq("id", r.meId).maybeSingle().then(({ data: me }) => setMyPhoto((me?.photo_url as string) ?? null));
     })();
   }, [startId, router]);
 
@@ -186,7 +200,7 @@ export default function PostFeedPage() {
     setCOpen(id);
     const { data } = await supabase
       .from("media_comments")
-      .select("id, body, created_at, users(first_name)")
+      .select("id, body, created_at, users(first_name, photo_url, nick)")
       .eq("post_id", id)
       .order("created_at", { ascending: true });
     setCList((data as unknown as Cm[]) ?? []);
@@ -209,32 +223,8 @@ export default function PostFeedPage() {
     } else flash("Не получилось. Попробуйте ещё раз.");
   }
 
-  async function report(p: P) {
-    setMenuFor(null);
-    const r = await apiPost("/api/reports/create", { postId: p.id, reason: "other" });
-    flash(r?.ok ? "Жалоба отправлена" : "Не получилось отправить");
-  }
-
-  async function share(p: P) {
-    const url = `${window.location.origin}/post/${p.id}`;
-    if (navigator.share) navigator.share({ title: "VETOKS", url }).catch(() => {});
-    else {
-      try {
-        await navigator.clipboard.writeText(url);
-        flash("Ссылка скопирована");
-      } catch {
-        flash(url);
-      }
-    }
-  }
-
   if (missing) return <main className="min-h-screen flex items-center justify-center text-muted">Публикация не найдена.</main>;
   if (!items) return <LoadingScreen />;
-
-  const total = items.length;
-  // Точки: не больше семи, вокруг текущей.
-  const dotStart = Math.max(0, Math.min(cur - 3, total - 7));
-  const dots = Array.from({ length: Math.min(7, total) }, (_, k) => dotStart + k);
 
   return (
     <main className="fixed inset-0 bg-bgPrimary overflow-hidden">
@@ -248,14 +238,6 @@ export default function PostFeedPage() {
           ←
         </button>
         <p className="text-offwhite font-semibold flex-1">Публикации</p>
-        <span className="text-offwhite/80 text-xs">
-          {cur + 1} / {total}
-        </span>
-        <div className="flex items-center gap-1">
-          {dots.map((k) => (
-            <i key={k} className={`block h-1.5 rounded-full ${k === cur ? "w-4 bg-goldSoft" : "w-1.5 bg-white/30"}`} />
-          ))}
-        </div>
       </div>
 
       <div
@@ -295,27 +277,23 @@ export default function PostFeedPage() {
                   {p.authorSub && <span className="block text-offwhite/70 text-xs truncate">{p.authorSub}</span>}
                 </span>
               </Link>
-              <button onClick={() => setMenuFor(menuFor === p.id ? null : p.id)} className="text-offwhite text-2xl leading-none px-2" aria-label="Меню">
-                ⋯
-              </button>
+              {!p.mine && (
+                <button onClick={() => setMenuFor(menuFor === p.id ? null : p.id)} className="text-offwhite text-2xl leading-none px-2" aria-label="Меню">
+                  ⋯
+                </button>
+              )}
             </div>
-            {menuFor === p.id && (
+            {menuFor === p.id && !p.mine && (
               <div className="relative z-20 pb-2">
-                {p.mine ? (
-                  <button
-                    onClick={() => {
-                      setMenuFor(null);
-                      setTagFor(p.id);
-                    }}
-                    className="text-offwhite text-sm border border-white/40 rounded-full px-4 py-1.5 bg-black/50"
-                  >
-                    Отметить человека
-                  </button>
-                ) : (
-                  <button onClick={() => report(p)} className="text-danger text-sm border border-danger rounded-full px-4 py-1.5 bg-black/50">
-                    Пожаловаться
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    setMenuFor(null);
+                    setReportFor(p.id);
+                  }}
+                  className="text-danger text-sm border border-danger rounded-full px-4 py-1.5 bg-black/50"
+                >
+                  Пожаловаться
+                </button>
               </div>
             )}
 
@@ -375,8 +353,7 @@ export default function PostFeedPage() {
                   {p.reposted ? "В репостах" : "Репост"}
                 </button>
               )}
-              {p.mine && <PostRepostTag postId={p.id} ownerUserId={p.ownerUserId} meId={meId} noButton externalOpen={tagFor === p.id} onExternalClose={() => setTagFor(null)} />}
-              <button onClick={() => share(p)} aria-label="Поделиться">
+              <button onClick={() => setShareFor(p)} aria-label="Поделиться">
                 <Send />
               </button>
             </div>
@@ -403,41 +380,78 @@ export default function PostFeedPage() {
       </div>
 
       {cOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-end" onClick={() => setCOpen(null)}>
+        <div className="fixed inset-0 z-50" onClick={() => setCOpen(null)}>
           <div
-            className="bg-bgSurface w-full max-w-md mx-auto max-h-[75vh] rounded-t-2xl p-4 flex flex-col"
-            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
+            className="absolute left-0 right-0 bottom-0 bg-bgSurface w-full max-w-md mx-auto rounded-t-3xl flex flex-col shadow-[0_-8px_30px_rgba(0,0,0,.5)]"
+            style={{ height: "62dvh", paddingBottom: "env(safe-area-inset-bottom)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-offwhite font-semibold">Комментарии</span>
-              <button onClick={() => setCOpen(null)} className="text-muted text-xl" aria-label="Закрыть">
-                ✕
-              </button>
+            <div className="flex justify-center pt-2.5">
+              <span className="w-10 h-1 rounded-full bg-white/25" />
             </div>
-            <div className="overflow-y-auto flex flex-col gap-3 mb-3">
-              {cList.length === 0 && <p className="text-muted text-sm text-center py-4">Комментариев пока нет.</p>}
-              {cList.map((c) => (
-                <p key={c.id} className="text-offwhite text-sm">
-                  <b className="mr-1.5">{(Array.isArray(c.users) ? c.users[0]?.first_name : c.users?.first_name) ?? "Гость"}</b>
-                  {c.body}
-                </p>
-              ))}
+            <p className="text-offwhite font-semibold text-center py-3 border-b border-muted/30">Комментарии</p>
+            <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-4">
+              {cList.length === 0 && (
+                <div className="text-center py-10">
+                  <p className="text-offwhite font-semibold">Комментариев пока нет</p>
+                  <p className="text-muted text-sm mt-1">Начните разговор.</p>
+                </div>
+              )}
+              {cList.map((c) => {
+                const u = cu(c);
+                const nm = u?.nick || u?.first_name || "Гость";
+                return (
+                  <div key={c.id} className="flex gap-3">
+                    <span
+                      className="w-8 h-8 rounded-full flex-none bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center flex items-center justify-center text-white text-xs font-semibold"
+                      style={u?.photo_url ? { backgroundImage: `url(${u.photo_url})` } : undefined}
+                    >
+                      {!u?.photo_url && nm.slice(0, 1).toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-offwhite text-sm leading-snug break-words">
+                        <b className="mr-1.5">{nm}</b>
+                        <span className="text-muted text-xs">{ago(c.created_at)}</span>
+                      </p>
+                      <p className="text-offwhite text-sm leading-snug break-words">{c.body}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex gap-2">
-              <input
-                value={cText}
-                onChange={(e) => setCText(e.target.value)}
-                placeholder="Ваш комментарий"
-                className="flex-1 bg-bgPrimary text-offwhite border border-muted rounded-full px-4 py-2 text-sm"
-              />
-              <button onClick={sendComment} className="bg-gold text-bgPrimary font-semibold rounded-full px-4 text-sm">
-                Отправить
-              </button>
+            <div className="border-t border-muted/30 px-4 pt-2.5 pb-2">
+              <div className="flex justify-between mb-2.5">
+                {EMOJIS.map((e) => (
+                  <button key={e} onClick={() => setCText((t) => t + e)} className="text-2xl leading-none">
+                    {e}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="w-8 h-8 rounded-full flex-none bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center"
+                  style={myPhoto ? { backgroundImage: `url(${myPhoto})` } : undefined}
+                />
+                <div className="flex-1 flex items-center bg-bgPrimary border border-muted rounded-full pl-4 pr-1.5">
+                  <input
+                    value={cText}
+                    onChange={(e) => setCText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && sendComment()}
+                    placeholder="Добавьте комментарий..."
+                    className="flex-1 bg-transparent text-offwhite py-2 text-sm outline-none min-w-0"
+                  />
+                  <button onClick={sendComment} disabled={!cText.trim()} className="text-gold font-semibold text-sm px-3 disabled:opacity-40">
+                    Отпр.
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      <ReportSheet open={!!reportFor} onClose={() => setReportFor(null)} target={{ type: "post", postId: reportFor ?? "" }} />
+      <ShareSheet open={!!shareFor} onClose={() => setShareFor(null)} postId={shareFor?.id ?? ""} caption={shareFor?.caption} />
 
       {toast && (
         <div className="fixed left-1/2 -translate-x-1/2 bottom-28 z-[60] bg-bgSurface border border-gold text-gold text-sm px-4 py-2 rounded-full">{toast}</div>

@@ -18,7 +18,9 @@ export async function POST(req: Request) {
 
   const b = await req.json().catch(() => ({}));
   const to = String(b.toUserId || "");
-  const text = String(b.body || "").trim().slice(0, 2000);
+  const postId = b.postId ? String(b.postId) : "";
+  const isPost = !!postId;
+  const text = isPost ? "📷 Публикация" : String(b.body || "").trim().slice(0, 2000);
   if (!to || to === uid || !text) return bad("bad_request");
 
   const { data: target } = await supabaseAdmin
@@ -60,7 +62,7 @@ export async function POST(req: Request) {
         .eq("accepted", false)
         .gte("last_at", sinceDay);
       if ((openReq ?? 0) >= DAILY_NEW_REQUESTS) return bad("too_many_requests", 429);
-      if (CONTACT_RE.test(text)) return bad("no_contacts_in_request", 400);
+      if (!isPost && CONTACT_RE.test(text)) return bad("no_contacts_in_request", 400);
     }
     const [x, y] = pairOrder(uid, to);
     const { data: created, error } = await supabaseAdmin
@@ -86,7 +88,7 @@ export async function POST(req: Request) {
         .eq("thread_id", thread.id)
         .eq("sender_id", uid);
       if ((count ?? 0) >= REQUEST_LIMIT) return bad("request_limit", 429);
-      if (CONTACT_RE.test(text)) return bad("no_contacts_in_request", 400);
+      if (!isPost && CONTACT_RE.test(text)) return bad("no_contacts_in_request", 400);
     }
   }
 
@@ -100,7 +102,7 @@ export async function POST(req: Request) {
 
   const { error: mErr } = await supabaseAdmin
     .from("dm_messages")
-    .insert({ thread_id: thread!.id, sender_id: uid, body: text, kind: "text" });
+    .insert(isPost ? { thread_id: thread!.id, sender_id: uid, body: text, kind: "post", meta: { postId } } : { thread_id: thread!.id, sender_id: uid, body: text, kind: "text" });
   if (mErr) return bad("server", 500, { detail: mErr.message });
 
   await supabaseAdmin

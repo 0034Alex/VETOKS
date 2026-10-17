@@ -10,9 +10,15 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const messageId = String(body.messageId ?? "");
   if (!messageId) return bad("no_message");
-  const { error } = await supabaseAdmin
+  const reason = String(body.reason ?? "other").slice(0, 20);
+  const details = String(body.details ?? "").slice(0, 500);
+  let { error } = await supabaseAdmin
     .from("clan_reports")
-    .insert({ message_id: messageId, reporter_id: uid });
+    .insert({ message_id: messageId, reporter_id: uid, reason, details });
+  // Если колонок причины в базе ещё нет — сохраняем жалобу без них.
+  if (error && /reason|details|column/i.test(String(error.message))) {
+    ({ error } = await supabaseAdmin.from("clan_reports").insert({ message_id: messageId, reporter_id: uid }));
+  }
   if (error && !String(error.message).includes("duplicate")) return bad("failed", 500);
   return NextResponse.json({ ok: true });
 }

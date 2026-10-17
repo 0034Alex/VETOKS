@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import { apiPost } from "@/lib/authClient";
+import ReportSheet from "@/components/ReportSheet";
 
 type Message = {
   id: string;
@@ -27,6 +28,7 @@ export default function RegionClanPage() {
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState("");
   const [reported, setReported] = useState<Set<string>>(new Set());
+  const [reportFor, setReportFor] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   async function load(regionId: string) {
@@ -99,10 +101,8 @@ export default function RegionClanPage() {
     setSending(false);
   }
 
-  async function report(id: string) {
-    if (!confirm("Пожаловаться на это сообщение?")) return;
-    await apiPost("/api/clan/report", { messageId: id });
-    setReported((s) => new Set(s).add(id));
+  function report(id: string) {
+    setReportFor(id);
   }
 
   if (loading) {
@@ -202,6 +202,14 @@ export default function RegionClanPage() {
           </button>
         </div>
       </div>
+      <ReportSheet
+        open={!!reportFor}
+        onClose={() => {
+          if (reportFor) setReported((x) => new Set(x).add(reportFor));
+          setReportFor(null);
+        }}
+        target={{ type: "clan", messageId: reportFor ?? "" }}
+      />
       <BottomNav />
     </main>
   );

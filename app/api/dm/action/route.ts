@@ -5,7 +5,7 @@ import { findThread } from "@/lib/dmServer";
 
 export const dynamic = "force-dynamic";
 
-const REASONS = ["spam", "insult", "scam", "nudity", "other"];
+const REASONS = ["spam", "insult", "scam", "nudity", "violence", "hate", "fake", "minor", "illegal", "selfharm", "ip", "other"];
 
 // Действия с чатом: принять запрос, удалить запрос, заблокировать, разблокировать, пожаловаться.
 export async function POST(req: Request) {
