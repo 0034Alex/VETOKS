@@ -5,7 +5,7 @@ import { newToken } from "@/lib/authServer";
 
 export const dynamic = "force-dynamic";
 
-const PERM_KEYS = ["moderation", "finance", "partners", "staff", "support"];
+const PERM_KEYS = ["today", "people", "contest", "content", "mod", "money", "ads", "set"];
 const ROLES = ["moderator", "finance_admin"];
 
 // Приглашения сотрудников. Только владелец.

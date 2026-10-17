@@ -5,11 +5,14 @@ import { apiPost } from "@/lib/authClient";
 import { supabase } from "@/lib/supabaseClient";
 
 const AREAS = [
-  { key: "moderation", label: "Модерация и люди" },
-  { key: "finance", label: "Финансы" },
-  { key: "partners", label: "Реклама и партнёры" },
-  { key: "support", label: "Поддержка и документы" },
-  { key: "staff", label: "Персонал и пользователи" },
+  { key: "today", label: "🏠 Сегодня (дашборд, поддержка)" },
+  { key: "people", label: "👥 Люди" },
+  { key: "contest", label: "👑 Конкурс" },
+  { key: "content", label: "🎬 Контент" },
+  { key: "mod", label: "🛡 Модерация" },
+  { key: "money", label: "💰 Деньги" },
+  { key: "ads", label: "📣 Реклама и партнёры" },
+  { key: "set", label: "⚙️ Настройки и персонал" },
 ];
 
 type Inv = { id: string; token: string; email: string; name: string | null; role: string; permissions: Record<string, string>; countries: string[] | null; created_at: string; expires_at: string; used_at: string | null; revoked: boolean };

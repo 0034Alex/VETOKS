@@ -116,74 +116,69 @@ const PERMISSION_TABS: Record<string, Tab[]> = {
   support: ["support", "documents"],
 };
 
-// Группировка вкладок в разделы — чтобы боковое меню не было одним длинным
-// списком. Вкладка, попавшая в группу, в общем экране больше не
-// показывается отдельным квадратом — только внутри своей группы.
-const TAB_GROUPS: { key: string; label: string; tabs: Tab[] }[] = [
-  { key: "users-group", label: "Пользователи", tabs: ["users", "staff", "action-log", "participants", "applications"] },
-  {
-    key: "ads-group",
-    label: "Реклама",
-    tabs: ["partner-logos", "ad-stats", "ad-prices", "ad-space", "banners", "magazine-ads", "branding"],
-  },
+// Меню CRM: 8 групп по задачам. Каждая группа — набор вкладок.
+type Level = "r" | "w";
+const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: Tab[] }[] = [
+  { key: "today", ic: "🏠", label: "Сегодня", desc: "Что требует действия прямо сейчас", tabs: ["dashboard", "support"] },
+  { key: "people", ic: "👥", label: "Люди", desc: "Все, кто есть в приложении", tabs: ["users", "participants", "applications", "badges", "black-marks"] },
+  { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["stages", "rating-admin", "goal", "tasks", "cards"] },
+  { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "media-demo-upload", "home-settings", "banners"] },
+  { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["reports", "clan"] },
+  { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["app-prices", "referrals"] },
+  { key: "ads", ic: "📣", label: "Реклама и партнёры", desc: "Всё, что приносит доход от партнёров", tabs: ["partners", "partner-logos", "ad-space", "ad-prices", "ad-stats", "magazine-ads", "branding"] },
+  { key: "set", ic: "⚙️", label: "Настройки", desc: "Страны, языки, доступы", tabs: ["countries", "translations", "social", "documents", "staff", "action-log"] },
 ];
 
-const GROUPED_TAB_KEYS = new Set(TAB_GROUPS.flatMap((g) => g.tabs));
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: "Владелец",
+  moderator: "Модератор",
+  finance_admin: "Финансист",
+};
 
-// Обычный список меню, только вместо отдельных пунктов групп — одна
-// строка «Пользователи» и одна строка «Реклама», открывающие окно с
-// квадратиками при клике.
-const NAV_LIST: (
-  | { type: "tab"; key: Tab; label: string }
-  | { type: "group"; key: string; label: string }
-)[] = [
-  { type: "tab", key: "dashboard", label: "Дашборд" },
-  { type: "tab", key: "countries", label: "Страны и регионы" },
-  { type: "tab", key: "app-prices", label: "Цены (в долларах)" },
-  { type: "tab", key: "home-settings", label: "Главная" },
-  { type: "tab", key: "rating-admin", label: "Рейтинг и титулы" },
-  { type: "tab", key: "reports", label: "Жалобы" },
-  { type: "tab", key: "clan", label: "Чат кланов" },
-  { type: "tab", key: "referrals", label: "Рефералы" },
-  { type: "tab", key: "badges", label: "Галочки и статусы" },
-  { type: "tab", key: "translations", label: "Переводы" },
-  { type: "group", key: "users-group", label: "Пользователи" },
-  { type: "tab", key: "partners", label: "Партнёры" },
-  { type: "group", key: "ads-group", label: "Реклама" },
-  { type: "tab", key: "support", label: "Поддержка" },
-  { type: "tab", key: "cards", label: "Карточки" },
-  { type: "tab", key: "goal", label: "Цель недели" },
-  { type: "tab", key: "stages", label: "Этапы сезона" },
-  { type: "tab", key: "documents", label: "Документы" },
-  { type: "tab", key: "calendar", label: "Календарь контента" },
-  { type: "tab", key: "social", label: "Соцсети" },
-  { type: "tab", key: "media", label: "Материалы" },
-  { type: "tab", key: "media-demo-upload", label: "Демо-ролики" },
-  { type: "tab", key: "tasks", label: "Задания" },
-  { type: "tab", key: "black-marks", label: "Чёрная метка" },
-];
-
-function getAllowedTabs(user: CurrentUser): Tab[] {
-  if (user.role === "super_admin") return TABS.map((t) => t.key);
-  const perms = user.permissions ?? {};
-  const allowed = new Set<Tab>();
+// Что человеку можно: по каждой вкладке «только смотреть» или «смотреть и менять».
+// Владелец — всё. Новые права хранятся по группам, старые (галочки) — как раньше.
+function computeAccess(user: CurrentUser): Partial<Record<Tab, Level>> {
+  const out: Partial<Record<Tab, Level>> = {};
+  const give = (t: Tab, l: Level) => {
+    if (out[t] !== "w") out[t] = l;
+  };
+  if (user.role === "super_admin") {
+    TABS.forEach((t) => give(t.key, "w"));
+    return out;
+  }
+  const perms = (user.permissions ?? {}) as Record<string, unknown>;
   Object.entries(perms).forEach(([key, value]) => {
-    if (value && PERMISSION_TABS[key]) {
-      PERMISSION_TABS[key].forEach((t) => allowed.add(t));
-    }
+    if (!value) return;
+    const level: Level = value === "r" ? "r" : "w";
+    const group = CRM_GROUPS.find((g) => g.key === key);
+    if (group) group.tabs.forEach((t) => give(t, level));
+    else if (PERMISSION_TABS[key]) PERMISSION_TABS[key].forEach((t) => give(t, level));
   });
-  return [...allowed];
+  return out;
 }
 
 // Страна, с которой сейчас работает CRM: баннеры, тексты, партнёры и цены
 // ниже сохраняются и показываются именно для неё.
-function CrmCountrySwitch() {
+function CrmCountrySwitch({ allowedIds }: { allowedIds: string[] | null }) {
   const [list, setList] = useState<{ id: string; name: string }[]>([]);
   const [val, setVal] = useState("");
   useEffect(() => {
-    setVal(getCrmCountry());
-    supabase.from("countries").select("id, name").order("name").then(({ data }) => setList((data as any) ?? []));
-  }, []);
+    let cur = getCrmCountry();
+    supabase.from("countries").select("id, name").order("name").then(({ data }) => {
+      const all = ((data as any) ?? []) as { id: string; name: string }[];
+      const shown = allowedIds ? all.filter((c) => allowedIds.includes(c.id)) : all;
+      setList(shown);
+      if (allowedIds && shown.length > 0 && !shown.some((c) => c.id === cur)) {
+        cur = shown[0].id;
+        setCrmCountry(cur);
+        window.location.reload();
+      }
+      setVal(cur);
+    });
+  }, [allowedIds]);
+  if (allowedIds && list.length <= 1) {
+    return <span className="ml-auto text-xs text-gold border border-gold/60 rounded-lg px-2 py-1.5">{list[0]?.name ?? "—"}</span>;
+  }
   return (
     <select
       value={val}
@@ -195,7 +190,7 @@ function CrmCountrySwitch() {
       className="ml-auto bg-bgPrimary border border-gold/60 text-gold rounded-lg px-2 py-1.5 text-xs max-w-[45%]"
       aria-label="Страна CRM"
     >
-      <option value="">🌐 Общие (все страны)</option>
+      {!allowedIds && <option value="">🌐 Общие (все страны)</option>}
       {list.map((c) => (
         <option key={c.id} value={c.id}>{c.name}</option>
       ))}
@@ -207,11 +202,18 @@ export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeGroup, setActiveGroup] = useState<string | null>(null);
+  const [group, setGroup] = useState<string>("today");
   const [checking, setChecking] = useState(true);
   const [allowed, setAllowed] = useState(false);
   const [me, setMe] = useState<CurrentUser | null>(null);
-  const [allowedTabs, setAllowedTabs] = useState<Tab[]>([]);
+  function go(t: Tab) {
+    const g = CRM_GROUPS.find((x) => x.tabs.includes(t));
+    if (g) setGroup(g.key);
+    setTab(t);
+    setMenuOpen(false);
+  }
+  const [access, setAccess] = useState<Partial<Record<Tab, Level>>>({});
+  const allowedTabs = Object.keys(access) as Tab[];
 
   useEffect(() => {
     (async () => {
@@ -224,9 +226,13 @@ export default function AdminPage() {
       const staffOk = isStaff(u);
       setAllowed(staffOk);
       if (staffOk) {
-        const tabs = getAllowedTabs(u);
-        setAllowedTabs(tabs);
-        if (tabs.length > 0) setTab(tabs[0]);
+        const acc = computeAccess(u);
+        setAccess(acc);
+        const firstGroup = CRM_GROUPS.find((g) => g.tabs.some((t) => acc[t]));
+        if (firstGroup) {
+          setGroup(firstGroup.key);
+          setTab(firstGroup.tabs.find((t) => acc[t])!);
+        }
       }
       setChecking(false);
     })();
@@ -268,136 +274,98 @@ export default function AdminPage() {
     );
   }
 
+  const visibleGroups = CRM_GROUPS.filter((g) => g.tabs.some((t) => access[t]));
+  const curGroup = CRM_GROUPS.find((g) => g.key === group) ?? visibleGroups[0];
+  const roleLabel = ROLE_LABELS[me?.role ?? ""] ?? "Сотрудник";
+  const readOnly = access[tab] === "r";
+  const menu = (
+    <nav className="flex flex-col gap-1">
+      {visibleGroups.map((g) => {
+        const allRead = g.tabs.filter((t) => access[t]).every((t) => access[t] === "r");
+        return (
+          <button
+            key={g.key}
+            onClick={() => {
+              setGroup(g.key);
+              setTab(g.tabs.find((t) => access[t])!);
+              setMenuOpen(false);
+            }}
+            className={`flex items-center gap-3 text-left px-3 py-2.5 rounded-xl text-sm ${
+              g.key === curGroup?.key ? "bg-bgPrimary text-gold font-semibold shadow-[inset_3px_0_0_#E8D48A]" : "text-offwhite hover:bg-bgPrimary"
+            }`}
+          >
+            <span className="w-5 text-center">{g.ic}</span>
+            <span className="flex-1">{g.label}</span>
+            {allRead && <span className="text-muted text-xs">👁</span>}
+          </button>
+        );
+      })}
+    </nav>
+  );
+
   return (
     <main className="min-h-screen bg-bgPrimary text-offwhite">
       <div
         className="flex items-center gap-3 px-4 py-4 border-b border-muted"
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
       >
-        <button
-          onClick={() => setMenuOpen(true)}
-          className="text-2xl text-gold leading-none"
-          aria-label="Открыть меню"
-        >
+        <button onClick={() => setMenuOpen(true)} className="md:hidden text-2xl text-gold leading-none" aria-label="Открыть меню">
           ☰
         </button>
         <h1 className="text-xl font-semibold text-gold">VETOKS CRM</h1>
-        <CrmCountrySwitch />
+        <span className="text-xs border border-gold/60 text-gold rounded-full px-2.5 py-1 whitespace-nowrap" title={me?.email ?? ""}>
+          {roleLabel}
+        </span>
+        <CrmCountrySwitch allowedIds={me?.role === "super_admin" ? null : Array.isArray(me?.staff_countries) ? (me!.staff_countries as string[]) : null} />
       </div>
 
       {menuOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 z-40"
-          onClick={() => setMenuOpen(false)}
-        >
+        <div className="md:hidden fixed inset-0 bg-black/60 z-40" onClick={() => setMenuOpen(false)}>
           <div
-            className="bg-bgSurface w-72 h-full p-4 flex flex-col gap-1 overflow-y-auto"
+            className="bg-bgSurface w-72 h-full p-4 overflow-y-auto"
             style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
               <span className="text-gold font-semibold">Разделы</span>
-              <button
-                onClick={() => setMenuOpen(false)}
-                className="text-muted text-xl leading-none"
-              >
+              <button onClick={() => setMenuOpen(false)} className="text-muted text-xl leading-none">
                 ✕
               </button>
             </div>
-
-            {NAV_LIST.filter((item) =>
-              item.type === "tab"
-                ? allowedTabs.includes(item.key)
-                : TAB_GROUPS.find((g) => g.key === item.key)?.tabs.some((t) =>
-                    allowedTabs.includes(t)
-                  )
-            ).map((item) =>
-              item.type === "tab" ? (
-                <button
-                  key={item.key}
-                  onClick={() => {
-                    setTab(item.key);
-                    setMenuOpen(false);
-                  }}
-                  className={`text-left px-4 py-3 rounded-lg text-sm ${
-                    tab === item.key
-                      ? "bg-gold text-bgPrimary font-semibold"
-                      : "text-offwhite hover:bg-bgPrimary"
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ) : (
-                <button
-                  key={item.key}
-                  onClick={() => {
-                    setActiveGroup(item.key);
-                    setMenuOpen(false);
-                  }}
-                  className={`text-left px-4 py-3 rounded-lg text-sm flex items-center justify-between ${
-                    TAB_GROUPS.find((g) => g.key === item.key)?.tabs.includes(tab)
-                      ? "bg-gold text-bgPrimary font-semibold"
-                      : "text-offwhite hover:bg-bgPrimary"
-                  }`}
-                >
-                  {item.label}
-                  <span className="text-xs">▦</span>
-                </button>
-              )
-            )}
+            {menu}
           </div>
         </div>
       )}
 
-      {activeGroup && (
-        <div
-          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-6"
-          onClick={() => setActiveGroup(null)}
-        >
-          <div
-            className="bg-bgSurface border border-gold/40 rounded-2xl p-5 w-full max-w-xs"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-gold font-semibold">
-                {TAB_GROUPS.find((g) => g.key === activeGroup)?.label}
-              </span>
-              <button
-                onClick={() => setActiveGroup(null)}
-                className="text-muted text-xl leading-none"
-              >
-                ✕
-              </button>
+      <div className="md:flex md:gap-6 md:px-6 md:py-6">
+        <aside className="hidden md:block w-60 flex-none self-start sticky top-4 bg-bgSurface border border-muted rounded-2xl p-3">{menu}</aside>
+        <div className="flex-1 min-w-0 px-4 md:px-0 py-6 pb-20">
+          {curGroup && (
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-offwhite">{curGroup.ic} {curGroup.label}</h2>
+              <p className="text-muted text-sm mb-3">{curGroup.desc}</p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {curGroup.tabs.filter((t) => access[t]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTab(t)}
+                    className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm border ${
+                      tab === t ? "bg-gold text-bgPrimary border-gold font-semibold" : "bg-bgSurface border-muted text-offwhite"
+                    }`}
+                  >
+                    {TABS.find((x) => x.key === t)?.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {TAB_GROUPS.find((g) => g.key === activeGroup)
-                ?.tabs.filter((t) => allowedTabs.includes(t))
-                .map((tKey) => {
-                  const t = TABS.find((x) => x.key === tKey)!;
-                  return (
-                    <button
-                      key={t.key}
-                      onClick={() => {
-                        setTab(t.key);
-                        setActiveGroup(null);
-                      }}
-                      className={`aspect-square rounded-xl flex items-center justify-center text-center p-2 text-sm font-semibold ${
-                        tab === t.key
-                          ? "bg-gold text-bgPrimary"
-                          : "bg-bgPrimary border border-muted text-offwhite"
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  );
-                })}
+          )}
+          {readOnly && (
+            <div className="mb-4 border border-yellow-600/60 bg-yellow-500/10 text-yellow-500 rounded-xl px-3 py-2 text-sm">
+              👁 Здесь у вас доступ «только смотреть»: изменить данные нельзя.
             </div>
-          </div>
-        </div>
-      )}
-
-      <div className="px-4 md:px-8 py-6 pb-20">
-        {tab === "dashboard" && <AdminDashboard onGo={(k) => setTab(k as Tab)} />}
+          )}
+          <fieldset disabled={readOnly} className="min-w-0 border-0 p-0 m-0">
+        {tab === "dashboard" && <AdminDashboard onGo={(k) => go(k as Tab)} />}
         {tab === "applications" && <Applications />}
         {tab === "participants" && <ParticipantsTab />}
         {tab === "users" && <AdminPeoplePanel />}
@@ -431,6 +399,8 @@ export default function AdminPage() {
         {tab === "calendar" && <CalendarTab />}
         {tab === "social" && <SocialLinksTab />}
         {tab === "media" && <MediaMaterialsTab />}
+          </fieldset>
+        </div>
       </div>
     </main>
   );
