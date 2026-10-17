@@ -144,7 +144,6 @@ export default function ProfileHero({
               <path d="M8 12.2l2.8 2.8L16.2 9.6" fill="none" stroke="#1a1405" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
   );
-  const initial = (name || "?").trim().slice(0, 1).toUpperCase();
   return (
     <div>
       <div className="relative overflow-hidden" style={{ height: "min(640px, 150vw)", minHeight: 520 }}>
@@ -153,22 +152,24 @@ export default function ProfileHero({
           <img src={photoUrl} alt={name} className="absolute inset-0 w-full h-full object-cover" />
         ) : (
           <div
-            className="absolute inset-0 flex flex-col items-center px-6 text-center"
+            className="absolute inset-0 flex justify-center"
             style={{
-              paddingTop: 190,
+              paddingTop: 110,
               background: "linear-gradient(170deg,#4b2a8f 0%,#b0306f 48%,#d98a2b 100%)",
             }}
           >
-            <span
-              className="w-24 h-24 rounded-full bg-white/15 border border-white/25 flex items-center justify-center font-serif text-white/80"
-              style={{ fontSize: 48, lineHeight: 1 }}
-            >
-              {initial}
-            </span>
-            <span className="mt-4 flex items-center justify-center gap-2 font-serif text-white/90 text-3xl leading-tight break-words max-w-full">
-              {name}
-              {verified && VerifiedMark}
-            </span>
+            <svg viewBox="0 0 200 250" aria-hidden style={{ width: "62%", maxWidth: 300, height: "auto" }}>
+              <defs>
+                <radialGradient id="pfSil" cx=".5" cy=".4" r=".6">
+                  <stop offset="0" stopColor="#fff" stopOpacity=".35" />
+                  <stop offset="1" stopColor="#fff" stopOpacity=".08" />
+                </radialGradient>
+              </defs>
+              <g fill="url(#pfSil)" stroke="rgba(255,255,255,.35)" strokeWidth="1.5">
+                <path d="M22 250 C22 180 60 150 100 150 C140 150 178 180 178 250 Z" />
+                <circle cx="100" cy="82" r="36" />
+              </g>
+            </svg>
           </div>
         )}
         <div
@@ -216,8 +217,8 @@ export default function ProfileHero({
             </span>
           )}
           <h1 className="mt-3 flex items-center gap-2.5 flex-wrap font-serif text-[34px] leading-[1.1] text-offwhite">
-            {photoUrl && <span>{name}</span>}
-            {verified && photoUrl && VerifiedMark}
+            <span>{name}</span>
+            {verified && VerifiedMark}
           </h1>
           {handle && <p className="mt-2 text-[15px] text-[#c9c9ce]">{handle}</p>}
           {city && (
