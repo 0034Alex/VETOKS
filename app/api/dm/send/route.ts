@@ -7,6 +7,10 @@ import { blockState, findThread, pairOrder, recipientFollowsSender } from "@/lib
 export const dynamic = "force-dynamic";
 
 const REQUEST_LIMIT = 3; // сколько сообщений можно отправить, пока запрос не принят
+const DAILY_NEW_REQUESTS = 15; // сколько новых людей можно «потревожить» за сутки
+const DECLINE_DAYS = 30; // сколько дней нельзя писать тому, кто отклонил запрос
+// Ссылки, телефоны и @ники — только после того, как запрос принят.
+const CONTACT_RE = /(https?:\/\/|www\.|t\.me\/|[a-z0-9-]+\.(com|ua|ru|me|net|org|io|app)\b|@[a-z0-9_]{4,}|\+?\d[\d\s().-]{8,}\d)/i;
 
 export async function POST(req: Request) {
   const uid = await requireUser(req);
@@ -30,11 +34,34 @@ export async function POST(req: Request) {
   if (bs.blockedByMe) return bad("you_blocked", 403);
   if (bs.blockedMe) return bad("cant_send", 403);
 
+  // Отклонил запрос — какое-то время писать ему нельзя (человеку это не показываем как отказ).
+  const since30 = new Date(Date.now() - DECLINE_DAYS * 86400_000).toISOString();
+  const { data: dec } = await supabaseAdmin
+    .from("dm_declines")
+    .select("sender_id")
+    .eq("recipient_id", to)
+    .eq("sender_id", uid)
+    .gte("created_at", since30)
+    .limit(1);
+  if ((dec ?? []).length > 0) return bad("cant_send", 403);
+
   let thread = await findThread(uid, to);
   let firstOfRequest = false;
 
   if (!thread) {
     const auto = await recipientFollowsSender(to, uid);
+    if (!auto) {
+      // Не больше N новых людей в сутки, чтобы не рассылать запросы тысячам.
+      const sinceDay = new Date(Date.now() - 86400_000).toISOString();
+      const { count: openReq } = await supabaseAdmin
+        .from("dm_threads")
+        .select("id", { count: "exact", head: true })
+        .eq("initiator", uid)
+        .eq("accepted", false)
+        .gte("last_at", sinceDay);
+      if ((openReq ?? 0) >= DAILY_NEW_REQUESTS) return bad("too_many_requests", 429);
+      if (CONTACT_RE.test(text)) return bad("no_contacts_in_request", 400);
+    }
     const [x, y] = pairOrder(uid, to);
     const { data: created, error } = await supabaseAdmin
       .from("dm_threads")
@@ -59,6 +86,7 @@ export async function POST(req: Request) {
         .eq("thread_id", thread.id)
         .eq("sender_id", uid);
       if ((count ?? 0) >= REQUEST_LIMIT) return bad("request_limit", 429);
+      if (CONTACT_RE.test(text)) return bad("no_contacts_in_request", 400);
     }
   }
 

@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
   const { data: reps } = await supabaseAdmin
     .from("dm_reports")
-    .select("id, reporter_id, reported_id, thread_id, reason, details, created_at")
+    .select("id, reporter_id, reported_id, thread_id, reason, details, created_at, snapshot")
     .eq("status", "open")
     .order("created_at", { ascending: false })
     .limit(100);
@@ -37,7 +37,9 @@ export async function POST(req: Request) {
       .eq("thread_id", r.thread_id)
       .order("created_at", { ascending: false })
       .limit(15);
-    items.push({ ...r, messages: (msgs ?? []).reverse() });
+    const live = (msgs ?? []).reverse();
+    const snap = Array.isArray((r as any).snapshot) ? (r as any).snapshot : [];
+    items.push({ ...r, messages: live.length ? live : snap });
   }
   const ids = Array.from(new Set(items.flatMap((i) => [i.reporter_id, i.reported_id])));
   const names: Record<string, string> = {};

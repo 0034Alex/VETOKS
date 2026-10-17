@@ -96,11 +96,6 @@ export default function ChatsPage() {
           </p>
         )}
 
-        {isParticipant && (
-          <Link href="/messages" className="block mx-6 mb-3 text-gold text-xs underline">
-            Сообщения от поклонников →
-          </Link>
-        )}
 
         {loading && <LoadingScreen inline />}
         {!loading && list.length === 0 && (

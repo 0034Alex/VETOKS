@@ -312,17 +312,6 @@ export default function ParticipantProfilePage() {
         .maybeSingle();
       setBalance(wallet ? Number(wallet.balance) : 0);
 
-      if (p) {
-        const { data: threadData } = await supabase
-          .from("participant_messages")
-          .select("id, sender_id, body, price, created_at")
-          .eq("participant_id", id)
-          .or(
-            `and(sender_id.eq.${u.id},recipient_id.eq.${(p as Participant).user_id}),and(sender_id.eq.${(p as Participant).user_id},recipient_id.eq.${u.id})`
-          )
-          .order("created_at", { ascending: true });
-        setThread((threadData as ThreadMessage[]) ?? []);
-      }
     }
 
     setLoading(false);
@@ -364,35 +353,6 @@ export default function ParticipantProfilePage() {
     }
     await load();
     setBusy(false);
-  }
-
-  async function sendReplyAsFan() {
-    if (!userId || !participant || !messageText.trim()) return;
-    setBusy(true);
-    const { error } = await supabase.from("participant_messages").insert({
-      sender_id: userId,
-      recipient_id: participant.user_id,
-      participant_id: id,
-      body: messageText,
-      price: 0,
-    });
-    if (error) setNotice(`Ошибка: ${error.message}`);
-    setMessageText("");
-    setBusy(false);
-    await loadThread();
-  }
-
-  async function loadThread() {
-    if (!userId || !participant) return;
-    const { data } = await supabase
-      .from("participant_messages")
-      .select("id, sender_id, body, price, created_at")
-      .eq("participant_id", id)
-      .or(
-        `and(sender_id.eq.${userId},recipient_id.eq.${participant.user_id}),and(sender_id.eq.${participant.user_id},recipient_id.eq.${userId})`
-      )
-      .order("created_at", { ascending: true });
-    setThread((data as ThreadMessage[]) ?? []);
   }
 
   async function share() {
@@ -662,41 +622,6 @@ export default function ParticipantProfilePage() {
             </div>
           )}
 
-
-          {!isOwner && thread.length > 0 && (
-            <div className="bg-bgSurface border border-muted rounded-xl p-4 mb-3">
-              <div className="flex flex-col gap-2 mb-3 max-h-64 overflow-y-auto">
-                {thread.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                      m.sender_id === userId
-                        ? "self-end bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
-                        : "self-start bg-bgPrimary text-offwhite"
-                    }`}
-                  >
-                    {m.body}
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-col gap-2">
-                <textarea
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  rows={2}
-                  placeholder="Ваш ответ..."
-                  className="bg-bgPrimary text-offwhite border border-muted rounded-lg px-3 py-2 text-sm"
-                />
-                <button
-                  onClick={sendReplyAsFan}
-                  disabled={busy || !messageText.trim()}
-                  className="bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
-                >
-                  Отправить
-                </button>
-              </div>
-            </div>
-          )}
 
           <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
             <p className="text-offwhite text-sm font-semibold mb-1">
