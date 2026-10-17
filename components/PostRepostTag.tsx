@@ -13,15 +13,22 @@ export default function PostRepostTag({
   meId,
   compact = false,
   initialReposted = false,
+  noButton = false,
+  externalOpen = false,
+  onExternalClose,
 }: {
   postId: string;
   ownerUserId: string | null;
   meId: string | null;
   compact?: boolean;
   initialReposted?: boolean;
+  noButton?: boolean;
+  externalOpen?: boolean;
+  onExternalClose?: () => void;
 }) {
   const [reposted, setReposted] = useState(initialReposted);
-  const [open, setOpen] = useState(false);
+  const [openLocal, setOpen] = useState(false);
+  const open = openLocal || externalOpen;
   const [q, setQ] = useState("");
   const [found, setFound] = useState<Found[]>([]);
   const [msg, setMsg] = useState("");
@@ -39,6 +46,11 @@ export default function PostRepostTag({
     }, 250);
     return () => clearTimeout(h);
   }, [q, open]);
+
+  function closeModal() {
+    setOpen(false);
+    onExternalClose?.();
+  }
 
   if (!meId || !ownerUserId) return null;
   const isOwner = meId === ownerUserId;
@@ -61,14 +73,14 @@ export default function PostRepostTag({
     const r = await apiPost("/api/profile/tags", { action: "tag", postId, nick });
     if (r?.ok) {
       flash(r.already ? "Этого человека уже отметили." : r.status === "pending" ? "Отправлено на подтверждение." : "Человек отмечен.");
-      setOpen(false);
+      closeModal();
       setQ("");
     } else flash(r?.error === "too_many" ? "Можно отметить не больше 10 человек." : "Не получилось отметить.");
   }
 
   return (
     <>
-      {isOwner ? (
+      {noButton ? null : isOwner ? (
         <button onClick={() => setOpen(true)} className="flex flex-col items-center text-white" aria-label="Отметить человека">
           <IconTagTab size={compact ? 26 : 28} />
           {!compact && <span className="text-[10px] mt-0.5">Отметить</span>}
@@ -85,11 +97,11 @@ export default function PostRepostTag({
       )}
 
       {open && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-end" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end" onClick={closeModal}>
           <div className="bg-bgSurface w-full max-h-[70vh] rounded-t-2xl p-4 flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-3">
               <span className="text-offwhite font-semibold">Отметить человека</span>
-              <button onClick={() => setOpen(false)} className="text-muted text-xl" aria-label="Закрыть">
+              <button onClick={closeModal} className="text-muted text-xl" aria-label="Закрыть">
                 ✕
               </button>
             </div>

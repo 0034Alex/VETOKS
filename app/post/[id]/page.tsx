@@ -8,6 +8,7 @@ import { apiPost } from "@/lib/authClient";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PostRepostTag from "@/components/PostRepostTag";
+import { IconRepost } from "@/components/ProfileIcons";
 
 type P = {
   id: string;
@@ -61,6 +62,7 @@ export default function PostFeedPage() {
   const [missing, setMissing] = useState(false);
   const [cur, setCur] = useState(0);
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [tagFor, setTagFor] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const [cOpen, setCOpen] = useState<string | null>(null);
   const [cList, setCList] = useState<Cm[]>([]);
@@ -198,6 +200,15 @@ export default function PostFeedPage() {
     await openComments(cOpen);
   }
 
+  async function toggleRepost(p: P) {
+    const on = !p.reposted;
+    const r = await apiPost("/api/profile/repost", { postId: p.id, on });
+    if (r?.ok) {
+      setItems((prev) => prev && prev.map((x) => (x.id === p.id ? { ...x, reposted: !!r.on } : x)));
+      flash(r.on ? "Добавлено на вашу страницу, в «Репосты»" : "Репост убран");
+    } else flash("Не получилось. Попробуйте ещё раз.");
+  }
+
   async function report(p: P) {
     setMenuFor(null);
     const r = await apiPost("/api/reports/create", { postId: p.id, reason: "other" });
@@ -284,17 +295,27 @@ export default function PostFeedPage() {
                   {p.authorSub && <span className="block text-offwhite/70 text-xs truncate">{p.authorSub}</span>}
                 </span>
               </Link>
-              {!p.mine && (
-                <button onClick={() => setMenuFor(menuFor === p.id ? null : p.id)} className="text-offwhite text-2xl leading-none px-2" aria-label="Меню">
-                  ⋯
-                </button>
-              )}
+              <button onClick={() => setMenuFor(menuFor === p.id ? null : p.id)} className="text-offwhite text-2xl leading-none px-2" aria-label="Меню">
+                ⋯
+              </button>
             </div>
             {menuFor === p.id && (
               <div className="relative z-20 pb-2">
-                <button onClick={() => report(p)} className="text-danger text-sm border border-danger rounded-full px-4 py-1.5 bg-black/50">
-                  Пожаловаться
-                </button>
+                {p.mine ? (
+                  <button
+                    onClick={() => {
+                      setMenuFor(null);
+                      setTagFor(p.id);
+                    }}
+                    className="text-offwhite text-sm border border-white/40 rounded-full px-4 py-1.5 bg-black/50"
+                  >
+                    Отметить человека
+                  </button>
+                ) : (
+                  <button onClick={() => report(p)} className="text-danger text-sm border border-danger rounded-full px-4 py-1.5 bg-black/50">
+                    Пожаловаться
+                  </button>
+                )}
               </div>
             )}
 
@@ -348,7 +369,13 @@ export default function PostFeedPage() {
                 <Bubble />
                 {p.comments}
               </button>
-              <PostRepostTag postId={p.id} ownerUserId={p.ownerUserId} meId={meId} compact initialReposted={p.reposted} />
+              {!p.mine && (
+                <button onClick={() => toggleRepost(p)} className={`flex items-center gap-1.5 text-[13px] ${p.reposted ? "text-goldSoft" : ""}`} aria-label="Репост на мою страницу">
+                  <IconRepost size={22} />
+                  {p.reposted ? "В репостах" : "Репост"}
+                </button>
+              )}
+              {p.mine && <PostRepostTag postId={p.id} ownerUserId={p.ownerUserId} meId={meId} noButton externalOpen={tagFor === p.id} onExternalClose={() => setTagFor(null)} />}
               <button onClick={() => share(p)} aria-label="Поделиться">
                 <Send />
               </button>
