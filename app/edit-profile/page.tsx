@@ -50,10 +50,11 @@ export default function EditProfilePage() {
 
       const { data: enabledCountries } = await supabase.from("countries").select("id").eq("enabled", true);
       const countryIds = (enabledCountries ?? []).map((c: { id: string }) => c.id);
-      let regionsQuery = supabase.from("regions").select("id, name").order("name", { ascending: true });
+      let regionsQuery = supabase.from("regions").select("id, name, country_id").order("name", { ascending: true });
       if (countryIds.length > 0) regionsQuery = regionsQuery.in("country_id", countryIds);
       const { data: regionsData } = await regionsQuery;
-      setRegions((regionsData as Region[]) ?? []);
+      const allRegions = ((regionsData as (Region & { country_id: string })[]) ?? []);
+      setRegions(allRegions);
 
       const { data: row } = await supabase
         .from("users")
@@ -68,6 +69,9 @@ export default function EditProfilePage() {
         setBio(((row as any).bio as string) ?? "");
         setRegionId(row.region_id ?? "");
         setOrigRegion(row.region_id ?? "");
+        // Выбрать можно только регион своей страны: страну меняет персонал.
+        const myCountry = allRegions.find((r) => r.id === row.region_id)?.country_id;
+        if (myCountry) setRegions(allRegions.filter((r) => r.country_id === myCountry));
         if ((row as any).region_changed_at) {
           const until = new Date(new Date((row as any).region_changed_at).getTime() + 42 * 86400000);
           if (until.getTime() > Date.now()) setLockedUntil(until);

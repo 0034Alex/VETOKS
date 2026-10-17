@@ -428,6 +428,12 @@ export default function ProfilePage() {
         />
 
         <div className="px-5">
+          {user?.region_pending && (
+            <a href="/edit-profile" className="block bg-bgSurface border border-gold rounded-xl px-4 py-3 mt-5">
+              <p className="text-gold text-sm font-semibold">Выберите ваш регион</p>
+              <p className="text-muted text-xs mt-0.5">Вас перенесли в новую страну. Укажите свой регион, чтобы попасть в нужный рейтинг и ленту.</p>
+            </a>
+          )}
           {chatGifts.length > 0 && (
             <div className="bg-bgSurface border border-muted rounded-xl px-4 py-3 mt-5">
               <p className="text-muted text-xs mb-1">Подарки вам в чатах</p>

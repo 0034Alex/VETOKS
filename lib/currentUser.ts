@@ -12,6 +12,7 @@ export type CurrentUser = {
   is_banned: boolean;
   permissions: Record<string, boolean | string> | null;
   staff_countries?: string[] | null;
+  region_pending?: boolean | null;
   regions: { name: string } | null;
 };
 
@@ -23,7 +24,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const { data } = await supabase
     .from("users")
     .select(
-      "id, first_name, phone, phone_verified, email, region_id, referral_code, role, is_banned, permissions, staff_countries, regions(name)"
+      "id, first_name, phone, phone_verified, email, region_id, referral_code, role, is_banned, permissions, staff_countries, region_pending, regions(name)"
     )
     .eq("id", authUser.id)
     .maybeSingle();

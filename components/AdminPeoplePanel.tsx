@@ -16,6 +16,7 @@ const FILTERS: [string, string][] = [
 const ACTION_LABELS: Record<string, string> = {
   ban: "Заблокирован",
   unban: "Разблокирован",
+  change_country: "Перенесён в другую страну",
   hide_from_contest: "Скрыта из конкурса",
   show_in_contest: "Возвращена в конкурс",
 };
@@ -30,6 +31,24 @@ export default function AdminPeoplePanel() {
   const [loading, setLoading] = useState(false);
   const [card, setCard] = useState<any | null>(null);
   const [cardLoading, setCardLoading] = useState(false);
+  const [countries, setCountries] = useState<{ id: string; name: string }[]>([]);
+  const [moveTo, setMoveTo] = useState("");
+  const [moveMsg, setMoveMsg] = useState("");
+
+  useEffect(() => {
+    supabase.from("countries").select("id, name").order("name").then(({ data }) => setCountries((data as any) ?? []));
+  }, []);
+
+  async function moveCountry() {
+    if (!card?.user || !moveTo) return;
+    const name = countries.find((c) => c.id === moveTo)?.name ?? "";
+    if (!confirm(`Перенести этого человека в страну «${name}»? Он исчезнет из текущей страны, а его регион ему придётся выбрать заново.`)) return;
+    const r = await apiPost("/api/admin/user-country", { userId: card.user.id, countryId: moveTo });
+    setMoveMsg(r?.ok ? (r.unchanged ? "Он уже в этой стране." : `Готово: теперь в стране «${r.countryName}».`) : r?.error === "no_regions" ? "В этой стране ещё нет регионов." : r?.error === "forbidden" ? "Нет прав на эту страну." : "Не получилось.");
+    setMoveTo("");
+    await openCard(card.user.id);
+    await search();
+  }
 
   useEffect(() => {
     (getCrmCountry()
@@ -53,6 +72,7 @@ export default function AdminPeoplePanel() {
   async function openCard(id: string) {
     setCardLoading(true);
     setCard({ loading: true });
+    setMoveMsg("");
     const r = await apiPost("/api/admin/people", { action: "card", userId: id });
     setCard(r?.ok ? r : null);
     setCardLoading(false);
@@ -203,6 +223,22 @@ export default function AdminPeoplePanel() {
                       {card.participant.is_eliminated ? "Вернуть в конкурс" : "Скрыть из конкурса"}
                     </button>
                   )}
+                </div>
+
+                <div className="border border-muted rounded-lg p-3 mb-3">
+                  <p className="text-muted text-xs mb-2">Сменить страну (человек и его анкета переедут в базу новой страны)</p>
+                  <div className="flex gap-2">
+                    <select value={moveTo} onChange={(e) => setMoveTo(e.target.value)} className="flex-1 bg-bgPrimary border border-muted rounded-lg px-2 py-1.5 text-sm">
+                      <option value="">— выберите страну —</option>
+                      {countries.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <button onClick={moveCountry} disabled={!moveTo} className="bg-gold text-bgPrimary font-semibold px-3 rounded-lg text-sm disabled:opacity-40">
+                      Перенести
+                    </button>
+                  </div>
+                  {moveMsg && <p className="text-offwhite text-xs mt-2">{moveMsg}</p>}
                 </div>
 
                 {card.log.length > 0 && (
