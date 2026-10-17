@@ -35,6 +35,7 @@ export async function POST(req: Request) {
 
   const { error } = await supabaseAdmin.from("content_posts").insert({
     participant_id: up.participant_id,
+    user_id: uid,
     platform: "vetoks",
     media_type: "video",
     video_url: bunnyPlayUrl(videoId),

@@ -31,8 +31,26 @@ export async function POST(req: Request) {
       .from("participant_follows")
       .select("id", { count: "exact", head: true })
       .eq("user_id", id);
-    following = count ?? 0;
+    const { count: c2 } = await supabaseAdmin
+      .from("user_follows")
+      .select("id", { count: "exact", head: true })
+      .eq("follower_id", id);
+    following = (count ?? 0) + (c2 ?? 0);
   }
+  const { count: followers } = await supabaseAdmin
+    .from("user_follows")
+    .select("id", { count: "exact", head: true })
+    .eq("followed_id", id);
+  const { count: posts } = await supabaseAdmin
+    .from("content_posts")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", id);
+  const { data: fRow } = await supabaseAdmin
+    .from("user_follows")
+    .select("id")
+    .eq("follower_id", me)
+    .eq("followed_id", id)
+    .maybeSingle();
   const links = Array.isArray(u.social_links) ? (u.social_links as unknown[]).filter((x) => typeof x === "string") : [];
   return NextResponse.json({
     ok: true,
@@ -45,6 +63,9 @@ export async function POST(req: Request) {
     nick: (u as any).nick ?? null,
     socials: links,
     following,
+    followers: followers ?? 0,
+    posts: posts ?? 0,
+    isFollowing: !!fRow,
     canWrite: priv.dm !== false,
   });
 }

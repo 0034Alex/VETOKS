@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
+import { apiPost } from "@/lib/authClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 
@@ -13,6 +14,8 @@ type Followed = {
   id: string;
   display_name: string;
   photo_url: string | null;
+  href?: string;
+  userFollow?: boolean;
 };
 
 export default function MyFollowsPage() {
@@ -30,18 +33,31 @@ export default function MyFollowsPage() {
 
     const ids = (followsData ?? []).map((f: { participant_id: string }) => f.participant_id);
 
-    if (ids.length === 0) {
-      setFollows([]);
-      setLoading(false);
-      return;
+    let list: Followed[] = [];
+    if (ids.length > 0) {
+      const { data: participantsData } = await supabase
+        .from("participants")
+        .select("id, display_name, photo_url")
+        .in("id", ids);
+      list = (participantsData as Followed[]) ?? [];
     }
 
-    const { data: participantsData } = await supabase
-      .from("participants")
-      .select("id, display_name, photo_url")
-      .in("id", ids);
-
-    setFollows((participantsData as Followed[]) ?? []);
+    // Обычные люди, на которых подписан.
+    const { data: uf } = await supabase.from("user_follows").select("followed_id").eq("follower_id", uid);
+    const uids = (uf ?? []).map((r: { followed_id: string }) => r.followed_id);
+    if (uids.length > 0) {
+      const { data: us } = await supabase.from("users").select("id, first_name, photo_url").in("id", uids);
+      list = list.concat(
+        (us ?? []).map((x: { id: string; first_name: string | null; photo_url: string | null }) => ({
+          id: x.id,
+          display_name: x.first_name || "Без имени",
+          photo_url: x.photo_url,
+          href: `/u/${x.id}`,
+          userFollow: true,
+        }))
+      );
+    }
+    setFollows(list);
     setLoading(false);
   }
 
@@ -59,11 +75,12 @@ export default function MyFollowsPage() {
 
   async function unfollow(participantId: string) {
     if (!userId) return;
-    await supabase
-      .from("participant_follows")
-      .delete()
-      .eq("participant_id", participantId)
-      .eq("user_id", userId);
+    const item = follows.find((f) => f.id === participantId);
+    if (item?.userFollow) {
+      await apiPost("/api/profile/follow", { userId: participantId, on: false });
+    } else {
+      await supabase.from("participant_follows").delete().eq("participant_id", participantId).eq("user_id", userId);
+    }
     setFollows((prev) => prev.filter((f) => f.id !== participantId));
   }
 
@@ -75,7 +92,7 @@ export default function MyFollowsPage() {
           Мои подписки
         </h1>
         <p className="text-muted text-sm mb-6 px-6">
-          Участницы, на которых вы подписаны.
+          Люди, на которых вы подписаны.
         </p>
 
         {loading && <LoadingScreen inline />}
@@ -92,7 +109,7 @@ export default function MyFollowsPage() {
               key={f.id}
               className="bg-bgSurface border border-muted rounded-xl p-3 flex items-center gap-3"
             >
-              <Link href={`/participant/${f.id}`} className="flex items-center gap-3 flex-1">
+              <Link href={f.href ?? `/participant/${f.id}`} className="flex items-center gap-3 flex-1">
                 {f.photo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img

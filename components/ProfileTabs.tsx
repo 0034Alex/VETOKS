@@ -5,7 +5,7 @@ import Link from "next/link";
 import { apiPost } from "@/lib/authClient";
 import { IconGrid, IconVideoTab, IconRepost, IconTagTab, IconPlaySmall } from "@/components/ProfileIcons";
 
-type Item = { id: string; postId: string; participantId: string; kind: "video" | "photo"; url: string; label?: string; tagId?: string };
+type Item = { id: string; postId: string; participantId: string | null; kind: "video" | "photo"; url: string; label?: string; tagId?: string };
 type Data = {
   isSelf: boolean;
   isParticipant: boolean;
@@ -129,7 +129,7 @@ export default function ProfileTabs({ userId }: { userId?: string }) {
           {items.map((it) => (
             <div key={`${tab}-${it.id}-${it.tagId ?? ""}`} className="relative aspect-[3/4] bg-black overflow-hidden">
               <Link
-                href={`/participant/${it.participantId}/${it.kind === "video" ? "videos" : "photos"}?post=${it.postId}`}
+                href={it.participantId ? `/participant/${it.participantId}/${it.kind === "video" ? "videos" : "photos"}?post=${it.postId}` : `/post/${it.postId}`}
                 className="block w-full h-full"
               >
                 {it.kind === "video" ? (

@@ -17,12 +17,13 @@ export async function POST(req: Request) {
 
   const { data: post } = await supabaseAdmin
     .from("content_posts")
-    .select("id, participant_id, participants(user_id, display_name)")
+    .select("id, participant_id, user_id, participants(user_id, display_name)")
     .eq("id", postId)
     .maybeSingle();
   if (!post) return bad("not_found", 404);
-  const owner: any = Array.isArray((post as any).participants) ? (post as any).participants[0] : (post as any).participants;
-  if (!owner?.user_id) return bad("not_found", 404);
+  const pOwner: any = Array.isArray((post as any).participants) ? (post as any).participants[0] : (post as any).participants;
+  const owner = { user_id: ((post as any).user_id ?? pOwner?.user_id) as string | undefined };
+  if (!owner.user_id) return bad("not_found", 404);
   if (owner.user_id === me) return bad("own_post", 400);
   if (!(await sameCountry(me, owner.user_id))) return bad("not_found", 404);
 
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
       uk: `🔁 ${name} зробив(ла) репост вашої публікації`,
       en: `🔁 ${name} reposted your post`,
     });
-    await notify(owner.user_id as string, text, `/participant/${post.participant_id}`, "other");
+    await notify(owner.user_id as string, text, post.participant_id ? `/participant/${post.participant_id}` : `/post/${post.id}`, "other");
   }
   return NextResponse.json({ ok: true, on: true });
 }

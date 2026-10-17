@@ -58,12 +58,6 @@ export default function AddVideoPage() {
       .eq("user_id", u.id)
       .maybeSingle();
 
-    if (!p) {
-      setError("Этот раздел доступен только участницам.");
-      setUploading(false);
-      return;
-    }
-
     // Видео — не длиннее 60 секунд.
     if (kind === "video") {
       const dur = await videoDuration(file);
@@ -73,8 +67,8 @@ export default function AddVideoPage() {
         return;
       }
 
-      // Основной путь: загрузка в Bunny.
-      const up = await apiPost("/api/video/create-upload", {});
+      // Основной путь для участниц: загрузка в Bunny.
+      const up = p ? await apiPost("/api/video/create-upload", {}) : null;
       if (up?.ok && up.configured) {
         try {
           setProgress(0);
@@ -104,7 +98,7 @@ export default function AddVideoPage() {
         return;
       }
       if (up && up.ok === false) {
-        setError(up.error === "not_participant" ? "Этот раздел доступен только участницам." : "Сервис видео временно недоступен.");
+        setError("Сервис видео временно недоступен.");
         setUploading(false);
         return;
       }
@@ -112,7 +106,7 @@ export default function AddVideoPage() {
     }
 
     const fileExt = file.name.split(".").pop();
-    const filePath = `${p.id}-${Date.now()}.${fileExt}`;
+    const filePath = `${p ? p.id : u.id}-${Date.now()}.${fileExt}`;
     const bucket = kind === "video" ? "media-videos" : "participant-photos";
 
     const { error: uploadError } = await supabase.storage
@@ -130,7 +124,8 @@ export default function AddVideoPage() {
       .getPublicUrl(filePath);
 
     const { error: insertError } = await supabase.from("content_posts").insert({
-      participant_id: p.id,
+      participant_id: p ? p.id : null,
+      user_id: u.id,
       platform: "vetoks",
       media_type: kind,
       video_url: kind === "video" ? publicUrlData.publicUrl : null,
@@ -146,7 +141,7 @@ export default function AddVideoPage() {
     }
 
     // Видео уходит в общую ленту «Медиа», фото — в фотоленту профиля.
-    router.push(kind === "video" ? "/media" : `/participant/${p.id}`);
+    router.push(!p ? "/profile" : kind === "video" ? "/media" : `/participant/${p.id}`);
   }
 
   function reset() {

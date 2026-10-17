@@ -159,9 +159,13 @@ export default function RegionClanPage() {
                 }`}
               >
                 {!isMine && (
-                  <p className="text-gold text-[10px] font-semibold mb-0.5">
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/u/${m.user_id}`)}
+                    className="block text-gold text-[10px] font-semibold mb-0.5 underline-offset-2 hover:underline"
+                  >
                     {senderName ?? "Гость"}
-                  </p>
+                  </button>
                 )}
                 {m.body}
                 {!isMine && (

@@ -20,6 +20,9 @@ type Data = {
   nick: string | null;
   socials: string[];
   following: number | null;
+  followers: number;
+  posts: number;
+  isFollowing: boolean;
   canWrite: boolean;
 };
 
@@ -31,7 +34,10 @@ export default function PublicUserPage() {
   const [d, setD] = useState<Data | null>(null);
   const [missing, setMissing] = useState(false);
   const [toast, setToast] = useState("");
-  const [sheet, setSheet] = useState(false);
+  const [sheet, setSheet] = useState<"followers" | "following" | null>(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [followers, setFollowers] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -54,12 +60,26 @@ export default function PublicUserPage() {
         return;
       }
       setD(r as Data);
+      setIsFollowing(!!r.isFollowing);
+      setFollowers(Number(r.followers) || 0);
     })();
   }, [id, router]);
 
   if (missing)
     return <main className="min-h-screen flex items-center justify-center text-muted">Профиль не найден.</main>;
   if (!d) return <LoadingScreen />;
+
+  async function toggleFollow() {
+    if (busy) return;
+    setBusy(true);
+    const on = !isFollowing;
+    const r = await apiPost("/api/profile/follow", { userId: id, on });
+    if (r?.ok) {
+      setIsFollowing(r.on);
+      setFollowers((n) => Math.max(0, n + (r.on ? 1 : -1)));
+    }
+    setBusy(false);
+  }
 
   async function share() {
     const r = await shareLink(d!.nick ? window.location.origin + `/n/${d!.nick}` : window.location.href, d!.name);
@@ -79,7 +99,11 @@ export default function PublicUserPage() {
           bio={d.bio}
           verified={d.verified}
           socials={d.socials}
-          stats={d.following === null ? [] : [{ value: d.following, label: "Подписки", onClick: () => setSheet(true) }]}
+          stats={[
+            { value: d.posts, label: "Публикации" },
+            { value: followers, label: "Подписчики", onClick: () => setSheet("followers") },
+            ...(d.following === null ? [] : [{ value: d.following, label: "Подписки", onClick: () => setSheet("following") }]),
+          ]}
           onShare={share}
           topRight={
             <TopBtn onClick={() => router.back()} label="Назад">
@@ -92,14 +116,17 @@ export default function PublicUserPage() {
             <BigBtn href={`/chats/${id}`}>✉️ Написать</BigBtn>
           ) : (
             <BigBtn variant="on" disabled>
-              Личные сообщения закрыты
+              Сообщения закрыты
             </BigBtn>
           )}
+          <BigBtn variant={isFollowing ? "on" : "gold"} onClick={toggleFollow} disabled={busy}>
+            {isFollowing ? "Отписаться" : "＋ Подписаться"}
+          </BigBtn>
         </ProfileActions>
         <ProfileTabs userId={id} />
       </div>
 
-      {sheet && <FollowsSheet userId={id} kind="following" onClose={() => setSheet(false)} />}
+      {sheet && <FollowsSheet userId={id} kind={sheet} onClose={() => setSheet(null)} />}
 
       {toast && (
         <div className="fixed left-1/2 -translate-x-1/2 bottom-44 z-50 bg-bgSurface border border-gold text-gold text-sm px-4 py-2 rounded-full">

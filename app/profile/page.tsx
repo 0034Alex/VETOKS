@@ -73,6 +73,7 @@ export default function ProfilePage() {
   const [socials, setSocials] = useState<string[]>([]);
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
+  const [ownPosts, setOwnPosts] = useState(0);
   const [rank, setRank] = useState<number | null>(null);
   const [videos, setVideos] = useState<Post[]>([]);
   const [photos, setPhotos] = useState<Post[]>([]);
@@ -243,7 +244,21 @@ export default function ProfilePage() {
         .from("participant_follows")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id);
-      setFollowing(fl ?? 0);
+      const { count: fl2 } = await supabase
+        .from("user_follows")
+        .select("id", { count: "exact", head: true })
+        .eq("follower_id", user.id);
+      setFollowing((fl ?? 0) + (fl2 ?? 0));
+      const { count: fl3 } = await supabase
+        .from("user_follows")
+        .select("id", { count: "exact", head: true })
+        .eq("followed_id", user.id);
+      const { count: pc } = await supabase
+        .from("content_posts")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      setOwnPosts(pc ?? 0);
+      if (!participant) setFollowers(fl3 ?? 0);
       setSocials(parseLinks((row as any)?.social_links));
       setNick(((row as any)?.nick as string | null) ?? null);
       const { data: vb } = await supabase.from("users").select("verified_badge").eq("id", user.id).maybeSingle();
@@ -353,7 +368,11 @@ export default function ProfilePage() {
                   { value: followers, label: "Подписчики", onClick: () => setFollowSheet("followers") },
                   { value: following, label: "Подписки", onClick: () => router.push("/my-follows") },
                 ]
-              : [{ value: following, label: "Подписки", onClick: () => router.push("/my-follows") }]
+              : [
+                  { value: ownPosts, label: "Публикации" },
+                  { value: followers, label: "Подписчики", onClick: () => setFollowSheet("followers") },
+                  { value: following, label: "Подписки", onClick: () => router.push("/my-follows") },
+                ]
           }
           kpis={
             participant
@@ -422,11 +441,9 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {participant && (
-            <Link href="/add-video" className="block text-center text-gold text-sm mt-5">
-              ＋ Добавить видео или фото
-            </Link>
-          )}
+          <Link href="/add-video" className="block text-center text-gold text-sm mt-5">
+            ＋ Добавить видео или фото
+          </Link>
         </div>
         <ProfileTabs />
       </div>

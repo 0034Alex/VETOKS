@@ -27,11 +27,12 @@ export async function POST(req: Request) {
     if (!postId || !nick) return bad("bad_request");
     const { data: post } = await supabaseAdmin
       .from("content_posts")
-      .select("id, participant_id, participants(user_id, display_name)")
+      .select("id, participant_id, user_id, participants(user_id, display_name)")
       .eq("id", postId)
       .maybeSingle();
-    const owner: any = Array.isArray((post as any)?.participants) ? (post as any).participants[0] : (post as any)?.participants;
-    if (!post || owner?.user_id !== me) return bad("forbidden", 403);
+    const pOwner: any = Array.isArray((post as any)?.participants) ? (post as any).participants[0] : (post as any)?.participants;
+    const ownerId = (post as any)?.user_id ?? pOwner?.user_id;
+    if (!post || ownerId !== me) return bad("forbidden", 403);
 
     const { data: target } = await supabaseAdmin
       .from("users")
@@ -58,7 +59,11 @@ export async function POST(req: Request) {
       tagger_id: me,
       status: manual ? "pending" : "approved",
     });
-    const name = owner.display_name as string;
+    let name = (pOwner?.display_name as string) || "";
+    if (!name) {
+      const { data: me0 } = await supabaseAdmin.from("users").select("first_name").eq("id", me).maybeSingle();
+      name = (me0?.first_name as string) || "Гость";
+    }
     const text = manual
       ? await pickText(target.id as string, {
           ru: `🏷 ${name} хочет вас отметить. Подтвердите в профиле → Отметки`,
@@ -70,7 +75,7 @@ export async function POST(req: Request) {
           uk: `🏷 ${name} позначила вас у публікації`,
           en: `🏷 ${name} tagged you in a post`,
         });
-    await notify(target.id as string, text, manual ? "/profile" : `/participant/${post.participant_id}`, "other");
+    await notify(target.id as string, text, manual ? "/profile" : post.participant_id ? `/participant/${post.participant_id}` : `/post/${post.id}`, "other");
     return NextResponse.json({ ok: true, status: manual ? "pending" : "approved" });
   }
 

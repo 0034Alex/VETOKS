@@ -89,6 +89,7 @@ export default function MediaPage() {
           "id, video_url, caption, participant_id, participants(display_name, photo_url, region_id, season_id)"
         )
         .not("video_url", "is", null)
+        .not("participant_id", "is", null)
         .order("submitted_at", { ascending: false });
       const mc = await getMyCountry();
       const mine = new Set(mc.regionIds);

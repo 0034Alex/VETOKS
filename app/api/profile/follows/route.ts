@@ -23,35 +23,41 @@ export async function POST(req: Request) {
   const cid = await countryOfUser(me);
   const regionIds = cid ? await regionIdsOfCountry(cid) : [];
 
-  if (kind === "followers") {
-    const { data: part } = await supabaseAdmin.from("participants").select("id").eq("user_id", target).maybeSingle();
-    if (!part) return NextResponse.json({ ok: true, items: [] });
-    const { data: rows } = await supabaseAdmin
-      .from("participant_follows")
-      .select("user_id")
-      .eq("participant_id", part.id)
-      .limit(300);
-    const ids = (rows ?? []).map((r: any) => r.user_id);
-    if (!ids.length) return NextResponse.json({ ok: true, items: [] });
+  const userItems = async (ids: string[]) => {
+    if (!ids.length) return [] as any[];
     const { data: users } = await supabaseAdmin
       .from("users")
       .select("id, first_name, nick, photo_url, is_banned, region_id")
       .in("id", ids);
-    const items = (users ?? [])
+    return (users ?? [])
       .filter((x: any) => !x.is_banned && (!regionIds.length || regionIds.includes(x.region_id)))
       .map((x: any) => ({ href: `/u/${x.id}`, name: x.first_name || "Без имени", sub: x.nick ? `@${x.nick}` : "", photo: x.photo_url ?? null }));
-    return NextResponse.json({ ok: true, items });
+  };
+
+  const { data: part } = await supabaseAdmin.from("participants").select("id").eq("user_id", target).maybeSingle();
+
+  if (kind === "followers") {
+    let ids: string[] = [];
+    if (part) {
+      const { data: rows } = await supabaseAdmin.from("participant_follows").select("user_id").eq("participant_id", part.id).limit(300);
+      ids = (rows ?? []).map((r: any) => r.user_id);
+    }
+    const { data: uf } = await supabaseAdmin.from("user_follows").select("follower_id").eq("followed_id", target).limit(300);
+    ids = Array.from(new Set([...ids, ...(uf ?? []).map((r: any) => r.follower_id as string)]));
+    return NextResponse.json({ ok: true, items: await userItems(ids) });
   }
 
+  // Подписки: участницы (старый способ) и обычные люди.
   const { data: rows } = await supabaseAdmin.from("participant_follows").select("participant_id").eq("user_id", target).limit(300);
   const pids = (rows ?? []).map((r: any) => r.participant_id);
-  if (!pids.length) return NextResponse.json({ ok: true, items: [] });
-  const { data: parts } = await supabaseAdmin
-    .from("participants")
-    .select("id, display_name, photo_url, region_id")
-    .in("id", pids);
-  const items = (parts ?? [])
-    .filter((x: any) => !regionIds.length || regionIds.includes(x.region_id))
-    .map((x: any) => ({ href: `/participant/${x.id}`, name: x.display_name, sub: "Участница", photo: x.photo_url ?? null }));
+  let items: any[] = [];
+  if (pids.length) {
+    const { data: parts } = await supabaseAdmin.from("participants").select("id, display_name, photo_url, region_id").in("id", pids);
+    items = (parts ?? [])
+      .filter((x: any) => !regionIds.length || regionIds.includes(x.region_id))
+      .map((x: any) => ({ href: `/participant/${x.id}`, name: x.display_name, sub: "Участница", photo: x.photo_url ?? null }));
+  }
+  const { data: uf2 } = await supabaseAdmin.from("user_follows").select("followed_id").eq("follower_id", target).limit(300);
+  items = items.concat(await userItems((uf2 ?? []).map((r: any) => r.followed_id as string)));
   return NextResponse.json({ ok: true, items });
 }
