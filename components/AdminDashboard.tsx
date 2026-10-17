@@ -74,22 +74,20 @@ export default function AdminDashboard({ onGo }: { onGo: (tab: string) => void }
 
   return (
     <div className="max-w-3xl">
-      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-5">
-        <p className="text-offwhite font-semibold text-sm mb-2">Требует внимания</p>
-        <div className="grid grid-cols-2 gap-2">
-          {attention.map(([label, count, tab]) => (
+      <p className="text-muted text-sm mb-2">Требует действия</p>
+      <div className="flex flex-col gap-2 mb-6">
+        {attention.map(([label, count, tab]) => (
+          <div key={tab} className="flex items-center gap-3 bg-bgPrimary border border-muted rounded-2xl px-4 py-3">
+            <span className={`min-w-[2.2rem] text-center text-lg font-semibold rounded-full px-2 py-0.5 ${count > 0 ? "bg-pink-500 text-white" : "bg-bgSurface text-muted"}`}>{count}</span>
+            <span className={`flex-1 text-sm ${count > 0 ? "text-offwhite" : "text-muted"}`}>{label}</span>
             <button
-              key={tab}
               onClick={() => onGo(tab)}
-              className={`text-left rounded-lg px-3 py-2 border ${
-                count > 0 ? "border-gold text-offwhite" : "border-muted text-muted"
-              }`}
+              className={`rounded-full px-4 py-1.5 text-sm font-semibold ${count > 0 ? "bg-gold text-bgPrimary" : "border border-muted text-muted"}`}
             >
-              <span className={`text-xl font-semibold ${count > 0 ? "text-gold" : ""}`}>{count}</span>
-              <span className="block text-xs">{label}</span>
+              {count > 0 ? "Открыть" : "Посмотреть"}
             </button>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4 items-center">

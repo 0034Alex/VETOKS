@@ -290,11 +290,11 @@ export default function AdminPage() {
               setTab(g.tabs.find((t) => access[t])!);
               setMenuOpen(false);
             }}
-            className={`flex items-center gap-3 text-left px-3 py-2.5 rounded-xl text-sm ${
-              g.key === curGroup?.key ? "bg-bgPrimary text-gold font-semibold shadow-[inset_3px_0_0_#E8D48A]" : "text-offwhite hover:bg-bgPrimary"
+            className={`flex items-center gap-3 text-left px-3 py-2.5 rounded-[11px] text-sm ${
+              g.key === curGroup?.key ? "bg-[#1F1938] text-offwhite shadow-[inset_3px_0_0_#E8D48A]" : "text-offwhite hover:bg-[#1F1938]"
             }`}
           >
-            <span className="w-5 text-center">{g.ic}</span>
+            <span className="w-6 text-center text-base">{g.ic}</span>
             <span className="flex-1">{g.label}</span>
             {allRead && <span className="text-muted text-xs">👁</span>}
           </button>
@@ -312,7 +312,7 @@ export default function AdminPage() {
         <button onClick={() => setMenuOpen(true)} className="md:hidden text-2xl text-gold leading-none" aria-label="Открыть меню">
           ☰
         </button>
-        <h1 className="text-xl font-semibold text-gold">VETOKS CRM</h1>
+        <h1 className="md:hidden text-xl font-semibold text-gold">VETOKS CRM</h1>
         <span className="text-xs border border-gold/60 text-gold rounded-full px-2.5 py-1 whitespace-nowrap" title={me?.email ?? ""}>
           {roleLabel}
         </span>
@@ -338,11 +338,15 @@ export default function AdminPage() {
       )}
 
       <div className="md:flex md:gap-6 md:px-6 md:py-6">
-        <aside className="hidden md:block w-60 flex-none self-start sticky top-4 bg-bgSurface border border-muted rounded-2xl p-3">{menu}</aside>
+        <aside className="hidden md:block w-60 flex-none self-start sticky top-4 bg-bgSurface border border-muted rounded-[18px] p-3.5">
+          <div className="text-gold font-extrabold tracking-[0.18em] text-[15px] px-2 pt-1 pb-3">VETOKS · CRM</div>
+          {menu}
+        </aside>
         <div className="flex-1 min-w-0 px-4 md:px-0 py-6 pb-20">
+          <div className="bg-bgSurface border border-muted rounded-[18px] p-4 md:p-5">
           {curGroup && (
             <div className="mb-4">
-              <h2 className="text-xl font-semibold text-offwhite">{curGroup.ic} {curGroup.label}</h2>
+              <h2 className="text-xl font-bold text-offwhite">{curGroup.ic} {curGroup.label}</h2>
               <p className="text-muted text-sm mb-3">{curGroup.desc}</p>
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {curGroup.tabs.filter((t) => access[t]).map((t) => (
@@ -350,7 +354,7 @@ export default function AdminPage() {
                     key={t}
                     onClick={() => setTab(t)}
                     className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm border ${
-                      tab === t ? "bg-gold text-bgPrimary border-gold font-semibold" : "bg-bgSurface border-muted text-offwhite"
+                      tab === t ? "bg-gold text-[#1B1530] border-gold font-semibold" : "bg-[#1F1938] border-muted/60 text-offwhite"
                     }`}
                   >
                     {TABS.find((x) => x.key === t)?.label}
@@ -400,6 +404,7 @@ export default function AdminPage() {
         {tab === "social" && <SocialLinksTab />}
         {tab === "media" && <MediaMaterialsTab />}
           </fieldset>
+          </div>
         </div>
       </div>
     </main>
