@@ -317,7 +317,7 @@ export default function ProfilePage() {
   }
 
 
-  const menuBadge = 0;
+  const menuBadge = user && !user.phone_verified && !phoneDone ? 1 : 0;
   const initialsName = user?.first_name || nick || "";
   const st = participant ? statusFor(statusRaw?.contest, statusRaw?.stage_key, statusRaw?.crown, user?.regions?.name ?? null) : null;
   const goalPct = Math.min(100, goalTarget ? (goalCollected / goalTarget) * 100 : 0);
@@ -407,19 +407,6 @@ export default function ProfilePage() {
         />
 
         <div className="px-5">
-          {user && !user.phone_verified && !phoneDone && (
-            <div className="rounded-xl p-4 mt-5 border border-gold bg-gradient-to-r from-[#7C3AED]/30 to-[#EC4899]/30">
-              <p className="text-offwhite font-semibold text-sm mb-1">{t("profile.verifyTitle")}</p>
-              <p className="text-muted text-xs mb-3">{t("profile.verifyText")}</p>
-              <button
-                onClick={() => window.dispatchEvent(new Event("vetoks:verify-phone"))}
-                className="bg-gold text-bgPrimary font-semibold px-5 py-2 rounded-full text-sm"
-              >
-                {t("profile.verifyBtn")}
-              </button>
-            </div>
-          )}
-
           {chatGifts.length > 0 && (
             <div className="bg-bgSurface border border-muted rounded-xl px-4 py-3 mt-5">
               <p className="text-muted text-xs mb-1">Подарки вам в чатах</p>
@@ -462,6 +449,22 @@ export default function ProfilePage() {
             {t("profile.region")} {user?.regions?.name ?? "—"} · ID: {user?.referral_code}
           </div>
         </div>
+
+      {user && !user.phone_verified && !phoneDone && (
+        <div className="rounded-xl p-4 mt-3 border border-gold bg-gradient-to-r from-[#7C3AED]/30 to-[#EC4899]/30">
+          <p className="text-offwhite font-semibold text-sm mb-1">{t("profile.verifyTitle")}</p>
+          <p className="text-muted text-xs mb-3">{t("profile.verifyText")}</p>
+          <button
+            onClick={() => {
+              setMenuOpen(false);
+              window.dispatchEvent(new Event("vetoks:verify-phone"));
+            }}
+            className="bg-gold text-bgPrimary font-semibold px-5 py-2 rounded-full text-sm"
+          >
+            {t("profile.verifyBtn")}
+          </button>
+        </div>
+      )}
 
         <Link href="/history" className="block bg-bgPrimary border border-gold/40 rounded-xl p-4 mt-3">
           <div className="flex items-center justify-between">

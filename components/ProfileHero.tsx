@@ -242,13 +242,13 @@ export default function ProfileHero({
               {status}
             </span>
           )}
-          <h1 className="mt-3 flex items-center gap-2.5 flex-wrap font-serif text-[34px] leading-[1.1] text-offwhite">
+          <h1 className="mt-4 flex items-center gap-2.5 flex-wrap font-serif text-[34px] leading-[1.1] text-offwhite">
             <span>{name}</span>
             {verified && VerifiedMark}
           </h1>
-          {handle && <p className="mt-2 text-[15px] text-[#c9c9ce]">{handle}</p>}
+          {handle && <p className="mt-3 text-[15px] text-[#c9c9ce]">{handle}</p>}
           {city && (
-            <p className="mt-3 flex items-center gap-2 text-sm text-muted">
+            <p className="mt-4 flex items-center gap-2 text-sm text-muted">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#E8D48A" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 21s7-6.2 7-11.5A7 7 0 005 9.5C5 14.8 12 21 12 21z" />
                 <circle cx="12" cy="9.5" r="2.5" />
@@ -258,7 +258,7 @@ export default function ProfileHero({
           )}
           {rank && <p className="mt-1.5 text-[13px] text-[#E8D48A]">🏆 {rank}</p>}
           {badges.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap gap-2.5">
               {badges.slice(0, 3).map((b) => (
                 <button
                   key={b.label}
@@ -277,7 +277,7 @@ export default function ProfileHero({
               )}
             </div>
           )}
-          {bio && <p className="mt-4 text-[15px] leading-relaxed text-[#e6e6ea] whitespace-pre-line">{bio}</p>}
+          {bio && <p className="mt-5 text-[15px] leading-relaxed text-[#e6e6ea] whitespace-pre-line">{bio}</p>}
         </div>
       </div>
 
@@ -338,7 +338,7 @@ export default function ProfileHero({
       )}
 
       {stats.length > 0 && (
-        <div className="flex px-5 pt-8">
+        <div className="flex mx-5 mt-8 pt-7 border-t border-muted/25">
           {stats.map((s2, i) => (
             <button
               key={s2.label}
@@ -355,7 +355,7 @@ export default function ProfileHero({
       )}
 
       {kpis.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 px-5 pt-7">
+        <div className="grid grid-cols-3 gap-3 px-5 pt-8">
           {kpis.map((k) => (
             <div
               key={k.label}
@@ -370,7 +370,7 @@ export default function ProfileHero({
         </div>
       )}
 
-      {actions && <div className="px-5 pt-6 pb-1 flex items-center gap-2.5">{actions}</div>}
+      {actions && <div className="px-5 pt-8 pb-3 flex items-center gap-2.5">{actions}</div>}
     </div>
   );
 }
@@ -387,7 +387,7 @@ export function IconSend() {
 
 export function ProfileActions({ children }: { children: ReactNode }) {
   return (
-    <div className="px-5 pt-6">
+    <div className="px-5 pt-8 pb-2">
       <div className="flex items-center gap-2.5">{children}</div>
     </div>
   );
