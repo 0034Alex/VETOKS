@@ -30,26 +30,28 @@ type P = {
 
 type Cm = { id: string; body: string; created_at: string; users: { first_name: string | null } | { first_name: string | null }[] | null };
 
-const Heart = ({ on }: { on: boolean }) => (
-  <svg width="26" height="26" viewBox="0 0 24 24" fill={on ? "#EC4899" : "none"} stroke={on ? "#EC4899" : "currentColor"} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+const Heart = ({ on, size = 24 }: { on: boolean; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={on ? "#EC4899" : "none"} stroke={on ? "#EC4899" : "currentColor"} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 21s-8-5.2-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.8-8 11-8 11z" />
   </svg>
 );
 const Bubble = () => (
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z" />
   </svg>
 );
 const Send = () => (
-  <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21.5 3 10.5 13.5" />
     <path d="M21.5 3 14.5 21l-4-7.5L3 9.5 21.5 3z" />
   </svg>
 );
 
 const fmtDate = (s: string) => new Date(s).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+const HEADER = "calc(env(safe-area-inset-top) + 52px)";
+const NAV = "96px";
 
-// Лента публикаций человека: открываешь любую и листаешь остальные вниз и вверх.
+// Лента публикаций «Сцена»: каждая публикация на своём экране, листаешь вниз и вверх.
 export default function PostFeedPage() {
   const params = useParams();
   const router = useRouter();
@@ -57,16 +59,20 @@ export default function PostFeedPage() {
   const [items, setItems] = useState<P[] | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
+  const [cur, setCur] = useState(0);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const [cOpen, setCOpen] = useState<string | null>(null);
   const [cList, setCList] = useState<Cm[]>([]);
   const [cText, setCText] = useState("");
   const [muted, setMuted] = useState(true);
+  const [pops, setPops] = useState<Record<string, number>>({});
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const cardRefs = useRef<Record<string, HTMLElement | null>>({});
   const viewed = useRef<Set<string>>(new Set());
   const scrolled = useRef(false);
+  const lastTap = useRef<Record<string, number>>({});
+  const tapTimer = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
     (async () => {
@@ -100,7 +106,9 @@ export default function PostFeedPage() {
       }
       const byId: Record<string, P> = {};
       (r.items as P[]).forEach((p) => (byId[p.id] = p));
-      setItems(ids.map((id) => byId[id]).filter(Boolean));
+      const ordered = ids.map((id) => byId[id]).filter(Boolean);
+      setItems(ordered);
+      setCur(Math.max(0, ordered.findIndex((p) => p.id === startId)));
       setMeId(r.meId as string);
     })();
   }, [startId, router]);
@@ -112,28 +120,33 @@ export default function PostFeedPage() {
     cardRefs.current[startId]?.scrollIntoView({ behavior: "instant" as ScrollBehavior, block: "start" });
   }, [items, startId]);
 
-  // Видео играет, пока на экране; просмотр засчитывается один раз.
+  // Какая публикация сейчас на экране: счётчик, воспроизведение видео, просмотры.
   useEffect(() => {
     if (!items) return;
     const obs = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
-          const v = e.target as HTMLVideoElement;
-          const id = v.dataset.id as string;
+          const el = e.target as HTMLElement;
+          const id = el.dataset.id as string;
+          const idx = items.findIndex((p) => p.id === id);
+          const v = videoRefs.current[id];
           if (e.isIntersecting) {
-            v.play().catch(() => {});
-            if (!viewed.current.has(id)) {
-              viewed.current.add(id);
-              apiPost("/api/profile/view", { postId: id }).then((r) => {
-                if (r?.ok && typeof r.views === "number") setItems((prev) => prev && prev.map((p) => (p.id === id ? { ...p, views: r.views } : p)));
-              });
+            if (idx >= 0) setCur(idx);
+            if (v) {
+              v.play().catch(() => {});
+              if (!viewed.current.has(id)) {
+                viewed.current.add(id);
+                apiPost("/api/profile/view", { postId: id }).then((r) => {
+                  if (r?.ok && typeof r.views === "number") setItems((prev) => prev && prev.map((p) => (p.id === id ? { ...p, views: r.views } : p)));
+                });
+              }
             }
-          } else v.pause();
+          } else if (v) v.pause();
         });
       },
       { threshold: 0.6 }
     );
-    Object.values(videoRefs.current).forEach((v) => v && obs.observe(v));
+    Object.values(cardRefs.current).forEach((c) => c && obs.observe(c));
     return () => obs.disconnect();
   }, [items]);
 
@@ -142,11 +155,29 @@ export default function PostFeedPage() {
     setTimeout(() => setToast(""), 2200);
   }
 
-  async function toggleLike(p: P) {
-    if (!meId) return;
-    if (p.liked) await supabase.from("media_likes").delete().eq("post_id", p.id).eq("user_id", meId);
-    else await supabase.from("media_likes").insert({ post_id: p.id, user_id: meId });
-    setItems((prev) => prev && prev.map((x) => (x.id === p.id ? { ...x, liked: !p.liked, likes: Math.max(0, x.likes + (p.liked ? -1 : 1)) } : x)));
+  async function setLike(p: P, on: boolean) {
+    if (!meId || p.liked === on) return;
+    if (on) await supabase.from("media_likes").insert({ post_id: p.id, user_id: meId });
+    else await supabase.from("media_likes").delete().eq("post_id", p.id).eq("user_id", meId);
+    setItems((prev) => prev && prev.map((x) => (x.id === p.id ? { ...x, liked: on, likes: Math.max(0, x.likes + (on ? 1 : -1)) } : x)));
+  }
+
+  // Один тап по видео — звук, два тапа по любой публикации — лайк.
+  function onMediaTap(p: P) {
+    const now = Date.now();
+    const prev = lastTap.current[p.id] ?? 0;
+    if (now - prev < 320) {
+      lastTap.current[p.id] = 0;
+      clearTimeout(tapTimer.current[p.id]);
+      setPops((s) => ({ ...s, [p.id]: (s[p.id] ?? 0) + 1 }));
+      setLike(p, true);
+      return;
+    }
+    lastTap.current[p.id] = now;
+    if (p.kind === "video") {
+      clearTimeout(tapTimer.current[p.id]);
+      tapTimer.current[p.id] = setTimeout(() => setMuted((m) => !m), 330);
+    }
   }
 
   async function openComments(id: string) {
@@ -189,39 +220,68 @@ export default function PostFeedPage() {
   if (missing) return <main className="min-h-screen flex items-center justify-center text-muted">Публикация не найдена.</main>;
   if (!items) return <LoadingScreen />;
 
-  return (
-    <main className="min-h-screen pb-36 bg-bgPrimary">
-      <div className="max-w-md mx-auto">
-        <div
-          className="sticky top-0 z-20 flex items-center gap-3 px-4 pb-3 bg-bgPrimary/95 backdrop-blur border-b border-muted/30"
-          style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
-        >
-          <button onClick={() => router.back()} className="text-offwhite text-2xl leading-none" aria-label="Назад">
-            ←
-          </button>
-          <p className="text-offwhite font-semibold">Публикации</p>
-        </div>
+  const total = items.length;
+  // Точки: не больше семи, вокруг текущей.
+  const dotStart = Math.max(0, Math.min(cur - 3, total - 7));
+  const dots = Array.from({ length: Math.min(7, total) }, (_, k) => dotStart + k);
 
+  return (
+    <main className="fixed inset-0 bg-bgPrimary overflow-hidden">
+      <style>{`@keyframes vtPop{0%{opacity:0;transform:scale(.4)}25%{opacity:1;transform:scale(1.15)}60%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.1) translateY(-14px)}}`}</style>
+
+      <div
+        className="absolute left-0 right-0 top-0 z-30 flex items-center gap-3 px-4 pb-2 bg-bgPrimary/90 backdrop-blur"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 10px)", height: HEADER }}
+      >
+        <button onClick={() => router.back()} className="text-offwhite text-2xl leading-none" aria-label="Назад">
+          ←
+        </button>
+        <p className="text-offwhite font-semibold flex-1">Публикации</p>
+        <span className="text-offwhite/80 text-xs">
+          {cur + 1} / {total}
+        </span>
+        <div className="flex items-center gap-1">
+          {dots.map((k) => (
+            <i key={k} className={`block h-1.5 rounded-full ${k === cur ? "w-4 bg-goldSoft" : "w-1.5 bg-white/30"}`} />
+          ))}
+        </div>
+      </div>
+
+      <div
+        className="absolute inset-0 overflow-y-auto snap-y snap-mandatory"
+        style={{ paddingTop: HEADER, scrollPaddingTop: HEADER, paddingBottom: NAV }}
+      >
         {items.map((p) => (
           <article
             key={p.id}
+            data-id={p.id}
             ref={(el) => {
               cardRefs.current[p.id] = el;
             }}
-            className="border-b border-muted/30 pb-4"
-            style={{ scrollMarginTop: "calc(env(safe-area-inset-top) + 56px)" }}
+            className="snap-start relative flex flex-col px-4 pt-2 pb-3 overflow-hidden"
+            style={{ height: `calc(100dvh - ${HEADER} - ${NAV})` }}
           >
-            <div className="flex items-center gap-3 px-4 py-3">
+            {/* Размытый фон из самой публикации */}
+            <div className="absolute inset-[-20%] z-0 pointer-events-none opacity-70" style={{ filter: "blur(50px) saturate(1.4)" }}>
+              {p.kind === "photo" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full" style={{ background: "radial-gradient(circle at 70% 30%, #EC489966, transparent 55%), linear-gradient(160deg,#2b1b4d,#0e0a18 75%)" }} />
+              )}
+            </div>
+
+            <div className="relative z-10 flex items-center gap-3 pb-2">
               <Link href={p.authorHref} className="flex items-center gap-3 min-w-0 flex-1">
                 <span
-                  className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] border border-gold/60 bg-cover bg-center flex-none flex items-center justify-center text-white font-semibold text-sm"
+                  className="w-9 h-9 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] border border-gold/70 bg-cover bg-center flex-none flex items-center justify-center text-white font-semibold text-sm"
                   style={p.authorPhoto ? { backgroundImage: `url(${p.authorPhoto})` } : undefined}
                 >
                   {!p.authorPhoto && (p.authorName || "?").slice(0, 1).toUpperCase()}
                 </span>
                 <span className="min-w-0">
                   <span className="block text-offwhite text-sm font-semibold truncate">{p.authorName}</span>
-                  {p.authorSub && <span className="block text-muted text-xs truncate">{p.authorSub}</span>}
+                  {p.authorSub && <span className="block text-offwhite/70 text-xs truncate">{p.authorSub}</span>}
                 </span>
               </Link>
               {!p.mine && (
@@ -231,66 +291,86 @@ export default function PostFeedPage() {
               )}
             </div>
             {menuFor === p.id && (
-              <div className="px-4 pb-2">
-                <button onClick={() => report(p)} className="text-danger text-sm border border-danger rounded-full px-4 py-1.5">
+              <div className="relative z-20 pb-2">
+                <button onClick={() => report(p)} className="text-danger text-sm border border-danger rounded-full px-4 py-1.5 bg-black/50">
                   Пожаловаться
                 </button>
               </div>
             )}
 
-            <div className="relative bg-black">
-              {p.kind === "video" ? (
-                <>
-                  <video
-                    ref={(el) => {
-                      videoRefs.current[p.id] = el;
-                    }}
-                    data-id={p.id}
-                    src={p.url}
-                    loop
-                    muted={muted}
-                    playsInline
-                    onClick={() => setMuted((m) => !m)}
-                    className="w-full max-h-[78vh] object-contain"
-                  />
-                  <span className="absolute right-3 bottom-3 w-8 h-8 rounded-full bg-black/60 text-white text-sm flex items-center justify-center pointer-events-none">
-                    {muted ? "🔇" : "🔊"}
+            {/* Рамка с фото или видео */}
+            <div className="relative z-10 flex-1 min-h-0 rounded-3xl p-[3px]" style={{ background: "linear-gradient(160deg,#E8D48A,#8a6d12 40%,#E8D48A)" }}>
+              <div className="relative w-full h-full rounded-[21px] overflow-hidden bg-black select-none" onPointerUp={() => onMediaTap(p)} style={{ touchAction: "manipulation" }}>
+                {p.kind === "video" ? (
+                  <>
+                    <video
+                      ref={(el) => {
+                        videoRefs.current[p.id] = el;
+                      }}
+                      src={p.url}
+                      loop
+                      muted={muted}
+                      playsInline
+                      className="w-full h-full object-contain"
+                    />
+                    <span className="absolute left-2.5 top-2.5 flex items-center gap-1 bg-black/60 rounded-full pl-2 pr-2.5 py-1 text-[12px] text-white pointer-events-none">
+                      ▶ {p.views.toLocaleString("ru-RU")}
+                    </span>
+                    <span className="absolute right-2.5 bottom-2.5 w-8 h-8 rounded-full bg-black/60 text-white text-sm flex items-center justify-center pointer-events-none">
+                      {muted ? "🔇" : "🔊"}
+                    </span>
+                  </>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.url} alt="" className="w-full h-full object-contain pointer-events-none" />
+                )}
+                {pops[p.id] ? (
+                  <span
+                    key={pops[p.id]}
+                    className="absolute left-1/2 top-1/2 -ml-[46px] -mt-[46px] pointer-events-none"
+                    style={{ animation: "vtPop .8s ease-out forwards", opacity: 0 }}
+                  >
+                    <svg width="92" height="92" viewBox="0 0 24 24" fill="#EC4899" stroke="#EC4899" strokeWidth="1.5" strokeLinejoin="round" style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,.5))" }}>
+                      <path d="M12 21s-8-5.2-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.8-8 11-8 11z" />
+                    </svg>
                   </span>
-                </>
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.url} alt="" className="w-full max-h-[78vh] object-contain" />
-              )}
+                ) : null}
+              </div>
             </div>
 
-            <div className="flex items-center gap-5 px-4 pt-3 text-offwhite">
-              <button onClick={() => toggleLike(p)} className="flex items-center gap-1.5" aria-label="Нравится">
-                <Heart on={p.liked} />
-                <span className="text-sm">{p.likes}</span>
+            {/* Плавающая панель действий */}
+            <div className="relative z-20 -mt-5 mx-3 flex items-center justify-between rounded-full bg-black/75 backdrop-blur border border-white/15 px-5 py-2.5 text-offwhite">
+              <button onClick={() => setLike(p, !p.liked)} className="flex items-center gap-1.5 text-[13px]" aria-label="Нравится">
+                <Heart on={p.liked} size={22} />
+                {p.likes}
               </button>
-              <button onClick={() => openComments(p.id)} className="flex items-center gap-1.5" aria-label="Комментарии">
+              <button onClick={() => openComments(p.id)} className="flex items-center gap-1.5 text-[13px]" aria-label="Комментарии">
                 <Bubble />
-                <span className="text-sm">{p.comments}</span>
+                {p.comments}
               </button>
               <PostRepostTag postId={p.id} ownerUserId={p.ownerUserId} meId={meId} compact initialReposted={p.reposted} />
-              <button onClick={() => share(p)} className="ml-auto" aria-label="Поделиться">
+              <button onClick={() => share(p)} aria-label="Поделиться">
                 <Send />
               </button>
             </div>
 
-            {p.kind === "video" && <p className="px-4 pt-2 text-offwhite text-sm font-semibold">{p.views.toLocaleString("ru-RU")} просмотров</p>}
-            {p.caption && (
-              <p className="px-4 pt-1.5 text-offwhite text-sm whitespace-pre-line">
-                <b className="mr-1.5">{p.authorName}</b>
-                {p.caption}
-              </p>
-            )}
-            {p.comments > 0 && (
-              <button onClick={() => openComments(p.id)} className="px-4 pt-1.5 text-muted text-sm block">
-                Все комментарии ({p.comments})
-              </button>
-            )}
-            <p className="px-4 pt-1.5 text-muted text-[11px] uppercase tracking-wide">{fmtDate(p.createdAt)}</p>
+            <div className="relative z-10 pt-3">
+              {p.caption && (
+                <p className="text-offwhite text-sm leading-snug line-clamp-2">
+                  <b className="mr-1.5">{p.authorName}</b>
+                  {p.caption}
+                </p>
+              )}
+              <div className="flex items-center gap-2 mt-2 text-[12px]">
+                {p.kind === "video" && <span className="bg-white/15 rounded-full px-2.5 py-1 text-offwhite">▶ {p.views.toLocaleString("ru-RU")} просмотров</span>}
+                <span className="bg-white/15 rounded-full px-2.5 py-1 text-offwhite">{fmtDate(p.createdAt)}</span>
+                {p.comments > 0 && (
+                  <button onClick={() => openComments(p.id)} className="bg-white/15 rounded-full px-2.5 py-1 text-offwhite">
+                    Комментарии ({p.comments})
+                  </button>
+                )}
+              </div>
+            </div>
           </article>
         ))}
       </div>

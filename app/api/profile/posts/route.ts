@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   };
   const ownerIds = Array.from(new Set((posts ?? []).map(ownerOf).filter(Boolean))) as string[];
   const { data: users } = ownerIds.length
-    ? await supabaseAdmin.from("users").select("id, first_name, nick, photo_url").in("id", ownerIds)
+    ? await supabaseAdmin.from("users").select("id, first_name, nick, photo_url, email").in("id", ownerIds)
     : { data: [] as any[] };
   const um: Record<string, any> = {};
   (users ?? []).forEach((u: any) => (um[u.id] = u));
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
         createdAt: p.submitted_at as string,
         views: Number(p.views) || 0,
         ownerUserId: o,
-        authorName: pp?.display_name || u.first_name || u.nick || "Гость",
+        authorName: pp?.display_name || u.first_name || u.nick || (u.email ? String(u.email).split("@")[0] : "") || "Гость",
         authorSub: pp ? "Участница" : u.nick ? `@${u.nick}` : "",
         authorPhoto: pp?.photo_url ?? u.photo_url ?? null,
         authorHref: p.participant_id ? `/participant/${p.participant_id}` : `/u/${o}`,
