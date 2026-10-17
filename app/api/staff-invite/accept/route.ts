@@ -17,16 +17,19 @@ export async function POST(req: Request) {
   const email = String(inv.email).toLowerCase();
 
   // Есть ли уже такой человек (обычный пользователь или сотрудник, забывший пароль).
-  const { data: existing } = await supabaseAdmin.from("users").select("id").ilike("email", email).limit(1).maybeSingle();
+  const { data: existing } = await supabaseAdmin.from("users").select("id, role").ilike("email", email).limit(1).maybeSingle();
   let userId: string;
   if (existing) {
     userId = existing.id as string;
     const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { password, email_confirm: true });
     if (error) return NextResponse.json({ ok: false, error: "server", detail: error.message }, { status: 500 });
-    await supabaseAdmin
-      .from("users")
-      .update({ role: inv.role, permissions: inv.permissions, staff_countries: inv.countries })
-      .eq("id", userId);
+    // Владельца приглашение не трогает: только пароль, роль и права остаются.
+    if (existing.role !== "super_admin") {
+      await supabaseAdmin
+        .from("users")
+        .update({ role: inv.role, permissions: inv.permissions, staff_countries: inv.countries })
+        .eq("id", userId);
+    }
   } else {
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({ email, password, email_confirm: true });
     if (error || !created?.user) return NextResponse.json({ ok: false, error: "server", detail: error?.message }, { status: 500 });
