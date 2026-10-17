@@ -25,12 +25,6 @@ const TABS: { key: Tab; label: string; icon: ReactNode }[] = [
   { key: "tag", label: "Отметки", icon: <IconTagTab /> },
 ];
 
-const EMPTY: Record<Tab, { self: string; other: string }> = {
-  feed: { self: "Здесь будут ваши фото и видео, когда вы станете участницей.", other: "Пока нет публикаций." },
-  video: { self: "Здесь будут ваши видео.", other: "Пока нет видео." },
-  rep: { self: "Нажмите «Репост» на понравившемся фото или видео участницы, и оно появится здесь.", other: "Пока нет репостов." },
-  tag: { self: "Здесь появятся публикации, где вас отметили.", other: "Пока нет отметок." },
-};
 
 // Разделы профиля с иконками: лента, видео, репосты, отметки. Одинаково у участниц и у зрителей.
 export default function ProfileTabs({ userId }: { userId?: string }) {
@@ -129,7 +123,7 @@ export default function ProfileTabs({ userId }: { userId?: string }) {
       {!d ? (
         <div className="py-10 text-center text-muted text-sm">…</div>
       ) : items.length === 0 ? (
-        <p className="text-muted text-sm text-center px-8 py-10 leading-relaxed">{self ? EMPTY[tab].self : EMPTY[tab].other}</p>
+        <div className="py-10" />
       ) : (
         <div className="grid grid-cols-3 gap-[2px] mt-[2px]">
           {items.map((it) => (

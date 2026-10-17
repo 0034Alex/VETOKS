@@ -528,7 +528,6 @@ export default function ProfilePage() {
 
         <div className="mt-4">
           <Row href="/invites" label={t("profile.invites")} right={`${referralCount} →`} />
-          <Row href="/my-follows" label={t("profile.follows")} />
           {participant && <Row href="/black-marks" label={t("profile.blackMarks")} />}
           <Row href="/edit-profile" label={t("profile.edit")} />
           {(participant || isPartner) && <Row href="/documents" label={t("profile.docs")} />}

@@ -180,7 +180,6 @@ export default function RegionClanPage() {
         </div>
 
         {err && <p className="px-6 mt-3 text-danger text-xs">{err}</p>}
-        <p className="px-6 mt-2 text-muted text-[10px]">Только текст, без ссылок. Лимит: 1 сообщение в 10 секунд.</p>
         <div className="px-6 mt-2 flex gap-2">
           <input
             value={text}
