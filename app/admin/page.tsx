@@ -1,5 +1,6 @@
 "use client";
 
+import AdminStaffInvites from "@/components/AdminStaffInvites";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -216,7 +217,7 @@ export default function AdminPage() {
     (async () => {
       const u = await getCurrentUser();
       if (!u) {
-        router.push("/login?redirect=/admin");
+        router.push("/admin/login");
         return;
       }
       setMe(u);
@@ -1098,6 +1099,7 @@ function StaffTab() {
 
   return (
     <div className="flex flex-col gap-4">
+      <AdminStaffInvites />
       <div className="bg-bgSurface border border-muted rounded-xl p-4 flex flex-col md:flex-row gap-3 items-start md:items-center">
         <span className="text-sm text-muted">Назначить сотрудником:</span>
         <select
