@@ -466,17 +466,19 @@ export default function ProfilePage() {
         </div>
       )}
 
-        <Link href="/history" className="block bg-bgPrimary border border-gold/40 rounded-xl p-4 mt-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-muted text-xs">{t("profile.balance")}</p>
-              <p className="text-gold text-xl font-semibold">
-                {Math.round(balance)} {currencySymbol}
-              </p>
+        {participant && (
+          <Link href="/balance" className="block bg-bgPrimary border border-gold/40 rounded-xl p-4 mt-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-muted text-xs">{t("profile.balance")}</p>
+                <p className="text-gold text-xl font-semibold">
+                  {Math.round(balance)} {currencySymbol}
+                </p>
+              </div>
+              <span className="text-gold text-xs">Пополнить · Вывод →</span>
             </div>
-            <span className="text-gold text-xs">{t("profile.more")}</span>
-          </div>
-        </Link>
+          </Link>
+        )}
 
         {participant && goalText && goalEnabled && (
           <a href="/goal-donors" className="block bg-bgPrimary border border-gold/40 rounded-xl p-4 mt-3">
@@ -527,6 +529,7 @@ export default function ProfilePage() {
           <Row href="/edit-profile" label={t("profile.edit")} />
           {(participant || isPartner) && <Row href="/documents" label={t("profile.docs")} />}
           {(participant || isPartner) && <Row href="/ad-space" label={t("profile.ads")} />}
+          {!participant && <Row href="/balance" label={t("profile.balance")} />}
           <Row href="/settings" label={t("profile.settings")} />
           <Row href="/support" label={t("profile.support")} />
         </div>
