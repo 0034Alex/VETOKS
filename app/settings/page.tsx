@@ -94,7 +94,8 @@ export default function SettingsPage() {
       return;
     }
     const problem = nickProblem(n);
-    if (problem) {
+    // «Служебные» слова проверяет сервер: помеченным галочкой аккаунтам их можно.
+    if (problem && problem !== "reserved") {
       setNickState("bad");
       setNickMsg(NICK_MESSAGES[problem]);
       return;
