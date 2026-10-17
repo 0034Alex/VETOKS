@@ -11,6 +11,7 @@ import PageHeader from "@/components/PageHeader";
 import VoteModal from "@/components/VoteModal";
 import PostRepostTag from "@/components/PostRepostTag";
 import ReportButton from "@/components/ReportButton";
+import ShareButton from "@/components/ShareButton";
 import {
   IconHeart,
   IconComment,
@@ -291,10 +292,10 @@ export default function ParticipantVideosPage() {
                 <span className="text-white text-xs mt-0.5">{commentCounts[p.id] ?? 0}</span>
               </button>
 
-              <button onClick={() => share(p.id)} className="flex flex-col items-center">
+              <ShareButton postId={p.id}>
                 <IconShare />
                 <span className="text-white text-[10px] mt-0.5">Поделиться</span>
-              </button>
+              </ShareButton>
 
               <PostRepostTag postId={p.id} ownerUserId={ownerUserId} meId={me?.id ?? null} />
 

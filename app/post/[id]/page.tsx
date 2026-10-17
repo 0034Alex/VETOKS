@@ -380,7 +380,7 @@ export default function PostFeedPage() {
       </div>
 
       {cOpen && (
-        <div className="fixed inset-0 z-50" onClick={() => setCOpen(null)}>
+        <div className="fixed inset-0 z-[90]" onClick={() => setCOpen(null)}>
           <div
             className="absolute left-0 right-0 bottom-0 bg-bgSurface w-full max-w-md mx-auto rounded-t-3xl flex flex-col shadow-[0_-8px_30px_rgba(0,0,0,.5)]"
             style={{ height: "62dvh", paddingBottom: "env(safe-area-inset-bottom)" }}

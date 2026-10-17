@@ -14,7 +14,7 @@ const ERR: Record<string, string> = {
 };
 
 // «Поделиться»: сначала люди внутри приложения (недавние и мои подписки, ниже поиск), затем другие площадки.
-export default function ShareSheet({ open, onClose, postId, caption }: { open: boolean; onClose: () => void; postId: string; caption?: string }) {
+export default function ShareSheet({ open, onClose, postId }: { open: boolean; onClose: () => void; postId: string; caption?: string }) {
   const [q, setQ] = useState("");
   const [list, setList] = useState<R[]>([]);
   const [sent, setSent] = useState<Record<string, string>>({});
@@ -41,8 +41,6 @@ export default function ShareSheet({ open, onClose, postId, caption }: { open: b
 
   if (!open) return null;
   const url = typeof window !== "undefined" ? `${window.location.origin}/post/${postId}` : "";
-  const text = encodeURIComponent(caption ? caption.slice(0, 120) : "Смотри, что я нашёл(ла) в VETOKS");
-  const u = encodeURIComponent(url);
 
   async function sendTo(r: R) {
     if (sent[r.id] || busy) return;
@@ -61,15 +59,6 @@ export default function ShareSheet({ open, onClose, postId, caption }: { open: b
       window.prompt("Скопируйте ссылку", url);
     }
   }
-
-  const targets: { label: string; href: string; bg: string; ch: string }[] = [
-    { label: "Telegram", href: `https://t.me/share/url?url=${u}&text=${text}`, bg: "#229ED9", ch: "✈" },
-    { label: "Viber", href: `viber://forward?text=${text}%20${u}`, bg: "#7360F2", ch: "☎" },
-    { label: "WhatsApp", href: `https://wa.me/?text=${text}%20${u}`, bg: "#25D366", ch: "✆" },
-    { label: "Facebook", href: `https://www.facebook.com/sharer/sharer.php?u=${u}`, bg: "#1877F2", ch: "f" },
-    { label: "X", href: `https://twitter.com/intent/tweet?url=${u}&text=${text}`, bg: "#111111", ch: "X" },
-    { label: "Почта", href: `mailto:?subject=VETOKS&body=${text}%20${u}`, bg: "#6B7280", ch: "✉" },
-  ];
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/65 flex items-end justify-center" onClick={onClose}>
@@ -117,28 +106,21 @@ export default function ShareSheet({ open, onClose, postId, caption }: { open: b
             </div>
           )}
 
-          <div className="border-t border-muted/30 mt-5 pt-4">
-            <p className="text-muted text-xs mb-3">Другие площадки</p>
-            <div className="grid grid-cols-4 gap-x-2 gap-y-4">
-              {targets.map((t) => (
-                <a key={t.label} href={t.href} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center">
-                  <span className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold" style={{ background: t.bg }}>
-                    {t.ch}
-                  </span>
-                  <span className="text-offwhite text-[11px] mt-1.5">{t.label}</span>
-                </a>
-              ))}
-              <button onClick={copy} className="flex flex-col items-center">
-                <span className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-offwhite text-lg">🔗</span>
-                <span className="text-offwhite text-[11px] mt-1.5">{copied ? "Скопировано" : "Ссылка"}</span>
-              </button>
-              {typeof navigator !== "undefined" && "share" in navigator && (
-                <button onClick={() => navigator.share({ title: "VETOKS", url }).catch(() => {})} className="flex flex-col items-center">
-                  <span className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-offwhite text-lg">⋯</span>
-                  <span className="text-offwhite text-[11px] mt-1.5">Ещё</span>
-                </button>
-              )}
-            </div>
+          <div className="border-t border-muted/30 mt-5 pt-2">
+            <button
+              onClick={() => {
+                if (typeof navigator !== "undefined" && "share" in navigator) navigator.share({ title: "VETOKS", url }).catch(() => {});
+                else copy();
+              }}
+              className="w-full flex items-center justify-between py-3.5 text-offwhite text-[15px]"
+            >
+              <span>Поделиться в других приложениях</span>
+              <span className="text-muted">›</span>
+            </button>
+            <button onClick={copy} className="w-full flex items-center justify-between py-3.5 text-offwhite text-[15px] border-t border-muted/20">
+              <span>{copied ? "Ссылка скопирована" : "Скопировать ссылку"}</span>
+              <span className="text-muted">⧉</span>
+            </button>
           </div>
         </div>
       </div>

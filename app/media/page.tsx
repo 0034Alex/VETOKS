@@ -8,6 +8,7 @@ import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import VoteModal from "@/components/VoteModal";
 import ReportButton from "@/components/ReportButton";
+import ShareButton from "@/components/ShareButton";
 import { getMyCountry } from "@/lib/myCountry";
 import { loadScoped } from "@/lib/scopedSettings";
 import {
@@ -411,10 +412,10 @@ export default function MediaPage() {
                 <span className="text-white text-xs mt-0.5">{commentCounts[p.id] ?? 0}</span>
               </button>
 
-              <button onClick={() => share(p)} className="flex flex-col items-center">
+              <ShareButton postId={p.id}>
                 <IconShare />
                 <span className="text-white text-[10px] mt-0.5">Поделиться</span>
-              </button>
+              </ShareButton>
 
               <ReportButton postId={p.id} loggedIn={!!me} />
 
