@@ -10,7 +10,8 @@ import { getCurrentUser, signOutUser, CurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import SocialLinksBar from "@/components/SocialLinksBar";
-import ProfileHero, { TopBtn, Drawer, IconMail, IconBell, IconMenu, shareLink } from "@/components/ProfileHero";
+import ProfileHero, { TopBtn, Drawer, IconMail, IconBell, IconMenu, shareLink, KpiCrown, KpiHeart, KpiGift } from "@/components/ProfileHero";
+import ProfileTabs from "@/components/ProfileTabs";
 import { parseLinks } from "@/lib/socialLinks";
 import { statusFor } from "@/lib/status";
 import { loadTitleBadges, TitleBadge } from "@/lib/profileExtras";
@@ -341,25 +342,60 @@ export default function ProfilePage() {
           statusTalent={st?.talent}
           badges={titleBadges}
           city={user?.regions?.name ?? null}
-          rank={participant && rank ? `№${rank} в рейтинге · ${voteCount} голосов` : null}
           bio={bio}
           socials={socials}
           stats={
             participant
               ? [
+                  { value: videos.length + photos.length, label: "Публикации" },
                   { value: followers, label: "Подписчики" },
                   { value: following, label: "Подписки", onClick: () => router.push("/my-follows") },
                 ]
               : [{ value: following, label: "Подписки", onClick: () => router.push("/my-follows") }]
           }
+          kpis={
+            participant
+              ? [
+                  { icon: <KpiCrown />, value: rank ? `№${rank}` : "—", label: "в рейтинге" },
+                  { icon: <KpiHeart />, value: voteCount.toLocaleString("ru-RU"), label: "голосов" },
+                  { icon: <KpiGift />, value: giftCount.toLocaleString("ru-RU"), label: "подарков" },
+                ]
+              : []
+          }
           onShare={share}
+          actions={
+            <>
+              <Link
+                href="/edit-profile"
+                className="flex-1 min-w-0 h-11 rounded-xl border border-muted/60 bg-bgSurface text-offwhite text-[13px] font-semibold flex items-center justify-center px-2 text-center"
+              >
+                Редактировать профиль
+              </Link>
+              <button
+                type="button"
+                onClick={share}
+                className="h-11 rounded-xl border border-muted/60 bg-bgSurface text-offwhite text-[13px] font-semibold px-4"
+              >
+                Поделиться
+              </button>
+              <Link
+                href="/chats"
+                aria-label="Сообщения"
+                className="relative flex-none w-11 h-11 rounded-xl border border-muted/60 bg-bgSurface text-offwhite flex items-center justify-center"
+              >
+                <IconMail />
+                {dmUnread > 0 && (
+                  <span className="absolute -top-1.5 -right-1 bg-danger text-white text-[10px] min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center">
+                    {dmUnread > 9 ? "9+" : dmUnread}
+                  </span>
+                )}
+              </Link>
+            </>
+          }
           verified={badgeOn}
           belowCrown={<AccountSwitcher chip />}
           topRight={
             <>
-              <TopBtn href="/chats" label="Сообщения" badge={dmUnread + unreadMessages}>
-                <IconMail />
-              </TopBtn>
               <TopBtn href="/notifications" label="Уведомления" badge={unreadCount}>
                 <IconBell />
               </TopBtn>
@@ -398,55 +434,12 @@ export default function ProfilePage() {
           )}
 
           {participant && (
-            <div className="mt-7">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setFeedTab("video")}
-                    className={`text-xs px-3.5 py-1.5 rounded-full border ${
-                      feedTab === "video" ? "bg-[#E8D48A] text-[#1a1405] border-[#E8D48A] font-semibold" : "border-muted/60 text-muted"
-                    }`}
-                  >
-                    Видео
-                  </button>
-                  <button
-                    onClick={() => setFeedTab("photo")}
-                    className={`text-xs px-3.5 py-1.5 rounded-full border ${
-                      feedTab === "photo" ? "bg-[#E8D48A] text-[#1a1405] border-[#E8D48A] font-semibold" : "border-muted/60 text-muted"
-                    }`}
-                  >
-                    Фото
-                  </button>
-                </div>
-                <Link href="/add-video" className="text-gold text-sm">
-                  ＋ Добавить
-                </Link>
-              </div>
-              {feed.length === 0 ? (
-                <p className="text-muted text-sm border border-dashed border-muted/50 rounded-2xl text-center py-8">
-                  {feedTab === "video" ? "Пока нет видео." : "Пока нет фото."}
-                </p>
-              ) : (
-                <div className="grid grid-cols-3 gap-[3px] -mx-5">
-                  {feed.map((p, i) => (
-                    <Link
-                      key={p.id}
-                      href={`/participant/${participant.id}/${feedTab === "video" ? "videos" : "photos"}?start=${i}`}
-                      className="relative aspect-[3/4] bg-black overflow-hidden"
-                    >
-                      {feedTab === "video" ? (
-                        <video src={p.video_url} muted playsInline preload="metadata" className="w-full h-full object-cover pointer-events-none" />
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.photo_url} alt="" className="w-full h-full object-cover pointer-events-none" />
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+            <Link href="/add-video" className="block text-center text-gold text-sm mt-5">
+              ＋ Добавить видео или фото
+            </Link>
           )}
         </div>
+        <ProfileTabs />
       </div>
 
       {toast && (

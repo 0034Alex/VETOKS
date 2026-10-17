@@ -7,7 +7,8 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
-import ProfileHero, { ProfileActions, BigBtn, RoundBtn, TopBtn, IconMail, shareLink } from "@/components/ProfileHero";
+import ProfileHero, { ProfileActions, BigBtn, RoundBtn, TopBtn, IconMail, shareLink, KpiCrown, KpiHeart, KpiGift } from "@/components/ProfileHero";
+import ProfileTabs from "@/components/ProfileTabs";
 import { GiftIcon, parseLinks } from "@/lib/socialLinks";
 import { statusFor } from "@/lib/status";
 import { loadTitleBadges, TitleBadge } from "@/lib/profileExtras";
@@ -462,15 +463,16 @@ export default function ParticipantProfilePage() {
           statusTalent={ps.talent}
           badges={owner?.titles ?? []}
           city={owner?.city ?? null}
-          rank={
-            rankPosition !== null
-              ? `№${rankPosition} в рейтинге · ${voteCount} голосов` +
-                (votesToNextRank !== null && votesToNextRank > 0 ? ` · до топ-25: +${votesToNextRank}` : "")
-              : `${voteCount} голосов`
-          }
+          rank={votesToNextRank !== null && votesToNextRank > 0 ? `До топ-25: +${votesToNextRank} голосов` : null}
+          kpis={[
+            { icon: <KpiCrown />, value: rankPosition !== null ? `№${rankPosition}` : "—", label: "в рейтинге" },
+            { icon: <KpiHeart />, value: voteCount.toLocaleString("ru-RU"), label: "голосов" },
+            { icon: <KpiGift />, value: giftCount.toLocaleString("ru-RU"), label: "подарков" },
+          ]}
           bio={owner?.bio || participant.bio || ""}
           socials={owner?.socials ?? []}
           stats={[
+            { value: videoPosts.length + photoPosts.length, label: "Публикации" },
             { value: followerCount, label: "Подписчики" },
             ...(owner?.following != null ? [{ value: owner.following, label: "Подписки" }] : []),
           ]}
@@ -478,11 +480,6 @@ export default function ParticipantProfilePage() {
           verified={owner?.verified ?? false}
           topRight={
             <>
-              {userId && !isOwner && (
-                <TopBtn href={`/chats/${participant.user_id}`} label="Написать">
-                  <IconMail />
-                </TopBtn>
-              )}
               <TopBtn onClick={() => router.back()} label="Назад">
                 <span className="text-xl leading-none">←</span>
               </TopBtn>
@@ -515,9 +512,15 @@ export default function ParticipantProfilePage() {
               >
                 <GiftIcon />
               </RoundBtn>
+              {userId && (
+                <RoundBtn href={`/chats/${participant.user_id}`} label="Написать">
+                  <IconMail />
+                </RoundBtn>
+              )}
             </>
           )}
         </ProfileActions>
+        <ProfileTabs userId={participant.user_id} />
         <div className="px-6 mt-5">
           {isOwner && giftTotal > 0 && (
             <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-4">
@@ -640,80 +643,6 @@ export default function ParticipantProfilePage() {
               {boostsLeft <= 0 ? "Лимит исчерпан" : "Продвинуть"}
             </button>
           </div>
-
-          {(videoPosts.length > 0 || photoPosts.length > 0) && (
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <button
-                  onClick={() => setFeedTab("video")}
-                  className={`text-sm font-semibold px-3 py-1 rounded-full ${
-                    feedTab === "video"
-                      ? "bg-gold text-bgPrimary"
-                      : "text-muted border border-muted"
-                  }`}
-                >
-                  🎬 Видео
-                </button>
-                <button
-                  onClick={() => setFeedTab("photo")}
-                  className={`text-sm font-semibold px-3 py-1 rounded-full ${
-                    feedTab === "photo"
-                      ? "bg-gold text-bgPrimary"
-                      : "text-muted border border-muted"
-                  }`}
-                >
-                  🖼 Фото
-                </button>
-              </div>
-
-              {feedTab === "video" && (
-                videoPosts.length === 0 ? (
-                  <p className="text-muted text-xs">Пока нет видео.</p>
-                ) : (
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {videoPosts.map((post, i) => (
-                      <Link
-                        key={post.id}
-                        href={`/participant/${id}/videos?start=${i}`}
-                        className="relative aspect-[9/16] bg-black rounded-lg overflow-hidden"
-                      >
-                        <video
-                          src={post.video_url}
-                          muted
-                          playsInline
-                          preload="metadata"
-                          className="w-full h-full object-cover pointer-events-none"
-                        />
-                      </Link>
-                    ))}
-                  </div>
-                )
-              )}
-
-              {feedTab === "photo" && (
-                photoPosts.length === 0 ? (
-                  <p className="text-muted text-xs">Пока нет фото.</p>
-                ) : (
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {photoPosts.map((post, i) => (
-                      <Link
-                        key={post.id}
-                        href={`/participant/${id}/photos?start=${i}`}
-                        className="relative aspect-[9/16] bg-black rounded-lg overflow-hidden"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={post.photo_url}
-                          alt=""
-                          className="w-full h-full object-cover pointer-events-none"
-                        />
-                      </Link>
-                    ))}
-                  </div>
-                )
-              )}
-            </div>
-          )}
 
           {notice && (
             <p className="text-gold text-sm text-center mb-4">{notice}</p>

@@ -7,6 +7,7 @@ import { apiPost } from "@/lib/authClient";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import ProfileHero, { ProfileActions, BigBtn, TopBtn, shareLink } from "@/components/ProfileHero";
+import ProfileTabs from "@/components/ProfileTabs";
 
 type Data = {
   isSelf: boolean;
@@ -93,6 +94,7 @@ export default function PublicUserPage() {
             </BigBtn>
           )}
         </ProfileActions>
+        <ProfileTabs userId={id} />
       </div>
 
       {toast && (

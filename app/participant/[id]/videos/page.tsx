@@ -9,6 +9,7 @@ import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import VoteModal from "@/components/VoteModal";
+import PostRepostTag from "@/components/PostRepostTag";
 import ReportButton from "@/components/ReportButton";
 import {
   IconHeart,
@@ -36,7 +37,9 @@ export default function ParticipantVideosPage() {
   const participantId = params.id as string;
   const searchParams = useSearchParams();
   const router = useRouter();
-  const startIndex = Number(searchParams.get("start") ?? 0);
+  const startParam = Number(searchParams.get("start") ?? 0);
+  const postParam = searchParams.get("post");
+  const [ownerUserId, setOwnerUserId] = useState<string | null>(null);
 
   const [displayName, setDisplayName] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -58,10 +61,11 @@ export default function ParticipantVideosPage() {
     (async () => {
       const { data: participant } = await supabase
         .from("participants")
-        .select("display_name, photo_url")
+        .select("display_name, photo_url, user_id")
         .eq("id", participantId)
         .maybeSingle();
       setDisplayName(participant?.display_name ?? "");
+      setOwnerUserId((participant as any)?.user_id ?? null);
       setPhotoUrl(participant?.photo_url ?? null);
 
       const { data } = await supabase
@@ -111,9 +115,10 @@ export default function ParticipantVideosPage() {
 
   useEffect(() => {
     if (loading || posts.length === 0) return;
+    const startIndex = postParam ? Math.max(0, posts.findIndex((x) => x.id === postParam)) : startParam;
     const target = containerRef.current?.children[startIndex] as HTMLElement | undefined;
     target?.scrollIntoView({ behavior: "instant" as ScrollBehavior });
-  }, [loading, posts.length, startIndex]);
+  }, [loading, posts.length, startParam, postParam]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -290,6 +295,8 @@ export default function ParticipantVideosPage() {
                 <IconShare />
                 <span className="text-white text-[10px] mt-0.5">Поделиться</span>
               </button>
+
+              <PostRepostTag postId={p.id} ownerUserId={ownerUserId} meId={me?.id ?? null} />
 
               <ReportButton postId={p.id} loggedIn={!!me} />
 

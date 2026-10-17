@@ -112,7 +112,31 @@ type Props = {
   statusTone?: StatusTone;
   statusTalent?: boolean;
   badges?: { icon: string; label: string; hint: string }[];
+  /** Плитки показателей (рейтинг, голоса, подарки) под цифрами подписчиков. */
+  kpis?: HeroKpi[];
+  /** Ряд кнопок под цифрами. Если задан, вместо старой кнопки «Поделиться». */
+  actions?: ReactNode;
 };
+
+export type HeroKpi = { icon: ReactNode; value: string | number; label: string };
+
+const kStroke = { fill: "none", stroke: "#E8D48A", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+export const KpiCrown = () => (
+  <svg width="26" height="16" viewBox="0 0 100 60" fill="none">
+    <path d="M10 50 L20 15 L35 35 L50 8 L65 35 L80 15 L90 50 Z" stroke="#E8D48A" strokeWidth="5" strokeLinejoin="round" />
+  </svg>
+);
+export const KpiHeart = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" {...kStroke}>
+    <path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z" />
+  </svg>
+);
+export const KpiGift = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" {...kStroke}>
+    <rect x="3.5" y="9" width="17" height="11" rx="2" />
+    <path d="M12 9v11M3.5 13h17M12 9c-2.5 0-4-1-4-2.4C8 5.4 9 5 10 5c1.6 0 2 2 2 4zm0 0c2.5 0 4-1 4-2.4C16 5.4 15 5 14 5c-1.6 0-2 2-2 4z" />
+  </svg>
+);
 
 // Верх профиля: большое фото на весь экран, текст поверх тёмного затухания,
 // ниже ряд соцсетей и «Поделиться», затем цифры.
@@ -133,6 +157,8 @@ export default function ProfileHero({
   statusTone = "base",
   statusTalent = false,
   badges = [],
+  kpis = [],
+  actions,
 }: Props) {
   const [badgesOpen, setBadgesOpen] = useState(false);
   const VerifiedMark = (
@@ -255,33 +281,37 @@ export default function ProfileHero({
         </div>
       </div>
 
-      <div className="flex items-center gap-2.5 px-5 pt-4">
-        {socials.length > 0 && (
-          <div className="flex flex-wrap gap-2.5">
-            {socials.map((u) => (
-              <a
-                key={u}
-                href={u}
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                aria-label={socialKind(u)}
-                className="w-[46px] h-[46px] rounded-full bg-bgSurface border border-muted/60 flex items-center justify-center text-offwhite"
-              >
-                <SocialIcon kind={socialKind(u)} />
-              </a>
-            ))}
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={onShare}
-          className={`rounded-full border border-muted/60 bg-bgSurface text-offwhite text-sm py-3 px-5 ${
-            socials.length === 0 ? "flex-1" : "ml-auto"
-          }`}
-        >
-          Поделиться
-        </button>
-      </div>
+      {(socials.length > 0 || !actions) && (
+        <div className="flex items-center gap-2.5 px-5 pt-4">
+          {socials.length > 0 && (
+            <div className="flex flex-wrap gap-2.5">
+              {socials.map((u) => (
+                <a
+                  key={u}
+                  href={u}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  aria-label={socialKind(u)}
+                  className="w-[46px] h-[46px] rounded-full bg-bgSurface border border-muted/60 flex items-center justify-center text-offwhite"
+                >
+                  <SocialIcon kind={socialKind(u)} />
+                </a>
+              ))}
+            </div>
+          )}
+          {!actions && (
+            <button
+              type="button"
+              onClick={onShare}
+              className={`rounded-full border border-muted/60 bg-bgSurface text-offwhite text-sm py-3 px-5 ${
+                socials.length === 0 ? "flex-1" : "ml-auto"
+              }`}
+            >
+              Поделиться
+            </button>
+          )}
+        </div>
+      )}
 
       {badgesOpen && (
         <div className="fixed inset-0 z-[70] bg-black/65 flex items-end justify-center" onClick={() => setBadgesOpen(false)}>
@@ -309,20 +339,38 @@ export default function ProfileHero({
 
       {stats.length > 0 && (
         <div className="flex px-5 pt-5">
-          {stats.map((s, i) => (
+          {stats.map((s2, i) => (
             <button
-              key={s.label}
+              key={s2.label}
               type="button"
-              onClick={s.onClick}
-              disabled={!s.onClick}
-              className={`flex-1 text-left ${i > 0 ? "pl-4 border-l border-muted/40" : ""}`}
+              onClick={s2.onClick}
+              disabled={!s2.onClick}
+              className={`flex-1 text-center ${i > 0 ? "border-l border-muted/40" : ""}`}
             >
-              <span className="block text-[26px] font-medium tabular-nums text-offwhite">{s.value}</span>
-              <span className="text-[13px] text-muted">{s.label}</span>
+              <span className="block text-[22px] font-semibold tabular-nums text-offwhite">{s2.value}</span>
+              <span className="text-[12px] text-muted">{s2.label}</span>
             </button>
           ))}
         </div>
       )}
+
+      {kpis.length > 0 && (
+        <div className="grid grid-cols-3 gap-2 px-5 pt-4">
+          {kpis.map((k) => (
+            <div
+              key={k.label}
+              className="rounded-2xl border border-[#C9A227]/35 py-3 px-1 text-center"
+              style={{ background: "linear-gradient(160deg,rgba(124,58,237,.18),rgba(11,11,13,.9))" }}
+            >
+              <div className="flex justify-center mb-1">{k.icon}</div>
+              <b className="block text-[16px] tabular-nums text-[#E8D48A]">{k.value}</b>
+              <span className="text-[10.5px] text-muted">{k.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {actions && <div className="px-5 pt-4 flex items-center gap-2">{actions}</div>}
     </div>
   );
 }
