@@ -39,6 +39,20 @@ function nudge() {
   } catch {}
 }
 
+// Telegram Mini App: без expand() окно открывается «шторкой», а вертикальный
+// жест Telegram забирает себе (хочет свернуть окно) — отсюда «не скроллится».
+// Говорим Telegram: приложение готово, раскрой на весь экран и не перехватывай
+// вертикальные свайпы. Повторяем после сворачивания/разворачивания.
+function tgSetup() {
+  try {
+    const wa = (window as any).Telegram?.WebApp;
+    if (!wa) return;
+    wa.ready?.();
+    wa.expand?.();
+    if (wa.isVersionAtLeast?.("7.7")) wa.disableVerticalSwipes?.();
+  } catch {}
+}
+
 export default function ScrollGuard() {
   const pathname = usePathname();
 
@@ -53,15 +67,32 @@ export default function ScrollGuard() {
   }, [pathname]);
 
   useEffect(() => {
-    const onShow = () => nudge();
+    tgSetup();
+    const wa = (window as any).Telegram?.WebApp;
+    const onTg = () => {
+      tgSetup();
+      nudge();
+    };
+    try {
+      wa?.onEvent?.("activated", onTg);
+      wa?.onEvent?.("viewportChanged", onTg);
+    } catch {}
+    const onShow = () => {
+      tgSetup();
+      nudge();
+    };
     const onVis = () => {
-      if (document.visibilityState === "visible") nudge();
+      if (document.visibilityState === "visible") onShow();
     };
     window.addEventListener("pageshow", onShow);
     window.addEventListener("focus", onShow);
     document.addEventListener("visibilitychange", onVis);
     document.addEventListener("touchstart", unlock, { passive: true });
     return () => {
+      try {
+        wa?.offEvent?.("activated", onTg);
+        wa?.offEvent?.("viewportChanged", onTg);
+      } catch {}
       window.removeEventListener("pageshow", onShow);
       window.removeEventListener("focus", onShow);
       document.removeEventListener("visibilitychange", onVis);
