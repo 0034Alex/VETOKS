@@ -13,9 +13,11 @@ export async function POST(req: Request) {
   const other = String(b.withUserId || "");
   if (!other) return bad("bad_request");
 
-  const { data: ou } = await supabaseAdmin.from("users").select("id, first_name, privacy").eq("id", other).maybeSingle();
+  const { data: ou } = await supabaseAdmin.from("users").select("id, first_name, photo_url, privacy").eq("id", other).maybeSingle();
   if (!ou) return bad("no_user", 404);
 
+  const { data: oPart } = await supabaseAdmin.from("participants").select("photo_url").eq("user_id", other).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const { data: mu } = await supabaseAdmin.from("users").select("photo_url").eq("id", uid).maybeSingle();
   const bs = await blockState(uid, other);
   const thread = await findThread(uid, other);
   let messages: any[] = [];
@@ -39,6 +41,8 @@ export async function POST(req: Request) {
     ok: true,
     me: uid,
     name: (ou.first_name as string) || "Гость",
+    photo: ((oPart as any)?.photo_url ?? (ou as any).photo_url ?? null) as string | null,
+    myPhoto: ((mu as any)?.photo_url ?? null) as string | null,
     messages,
     accepted: thread ? !!thread.accepted : true,
     hasThread: !!thread,

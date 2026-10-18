@@ -12,6 +12,7 @@ import PageHeader from "@/components/PageHeader";
 type Row = {
   userId: string;
   name: string;
+  photo?: string | null;
   last: string;
   lastAt: string;
   unread: number;
@@ -111,8 +112,11 @@ export default function ChatsPage() {
               href={`/chats/${c.userId}`}
               className="bg-bgSurface border border-muted rounded-xl p-4 flex items-center gap-3"
             >
-              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] text-white flex items-center justify-center font-semibold flex-shrink-0">
-                {(c.name || "?").slice(0, 1).toUpperCase()}
+              <div
+                className="w-11 h-11 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center text-white flex items-center justify-center font-semibold flex-shrink-0"
+                style={c.photo ? { backgroundImage: `url(${c.photo})` } : undefined}
+              >
+                {!c.photo && (c.name || "?").slice(0, 1).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-center">

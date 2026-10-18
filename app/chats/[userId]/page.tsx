@@ -27,6 +27,8 @@ export default function ChatPage() {
 
   const [me, setMe] = useState("");
   const [name, setName] = useState("");
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [myPhoto, setMyPhoto] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [isRequestForMe, setIsRequestForMe] = useState(false);
   const [blockedByMe, setBlockedByMe] = useState(false);
@@ -58,6 +60,8 @@ export default function ChatPage() {
     if (!r?.ok) return;
     setMe(r.me);
     setName(r.name);
+    setPhoto(r.photo ?? null);
+    setMyPhoto(r.myPhoto ?? null);
     setMessages(r.messages);
     setIsRequestForMe(r.isRequestForMe);
     setBlockedByMe(r.blockedByMe);
@@ -129,7 +133,7 @@ export default function ChatPage() {
       setGiftQty(1);
       await load();
     } else if (r?.error === "not_enough") {
-      setGiftMsg("Недостаточно средств. Пополните баланс в разделе «Подарки».");
+      setGiftMsg("Недостаточно средств на балансе.");
     } else {
       setGiftMsg(ERRORS[r?.error] ?? "Не удалось отправить подарок.");
     }
@@ -145,6 +149,8 @@ export default function ChatPage() {
     await load();
   }
 
+  const giftPrice = gifts.find((g) => g.id === giftSel)?.price ?? 0;
+  const needMore = giftSel ? Math.max(0, Math.ceil(giftPrice * giftQty - balance)) : 0;
   const canWrite = !blockedByMe && !blockedMe && !dmClosed;
 
   // Витрина подарков этого чата: что подарили вы и что подарили вам.
@@ -167,8 +173,11 @@ export default function ChatPage() {
       >
         <button onClick={goBack} className="text-offwhite text-xl">←</button>
         <button onClick={() => router.push(`/u/${other}`)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] text-white flex items-center justify-center font-semibold flex-none">
-            {(name || "?").slice(0, 1).toUpperCase()}
+          <div
+            className="w-9 h-9 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center text-white flex items-center justify-center font-semibold flex-none"
+            style={photo ? { backgroundImage: `url(${photo})` } : undefined}
+          >
+            {!photo && (name || "?").slice(0, 1).toUpperCase()}
           </div>
           <p className="text-offwhite font-semibold flex-1 truncate">{name}</p>
         </button>
@@ -243,19 +252,31 @@ export default function ChatPage() {
 
       <div className="flex-1 px-4 py-4 flex flex-col gap-2 overflow-y-auto" style={{ paddingBottom: "170px" }}>
         {messages.length === 0 && <p className="text-muted text-sm text-center mt-8">Напишите первое сообщение.</p>}
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm break-words ${
-              m.sender_id === me ? "self-end bg-gold text-bgPrimary" : "self-start bg-bgSurface text-offwhite border border-muted"
-            }`}
-          >
-            {m.kind === "gift" ? <span className="text-lg">{m.body}</span> : m.kind === "post" && m.meta?.postId ? <SharedPost postId={String(m.meta.postId)} /> : m.body}
-            <span className={`block text-[10px] mt-0.5 ${m.sender_id === me ? "text-bgPrimary/60" : "text-muted"}`}>
-              {new Date(m.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
-            </span>
-          </div>
-        ))}
+        {messages.map((m) => {
+          const mine = m.sender_id === me;
+          const ph = mine ? myPhoto : photo;
+          const nm = mine ? "Я" : name;
+          return (
+            <div key={m.id} className={`flex items-end gap-2 ${mine ? "flex-row-reverse" : ""}`}>
+              <span
+                className="w-7 h-7 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center text-white text-xs font-semibold flex items-center justify-center flex-none"
+                style={ph ? { backgroundImage: `url(${ph})` } : undefined}
+              >
+                {!ph && (nm || "?").slice(0, 1).toUpperCase()}
+              </span>
+              <div
+                className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm break-words ${
+                  mine ? "bg-gold text-bgPrimary" : "bg-bgSurface text-offwhite border border-muted"
+                }`}
+              >
+                {m.kind === "gift" ? <span className="text-lg">{m.body}</span> : m.kind === "post" && m.meta?.postId ? <SharedPost postId={String(m.meta.postId)} /> : m.body}
+                <span className={`block text-[10px] mt-0.5 ${mine ? "text-bgPrimary/60" : "text-muted"}`}>
+                  {new Date(m.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </div>
+            </div>
+          );
+        })}
         <div ref={bottom} />
       </div>
 
@@ -351,7 +372,15 @@ export default function ChatPage() {
                 <button onClick={() => setGiftQty((q) => Math.min(1000, q + 100))} className="h-10 px-3 rounded-full border border-gold/60 text-gold text-sm">+100</button>
               </div>
             )}
-            {gifts.length > 0 && (
+            {giftSel && needMore > 0 && (
+              <p className="text-danger text-xs text-center mt-3">Не хватает {needMore} ₴ (баланс {balance} ₴)</p>
+            )}
+            {gifts.length > 0 && giftSel && needMore > 0 ? (
+              <button onClick={() => router.push("/balance")} className="mt-3 w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full">
+                Пополнить баланс
+              </button>
+            ) : null}
+            {gifts.length > 0 && !(giftSel && needMore > 0) && (
               <button
                 onClick={() => sendGift(giftSel)}
                 disabled={!giftSel || !!giftBusy}
@@ -362,6 +391,11 @@ export default function ChatPage() {
             )}
             {gifts.length === 0 && <p className="text-muted text-sm text-center py-4">Подарков пока нет.</p>}
             {giftMsg && <p className="text-danger text-xs mt-3">{giftMsg}</p>}
+            {giftMsg && (
+              <button onClick={() => router.push("/balance")} className="mt-2 w-full border border-gold text-gold font-semibold py-2.5 rounded-full text-sm">
+                Пополнить баланс
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -36,9 +36,17 @@ export async function POST(req: Request) {
 
   const otherIds = threads.map((t) => (t.user_a === uid ? t.user_b : t.user_a));
   const names: Record<string, string> = {};
+  const photos: Record<string, string | null> = {};
   if (otherIds.length) {
-    const { data: us } = await supabaseAdmin.from("users").select("id, first_name").in("id", otherIds);
-    (us ?? []).forEach((u: any) => (names[u.id] = u.first_name || "Гость"));
+    const { data: us } = await supabaseAdmin.from("users").select("id, first_name, photo_url").in("id", otherIds);
+    (us ?? []).forEach((u: any) => {
+      names[u.id] = u.first_name || "Гость";
+      photos[u.id] = u.photo_url ?? null;
+    });
+    const { data: ps } = await supabaseAdmin.from("participants").select("user_id, photo_url").in("user_id", otherIds);
+    (ps ?? []).forEach((p: any) => {
+      if (p.photo_url) photos[p.user_id] = p.photo_url;
+    });
   }
 
   const rows = threads
@@ -47,6 +55,7 @@ export async function POST(req: Request) {
       return {
         userId: other,
         name: names[other] || "Гость",
+        photo: photos[other] ?? null,
         last: t.last_message || "",
         lastAt: t.last_at,
         unread: unread[t.id] ?? 0,
