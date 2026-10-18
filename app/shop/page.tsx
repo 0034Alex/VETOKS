@@ -23,6 +23,14 @@ type Gift = {
   chat_only?: boolean;
 };
 
+function useTopupEnabled() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    apiPost("/api/shop/test-topup", { check: true }).then((r) => setOn(!!(r?.ok && r.enabled)));
+  }, []);
+  return on;
+}
+
 type Participant = { id: string; display_name: string; user_id: string; photo_url?: string | null };
 
 const TRANSLIT: Record<string, string> = {
@@ -189,6 +197,8 @@ function ShopContent() {
     })();
   }, [participantId]);
 
+  const topupOn = useTopupEnabled();
+
   async function testTopUp() {
     const r = await apiPost("/api/shop/test-topup");
     if (r.ok) setBalance(Number(r.balance));
@@ -289,9 +299,11 @@ function ShopContent() {
         <h1 className="text-2xl font-semibold text-offwhite mb-1">
           Подарки{participantName ? ` — ${participantName}` : ""}
         </h1>
-        <p className="text-muted text-xs">
-          Тестовый режим — реальные деньги пока не подключены
-        </p>
+        {topupOn && (
+          <p className="text-muted text-xs">
+            Тестовый режим — реальные деньги пока не подключены
+          </p>
+        )}
       </div>
 
       <div className="px-6 mb-4 bg-bgSurface border border-gold/40 rounded-xl p-4 flex items-center justify-between">
@@ -299,12 +311,14 @@ function ShopContent() {
           <p className="text-muted text-xs">Ваш баланс</p>
           <p className="text-gold text-xl font-semibold">{Math.round(balance)} {currencySymbol}</p>
         </div>
-        <button
-          onClick={testTopUp}
-          className="bg-bgPrimary border border-muted text-offwhite text-xs px-3 py-2 rounded-full"
-        >
-          Пополнить (тест +1000{currencySymbol})
-        </button>
+        {topupOn && (
+          <button
+            onClick={testTopUp}
+            className="bg-bgPrimary border border-muted text-offwhite text-xs px-3 py-2 rounded-full"
+          >
+            Пополнить (тест +1000{currencySymbol})
+          </button>
+        )}
       </div>
 
       {!participantId && (
@@ -849,6 +863,8 @@ function VotesSection() {
     load();
   }, []);
 
+  const topupOn = useTopupEnabled();
+
   async function testTopUp() {
     const r = await apiPost("/api/shop/test-topup");
     if (r.ok) setWalletBalance(Number(r.balance));
@@ -881,7 +897,7 @@ function VotesSection() {
       <div className="px-6 mb-4">
         <h1 className="text-2xl font-semibold text-offwhite mb-1">Голоса</h1>
         <p className="text-muted text-xs mb-3">
-          Тестовый режим — реальные деньги пока не подключены. 1 голос = {pricePerVote} {currencySymbol}.
+          {topupOn ? "Тестовый режим — реальные деньги пока не подключены. " : ""}1 голос = {pricePerVote} {currencySymbol}.
         </p>
         <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-3 flex items-center justify-between">
           <div>
@@ -890,12 +906,14 @@ function VotesSection() {
               {loading ? "..." : `${Math.round(walletBalance)} ${currencySymbol}`}
             </p>
           </div>
-          <button
-            onClick={testTopUp}
-            className="bg-bgPrimary border border-muted text-offwhite text-xs px-3 py-2 rounded-full"
-          >
-            Пополнить (тест +1000{currencySymbol})
-          </button>
+          {topupOn && (
+            <button
+              onClick={testTopUp}
+              className="bg-bgPrimary border border-muted text-offwhite text-xs px-3 py-2 rounded-full"
+            >
+              Пополнить (тест +1000{currencySymbol})
+            </button>
+          )}
         </div>
         <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
           <p className="text-muted text-xs">Ваши купленные голоса</p>
