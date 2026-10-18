@@ -3845,7 +3845,7 @@ function BrandingTab() {
     setPaidMessagesSaving(true);
     await supabase
       .from("platform_settings")
-      .upsert({ key: "paid_messages_enabled", value: next ? "true" : "false" });
+      .upsert({ key: scopedKey("paid_messages_enabled", getCrmCountry() || null), value: next ? "true" : "false" });
     setPaidMessagesEnabled(next);
     setPaidMessagesSaving(false);
   }
@@ -4500,7 +4500,7 @@ function TasksAdminTab() {
       .filter((p: { user_id: string | null }) => p.user_id)
       .map((p: { user_id: string }) => ({
         user_id: p.user_id,
-        message: `⭐ Новое задание: «${title}» — награда ${Math.round(Number(reward))} ₴`,
+        message: `⭐ Новое задание: «${title}» — награда ${Math.round(Number(reward))} ${crmCur}`,
         link: "/tasks",
       }));
     if (notifRows.length > 0) {
@@ -4555,7 +4555,7 @@ function TasksAdminTab() {
             value={reward}
             onChange={(e) => setReward(e.target.value)}
             type="number"
-            placeholder="Награда, ₴"
+            placeholder={`Награда, ${crmCur}`}
             className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
           />
           <input
@@ -4608,7 +4608,7 @@ function TasksAdminTab() {
                   {c.participants?.display_name ?? "—"} — «{c.custom_tasks?.title}»
                 </p>
                 <p className="text-muted text-xs mb-2">
-                  Награда {Math.round(c.custom_tasks?.reward ?? 0)} ₴ · отправлено{" "}
+                  Награда {Math.round(c.custom_tasks?.reward ?? 0)} {crmCur} · отправлено{" "}
                   {new Date(c.submitted_at).toLocaleDateString("ru-RU")}
                 </p>
                 <div className="flex gap-2">
@@ -4638,7 +4638,7 @@ function TasksAdminTab() {
             <div>
               <p className="text-offwhite text-sm">{t.title}</p>
               <p className="text-muted text-xs">
-                {Math.round(t.reward)} ₴
+                {Math.round(t.reward)} {crmCur}
                 {t.deadline && ` · до ${new Date(t.deadline).toLocaleDateString("ru-RU")}`}
                 {` · ${t.region_id ? regionList.find((r) => r.id === t.region_id)?.name ?? "регион" : "все регионы"}`}
               </p>

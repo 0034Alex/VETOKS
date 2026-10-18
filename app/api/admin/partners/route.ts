@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff, logAction } from "@/lib/staffServer";
 import { notify } from "@/lib/shopServer";
+import { currencyOfUser } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
 
@@ -144,7 +145,7 @@ export async function POST(req: Request) {
       await supabaseAdmin.from("sponsors").update({ referral_paid_at: null, referral_amount: null }).eq("id", id);
       return NextResponse.json({ ok: false, error: "credit_failed", detail: error.message }, { status: 500 });
     }
-    await notify(part.user_id as string, `💰 Вам начислено ${bonus} ₴ — бонус за приведённого рекламодателя`, "/history", "other");
+    await notify(part.user_id as string, `💰 Вам начислено ${bonus} ${await currencyOfUser(part.user_id as string)} — бонус за приведённого рекламодателя`, "/history", "other");
     await logAction(uid, "partner_bonus", part.user_id as string, { sponsor: id, amount: bonus });
     return NextResponse.json({ ok: true, amount: bonus });
   }

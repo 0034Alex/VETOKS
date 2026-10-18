@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { regionIdsOfCountry } from "@/lib/countryServer";
 import { logAction, requireStaff } from "@/lib/staffServer";
 
 export const dynamic = "force-dynamic";
@@ -28,9 +29,22 @@ export async function POST(req: Request) {
     .select("id, reporter_id, reported_id, thread_id, reason, details, created_at, snapshot")
     .eq("status", "open")
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(300);
+  // Только жалобы на людей из выбранной в CRM страны.
+  let repsList: any[] = reps ?? [];
+  if (b.countryId) {
+    const rids = await regionIdsOfCountry(String(b.countryId));
+    const ids0 = Array.from(new Set(repsList.map((r) => r.reported_id)));
+    const ok = new Set<string>();
+    for (let i = 0; i < ids0.length; i += 200) {
+      const { data: us } = await supabaseAdmin.from("users").select("id").in("id", ids0.slice(i, i + 200)).in("region_id", rids);
+      (us ?? []).forEach((u: any) => ok.add(u.id));
+    }
+    repsList = repsList.filter((r) => ok.has(r.reported_id));
+  }
+  repsList = repsList.slice(0, 100);
   const items: any[] = [];
-  for (const r of reps ?? []) {
+  for (const r of repsList) {
     const { data: msgs } = await supabaseAdmin
       .from("dm_messages")
       .select("sender_id, body, kind, created_at")

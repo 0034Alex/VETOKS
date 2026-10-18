@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { apiPost } from "@/lib/authClient";
-import { getCrmCountry } from "@/lib/crmCountry";
+import { getCrmCountry, crmCur } from "@/lib/crmCountry";
 
 const FILTERS: [string, string][] = [
   ["all", "Все"],
@@ -34,10 +34,22 @@ export default function AdminPeoplePanel() {
   const [countries, setCountries] = useState<{ id: string; name: string }[]>([]);
   const [moveTo, setMoveTo] = useState("");
   const [moveMsg, setMoveMsg] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [passMsg, setPassMsg] = useState("");
 
   useEffect(() => {
     supabase.from("countries").select("id, name").order("name").then(({ data }) => setCountries((data as any) ?? []));
   }, []);
+
+  async function setPassword() {
+    if (!card?.user || newPass.length < 8) return;
+    const r = await apiPost("/api/admin/people", { action: "setpass", userId: card.user.id, password: newPass });
+    if (r?.ok) {
+      const how = r.authEmail && !String(r.authEmail).endsWith("@tg.vetoks.app") ? `почта ${r.authEmail}` : r.phone && r.phoneVerified ? `телефон ${r.phone}` : "у этого аккаунта нет почты и подтверждённого телефона — войти по паролю нельзя, только через Telegram";
+      setPassMsg(`Пароль сохранён. Вход: ${how}.`);
+      setNewPass("");
+    } else setPassMsg(r?.error === "forbidden" ? "Только владелец." : r?.error === "short" ? "Пароль — от 8 символов." : "Не получилось.");
+  }
 
   async function moveCountry() {
     if (!card?.user || !moveTo) return;
@@ -73,6 +85,7 @@ export default function AdminPeoplePanel() {
     setCardLoading(true);
     setCard({ loading: true });
     setMoveMsg("");
+    setPassMsg("");
     const r = await apiPost("/api/admin/people", { action: "card", userId: id });
     setCard(r?.ok ? r : null);
     setCardLoading(false);
@@ -204,7 +217,7 @@ export default function AdminPeoplePanel() {
                   <p>Роль: {card.user.role}</p>
                   <p>Регистрация: {fmt(card.user.created_at)}</p>
                   <p>Последний вход: {fmt(card.user.last_login_at)}</p>
-                  <p>Баланс: {Math.round(card.balance)} ₴</p>
+                  <p>Баланс: {Math.round(card.balance)} {crmCur}</p>
                   <p>Голосов отдано: {card.votesCast} · Подарков отправлено: {card.giftsSent}</p>
                   {card.participant && (
                     <p>
@@ -223,6 +236,15 @@ export default function AdminPeoplePanel() {
                       {card.participant.is_eliminated ? "Вернуть в конкурс" : "Скрыть из конкурса"}
                     </button>
                   )}
+                </div>
+
+                <div className="border border-muted rounded-lg p-3 mb-3">
+                  <p className="text-muted text-xs mb-2">Задать человеку новый пароль (только владелец)</p>
+                  <div className="flex gap-2">
+                    <input value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="Новый пароль, от 8 символов" className="flex-1 bg-bgPrimary border border-muted rounded-lg px-2 py-1.5 text-sm" />
+                    <button onClick={setPassword} disabled={newPass.length < 8} className="bg-gold text-bgPrimary font-semibold px-3 rounded-lg text-sm disabled:opacity-40">Задать</button>
+                  </div>
+                  {passMsg && <p className="text-offwhite text-xs mt-2">{passMsg}</p>}
                 </div>
 
                 <div className="border border-muted rounded-lg p-3 mb-3">

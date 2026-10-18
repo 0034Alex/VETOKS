@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { countryOfUser } from "@/lib/countryServer";
+import { countryOfUser, currencyOfUser } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { blockOtherCountry, bad, kyivWeekStart, notify, fanEvent, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
 import { getShare } from "@/lib/pricing";
@@ -37,7 +37,8 @@ export async function POST(req: Request) {
     return bad("server", 500);
   }
 
-  await fanEvent(uid, participantId, owner.display_name, "donate", `Донат ${amount} ₴`, amount);
-  await notify(owner.user_id, `💝 Вам задонатили ${amount} ₴ на цель недели`, `/participant/${participantId}`, "gifts");
+  const sym = await currencyOfUser(uid);
+  await fanEvent(uid, participantId, owner.display_name, "donate", `Донат ${amount} ${sym}`, amount);
+  await notify(owner.user_id, `💝 Вам задонатили ${amount} ${sym} на цель недели`, `/participant/${participantId}`, "gifts");
   return NextResponse.json({ ok: true, balance: res.balance });
 }

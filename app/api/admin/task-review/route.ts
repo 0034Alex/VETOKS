@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { userIdFromBearer } from "@/lib/authServer";
 import { notify } from "@/lib/shopServer";
+import { currencyOfUser } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: (data as any)?.error ?? "failed" }, { status: 400 });
     }
     const d = data as any;
-    await notify(d.user_id, `✅ Задание «${d.title}» одобрено — начислено ${Math.round(Number(d.reward))} ₴`, "/tasks", "tasks");
+    await notify(d.user_id, `✅ Задание «${d.title}» одобрено — начислено ${Math.round(Number(d.reward))} ${await currencyOfUser(d.user_id)}`, "/tasks", "tasks");
     return NextResponse.json({ ok: true });
   }
 

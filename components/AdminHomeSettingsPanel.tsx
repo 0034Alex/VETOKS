@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { getCrmCountry } from "@/lib/crmCountry";
+import { getCrmCountry, crmCur } from "@/lib/crmCountry";
 import { loadScoped, scopedKey } from "@/lib/scopedSettings";
 
 const KEYS = ["strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text", "fanzone_enabled", "fanzone_min_amount", "media_season_id"];
@@ -88,7 +88,7 @@ export default function AdminHomeSettingsPanel() {
           placeholder="50"
           className="w-40 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
         />
-        <p className="text-muted text-xs mt-1">Минимальная сумма покупки (₴), чтобы она попала в ленту. Пусто — 50 ₴. Меняется сразу для новых покупок.</p>
+        <p className="text-muted text-xs mt-1">Минимальная сумма покупки ({crmCur}), чтобы она попала в ленту. Пусто — 50 {crmCur}. Меняется сразу для новых покупок.</p>
       </div>
 
       <div className="bg-bgSurface border border-muted rounded-xl p-4">

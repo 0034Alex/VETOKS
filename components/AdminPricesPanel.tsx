@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getCrmCountry } from "@/lib/crmCountry";
-import { loadScoped } from "@/lib/scopedSettings";
+import { loadScoped, scopedKey } from "@/lib/scopedSettings";
 import { clearPricingCache } from "@/lib/currency";
 
 // CRM → «Цены»: всё платное в одном месте. У каждой позиции — цена в
@@ -168,7 +168,7 @@ export default function AdminPricesPanel() {
   }
 
   async function saveSetting(key: string, value: string) {
-    await supabase.from("platform_settings").upsert({ key, value });
+    await supabase.from("platform_settings").upsert({ key: scopedKey(key, getCrmCountry() || null), value });
     flash(key);
   }
 

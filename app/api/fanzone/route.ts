@@ -1,22 +1,18 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { userIdFromBearer } from "@/lib/authServer";
-import { countryOfUser, regionIdsOfCountry } from "@/lib/countryServer";
+import { countryOfUser, regionIdsOfCountry, settingsForCountry } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
 
 // «Живая Фан-Зона»: каждый видит покупки своего региона за 3 суток.
 // Когда сезон в статусе «final» (гранд-финал) — показываем всю страну.
 export async function GET(req: Request) {
-  const { data: st } = await supabaseAdmin
-    .from("platform_settings")
-    .select("value")
-    .eq("key", "fanzone_enabled")
-    .maybeSingle();
-  if (st?.value === "false") return NextResponse.json({ enabled: false, items: [] });
-
   const uid0 = await userIdFromBearer(req);
   const cid0 = uid0 ? await countryOfUser(uid0) : null;
+  const st = await settingsForCountry(["fanzone_enabled"], cid0);
+  if (st.fanzone_enabled === "false") return NextResponse.json({ enabled: false, items: [] });
+
   let seQ = supabaseAdmin.from("seasons").select("status").order("created_at", { ascending: false }).limit(1);
   if (cid0) seQ = seQ.eq("country_id", cid0);
   const { data: season } = await seQ.maybeSingle();

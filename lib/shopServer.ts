@@ -121,12 +121,8 @@ export async function fanEvent(
   amount: number
 ) {
   try {
-    const { data: st } = await supabaseAdmin
-      .from("platform_settings")
-      .select("key, value")
-      .in("key", ["fanzone_enabled", "fanzone_min_amount"]);
-    const m: Record<string, string> = {};
-    (st ?? []).forEach((r: any) => (m[r.key] = r.value ?? ""));
+    const { settingsForCountry, countryOfUser } = await import("@/lib/countryServer");
+    const m = await settingsForCountry(["fanzone_enabled", "fanzone_min_amount"], await countryOfUser(userId));
     if (m.fanzone_enabled === "false") return;
     const min = Number(m.fanzone_min_amount);
     if (amount < (Number.isFinite(min) && m.fanzone_min_amount !== "" ? min : 50)) return;

@@ -7,6 +7,7 @@ import SharedPost from "@/components/SharedPost";
 import ReportSheet from "@/components/ReportSheet";
 import { apiPost } from "@/lib/authClient";
 import { chatGiftEmoji } from "@/lib/chatGifts";
+import { getCurrencySymbol } from "@/lib/currency";
 
 type Msg = { id: string; sender_id: string; body: string; kind: string; meta: any; created_at: string };
 
@@ -45,6 +46,7 @@ export default function ChatPage() {
   const [giftOpen, setGiftOpen] = useState(false);
   const [gifts, setGifts] = useState<{ id: string; name: string; price: number }[]>([]);
   const [balance, setBalance] = useState(0);
+  const [cur, setCur] = useState("₴");
   const [giftMsg, setGiftMsg] = useState("");
   const [giftBusy, setGiftBusy] = useState("");
   const [giftSel, setGiftSel] = useState("");
@@ -105,6 +107,7 @@ export default function ChatPage() {
   async function openGifts() {
     setGiftMsg("");
     setGiftOpen(true);
+    getCurrencySymbol().then(setCur).catch(() => {});
     const r = await apiPost("/api/dm/gift-catalog");
     if (r?.ok) {
       setGifts(r.items);
@@ -332,7 +335,7 @@ export default function ChatPage() {
               <p className="text-offwhite font-semibold">Подарок для {name}</p>
               <button onClick={() => setGiftOpen(false)} className="text-muted text-xl">✕</button>
             </div>
-            <p className="text-muted text-xs mb-3">Ваш баланс: {balance} ₴</p>
+            <p className="text-muted text-xs mb-3">Ваш баланс: {balance} {cur}</p>
             <div className="grid grid-cols-3 gap-2 overflow-y-auto min-h-0 flex-1" style={{ touchAction: "pan-y", overscrollBehavior: "contain" }}>
               {gifts.map((g) => (
                 <button
@@ -352,7 +355,7 @@ export default function ChatPage() {
                   )}
                   <span className="text-4xl leading-none">{chatGiftEmoji(g.name)}</span>
                   <span className="text-offwhite text-xs">{g.name}</span>
-                  <span className="text-gold text-xs font-semibold">{g.price} ₴</span>
+                  <span className="text-gold text-xs font-semibold">{g.price} {cur}</span>
                 </button>
               ))}
             </div>
@@ -371,7 +374,7 @@ export default function ChatPage() {
               </div>
             )}
             {giftSel && needMore > 0 && (
-              <p className="text-danger text-xs text-center mt-3">Не хватает {needMore} ₴ (баланс {balance} ₴)</p>
+              <p className="text-danger text-xs text-center mt-3">Не хватает {needMore} {cur} (баланс {balance} {cur})</p>
             )}
             {gifts.length > 0 && giftSel && needMore > 0 ? (
               <button onClick={() => router.push("/balance")} className="mt-3 w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full">
@@ -384,7 +387,7 @@ export default function ChatPage() {
                 disabled={!giftSel || !!giftBusy}
                 className="mt-4 w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full disabled:opacity-40"
               >
-                {giftBusy ? "Отправляем…" : giftSel ? `Подарить ${giftQty > 1 ? `×${giftQty} ` : ""}· ${(gifts.find((g) => g.id === giftSel)?.price ?? 0) * giftQty} ₴` : "Выберите подарок"}
+                {giftBusy ? "Отправляем…" : giftSel ? `Подарить ${giftQty > 1 ? `×${giftQty} ` : ""}· ${(gifts.find((g) => g.id === giftSel)?.price ?? 0) * giftQty} ${cur}` : "Выберите подарок"}
               </button>
             )}
             {gifts.length === 0 && <p className="text-muted text-sm text-center py-4">Подарков пока нет.</p>}

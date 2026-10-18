@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { apiPost } from "@/lib/authClient";
-import { getCrmCountry } from "@/lib/crmCountry";
+import { getCrmCountry, crmCur } from "@/lib/crmCountry";
 
 type Stats = Record<string, number>;
 const PERIODS: [string, string][] = [
@@ -47,7 +47,7 @@ export default function AdminDashboard({ onGo }: { onGo: (tab: string) => void }
   }, [period, regionId]);
 
   const n = (k: string) => Math.round(Number(stats[k] ?? 0));
-  const money = (k: string) => `${n(k)} ₴`;
+  const money = (k: string) => `${n(k)} ${crmCur}`;
 
   const attention: [string, number, string][] = [
     ["Анкеты ждут решения", att.applications ?? 0, "applications"],

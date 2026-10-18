@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { countryOfUser, settingsForCountry } from "@/lib/countryServer";
 import { requireUser } from "@/lib/shopServer";
 
 export const dynamic = "force-dynamic";
@@ -14,12 +15,9 @@ export async function POST(req: Request) {
     .select("phone_verified")
     .eq("id", uid)
     .maybeSingle();
-  const { data: set } = await supabaseAdmin
-    .from("platform_settings")
-    .select("value")
-    .eq("key", "free_votes_total")
-    .maybeSingle();
-  const total = Number.isFinite(Number(set?.value)) && set?.value !== "" && set?.value != null ? Number(set.value) : 3;
+  const set = await settingsForCountry(["free_votes_total"], await countryOfUser(uid));
+  const fv = set.free_votes_total;
+  const total = fv !== undefined && fv !== "" && Number.isFinite(Number(fv)) ? Number(fv) : 3;
 
   const { data: usage } = await supabaseAdmin
     .from("free_vote_usage")

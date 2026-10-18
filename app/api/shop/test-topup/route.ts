@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { countryOfUser, settingsForCountry } from "@/lib/countryServer";
 import { bad, requireUser } from "@/lib/shopServer";
 
 export const dynamic = "force-dynamic";
@@ -10,12 +11,8 @@ export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
 
-  const { data: set } = await supabaseAdmin
-    .from("platform_settings")
-    .select("value")
-    .eq("key", "test_topup_enabled")
-    .maybeSingle();
-  const enabled = set?.value !== "false";
+  const set = await settingsForCountry(["test_topup_enabled"], await countryOfUser(uid));
+  const enabled = set.test_topup_enabled !== "false";
   const body = await req.json().catch(() => ({}));
   if (body?.check) return NextResponse.json({ ok: true, enabled });
   if (!enabled) return bad("disabled", 403);

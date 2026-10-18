@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
-import { getCrmCountry } from "@/lib/crmCountry";
+import { getCrmCountry, crmCur } from "@/lib/crmCountry";
 
 const STAGES: [string, string][] = [
   ["lead", "Знакомство"],
@@ -89,9 +89,9 @@ export default function AdminPartnersPanel() {
   async function payReferrer(s: any, mine: any[]) {
     const total = mine.reduce((t, p) => t + Number(p.amount), 0);
     const bonus = Math.round(((total * Number(s.referral_percent)) / 100) * 100) / 100;
-    if (!confirm(`Зачислить ${bonus} ₴ участнице ${refNames[s.referrer_participant_id] ?? ""}? Это делается один раз.`)) return;
+    if (!confirm(`Зачислить ${bonus} ${crmCur} участнице ${refNames[s.referrer_participant_id] ?? ""}? Это делается один раз.`)) return;
     const r = await apiPost("/api/admin/partners", { action: "pay_referrer", id: s.id });
-    setMsg(r?.ok ? `Зачислено ${r.amount} ₴` : r?.error === "forbidden" ? "Зачислять может только финансовый админ или владелец." : r?.error === "no_payments" ? "Сначала внесите платёж рекламодателя." : "Не получилось зачислить.");
+    setMsg(r?.ok ? `Зачислено ${r.amount} ${crmCur}` : r?.error === "forbidden" ? "Зачислять может только финансовый админ или владелец." : r?.error === "no_payments" ? "Сначала внесите платёж рекламодателя." : "Не получилось зачислить.");
     await load();
   }
 
@@ -134,7 +134,7 @@ export default function AdminPartnersPanel() {
                 <div>
                   <p className="text-gold font-semibold">{s.name}</p>
                   <p className="text-muted text-xs">
-                    {s.package_type ?? "без пакета"} · внесено {Math.round(Number(s.amount ?? 0))} ₴
+                    {s.package_type ?? "без пакета"} · внесено {Math.round(Number(s.amount ?? 0))} {crmCur}
                     {s.user_id ? " · кабинет открыт" : ""}
                   </p>
                   {s.follow_up_at && (
@@ -184,12 +184,12 @@ export default function AdminPartnersPanel() {
                     {mine.length === 0 && <p className="text-muted text-xs mb-1">Платежей пока нет.</p>}
                     {mine.map((p) => (
                       <div key={p.id} className="flex justify-between text-xs text-offwhite py-0.5">
-                        <span>{new Date(p.paid_at).toLocaleDateString("ru-RU")} · {Math.round(Number(p.amount))} ₴ {p.note ? `· ${p.note}` : ""}</span>
+                        <span>{new Date(p.paid_at).toLocaleDateString("ru-RU")} · {Math.round(Number(p.amount))} {crmCur} {p.note ? `· ${p.note}` : ""}</span>
                         <button onClick={() => confirm("Удалить платёж?") && act({ action: "delete_payment", id: s.id, paymentId: p.id })} className="text-danger">✕</button>
                       </div>
                     ))}
                     <div className="flex gap-2 mt-2">
-                      <input value={payAmount} onChange={(e) => setPayAmount(e.target.value)} type="number" placeholder="Сумма, ₴" className="w-28 bg-bgPrimary border border-muted rounded-lg px-2 py-1.5 text-xs" />
+                      <input value={payAmount} onChange={(e) => setPayAmount(e.target.value)} type="number" placeholder={`Сумма, ${crmCur}`} className="w-28 bg-bgPrimary border border-muted rounded-lg px-2 py-1.5 text-xs" />
                       <input value={payNote} onChange={(e) => setPayNote(e.target.value)} placeholder="Комментарий" className="flex-1 bg-bgPrimary border border-muted rounded-lg px-2 py-1.5 text-xs" />
                       <button onClick={() => addPayment(s.id)} className="bg-success text-bgPrimary px-3 rounded-full text-xs font-semibold">Внести</button>
                     </div>
@@ -215,7 +215,7 @@ export default function AdminPartnersPanel() {
                     <p className="text-offwhite text-xs font-semibold mb-1">Бонус участнице за этого рекламодателя</p>
                     {s.referral_paid_at ? (
                       <p className="text-success text-xs">
-                        Зачислено {Math.round(Number(s.referral_amount) * 100) / 100} ₴ участнице {refNames[s.referrer_participant_id] ?? ""} ·{" "}
+                        Зачислено {Math.round(Number(s.referral_amount) * 100) / 100} {crmCur} участнице {refNames[s.referrer_participant_id] ?? ""} ·{" "}
                         {new Date(s.referral_paid_at).toLocaleDateString("ru-RU")}. Повторно не начисляется.
                       </p>
                     ) : (
@@ -247,7 +247,7 @@ export default function AdminPartnersPanel() {
                             onClick={() => payReferrer(s, mine)}
                             className="bg-success text-bgPrimary px-4 py-2 rounded-full text-xs font-semibold"
                           >
-                            Зачислить {Math.round((mine.reduce((t, p) => t + Number(p.amount), 0) * Number(s.referral_percent)) ) / 100} ₴ участнице (один раз)
+                            Зачислить {Math.round((mine.reduce((t, p) => t + Number(p.amount), 0) * Number(s.referral_percent)) ) / 100} {crmCur} участнице (один раз)
                           </button>
                         )}
                         <p className="text-muted text-[11px]">Нажмите «Зачислить», когда договорились и оплата прошла. Сумма считается от внесённых платежей на момент нажатия, начисляется один раз, без продлений.</p>

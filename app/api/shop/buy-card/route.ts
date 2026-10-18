@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { countryOfUser } from "@/lib/countryServer";
+import { countryOfUser, currencyOfUser } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { blockOtherCountry, bad, notify, fanEvent, participantOwner, pay, requireUser } from "@/lib/shopServer";
 import { getAppPrice } from "@/lib/pricing";
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     await fanEvent(uid, claimed.participant_id, owner.display_name, "card", "Карточка", p.price);
     await notify(
       owner.user_id,
-      `🃏 Продана карточка «${STAGE_LABELS[claimed.stage] ?? claimed.stage}» за ${p.price.toLocaleString("ru-RU")} ₴`,
+      `🃏 Продана карточка «${STAGE_LABELS[claimed.stage] ?? claimed.stage}» за ${p.price.toLocaleString("ru-RU")} ${await currencyOfUser(uid)}`,
       `/my-cards`,
       "gifts"
     );

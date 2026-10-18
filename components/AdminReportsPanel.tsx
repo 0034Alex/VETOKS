@@ -45,7 +45,7 @@ function DmReports() {
   const [loading, setLoading] = useState(true);
 
   async function load() {
-    const r = await apiPost("/api/admin/dm-reports", {});
+    const r = await apiPost("/api/admin/dm-reports", { countryId: getCrmCountry() || undefined });
     setItems(r?.items ?? []);
     setNames(r?.names ?? {});
     setLoading(false);
