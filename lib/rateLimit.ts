@@ -73,7 +73,7 @@ export function lockedResponse(retry: number) {
       ok: false,
       status: "error",
       error: "locked",
-      message: `Слишком много неверных попыток. Вход временно закрыт, повторите через ${waitText(retry)}. Если это не вы — напишите в поддержку.`,
+      message: `Слишком много неверных попыток. Вход временно закрыт, повторите через ${waitText(retry)}.`,
       retry,
     },
     { status: 429, headers: { "Retry-After": String(retry) } }

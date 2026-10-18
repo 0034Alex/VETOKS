@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [auto, setAuto] = useState(false);
+  const [locked, setLocked] = useState(false);
 
   // Уже вошли — на главную. Внутри Telegram — входим сами, без ввода.
   useEffect(() => {
@@ -53,11 +54,13 @@ export default function LoginPage() {
     e.preventDefault();
     setStatus("loading");
     setErrorMessage("");
+    setLocked(false);
 
     const r = await postJson("/api/auth/password-login", { identifier, password });
     if (r.status !== "ok") {
       setStatus("error");
       setErrorMessage(r.message || t("login.errBad"));
+      setLocked(r.error === "locked");
       return;
     }
     const { error } = await supabase.auth.setSession({
@@ -135,6 +138,14 @@ export default function LoginPage() {
           </button>
 
           {errorMessage && <p className="text-danger text-sm">{errorMessage}</p>}
+          {locked && (
+            <Link
+              href={`/support?topic=locked&id=${encodeURIComponent(identifier.trim())}`}
+              className="border border-gold text-gold font-semibold px-6 py-3 rounded-full text-center text-sm"
+            >
+              Написать в поддержку
+            </Link>
+          )}
         </form>
       </div>
     </main>

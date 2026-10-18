@@ -19,6 +19,15 @@ export default function SupportPage() {
   const [mine, setMine] = useState<any[]>([]);
 
   useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if (q.get("topic") === "locked") {
+        const id = (q.get("id") || "").slice(0, 80);
+        setMessage(`Мой вход заблокирован после неверных попыток.${id ? " Логин: " + id + "." : ""} Прошу помочь восстановить доступ.`);
+      }
+    } catch {
+      /* ignore */
+    }
     (async () => {
       const u = await getCurrentUser();
       if (!u) return;
