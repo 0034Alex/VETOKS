@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { supabase } from "@/lib/supabaseClient";
-import { trackAd } from "@/lib/track";
+import { useAdWatch, withUtm } from "@/lib/track";
 import { getCurrentUser } from "@/lib/currentUser";
 import { visibleInRegion } from "@/lib/regionFilter";
 
@@ -24,6 +24,31 @@ function shuffle<T>(arr: T[]): T[] {
   return copy;
 }
 
+function LogoItem({ p, index }: { p: Partner; index: number }) {
+  const meta = { type: "logo" as const, id: p.id, placement: "showcase", position: index };
+  const { ref, watch } = useAdWatch<HTMLDivElement>(meta);
+  const card = (
+    <div
+      ref={ref}
+      className="w-28 h-28 flex-shrink-0 rounded-xl flex items-center justify-center p-4"
+      style={{
+        background: "linear-gradient(135deg, rgba(124,58,237,0.25), rgba(11,11,13,0.9))",
+        border: "1px solid rgba(201,162,39,0.3)",
+      }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={p.logo_url} alt={p.name} className="max-w-full max-h-full object-contain" />
+    </div>
+  );
+  return p.link_url ? (
+    <a href={withUtm(p.link_url, meta)} target="_blank" rel="noopener noreferrer" onClick={() => watch.current?.click()}>
+      {card}
+    </a>
+  ) : (
+    <div>{card}</div>
+  );
+}
+
 export default function PartnersShowcase() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -38,7 +63,6 @@ export default function PartnersShowcase() {
       const me = await getCurrentUser();
       const list = shuffle(visibleInRegion((data as any[]) ?? [], me?.region_id ?? null, "partner_logo_regions") as Partner[]);
       setPartners(list);
-      trackAd("view", "logo", list.map((x) => x.id));
     })();
   }, []);
 
@@ -73,31 +97,9 @@ export default function PartnersShowcase() {
         className="flex overflow-x-auto px-6 gap-3"
         style={{ scrollbarWidth: "none" }}
       >
-        {partners.map((p) => {
-          const card = (
-            <div
-              className="w-28 h-28 flex-shrink-0 rounded-xl flex items-center justify-center p-4"
-              style={{
-                background: "linear-gradient(135deg, rgba(124,58,237,0.25), rgba(11,11,13,0.9))",
-                border: "1px solid rgba(201,162,39,0.3)",
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={p.logo_url}
-                alt={p.name}
-                className="max-w-full max-h-full object-contain"
-              />
-            </div>
-          );
-          return p.link_url ? (
-            <a key={p.id} href={p.link_url} target="_blank" rel="noopener noreferrer" onClick={() => trackAd("click", "logo", [p.id])}>
-              {card}
-            </a>
-          ) : (
-            <div key={p.id}>{card}</div>
-          );
-        })}
+        {partners.map((p, i) => (
+          <LogoItem key={p.id} p={p} index={i} />
+        ))}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getMyCountry } from "@/lib/myCountry";
 import { loadScoped } from "@/lib/scopedSettings";
 import { getCurrentUser } from "@/lib/currentUser";
+import { useAdWatch } from "@/lib/track";
 
 export default function TickerBar() {
   const [text, setText] = useState("");
@@ -18,10 +19,13 @@ export default function TickerBar() {
     })();
   }, []);
 
+  const { ref } = useAdWatch<HTMLDivElement>(enabled && text ? { type: "ticker", id: "ticker", placement: "ticker" } : null, [enabled, text]);
+
   if (!enabled || !text) return null;
 
   return (
     <div
+      ref={ref}
       style={{
         overflow: "hidden",
         backgroundColor: "#151517",

@@ -5,6 +5,7 @@ import { getMyCountry } from "@/lib/myCountry";
 import { loadScoped } from "@/lib/scopedSettings";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
+import { useAdWatch, withUtm } from "@/lib/track";
 
 type Settings = {
   enabled: boolean;
@@ -61,7 +62,15 @@ export default function EntryPopup() {
     })();
   }, []);
 
+  const meta = { type: "popup" as const, id: "entry", placement: "entry" };
+  const { ref: cardRef, watch } = useAdWatch<HTMLDivElement>(show && settings ? meta : null, [show]);
+
   if (!show || !settings) return null;
+
+  function closePopup() {
+    watch.current?.close();
+    setShow(false);
+  }
 
   return (
     <div
@@ -78,9 +87,10 @@ export default function EntryPopup() {
         justifyContent: "center",
         padding: "0 24px",
       }}
-      onClick={() => setShow(false)}
+      onClick={closePopup}
     >
       <div
+        ref={cardRef}
         style={{
           backgroundColor: "#151517",
           border: "1px solid rgba(201,162,39,0.4)",
@@ -107,9 +117,10 @@ export default function EntryPopup() {
           )}
           {settings.button_text && settings.button_link && (
             <a
-              href={settings.button_link}
+              href={withUtm(settings.button_link, meta)}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => watch.current?.click()}
               style={{
                 display: "block",
                 width: "100%",
@@ -128,7 +139,7 @@ export default function EntryPopup() {
             </a>
           )}
           <button
-            onClick={() => setShow(false)}
+            onClick={closePopup}
             style={{
               width: "100%",
               color: "#8A8A8E",

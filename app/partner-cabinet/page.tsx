@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import PartnerAdStats from "@/components/PartnerAdStats";
 
 type Purchase = {
   id: string;
@@ -201,6 +202,11 @@ export default function PartnerCabinetPage() {
             ))}
           </div>
         )}
+
+        <h2 className="text-lg font-semibold text-gold mb-3">
+          Статистика моей рекламы
+        </h2>
+        <PartnerAdStats />
 
         <h2 className="text-lg font-semibold text-gold mb-3">
           Прислать макет

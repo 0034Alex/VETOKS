@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getMyCountry } from "@/lib/myCountry";
 import { loadScoped } from "@/lib/scopedSettings";
 import { getCurrentUser } from "@/lib/currentUser";
-import { trackAd } from "@/lib/track";
+import { AdWatch, withUtm } from "@/lib/track";
 
 type Banner = {
   id: string;
@@ -21,6 +21,10 @@ export default function PromoBannerCarousel({
   const [banners, setBanners] = useState<Banner[]>([]);
   const [enabled, setEnabled] = useState(true);
   const [active, setActive] = useState(0);
+  const [visible, setVisible] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const watches = useRef<Map<string, AdWatch>>(new Map());
+  const touchX = useRef<number | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -78,17 +82,56 @@ export default function PromoBannerCarousel({
     return () => clearInterval(interval);
   }, [banners.length]);
 
+  // Карусель на экране (≥50%)?
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((es) => es.forEach((e) => setVisible(e.isIntersecting && e.intersectionRatio >= 0.5)), {
+      threshold: [0, 0.5, 1],
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [enabled, banners.length]);
+
+  // Показ / время на экране считаем только у баннера, который сейчас активен и виден.
   useEffect(() => {
     if (!enabled || banners.length === 0) return;
-    const b = banners[active];
-    if (b) trackAd("view", "banner", [b.id]);
-  }, [active, banners, enabled]);
+    banners.forEach((b, i) => {
+      let w = watches.current.get(b.id);
+      if (!w && i === active) {
+        w = new AdWatch({ type: "banner", id: b.id, placement, position: i });
+        watches.current.set(b.id, w);
+      }
+      w?.setIntersecting(visible && i === active);
+    });
+  }, [active, banners, enabled, visible, placement]);
+
+  useEffect(() => {
+    const map = watches.current;
+    return () => {
+      map.forEach((w) => w.end());
+      map.clear();
+    };
+  }, [banners]);
+
+  function onTouchEnd(x: number) {
+    const start = touchX.current;
+    touchX.current = null;
+    if (start === null || banners.length <= 1) return;
+    const dx = x - start;
+    if (Math.abs(dx) < 40) return;
+    watches.current.get(banners[active]?.id)?.swipe();
+    setActive((prev) => (dx < 0 ? (prev + 1) % banners.length : (prev - 1 + banners.length) % banners.length));
+  }
 
   if (!enabled || banners.length === 0) return null;
 
   return (
     <div style={{ padding: "0 24px", marginBottom: 16 }}>
       <div
+        ref={boxRef}
+        onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
+        onTouchEnd={(e) => onTouchEnd(e.changedTouches[0].clientX)}
         style={{
           position: "relative",
           width: "100%",
@@ -118,10 +161,10 @@ export default function PromoBannerCarousel({
           return b.link_url ? (
             <a
               key={b.id}
-              href={b.link_url}
+              href={withUtm(b.link_url, { type: "banner", id: b.id, placement })}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => trackAd("click", "banner", [b.id])}
+              onClick={() => watches.current.get(b.id)?.click()}
               style={{
                 position: "absolute",
                 inset: 0,

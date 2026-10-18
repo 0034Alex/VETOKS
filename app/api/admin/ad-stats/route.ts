@@ -1,55 +1,69 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff } from "@/lib/staffServer";
-import { kyivDate, kyivDayStartUtc, addDays } from "@/lib/kyiv";
+import { adInfo, breakdowns, metrics, periodRange, TYPE_LABEL } from "@/lib/adStatsServer";
 
 export const dynamic = "force-dynamic";
 
+// CRM → «Статистика рекламы»: список, подробности по одной рекламе, привязка к партнёру.
 export async function POST(req: Request) {
   const uid = await requireStaff(req);
   if (uid instanceof NextResponse) return uid;
   const body = await req.json().catch(() => ({}));
-  const period = String(body.period ?? "7d");
-  const today = kyivDate();
-  const from =
-    period === "today" ? kyivDayStartUtc(today)
-    : period === "30d" ? kyivDayStartUtc(addDays(today, -29))
-    : period === "all" ? new Date("2000-01-01T00:00:00Z")
-    : kyivDayStartUtc(addDays(today, -6));
+  const country = body.countryId ? String(body.countryId) : null;
+  const { from, to } = periodRange(body);
 
-  const { data: stats } = await supabaseAdmin.rpc("vt_ad_stats", { p_from: from.toISOString() });
+  if (body.action === "set_owner") {
+    const type = String(body.type || "");
+    const id = String(body.id || "");
+    if (!type || !id) return NextResponse.json({ ok: false }, { status: 400 });
+    await supabaseAdmin.from("ad_owners").upsert({
+      target_type: type,
+      target_id: id,
+      sponsor_user_id: body.sponsorUserId ? String(body.sponsorUserId) : null,
+      label: body.label ? String(body.label).slice(0, 80) : null,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.action === "detail") {
+    const type = String(body.type || "");
+    const id = String(body.id || "");
+    const b = await breakdowns(from, to, type, id, country);
+    return NextResponse.json({ ok: true, breakdowns: b });
+  }
+
+  const { data: stats } = await supabaseAdmin.rpc("vt_ad_report", {
+    p_from: from.toISOString(),
+    p_to: to.toISOString(),
+    p_country: country,
+  });
   const rows: any[] = (stats as any[]) ?? [];
+  const info = await adInfo(rows);
+  const { data: owners } = await supabaseAdmin.from("ad_owners").select("target_type, target_id, sponsor_user_id, label");
+  const om = new Map((owners ?? []).map((o: any) => [o.target_type + ":" + o.target_id, o]));
 
-  const bannerIds = rows.filter((r) => r.target_type === "banner").map((r) => r.target_id);
-  const logoIds = rows.filter((r) => r.target_type === "logo").map((r) => r.target_id);
-  const { data: banners } = bannerIds.length
-    ? await supabaseAdmin.from("promo_banners").select("id, image_url, link_url, country_id").in("id", bannerIds)
-    : { data: [] as any[] };
-  const { data: logos } = logoIds.length
-    ? await supabaseAdmin.from("partner_logos").select("id, name, logo_url, country_id").in("id", logoIds)
-    : { data: [] as any[] };
-  const bm = new Map((banners ?? []).map((b: any) => [b.id, b]));
-  const lm = new Map((logos ?? []).map((l: any) => [l.id, l]));
+  const { data: sp } = await supabaseAdmin.from("sponsors").select("name, user_id").not("user_id", "is", null);
+  const sponsors = (sp ?? []).map((s: any) => ({ userId: s.user_id, name: s.name }));
+  const sn = new Map(sponsors.map((s) => [s.userId, s.name]));
 
-  const cid = body.countryId ? String(body.countryId) : "";
   const items = rows
-    .filter((r) => {
-      if (!cid) return true;
-      const info: any = r.target_type === "banner" ? bm.get(r.target_id) : lm.get(r.target_id);
-      return !info?.country_id || info.country_id === cid;
-    })
     .map((r) => {
-      const info: any = r.target_type === "banner" ? bm.get(r.target_id) : lm.get(r.target_id);
+      const k = r.target_type + ":" + r.target_id;
+      const inf = info.get(k);
+      const o: any = om.get(k);
       return {
         type: r.target_type,
+        typeLabel: TYPE_LABEL[r.target_type] ?? r.target_type,
         id: r.target_id,
-        views: Number(r.views),
-        clicks: Number(r.clicks),
-        name: info?.name ?? (r.target_type === "banner" ? "Баннер" : "Логотип"),
-        image: info?.image_url ?? info?.logo_url ?? null,
-        link: info?.link_url ?? null,
+        name: o?.label || inf?.name || TYPE_LABEL[r.target_type] || r.target_type,
+        image: inf?.image ?? null,
+        link: inf?.link ?? null,
+        sponsorUserId: o?.sponsor_user_id ?? null,
+        sponsorName: o?.sponsor_user_id ? sn.get(o.sponsor_user_id) ?? "—" : null,
+        ...metrics(r),
       };
     })
-    .sort((a, b) => b.views - a.views);
-  return NextResponse.json({ ok: true, items });
+    .sort((a, b) => b.views - a.views || b.impressions - a.impressions);
+  return NextResponse.json({ ok: true, items, sponsors });
 }

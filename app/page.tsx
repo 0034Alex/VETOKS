@@ -2,7 +2,8 @@
 
 import { useT } from "@/lib/i18n";
 import { getVoteTotals } from "@/lib/voteTotals";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AdWatch, trackAdClick, withUtm } from "@/lib/track";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -119,6 +120,40 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [spread, setSpread] = useState(0);
+  const [magVisible, setMagVisible] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const adWatch = useRef<AdWatch | null>(null);
+
+  // Журнал на экране? (нужно, чтобы считать только реально увиденную рекламу)
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((es) => es.forEach((e) => setMagVisible(e.isIntersecting && e.intersectionRatio >= 0.4)), {
+      threshold: [0, 0.4, 1],
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [pages.length, loading]);
+
+  // Реклама на текущем развороте: показ, время на экране, пролистывание.
+  const adOnSpread = (() => {
+    const found = [pages[spread], pages[spread + 1]].find((p) => p && (p.kind === "ad_text" || p.kind === "ad_photo"));
+    return found ? String(found.id).replace(/-[lr]$/, "") : null;
+  })();
+  useEffect(() => {
+    if (!adOnSpread) return;
+    const w = new AdWatch({ type: "magazine", id: adOnSpread, placement: "magazine", position: spread });
+    adWatch.current = w;
+    return () => {
+      w.end();
+      adWatch.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adOnSpread]);
+  useEffect(() => {
+    adWatch.current?.setIntersecting(magVisible);
+  }, [magVisible, adOnSpread]);
 
   useEffect(() => {
     // При смене «Мой регион / Вся страна» журнал сначала убираем целиком, потом собираем заново.
@@ -256,7 +291,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
         📖 Журнал VETOKS
       </h2>
       <div className="flex justify-center px-4">
-        <div className="relative" style={{ width: "100%", maxWidth: 360 }}>
+        <div ref={wrapRef} className="relative" style={{ width: "100%", maxWidth: 360 }}>
           {/* Кулисы «толщины» книги — каскад слоёв позади разворота */}
           <div
             className="absolute rounded-lg"
@@ -290,6 +325,10 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
             mobileScrollSupport={true}
             className="vetoks-magazine relative"
             style={{ margin: "0 auto" }}
+            onFlip={(e: { data: number }) => {
+              adWatch.current?.swipe();
+              setSpread(e.data - (e.data % 2));
+            }}
           >
             {pages.map((page) => {
             if (page.kind === "ad_text") {
@@ -332,9 +371,10 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                       </p>
                     )}
                     <a
-                      href={page.button_link}
+                      href={withUtm(page.button_link, { type: "magazine", id: String(page.id).replace(/-[lr]$/, "") })}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => trackAdClick({ type: "magazine", id: String(page.id).replace(/-[lr]$/, ""), placement: "magazine" })}
                       style={{
                         display: "inline-block",
                         width: "fit-content",
