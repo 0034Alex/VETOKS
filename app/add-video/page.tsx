@@ -48,7 +48,6 @@ function Inner() {
   const [error, setError] = useState("");
   const [isPart, setIsPart] = useState(false);
   const libRef = useRef<HTMLInputElement>(null);
-  const camRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -308,9 +307,6 @@ function Inner() {
             <span className="text-5xl leading-none">+</span>
             <span className="text-sm font-semibold">Фото или видео</span>
           </button>
-          <button onClick={() => camRef.current?.click()} className="text-muted text-sm mt-3">
-            или снять камерой
-          </button>
         </div>
       )}
       <div className={`flex gap-2.5 px-4 pb-3 overflow-x-auto ${items.length === 0 ? "hidden" : ""}`}>
@@ -355,8 +351,6 @@ function Inner() {
         )}
       </div>
       <input ref={libRef} type="file" accept="image/*,video/*" multiple onChange={onPick} className="hidden" />
-      <input ref={camRef} type="file" accept="image/*,video/*" capture="environment" onChange={onPick} className="hidden" />
-      <p className="px-4 text-muted text-xs pb-3">До {MAX_ITEMS} фото и видео (видео до 60 секунд). Первое — обложка. После загрузки видео обрабатывается около минуты.</p>
 
       <div className="mx-4 bg-bgSurface rounded-2xl px-4 py-3">
         <textarea
@@ -372,15 +366,15 @@ function Inner() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 px-4 pt-3.5">
+      <div className="grid grid-cols-3 gap-2 px-4 pt-3.5">
         <Tile onClick={() => setSheet("people")} active={people.length > 0}>
-          👤 {people.length ? `Отмечено: ${people.length}` : "Отметить людей"}
+          👤 {people.length ? `Люди: ${people.length}` : "Люди"}
         </Tile>
         <Tile onClick={() => setSheet("place")} active={!!place}>
-          📍 {place ? place.name : "Добавить место"}
+          📍 {place ? place.name : "Место"}
         </Tile>
         <Tile onClick={() => setSheet("vis")} active={vis !== "all"}>
-          🌐 Кто видит: {visLabel}
+          🌐 {visLabel}
         </Tile>
       </div>
 
@@ -465,7 +459,7 @@ function Tile({ children, onClick, active }: { children: React.ReactNode; onClic
   return (
     <button
       onClick={onClick}
-      className={`rounded-2xl px-3.5 py-3 text-sm bg-bgSurface border ${active ? "border-gold text-gold" : "border-muted/40 text-offwhite"} max-w-full truncate`}
+      className={`rounded-xl px-2 py-2.5 text-[13px] bg-bgSurface border ${active ? "border-gold text-gold" : "border-muted/40 text-offwhite"} min-w-0 truncate text-center`}
     >
       {children}
     </button>
