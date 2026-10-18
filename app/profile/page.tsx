@@ -413,6 +413,11 @@ export default function ProfilePage() {
           belowCrown={<AccountSwitcher chip />}
           topRight={
             <>
+              <TopBtn href="/add-video" label="Новая публикация">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8D48A" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </TopBtn>
               <TopBtn href="/notifications" label="Уведомления" badge={unreadCount}>
                 <IconBell />
               </TopBtn>
@@ -431,13 +436,6 @@ export default function ProfilePage() {
             </a>
           )}
           <GiftShowcase className="mt-5" />
-
-          <Link href="/add-video" className="block text-center text-gold text-sm mt-5">
-            ＋ Добавить видео или фото
-          </Link>
-          <Link href="/add-video?drafts=1" className="block text-center text-muted text-xs mt-2">
-            Черновики
-          </Link>
         </div>
         <ProfileTabs />
       </div>

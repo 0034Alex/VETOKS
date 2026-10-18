@@ -240,7 +240,8 @@ function Inner() {
   if (mode === "drafts") {
     return (
       <main className="min-h-screen pb-28">
-        <Top title="Черновики" onBack={() => (sp.get("drafts") ? router.back() : setMode("edit"))} />
+        <Top title="Публикация" onBack={() => router.back()} />
+        <Tabs mode="drafts" count={drafts?.length ?? 0} set={setMode} />
         <div className="px-4">
           {drafts === null ? (
             <p className="text-muted text-sm text-center mt-10">Загружаем…</p>
@@ -285,17 +286,8 @@ function Inner() {
   // ---------- Новая публикация ----------
   return (
     <main className="min-h-screen pb-32">
-      <Top
-        title="Новая публикация"
-        onBack={() => router.back()}
-        right={
-          drafts && drafts.length > 0 ? (
-            <button onClick={() => setMode("drafts")} className="text-gold text-sm">
-              Черновики ({drafts.length})
-            </button>
-          ) : null
-        }
-      />
+      <Top title="Публикация" onBack={() => router.back()} />
+      <Tabs mode="edit" count={drafts?.length ?? 0} set={setMode} />
 
       {items.length === 0 && (
         <div className="flex flex-col items-center px-4 pb-5 pt-2">
@@ -451,6 +443,21 @@ function Top({ title, onBack, right }: { title: string; onBack: () => void; righ
       </button>
       <b className="text-offwhite text-[17px]">{title}</b>
       <span className="min-w-[32px] text-right">{right}</span>
+    </div>
+  );
+}
+
+function Tabs({ mode, count, set }: { mode: "edit" | "drafts"; count: number; set: (m: "edit" | "drafts") => void }) {
+  const cls = (on: boolean) =>
+    `flex-1 text-center rounded-full py-2 text-sm font-semibold transition-colors ${on ? "bg-gold text-bgPrimary" : "text-muted"}`;
+  return (
+    <div className="mx-4 mb-4 flex bg-bgSurface rounded-full p-1">
+      <button onClick={() => set("edit")} className={cls(mode === "edit")}>
+        Новая
+      </button>
+      <button onClick={() => set("drafts")} className={cls(mode === "drafts")}>
+        Черновики{count > 0 ? ` ${count}` : ""}
+      </button>
     </div>
   );
 }
