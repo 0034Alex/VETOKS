@@ -27,14 +27,6 @@ type CollectibleCard = {
   status: string;
 };
 
-type ThreadMessage = {
-  id: string;
-  sender_id: string;
-  body: string;
-  price: number;
-  created_at: string;
-};
-
 type Participant = {
   id: string;
   display_name: string;
@@ -56,7 +48,6 @@ const STAGE_LABELS: Record<string, string> = {
 };
 const DEFAULT_BOOST_PRICE = 400;
 const BOOST_LIMIT = 3;
-const BOOST_VOTES = 1000;
 
 export default function ParticipantProfilePage() {
   const params = useParams();
@@ -87,8 +78,7 @@ export default function ParticipantProfilePage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [videoPosts, setVideoPosts] = useState<{ id: string; video_url: string }[]>([]);
   const [photoPosts, setPhotoPosts] = useState<{ id: string; photo_url: string }[]>([]);
-  const [feedTab, setFeedTab] = useState<"video" | "photo">("video");
-  const [hasVoted, setHasVoted] = useState(false);
+  const [, setHasVoted] = useState(false);
   const [voteModalOpen, setVoteModalOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -109,8 +99,6 @@ export default function ParticipantProfilePage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
-  const [messageText, setMessageText] = useState("");
-  const [thread, setThread] = useState<ThreadMessage[]>([]);
 
   async function load() {
     setLoading(true);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { bad, requireUser } from "@/lib/shopServer";
+import { requireUser } from "@/lib/shopServer";
 import { sameCountry } from "@/lib/countryServer";
 import { filterVisible } from "@/lib/postVisibility";
 

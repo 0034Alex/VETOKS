@@ -7,7 +7,6 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
-import PageHeader from "@/components/PageHeader";
 import VoteModal from "@/components/VoteModal";
 import PostRepostTag from "@/components/PostRepostTag";
 import ReportButton from "@/components/ReportButton";
@@ -194,16 +193,6 @@ export default function ParticipantVideosPage() {
     setCommentText("");
     setCommentCounts((prev) => ({ ...prev, [openComments]: (prev[openComments] ?? 0) + 1 }));
     await openCommentsFor(openComments);
-  }
-
-  async function share(postId: string) {
-    const url = `${window.location.origin}/participant/${participantId}`;
-    if (navigator.share) {
-      navigator.share({ title: "VETOKS", url }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(url);
-      alert("Ссылка скопирована!");
-    }
   }
 
   if (loading) {

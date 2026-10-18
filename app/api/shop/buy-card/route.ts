@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { countryOfUser } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { blockOtherCountry, bad, notify, fanEvent, participantOwner, pay, requireUser } from "@/lib/shopServer";
-import { getAppPrice, getUsdRate } from "@/lib/pricing";
+import { getAppPrice } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 

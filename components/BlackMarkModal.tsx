@@ -6,7 +6,6 @@ import { apiPost } from "@/lib/authClient";
 import { kyivIsSunday, kyivWeekStart } from "@/lib/kyiv";
 
 type RegionParticipant = { id: string; display_name: string; photo_url: string | null };
-type LeaderRow = { target_participant_id: string; count: number };
 
 export default function BlackMarkModal({
   userId,

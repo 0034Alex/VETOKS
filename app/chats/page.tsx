@@ -35,7 +35,7 @@ export default function ChatsPage() {
   const [inbox, setInbox] = useState<Row[]>([]);
   const [requests, setRequests] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isParticipant, setIsParticipant] = useState(false);
+  const [, setIsParticipant] = useState(false);
 
   async function load() {
     const r = await apiPost("/api/dm/threads");

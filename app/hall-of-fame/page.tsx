@@ -1,5 +1,4 @@
 import BottomNav from "@/components/BottomNav";
-import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
 
 export default function HallOfFamePage() {

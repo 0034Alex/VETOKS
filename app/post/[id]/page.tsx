@@ -112,7 +112,7 @@ export default function PostFeedPage() {
   const [items, setItems] = useState<P[] | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
-  const [cur, setCur] = useState(0);
+  const [, setCur] = useState(0);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [reportFor, setReportFor] = useState<string | null>(null);
   const [delFor, setDelFor] = useState<string | null>(null);

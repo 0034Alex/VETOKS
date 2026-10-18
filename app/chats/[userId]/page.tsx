@@ -39,11 +39,9 @@ export default function ChatPage() {
   const [err, setErr] = useState("");
   const [menu, setMenu] = useState(false);
   const [report, setReport] = useState(false);
-  const [reason, setReason] = useState("spam");
-  const [details, setDetails] = useState("");
-  const [reported, setReported] = useState(false);
-  const [accepted, setAccepted] = useState(false);
-  const [hasThread, setHasThread] = useState(false);
+  const [, setReported] = useState(false);
+  const [, setAccepted] = useState(false);
+  const [, setHasThread] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
   const [gifts, setGifts] = useState<{ id: string; name: string; price: number }[]>([]);
   const [balance, setBalance] = useState(0);

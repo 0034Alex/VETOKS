@@ -6,7 +6,6 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
-import VoteModal from "@/components/VoteModal";
 import ReportButton from "@/components/ReportButton";
 import ShareButton from "@/components/ShareButton";
 import { getMyCountry } from "@/lib/myCountry";
@@ -52,8 +51,8 @@ export default function MediaPage() {
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
-  const [votedIds, setVotedIds] = useState<string[]>([]);
-  const [voteModalParticipant, setVoteModalParticipant] = useState<string | null>(null);
+  const [, setVotedIds] = useState<string[]>([]);
+  const [, setVoteModalParticipant] = useState<string | null>(null);
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [openComments, setOpenComments] = useState<string | null>(null);
@@ -236,16 +235,6 @@ export default function MediaPage() {
     setCommentText("");
     setCommentCounts((prev) => ({ ...prev, [openComments]: (prev[openComments] ?? 0) + 1 }));
     await openCommentsFor(openComments);
-  }
-
-  async function share(post: Post) {
-    const url = `${window.location.origin}/participant/${post.participant_id}`;
-    if (navigator.share) {
-      navigator.share({ title: "VETOKS", url }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(url);
-      alert("Ссылка скопирована!");
-    }
   }
 
   if (loading) {

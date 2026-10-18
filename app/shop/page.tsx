@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
-import Logo from "@/components/Logo";
 import PageHeader from "@/components/PageHeader";
 import FanZoneStrip from "@/components/FanZoneStrip";
 import { applyGiftOverrides, getAppPrices, getCurrencySymbol, getUsdRate } from "@/lib/currency";

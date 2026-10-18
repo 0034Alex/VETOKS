@@ -176,16 +176,6 @@ export default function ParticipantPhotosPage() {
     await openCommentsFor(openComments);
   }
 
-  async function share(postId: string) {
-    const url = `${window.location.origin}/participant/${participantId}`;
-    if (navigator.share) {
-      navigator.share({ title: "VETOKS", url }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(url);
-      alert("Ссылка скопирована!");
-    }
-  }
-
   if (loading) {
     return (
       <LoadingScreen />

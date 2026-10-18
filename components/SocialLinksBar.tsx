@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMyCountry, orCountry } from "@/lib/myCountry";
+import { getMyCountry } from "@/lib/myCountry";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function SocialLinksBar() {

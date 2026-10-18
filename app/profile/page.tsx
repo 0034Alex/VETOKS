@@ -11,7 +11,7 @@ import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import SocialLinksBar from "@/components/SocialLinksBar";
 import FollowsSheet from "@/components/FollowsSheet";
-import ProfileHero, { TopBtn, Drawer, IconMail, IconBell, IconMenu, IconSend, shareLink, KpiCrown, KpiHeart, KpiGift } from "@/components/ProfileHero";
+import ProfileHero, { TopBtn, Drawer, IconBell, IconMenu, IconSend, shareLink, KpiCrown, KpiHeart, KpiGift } from "@/components/ProfileHero";
 import ProfileTabs from "@/components/ProfileTabs";
 import { parseLinks } from "@/lib/socialLinks";
 import { statusFor } from "@/lib/status";
@@ -51,7 +51,7 @@ export default function ProfilePage() {
   const [referralCount, setReferralCount] = useState(0);
   const [balance, setBalance] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [, setUnreadMessages] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
   const [goalText, setGoalText] = useState("");
   const [goalTarget, setGoalTarget] = useState(5000);
@@ -76,7 +76,6 @@ export default function ProfilePage() {
   const [rank, setRank] = useState<number | null>(null);
   const [videos, setVideos] = useState<Post[]>([]);
   const [photos, setPhotos] = useState<Post[]>([]);
-  const [feedTab, setFeedTab] = useState<"video" | "photo">("video");
   const [menuOpen, setMenuOpen] = useState(false);
   const [followSheet, setFollowSheet] = useState<"followers" | "following" | null>(null);
   const [toast, setToast] = useState("");
@@ -342,7 +341,6 @@ export default function ProfilePage() {
     </a>
   );
 
-  const feed = feedTab === "video" ? videos : photos;
 
   return (
     <main className="min-h-screen pb-36">

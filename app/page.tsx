@@ -668,8 +668,8 @@ export default function Home() {
   const [scope, setScope] = useState<"region" | "country">("region");
   const [homeCfg, setHomeCfg] = useState<Record<string, string>>({});
   const [countryName, setCountryName] = useState("");
-  const [activeUsersCount, setActiveUsersCount] = useState(0);
-  const [contentCount, setContentCount] = useState(0);
+  const [, setActiveUsersCount] = useState(0);
+  const [, setContentCount] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -832,7 +832,6 @@ export default function Home() {
       ? allParticipants.filter((p) => p.region_id === user.region_id)
       : allParticipants;
   const participants = [...filtered].sort((a, b) => b.votes - a.votes).slice(0, 5);
-  const leaderPhoto = participants[0]?.photo_url;
 
   let stageProgress = 0;
   let stageCountdown = "—";
