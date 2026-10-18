@@ -109,5 +109,8 @@ export function GiftIcon({ size = 26 }: { size?: number }) {
 }
 
 export function parseLinks(v: unknown): string[] {
-  return Array.isArray(v) ? v.filter((x) => typeof x === "string").slice(0, 8) : [];
+  // Только обычные ссылки http(s): так через базу нельзя подсунуть вредный адрес вида javascript:...
+  return Array.isArray(v)
+    ? v.filter((x) => typeof x === "string" && x.length <= 300 && /^https?:\/\//i.test(x)).slice(0, 8)
+    : [];
 }
