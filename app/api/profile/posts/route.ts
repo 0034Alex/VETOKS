@@ -16,7 +16,7 @@ export async function POST(req: Request) {
 
   const { data: posts } = await supabaseAdmin
     .from("content_posts")
-    .select("id, participant_id, user_id, video_url, photo_url, caption, views, submitted_at, extra_media, visibility, place_id, participants(user_id, display_name, photo_url)")
+    .select("id, participant_id, user_id, video_url, photo_url, caption, views, submitted_at, extra_media, visibility, place_id, allow_comments, allow_likes, allow_reposts, participants(user_id, display_name, photo_url)")
     .in("id", ids);
 
   const ownerOf = (p: any) => {
@@ -75,6 +75,9 @@ export async function POST(req: Request) {
         ],
         place: p.place_id && placeMap[p.place_id] ? { id: p.place_id as string, name: placeMap[p.place_id] } : null,
         visibility: (p.visibility as string) || "all",
+        allowComments: p.allow_comments !== false,
+        allowLikes: p.allow_likes !== false,
+        allowReposts: p.allow_reposts !== false,
         caption: (p.caption as string) ?? "",
         createdAt: p.submitted_at as string,
         views: Number(p.views) || 0,

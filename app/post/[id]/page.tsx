@@ -30,6 +30,9 @@ type P = {
   mine: boolean;
   media?: { kind: "video" | "photo"; url: string }[];
   place?: { id: string; name: string } | null;
+  allowComments?: boolean;
+  allowLikes?: boolean;
+  allowReposts?: boolean;
 };
 
 type CU = { first_name: string | null; photo_url: string | null; nick: string | null };
@@ -223,7 +226,7 @@ export default function PostFeedPage() {
       lastTap.current[p.id] = 0;
       clearTimeout(tapTimer.current[p.id]);
       setPops((s) => ({ ...s, [p.id]: (s[p.id] ?? 0) + 1 }));
-      setLike(p, true);
+      if (p.allowLikes !== false) setLike(p, true);
       return;
     }
     lastTap.current[p.id] = now;
@@ -383,15 +386,19 @@ export default function PostFeedPage() {
 
             {/* Плавающая панель действий */}
             <div className="relative z-20 -mt-5 mx-3 flex items-center justify-between rounded-full bg-black/75 backdrop-blur border border-white/15 px-5 py-2.5 text-offwhite">
-              <button onClick={() => setLike(p, !p.liked)} className="flex items-center gap-1.5 text-[13px]" aria-label="Нравится">
-                <Heart on={p.liked} size={22} />
-                {p.likes}
-              </button>
-              <button onClick={() => openComments(p.id)} className="flex items-center gap-1.5 text-[13px]" aria-label="Комментарии">
-                <Bubble />
-                {p.comments}
-              </button>
-              {!p.mine && (
+              {p.allowLikes !== false && (
+                <button onClick={() => setLike(p, !p.liked)} className="flex items-center gap-1.5 text-[13px]" aria-label="Нравится">
+                  <Heart on={p.liked} size={22} />
+                  {p.likes}
+                </button>
+              )}
+              {p.allowComments !== false && (
+                <button onClick={() => openComments(p.id)} className="flex items-center gap-1.5 text-[13px]" aria-label="Комментарии">
+                  <Bubble />
+                  {p.comments}
+                </button>
+              )}
+              {!p.mine && p.allowReposts !== false && (
                 <button onClick={() => toggleRepost(p)} className={`flex items-center gap-1.5 text-[13px] ${p.reposted ? "text-goldSoft" : ""}`} aria-label="Репост на мою страницу">
                   <IconRepost size={22} />
                   {p.reposted ? "В репостах" : "Репост"}
@@ -412,7 +419,7 @@ export default function PostFeedPage() {
               <div className="flex items-center gap-2 mt-2 text-[12px]">
                 {p.kind === "video" && <span className="bg-white/15 rounded-full px-2.5 py-1 text-offwhite">▶ {p.views.toLocaleString("ru-RU")} просмотров</span>}
                 <span className="bg-white/15 rounded-full px-2.5 py-1 text-offwhite">{fmtDate(p.createdAt)}</span>
-                {p.comments > 0 && (
+                {p.comments > 0 && p.allowComments !== false && (
                   <button onClick={() => openComments(p.id)} className="bg-white/15 rounded-full px-2.5 py-1 text-offwhite">
                     Комментарии ({p.comments})
                   </button>

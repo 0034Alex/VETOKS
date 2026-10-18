@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
   const { data: post } = await supabaseAdmin
     .from("content_posts")
-    .select("id, participant_id, user_id, participants(user_id, display_name)")
+    .select("id, participant_id, user_id, allow_reposts, participants(user_id, display_name)")
     .eq("id", postId)
     .maybeSingle();
   if (!post) return bad("not_found", 404);
@@ -25,6 +25,7 @@ export async function POST(req: Request) {
   const owner = { user_id: ((post as any).user_id ?? pOwner?.user_id) as string | undefined };
   if (!owner.user_id) return bad("not_found", 404);
   if (owner.user_id === me) return bad("own_post", 400);
+  if (on && (post as any).allow_reposts === false) return bad("reposts_off", 403);
   if (!(await sameCountry(me, owner.user_id))) return bad("not_found", 404);
 
   if (!on) {

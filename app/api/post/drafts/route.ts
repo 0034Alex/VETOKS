@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   if (action === "get") {
     const { data } = await supabaseAdmin
       .from("post_drafts")
-      .select("id, caption, media, visibility, place_id, place_name, tags")
+      .select("id, caption, media, visibility, place_id, place_name, tags, settings")
       .eq("id", String(b.id || ""))
       .eq("user_id", me)
       .maybeSingle();
@@ -48,6 +48,7 @@ export async function POST(req: Request) {
       place_id: b.placeId ? String(b.placeId) : null,
       place_name: b.placeName ? String(b.placeName).slice(0, 60) : null,
       tags,
+      settings: b.settings && typeof b.settings === "object" ? { comments: b.settings.comments !== false, likes: b.settings.likes !== false, reposts: b.settings.reposts !== false } : null,
       updated_at: new Date().toISOString(),
     };
     if (b.id) {

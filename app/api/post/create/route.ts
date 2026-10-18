@@ -66,6 +66,9 @@ export async function POST(req: Request) {
       extra_media: items.slice(1).map((i) => ({ kind: i.kind, url: i.url, videoId: i.videoId ?? null })),
       visibility,
       place_id: placeId,
+      allow_comments: b.allowComments !== false,
+      allow_likes: b.allowLikes !== false,
+      allow_reposts: b.allowReposts !== false,
     })
     .select("id")
     .maybeSingle();

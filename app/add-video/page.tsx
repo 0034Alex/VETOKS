@@ -39,6 +39,9 @@ function Inner() {
   const [place, setPlace] = useState<Place | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
   const [sheet, setSheet] = useState<Sheet>(null);
+  const [allowComments, setAllowComments] = useState(true);
+  const [allowLikes, setAllowLikes] = useState(true);
+  const [allowReposts, setAllowReposts] = useState(true);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<any[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -155,6 +158,9 @@ function Inner() {
       visibility: vis,
       placeId: place?.id,
       placeName: place && !place.id ? place.name : undefined,
+      allowComments,
+      allowLikes,
+      allowReposts,
       draftId,
     });
     if (!r?.ok) {
@@ -188,6 +194,7 @@ function Inner() {
       placeId: place?.id,
       placeName: place && !place.id ? place.name : place?.name,
       tags: people.map((p) => p.nick),
+      settings: { comments: allowComments, likes: allowLikes, reposts: allowReposts },
     });
     setBusy(false);
     if (!r?.ok) {
@@ -204,6 +211,9 @@ function Inner() {
     setDraftId(d.id);
     setCaption(d.caption ?? "");
     setVis((d.visibility as Vis) || "all");
+    setAllowComments(d.settings?.comments !== false);
+    setAllowLikes(d.settings?.likes !== false);
+    setAllowReposts(d.settings?.reposts !== false);
     setPlace(d.place_name ? { id: d.place_id || undefined, name: d.place_name } : null);
     setItems(
       ((d.media as any[]) ?? []).map((m, i) => ({
@@ -275,7 +285,7 @@ function Inner() {
 
   // ---------- Новая публикация ----------
   return (
-    <main className="min-h-screen pb-40">
+    <main className="min-h-screen pb-32">
       <Top
         title="Новая публикация"
         onBack={() => router.back()}
@@ -288,7 +298,22 @@ function Inner() {
         }
       />
 
-      <div className="flex gap-2.5 px-4 pb-3 overflow-x-auto">
+      {items.length === 0 && (
+        <div className="flex flex-col items-center px-4 pb-5 pt-2">
+          <button
+            onClick={() => libRef.current?.click()}
+            className="w-40 h-48 rounded-3xl border-2 border-dashed border-gold/60 text-gold flex flex-col items-center justify-center gap-2"
+            aria-label="Добавить фото или видео"
+          >
+            <span className="text-5xl leading-none">+</span>
+            <span className="text-sm font-semibold">Фото или видео</span>
+          </button>
+          <button onClick={() => camRef.current?.click()} className="text-muted text-sm mt-3">
+            или снять камерой
+          </button>
+        </div>
+      )}
+      <div className={`flex gap-2.5 px-4 pb-3 overflow-x-auto ${items.length === 0 ? "hidden" : ""}`}>
         {items.map((it, i) => (
           <div key={it.key} className="relative w-[84px] h-[104px] rounded-xl bg-bgSurface overflow-hidden flex-none">
             {it.preview && it.kind === "photo" ? (
@@ -331,16 +356,6 @@ function Inner() {
       </div>
       <input ref={libRef} type="file" accept="image/*,video/*" multiple onChange={onPick} className="hidden" />
       <input ref={camRef} type="file" accept="image/*,video/*" capture="environment" onChange={onPick} className="hidden" />
-      {items.length === 0 && (
-        <div className="px-4 pb-3 flex gap-2">
-          <button onClick={() => libRef.current?.click()} className="flex-1 border border-gold text-gold rounded-full py-2.5 text-sm font-semibold">
-            Из галереи
-          </button>
-          <button onClick={() => camRef.current?.click()} className="flex-1 border border-muted text-offwhite rounded-full py-2.5 text-sm font-semibold">
-            Снять камерой
-          </button>
-        </div>
-      )}
       <p className="px-4 text-muted text-xs pb-3">До {MAX_ITEMS} фото и видео (видео до 60 секунд). Первое — обложка. После загрузки видео обрабатывается около минуты.</p>
 
       <div className="mx-4 bg-bgSurface rounded-2xl px-4 py-3">
@@ -352,7 +367,7 @@ function Inner() {
           className="w-full bg-transparent text-offwhite outline-none resize-none text-base"
         />
         <div className="flex justify-between text-xs text-muted border-t border-muted/20 pt-2">
-          <span>Хештеги пишите в тексте: #vetoks</span>
+          <span />
           <span>{caption.length} / 500</span>
         </div>
       </div>
@@ -371,8 +386,17 @@ function Inner() {
 
       {error && <p className="text-danger text-sm px-4 mt-3">{error}</p>}
 
-      <div className="fixed left-0 right-0 bottom-[68px] z-40 px-4 pb-3 pt-2 bg-gradient-to-t from-bgPrimary via-bgPrimary to-transparent flex gap-2.5">
-        <button onClick={saveDraft} disabled={busy} className="px-5 rounded-full border border-muted text-offwhite font-semibold disabled:opacity-50">
+      <div className="mx-4 mt-3.5 bg-bgSurface rounded-2xl px-4 py-1">
+        <p className="text-muted text-xs uppercase tracking-wider pt-3 pb-1">Взаимодействие</p>
+        <Toggle label="Комментарии" on={allowComments} set={setAllowComments} />
+        <Toggle label="Лайки" on={allowLikes} set={setAllowLikes} />
+        <Toggle label="Репосты" on={allowReposts} set={setAllowReposts} last />
+      </div>
+
+      {error && <p className="text-danger text-sm px-4 mt-3">{error}</p>}
+
+      <div className="px-4 mt-5 flex gap-2.5">
+        <button onClick={saveDraft} disabled={busy} className="px-5 py-3 rounded-full border border-muted text-offwhite font-semibold disabled:opacity-50">
           Черновик
         </button>
         <button onClick={publish} disabled={!ready || busy} className="flex-1 bg-gold text-bgPrimary font-semibold py-3 rounded-full disabled:opacity-50">
@@ -423,6 +447,17 @@ function Top({ title, onBack, right }: { title: string; onBack: () => void; righ
       <b className="text-offwhite text-[17px]">{title}</b>
       <span className="min-w-[32px] text-right">{right}</span>
     </div>
+  );
+}
+
+function Toggle({ label, on, set, last }: { label: string; on: boolean; set: (v: boolean) => void; last?: boolean }) {
+  return (
+    <button onClick={() => set(!on)} className={`w-full flex items-center justify-between py-3.5 text-left ${last ? "" : "border-b border-muted/20"}`} role="switch" aria-checked={on}>
+      <span className="text-offwhite">{label}</span>
+      <span className={`w-11 h-[26px] rounded-full relative transition-colors ${on ? "bg-gold" : "bg-muted/40"}`}>
+        <i className={`absolute top-[3px] w-5 h-5 rounded-full bg-bgPrimary transition-all ${on ? "right-[3px]" : "left-[3px]"}`} />
+      </span>
+    </button>
   );
 }
 
