@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { rateLimit } from "@/lib/rateLimit";
+import { verifyTurnstile } from "@/lib/turnstile";
 import { findUserForReset } from "@/lib/resetServer";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,9 @@ export async function POST(req: NextRequest) {
 
   const target = String(body.identifier ?? body.telegram_id ?? "").trim().toLowerCase();
   if (!target || target.length > 120) return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
+
+  if (!(await verifyTurnstile(body.turnstile, req)))
+    return NextResponse.json({ ok: false, error: "captcha", message: "Подтвердите, что вы не робот." }, { status: 400 });
 
   const limited = await rateLimit(req, "resetreq", 8, 600, target);
   if (limited) return limited;

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
+import TurnstileBox, { captchaOn } from "@/components/TurnstileBox";
 
 // Сброс пароля: код приходит только владельцу аккаунта в Telegram.
 export default function ForgotPasswordPage() {
@@ -13,6 +14,8 @@ export default function ForgotPasswordPage() {
   const [pass2, setPass2] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captcha, setCaptcha] = useState("");
+  const [capKey, setCapKey] = useState(0);
 
   async function requestCode(e: React.FormEvent) {
     e.preventDefault();
@@ -21,12 +24,14 @@ export default function ForgotPasswordPage() {
     const res = await fetch("/api/request-reset-code", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identifier: identifier.trim() }),
+      body: JSON.stringify({ identifier: identifier.trim(), turnstile: captcha }),
     }).catch(() => null);
     const json = await res?.json().catch(() => ({}));
     setLoading(false);
+    setCaptcha("");
+    setCapKey((k) => k + 1);
     if (res?.status === 429) return setError(json?.message ?? "Слишком много запросов. Повторите позже.");
-    if (!res || !res.ok) return setError("Не получилось отправить код. Попробуйте ещё раз.");
+    if (!res || !res.ok) return setError(json?.error === "captcha" ? json.message : "Не получилось отправить код. Попробуйте ещё раз.");
     setStep("code");
   }
 
@@ -60,7 +65,8 @@ export default function ForgotPasswordPage() {
             Введите почту или номер телефона, указанные при регистрации. Мы отправим код в ваш Telegram.
           </p>
           <input value={identifier} onChange={(e) => setIdentifier(e.target.value)} className={input} required maxLength={120} />
-          <button type="submit" disabled={loading} className="bg-gold text-bgPrimary font-semibold py-3 rounded-full disabled:opacity-50">
+          <TurnstileBox key={capKey} onToken={setCaptcha} />
+          <button type="submit" disabled={loading || (captchaOn && !captcha)} className="bg-gold text-bgPrimary font-semibold py-3 rounded-full disabled:opacity-50">
             {loading ? "Отправляем..." : "Получить код"}
           </button>
           {error && <p className="text-danger text-sm">{error}</p>}

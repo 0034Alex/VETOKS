@@ -6,6 +6,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { getInitData, openSession, postJson } from "@/lib/authClient";
 import TelegramLoginButton from "@/components/TelegramLoginButton";
+import TurnstileBox, { captchaOn } from "@/components/TurnstileBox";
 import { useT } from "@/lib/i18n";
 import { langsForCountry } from "@/lib/langs";
 
@@ -28,6 +29,8 @@ function RegisterForm() {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [captcha, setCaptcha] = useState("");
+  const [capKey, setCapKey] = useState(0);
 
   // Регистрация «через Telegram»: внутри мини-приложения или после
   // подтверждения в боте (ссылка ?tg=...).
@@ -106,35 +109,27 @@ function RegisterForm() {
 
     setStatus("loading");
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    const created = await postJson("/api/auth/register", {
       email: email.trim(),
       password,
+      first_name: firstName.trim(),
+      region_id: regionId,
+      turnstile: captcha,
     });
+    // Токен капчи одноразовый: после любой попытки просим новый.
+    setCaptcha("");
+    setCapKey((k) => k + 1);
 
-    if (signUpError || !signUpData.user) {
+    if (!created?.ok) {
       setStatus("error");
-      setErrorMessage(
-        signUpError?.message === "User already registered"
-          ? "Такая почта уже зарегистрирована — войдите вместо регистрации."
-          : signUpError?.message ?? "Не удалось зарегистрироваться."
-      );
+      setErrorMessage(created?.message || "Не удалось зарегистрироваться. Попробуйте ещё раз.");
       return;
     }
 
-    // Номер и Telegram привяжутся позже — при подтверждении номера.
-    let token = signUpData.session?.access_token;
-    if (!token) {
-      const { data: si } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-      token = si.session?.access_token;
-    }
-    const created = await postJson(
-      "/api/auth/register-profile",
-      { first_name: firstName.trim(), region_id: regionId },
-      token
-    );
-    if (!created?.ok) {
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+    if (signInError) {
       setStatus("error");
-      setErrorMessage(created?.message || "Не удалось сохранить анкету. Попробуйте ещё раз.");
+      setErrorMessage("Аккаунт создан. Войдите, пожалуйста, на странице входа.");
       return;
     }
 
@@ -266,9 +261,10 @@ function RegisterForm() {
               />
             </div>
             {consent}
+            <TurnstileBox key={capKey} onToken={setCaptcha} />
             <button
               type="submit"
-              disabled={status === "loading" || !agreed}
+              disabled={status === "loading" || !agreed || (captchaOn && !captcha)}
               className="bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full mt-2 disabled:opacity-50"
             >
               {status === "loading" ? "Регистрируем..." : "Зарегистрироваться"}
