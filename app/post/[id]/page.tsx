@@ -327,7 +327,7 @@ export default function PostFeedPage() {
               )}
             </div>
 
-            <div className="relative z-10 flex items-center gap-3 pb-2">
+            <div className="relative z-30 flex items-center gap-3 pb-2">
               <Link href={p.authorHref} className="flex items-center gap-3 min-w-0 flex-1">
                 <span
                   className="w-9 h-9 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] border border-gold/70 bg-cover bg-center flex-none flex items-center justify-center text-white font-semibold text-sm"
@@ -351,7 +351,7 @@ export default function PostFeedPage() {
               </button>
               {menuFor === p.id && (
                 <>
-                  <div className="fixed inset-0 z-20" onClick={() => setMenuFor(null)} />
+                  <div className="fixed inset-0 z-[5]" onClick={() => setMenuFor(null)} />
                   <div className="absolute right-0 top-full mt-1 z-30 min-w-[210px] rounded-2xl bg-bgSurface/95 backdrop-blur border border-white/15 shadow-xl overflow-hidden">
                     {p.mine ? (
                       <>

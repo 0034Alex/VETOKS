@@ -200,17 +200,19 @@ export default function ChatPage() {
       </div>
 
       {gList.length > 0 && (
-        <button onClick={() => setShowcase(true)} className="w-full flex items-center gap-2 px-4 py-2 bg-bgSurface/70 border-b border-muted text-left">
-          <span className="flex gap-1.5 flex-1 overflow-hidden">
-            {gList.slice(0, 8).map((g) => (
-              <span key={g.name} className="flex items-center gap-1 bg-bgPrimary border border-gold/40 rounded-full px-2.5 py-1 text-sm flex-none">
+        <div className="flex items-center gap-2 pl-4 pr-2 py-2 bg-bgSurface/70 border-b border-muted">
+          <div className="flex gap-1.5 flex-1 min-w-0 overflow-x-auto" style={{ scrollbarWidth: "none", touchAction: "pan-x" }}>
+            {gList.map((g) => (
+              <button key={g.name} onClick={() => setShowcase(true)} className="flex items-center gap-1 bg-bgPrimary border border-gold/40 rounded-full px-2.5 py-1 text-sm flex-none">
                 <span>{chatGiftEmoji(g.name)}</span>
                 <span className="text-gold text-xs font-semibold">×{g.mine + g.theirs}</span>
-              </span>
+              </button>
             ))}
-          </span>
-          <span className="text-gold text-xs flex-none">Все ›</span>
-        </button>
+          </div>
+          <button onClick={() => setShowcase(true)} className="text-gold text-xs flex-none px-2 py-1">
+            Все ›
+          </button>
+        </div>
       )}
 
       {isRequestForMe && (
