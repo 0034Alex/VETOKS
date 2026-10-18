@@ -204,8 +204,7 @@ export default function ChatPage() {
           <div className="flex gap-1.5 flex-1 min-w-0 overflow-x-auto" style={{ scrollbarWidth: "none", touchAction: "pan-x" }}>
             {gList.map((g) => (
               <button key={g.name} onClick={() => setShowcase(true)} className="flex items-center gap-1 bg-bgPrimary border border-gold/40 rounded-full px-2.5 py-1 text-sm flex-none">
-                <span>{chatGiftEmoji(g.name)}</span>
-                <span className="text-gold text-xs font-semibold">×{g.mine + g.theirs}</span>
+                <span className="text-xl leading-none">{chatGiftEmoji(g.name)}</span>
               </button>
             ))}
           </div>
@@ -304,7 +303,7 @@ export default function ChatPage() {
       {giftOpen && (
         <div className="fixed inset-0 z-[100] bg-black/70 flex items-end justify-center" onClick={() => setGiftOpen(false)}>
           <div
-            className="w-full max-w-md bg-bgSurface rounded-t-2xl p-5"
+            className="w-full max-w-md bg-bgSurface rounded-t-2xl p-5 flex flex-col max-h-[85dvh]"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -313,7 +312,7 @@ export default function ChatPage() {
               <button onClick={() => setGiftOpen(false)} className="text-muted text-xl">✕</button>
             </div>
             <p className="text-muted text-xs mb-3">Ваш баланс: {balance} ₴</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2 overflow-y-auto min-h-0 flex-1" style={{ touchAction: "pan-y", overscrollBehavior: "contain" }}>
               {gifts.map((g) => (
                 <button
                   key={g.id}
