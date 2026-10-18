@@ -366,19 +366,30 @@ function Inner() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 px-4 pt-3.5">
-        <Tile onClick={() => setSheet("people")} active={people.length > 0}>
-          👤 {people.length ? `Люди: ${people.length}` : "Люди"}
-        </Tile>
-        <Tile onClick={() => setSheet("place")} active={!!place}>
-          📍 {place ? place.name : "Место"}
-        </Tile>
-        <Tile onClick={() => setSheet("vis")} active={vis !== "all"}>
-          🌐 {visLabel}
-        </Tile>
+      <div className="mx-4 mt-3.5 bg-bgSurface rounded-2xl px-4">
+        <Row
+          icon={<path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M18 8v6M15 11h6M9 11.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" />}
+          label="Отметить людей"
+          value={people.length ? people.map((x) => "@" + x.nick).join(", ") : "Никого"}
+          active={people.length > 0}
+          onClick={() => setSheet("people")}
+        />
+        <Row
+          icon={<path d="M12 21s7-6.2 7-11.5A7 7 0 005 9.5C5 14.8 12 21 12 21zM12 12a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />}
+          label="Добавить место"
+          value={place ? place.name : "Не выбрано"}
+          active={!!place}
+          onClick={() => setSheet("place")}
+        />
+        <Row
+          icon={<path d="M12 21a9 9 0 100-18 9 9 0 000 18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />}
+          label="Кто видит"
+          value={visLabel}
+          active={vis !== "all"}
+          onClick={() => setSheet("vis")}
+          last
+        />
       </div>
-
-      {error && <p className="text-danger text-sm px-4 mt-3">{error}</p>}
 
       <div className="mx-4 mt-3.5 bg-bgSurface rounded-2xl px-4 py-1">
         <p className="text-muted text-xs uppercase tracking-wider pt-3 pb-1">Взаимодействие</p>
@@ -455,13 +466,15 @@ function Toggle({ label, on, set, last }: { label: string; on: boolean; set: (v:
   );
 }
 
-function Tile({ children, onClick, active }: { children: React.ReactNode; onClick: () => void; active?: boolean }) {
+function Row({ icon, label, value, active, onClick, last }: { icon: React.ReactNode; label: string; value: string; active?: boolean; onClick: () => void; last?: boolean }) {
   return (
-    <button
-      onClick={onClick}
-      className={`rounded-xl px-2 py-2.5 text-[13px] bg-bgSurface border ${active ? "border-gold text-gold" : "border-muted/40 text-offwhite"} min-w-0 truncate text-center`}
-    >
-      {children}
+    <button onClick={onClick} className={`w-full flex items-center gap-3 py-3.5 text-left ${last ? "" : "border-b border-muted/20"}`}>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8D48A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="flex-none">
+        {icon}
+      </svg>
+      <span className="flex-1 text-offwhite text-base">{label}</span>
+      <span className={`text-sm max-w-[45%] truncate ${active ? "text-gold" : "text-muted"}`}>{value}</span>
+      <span className="text-muted">›</span>
     </button>
   );
 }
