@@ -4,6 +4,7 @@ import { bad, requireUser } from "@/lib/shopServer";
 import { bunnyDeleteVideo, bunnyGetVideo, bunnyPlayUrl } from "@/lib/bunny";
 import { cleanVisibility } from "@/lib/postVisibility";
 import { resolvePlace } from "@/lib/places";
+import { countryOfUser, settingsForCountry } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,33 @@ export async function POST(req: Request) {
   if (!raw.length) return bad("no_media");
   const caption = String(b.caption ?? "").slice(0, 500);
   const visibility = cleanVisibility(b.visibility);
+
+  // Приём публикаций выключен в CRM: ничего не публикуем, материал уходит в черновики.
+  const gate = await settingsForCountry(["publishing_enabled"], await countryOfUser(uid));
+  if (gate.publishing_enabled === "false") {
+    const media = raw.map((m) => ({ kind: m.kind === "video" ? "video" : "photo", url: m.url ?? null, videoId: m.videoId ?? null }));
+    const rec = {
+      user_id: uid,
+      caption,
+      media,
+      visibility,
+      place_id: b.placeId ? String(b.placeId) : null,
+      place_name: b.placeName ? String(b.placeName).slice(0, 60) : null,
+      tags: Array.isArray(b.tags) ? b.tags.map(String).slice(0, 10) : [],
+      settings: { comments: b.allowComments !== false, likes: b.allowLikes !== false, reposts: b.allowReposts !== false },
+      updated_at: new Date().toISOString(),
+    };
+    if (b.draftId) {
+      const { error } = await supabaseAdmin.from("post_drafts").update(rec).eq("id", String(b.draftId)).eq("user_id", uid);
+      if (error) return bad("save_failed", 500);
+      return NextResponse.json({ ok: true, queued: true });
+    }
+    const { count } = await supabaseAdmin.from("post_drafts").select("id", { count: "exact", head: true }).eq("user_id", uid);
+    if ((count ?? 0) >= 20) return bad("too_many");
+    const { error } = await supabaseAdmin.from("post_drafts").insert(rec);
+    if (error) return bad("save_failed", 500);
+    return NextResponse.json({ ok: true, queued: true });
+  }
 
   const { data: part } = await supabaseAdmin.from("participants").select("id").eq("user_id", uid).maybeSingle();
 

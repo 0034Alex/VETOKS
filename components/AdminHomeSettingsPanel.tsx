@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCrmCountry, crmCur } from "@/lib/crmCountry";
 import { loadScoped, scopedKey } from "@/lib/scopedSettings";
 
-const KEYS = ["strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text", "fanzone_enabled", "fanzone_min_amount", "media_season_id"];
+const KEYS = ["publishing_enabled", "strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text", "fanzone_enabled", "fanzone_min_amount", "media_season_id"];
 
 type SeasonOpt = { id: string; title: string };
 
@@ -69,6 +69,21 @@ export default function AdminHomeSettingsPanel() {
           placeholder="Как это работает"
           className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
         />
+      </div>
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
+        <p className="text-offwhite font-semibold text-sm mb-2">📤 Приём публикаций (фото и видео)</p>
+        <label className="flex items-center gap-2 text-offwhite text-sm mb-1">
+          <input
+            type="checkbox"
+            checked={v.publishing_enabled !== "false"}
+            onChange={(e) => set("publishing_enabled", e.target.checked ? "true" : "false")}
+          />
+          Публикации включены
+        </label>
+        <p className="text-muted text-xs">
+          Выключено — человек как обычно добавляет фото или видео и жмёт «Опубликовать», но ничего не выходит в ленту: материал сохраняется в черновики, и ему пишется «Публикации откроются после начала сезона». Включите, когда сезон начнётся.
+        </p>
       </div>
 
       <div className="bg-bgSurface border border-muted rounded-xl p-4">

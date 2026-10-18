@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
+import { countryOfUser, settingsForCountry } from "@/lib/countryServer";
 import { bunnyDeleteVideo, bunnyGetVideo, bunnyPlayUrl } from "@/lib/bunny";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,9 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+
+  const gate = await settingsForCountry(["publishing_enabled"], await countryOfUser(uid));
+  if (gate.publishing_enabled === "false") return bad("publishing_closed", 403);
 
   const body = await req.json().catch(() => ({}));
   const videoId = String(body.videoId ?? "");

@@ -46,6 +46,7 @@ function Inner() {
   const [drafts, setDrafts] = useState<any[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [queued, setQueued] = useState(false);
   const [isPart, setIsPart] = useState(false);
   const libRef = useRef<HTMLInputElement>(null);
 
@@ -161,13 +162,21 @@ function Inner() {
       allowLikes,
       allowReposts,
       draftId,
+      tags: people.map((p) => p.nick),
     });
+    if (r?.ok && r.queued) {
+      setBusy(false);
+      setQueued(true);
+      return;
+    }
     if (!r?.ok) {
       setError(
         r?.error === "too_long"
           ? "Видео длиннее 60 секунд."
           : r?.error === "already_used"
           ? "Это видео уже опубликовано."
+          : r?.error === "too_many"
+          ? "Черновиков уже 20. Удалите ненужные."
           : "Не удалось опубликовать. Попробуйте ещё раз."
       );
       setBusy(false);
@@ -284,6 +293,24 @@ function Inner() {
   }
 
   // ---------- Новая публикация ----------
+  if (queued) {
+    return (
+      <main className="min-h-screen pb-32">
+        <Top title="Публикация" onBack={() => router.push("/profile")} />
+        <div className="px-6 pt-16 text-center flex flex-col items-center gap-4">
+          <div className="text-5xl">🗓️</div>
+          <p className="text-offwhite text-lg font-semibold">Публикации откроются после начала сезона</p>
+          <p className="text-muted text-sm max-w-sm">Ваш материал не потерян — он сохранён в черновиках. Когда сезон начнётся, откройте черновик и опубликуйте его в один клик.</p>
+          <button onClick={() => { setQueued(false); setItems([]); setCaption(""); setDraftId(null); setPeople([]); setMode("drafts"); loadDrafts(); }} className="mt-2 bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full">
+            К черновикам
+          </button>
+          <button onClick={() => router.push("/profile")} className="text-muted text-sm underline">В профиль</button>
+        </div>
+        <BottomNav />
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen pb-32">
       <Top title="Публикация" onBack={() => router.back()} />
