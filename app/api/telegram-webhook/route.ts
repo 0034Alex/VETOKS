@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { normalizePhone } from "@/lib/phone";
 import { qualifyReferral } from "@/lib/referral";
+import { logSecurity } from "@/lib/security";
 import { lockCheck, lockClear, lockFail, waitText } from "@/lib/rateLimit";
 
 const supabaseAdmin = createClient(
@@ -43,7 +44,8 @@ async function handleCode(chatId: string, code: string, username: string | undef
   });
 
   if (!codeRow || codeRow.used || new Date(codeRow.expires_at) < new Date()) {
-    await lockFail(lockKey, 5);
+    const lf = await lockFail(lockKey, 5);
+    if (lf.locked) await logSecurity("bot_code_locked", { chat: String(chatId) });
     await sendMessage(chatId, "Код неверный или уже истёк. Запросите новый код в приложении.");
     return;
   }
@@ -218,6 +220,7 @@ export async function POST(req: Request) {
     process.env.TELEGRAM_WEBHOOK_SECRET &&
     secretHeader !== process.env.TELEGRAM_WEBHOOK_SECRET
   ) {
+    await logSecurity("webhook_bad_secret", {}, { req, alert: true, dedupeKey: "wh", dedupeSec: 300 });
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 

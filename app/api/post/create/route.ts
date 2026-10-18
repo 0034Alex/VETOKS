@@ -6,6 +6,7 @@ import { cleanVisibility } from "@/lib/postVisibility";
 import { resolvePlace } from "@/lib/places";
 import { countryOfUser, settingsForCountry } from "@/lib/countryServer";
 import { rateLimit } from "@/lib/rateLimit";
+import { logSecurity } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +75,17 @@ export async function POST(req: Request) {
       items.push({ kind, url: bunnyPlayUrl(String(m.videoId)), videoId: String(m.videoId), dur: len > 0 ? Math.round(len) : undefined });
     } else {
       const url = String(m.url ?? "");
-      if (!url.startsWith("https://") || !url.includes("/storage/v1/object/public/")) return bad("bad_url");
+      // Только свой файл из нашего хранилища: имя начинается с номера аккаунта.
+      const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+      const prefix = `${base}/storage/v1/object/public/`;
+      const rest = base && url.startsWith(prefix) ? url.slice(prefix.length) : "";
+      const [bucket, ...nameParts] = rest.split("/");
+      const fname = nameParts.join("/");
+      const okBucket = bucket === "participant-photos" || bucket === "media-videos";
+      if (!okBucket || !fname.startsWith(`${uid}-`)) {
+        await logSecurity("bad_upload_url", { url: url.slice(0, 120) }, { req, userId: uid });
+        return bad("bad_url");
+      }
       items.push({ kind, url });
     }
   }

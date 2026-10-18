@@ -23,6 +23,7 @@ import AdminTranslationsPanel from "@/components/AdminTranslationsPanel";
 import AdminDashboard from "@/components/AdminDashboard";
 import AdminPeoplePanel from "@/components/AdminPeoplePanel";
 import AdminActionLogPanel from "@/components/AdminActionLogPanel";
+import AdminSecurityPanel from "@/components/AdminSecurityPanel";
 import { getCrmCountry, setCrmCountry, crmRegionIds, crmCur, loadCrmCur } from "@/lib/crmCountry";
 import { loadScoped, loadOwn, loadOwnRegion, scopedKey } from "@/lib/scopedSettings";
 
@@ -83,7 +84,8 @@ type Tab =
   | "referrals"
   | "badges"
   | "translations"
-  | "action-log";
+  | "action-log"
+  | "security";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -120,6 +122,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "badges", label: "Галочки и статусы" },
   { key: "translations", label: "Переводы" },
   { key: "action-log", label: "Журнал действий" },
+  { key: "security", label: "Безопасность" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
@@ -142,7 +145,7 @@ const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: 
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["reports", "clan"] },
   { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["app-prices", "referrals"] },
   { key: "ads", ic: "📣", label: "Реклама и партнёры", desc: "Всё, что приносит доход от партнёров", tabs: ["partners", "partner-logos", "ad-space", "ad-prices", "ad-stats", "magazine-ads", "branding"] },
-  { key: "set", ic: "⚙️", label: "Настройки", desc: "Страны, языки, доступы", tabs: ["countries", "translations", "social", "documents", "staff", "action-log"] },
+  { key: "set", ic: "⚙️", label: "Настройки", desc: "Страны, языки, доступы", tabs: ["countries", "translations", "social", "documents", "staff", "action-log", "security"] },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
@@ -414,6 +417,7 @@ export default function AdminPage() {
         {tab === "badges" && <AdminBadgesPanel />}
         {tab === "translations" && <AdminTranslationsPanel />}
         {tab === "action-log" && <AdminActionLogPanel />}
+        {tab === "security" && <AdminSecurityPanel />}
         {tab === "countries" && <CountriesTab />}
         {tab === "app-prices" && <AdminPricesPanel />}
         {tab === "documents" && <AdminDocumentsPanel />}

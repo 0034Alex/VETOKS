@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { phoneVariants } from "@/lib/phone";
+import { logSecurity } from "@/lib/security";
 import { clientIp, lockCheck, lockClear, lockFail, lockedResponse, rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
     const b = await lockFail(kIdent, 12);
     const c = await lockFail(kIp, 40);
     const hit = [a, b, c].find((x) => x.locked);
+    if (hit) await logSecurity("login_locked", { login: ident.slice(0, 80) }, { req });
     return hit ? lockedResponse(hit.retry) : fail;
   }
 

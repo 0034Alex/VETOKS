@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { logSecurity } from "@/lib/security";
 
 // Защита от перебора и наплыва запросов. Если SQL ещё не выполнен или база не ответила —
 // не блокируем людей (fail-open), чтобы сайт не лёг из-за защиты.
@@ -33,6 +34,7 @@ export async function rateLimit(req: Request, name: string, max: number, windowS
   for (const k of keys) {
     const r = await rateHit(k, windowSec, max);
     if (!r.ok) {
+      await logSecurity("rate_limited", { route: name }, { req, dedupeKey: `${name}:${clientIp(req)}`, dedupeSec: 600 });
       return NextResponse.json(
         { ok: false, status: "error", error: "rate_limited", message: `Слишком много запросов. Повторите через ${waitText(r.retry)}.`, retry: r.retry },
         { status: 429, headers: { "Retry-After": String(r.retry) } }

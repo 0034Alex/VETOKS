@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { lockCheck, lockClear, lockFail, lockedResponse, rateLimit } from "@/lib/rateLimit";
+import { logSecurity } from "@/lib/security";
 import { findUserForReset } from "@/lib/resetServer";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +41,10 @@ export async function POST(req: NextRequest) {
 
   if (!resetRow || resetRow.used || new Date(resetRow.expires_at) < new Date()) {
     const f = await lockFail(lockKey, 5);
-    if (f.locked) return lockedResponse(f.retry);
+    if (f.locked) {
+      await logSecurity("reset_locked", {}, { req, userId: user.id });
+      return lockedResponse(f.retry);
+    }
     return NextResponse.json({ error: "Код неверный или устарел." }, { status: 400 });
   }
 
