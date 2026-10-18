@@ -121,8 +121,13 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // При смене «Мой регион / Вся страна» журнал сначала убираем целиком, потом собираем заново.
+    // Иначе книга-листалка (она сама двигает элементы на странице) ломается: NotFoundError.
+    let cancelled = false;
+    setLoading(true);
     (async () => {
       const mc = await getMyCountry();
+      if (cancelled) return;
       let mq = supabase
         .from("participants")
         .select(
@@ -131,6 +136,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
         .eq("is_eliminated", false);
       if (mc.countryId) mq = mq.in("region_id", mc.regionIds);
       const { data: participantsData } = await mq;
+      if (cancelled) return;
 
       const filteredParticipants =
         scope === "region" && userRegionId
@@ -200,9 +206,11 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
           adIndex++;
         }
       });
+      if (cancelled) return;
       setPages(merged);
 
       const u = await getCurrentUser();
+      if (cancelled) return;
       if (u) {
         setUserId(u.id);
         const { data: followsData } = await supabase
@@ -214,8 +222,11 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
         );
       }
 
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [scope, userRegionId]);
 
   async function toggleFollow(participantId: string) {
