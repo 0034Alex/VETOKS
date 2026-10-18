@@ -646,12 +646,17 @@ function ParticipantsTab() {
     let pq = supabase
       .from("participants")
       .select(
-        "id, display_name, user_id, is_editors_choice, region_id, season_id, users(is_banned, last_login_at)"
+        "id, display_name, user_id, is_editors_choice, region_id, season_id"
       );
     const prids = await crmRegionIds();
     if (prids) pq = pq.in("region_id", prids);
     const { data } = await pq;
-    const list = (data as unknown as ParticipantRow[]) ?? [];
+    const list = ((data as unknown as ParticipantRow[]) ?? []).map((r) => ({ ...r, users: null as ParticipantRow["users"] }));
+    const fr = await apiPost("/api/admin/staff", { action: "flags", ids: list.map((r) => r.user_id) });
+    list.forEach((r) => {
+      const f = fr?.flags?.[r.user_id];
+      if (f) r.users = f;
+    });
     setRows(list);
     const { data: sl } = await supabase.from("seasons").select("id, title, country_id");
     setSeasonList((sl as any) ?? []);
@@ -685,7 +690,7 @@ function ParticipantsTab() {
   }, []);
 
   async function toggleBan(userId: string, current: boolean) {
-    await supabase.from("users").update({ is_banned: !current }).eq("id", userId);
+    await apiPost("/api/admin/staff", { action: "ban", userId, value: !current });
     await load();
   }
 
@@ -832,10 +837,8 @@ function StaffTab() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
-      .from("users")
-      .select("id, first_name, role, permissions");
-    const list = (data as StaffRow[]) ?? [];
+    const res = await apiPost("/api/admin/staff", { action: "list" });
+    const list = (res?.users as StaffRow[]) ?? [];
     setAllUsers(list);
     setRows(list.filter((r) => !["viewer", "participant"].includes(r.role)));
     setLoading(false);
@@ -846,7 +849,7 @@ function StaffTab() {
   }, []);
 
   async function changeRole(id: string, role: string) {
-    await supabase.from("users").update({ role }).eq("id", id);
+    await apiPost("/api/admin/staff", { action: "role", userId: id, role });
     await load();
   }
 
@@ -855,11 +858,7 @@ function StaffTab() {
     key: string,
     value: boolean
   ) {
-    const updated = { ...(row.permissions ?? {}), [key]: value };
-    await supabase
-      .from("users")
-      .update({ permissions: updated })
-      .eq("id", row.id);
+    await apiPost("/api/admin/staff", { action: "permission", userId: row.id, key, value });
     await load();
   }
 

@@ -4,7 +4,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { apiPost } from "@/lib/authClient";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentUser } from "@/lib/currentUser";
+import { getCurrentUser, resetCurrentUserCache } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
@@ -56,12 +56,7 @@ export default function EditProfilePage() {
       const allRegions = ((regionsData as (Region & { country_id: string })[]) ?? []);
       setRegions(allRegions);
 
-      const { data: row } = await supabase
-        .from("users")
-        .select("first_name, phone, email, region_id, photo_url, region_changed_at, bio")
-        .eq("id", u.id)
-        .maybeSingle();
-
+      const row = u;
       if (row) {
         setFirstName(row.first_name ?? "");
         setPhone(row.phone ?? "");
@@ -129,19 +124,24 @@ export default function EditProfilePage() {
       setLockedUntil(new Date(Date.now() + 42 * 86400000));
     }
 
-    const { error } = await supabase
-      .from("users")
-      .update({
-        first_name: firstName,
-        phone,
-        email,
-        photo_url: newPhotoUrl,
-        bio: bio.trim().slice(0, 300) || null,
-      })
-      .eq("id", userId);
+    const sv = await apiPost("/api/profile/update", {
+      first_name: firstName,
+      phone,
+      photo_url: newPhotoUrl,
+      bio: bio.trim().slice(0, 300),
+    });
+    resetCurrentUserCache();
 
-    if (error) {
-      setNotice(`Ошибка сохранения: ${error.message}`);
+    if (!sv?.ok) {
+      setNotice(
+        sv?.error === "phone_taken"
+          ? "Этот номер уже используется другим аккаунтом."
+          : sv?.error === "phone"
+          ? "Проверьте номер телефона."
+          : sv?.error === "rate_limited"
+          ? sv.message || "Слишком много запросов, повторите позже."
+          : "Не удалось сохранить. Попробуйте ещё раз."
+      );
     } else {
       setPhotoUrl(newPhotoUrl);
       setPhotoFile(null);

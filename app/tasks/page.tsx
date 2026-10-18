@@ -77,12 +77,8 @@ export default function TasksPage() {
         .maybeSingle();
 
       if (!wallet) {
-        const { data: newWallet } = await supabase
-          .from("wallets")
-          .insert({ user_id: u.id })
-          .select("id, balance")
-          .single();
-        wallet = newWallet;
+        const ens = await apiPost("/api/wallet/ensure", {});
+        wallet = ens?.wallet ?? null;
       }
 
       if (wallet) {

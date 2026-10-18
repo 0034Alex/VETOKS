@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { postJson } from "@/lib/authClient";
 
 export type CurrentUser = {
   id: string;
@@ -13,35 +14,39 @@ export type CurrentUser = {
   permissions: Record<string, boolean | string> | null;
   staff_countries?: string[] | null;
   region_pending?: boolean | null;
+  telegram_id?: string | number | null;
+  region_changed_at?: string | null;
+  photo_url?: string | null;
+  bio?: string | null;
   regions: { name: string } | null;
 };
 
+// Личные данные (телефон, почта, роль) отдаёт только наш сервер и только владельцу.
+// Запрос один на несколько вызовов подряд: страницы зовут эту функцию часто.
+let cache: { uid: string; at: number; p: Promise<CurrentUser | null> } | null = null;
+
+export function resetCurrentUserCache() {
+  cache = null;
+}
+
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  const { data: sessionData } = await supabase.auth.getUser();
-  const authUser = sessionData?.user;
-  if (!authUser) return null;
-
-  const { data } = await supabase
-    .from("users")
-    .select(
-      "id, first_name, phone, phone_verified, email, region_id, referral_code, role, is_banned, permissions, staff_countries, region_pending, regions(name)"
-    )
-    .eq("id", authUser.id)
-    .maybeSingle();
-
-  if (!data) return null;
-
-  // Фиксируем заход — не блокируя основной запрос.
-  supabase
-    .from("users")
-    .update({ last_login_at: new Date().toISOString() })
-    .eq("id", authUser.id)
-    .then(() => {});
-
-  return data as unknown as CurrentUser;
+  const { data } = await supabase.auth.getSession();
+  const s = data.session;
+  if (!s) {
+    cache = null;
+    return null;
+  }
+  if (cache && cache.uid === s.user.id && Date.now() - cache.at < 4000) return cache.p;
+  const p = (async () => {
+    const r = await postJson("/api/me", {}, s.access_token);
+    return r && r.ok && r.user ? (r.user as CurrentUser) : null;
+  })();
+  cache = { uid: s.user.id, at: Date.now(), p };
+  return p;
 }
 
 export async function signOutUser() {
+  cache = null;
   await supabase.auth.signOut();
 }
 

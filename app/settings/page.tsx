@@ -56,8 +56,8 @@ export default function SettingsPage() {
       setUserId(u.id);
       setVerified(!!u.phone_verified);
       setPhone(u.phone);
-      const { data } = await supabase.from("users").select("telegram_id, notify_tg, privacy, social_links").eq("id", u.id).maybeSingle();
-      setTgLinked(!!data?.telegram_id);
+      const { data } = await supabase.from("users").select("notify_tg, privacy, social_links").eq("id", u.id).maybeSingle();
+      setTgLinked(!!u.telegram_id);
       setPrefs((data?.notify_tg as Record<string, boolean>) ?? {});
       setPriv((data?.privacy as Record<string, boolean>) ?? {});
       setLinks(parseLinks((data as any)?.social_links));

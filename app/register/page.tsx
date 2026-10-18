@@ -122,17 +122,19 @@ function RegisterForm() {
     }
 
     // Номер и Telegram привяжутся позже — при подтверждении номера.
-    const { error: insertError } = await supabase.from("users").insert({
-      id: signUpData.user.id,
-      first_name: firstName.trim(),
-      email: email.trim(),
-      region_id: regionId,
-      role: "viewer",
-    });
-
-    if (insertError) {
+    let token = signUpData.session?.access_token;
+    if (!token) {
+      const { data: si } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      token = si.session?.access_token;
+    }
+    const created = await postJson(
+      "/api/auth/register-profile",
+      { first_name: firstName.trim(), region_id: regionId },
+      token
+    );
+    if (!created?.ok) {
       setStatus("error");
-      setErrorMessage(insertError.message);
+      setErrorMessage(created?.message || "Не удалось сохранить анкету. Попробуйте ещё раз.");
       return;
     }
 
