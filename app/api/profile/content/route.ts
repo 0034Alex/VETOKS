@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { sameCountry } from "@/lib/countryServer";
+import { filterVisible } from "@/lib/postVisibility";
 
 export const dynamic = "force-dynamic";
 
@@ -43,11 +44,12 @@ export async function POST(req: Request) {
     const filter = part ? `user_id.eq.${target},participant_id.eq.${part.id}` : `user_id.eq.${target}`;
     const { data } = await supabaseAdmin
       .from("content_posts")
-      .select("id, participant_id, user_id, video_url, photo_url, views")
+      .select("id, participant_id, user_id, video_url, photo_url, views, visibility")
       .or(filter)
       .order("submitted_at", { ascending: false })
       .limit(300);
-    own = (data ?? []).map((p: any) => toItem(p)).filter(Boolean) as Item[];
+    const vis = isSelf ? data ?? [] : await filterVisible(me, data ?? [], () => target, (p: any) => p.visibility);
+    own = vis.map((p: any) => toItem(p)).filter(Boolean) as Item[];
   }
 
   // Репосты.
@@ -60,10 +62,11 @@ export async function POST(req: Request) {
     .limit(200);
   const rIds = (rp ?? []).map((r: any) => r.post_id);
   if (rIds.length) {
-    const { data: posts } = await supabaseAdmin
+    const { data: posts0 } = await supabaseAdmin
       .from("content_posts")
-      .select("id, participant_id, user_id, video_url, photo_url, views, participants(display_name)")
+      .select("id, participant_id, user_id, video_url, photo_url, views, visibility, participants(display_name)")
       .in("id", rIds);
+    const posts = await filterVisible(me, posts0 ?? [], (p: any) => p.user_id, (p: any) => p.visibility);
     const byId: Record<string, any> = {};
     (posts ?? []).forEach((p: any) => (byId[p.id] = p));
     const nm = await authorNames(posts ?? []);
@@ -85,10 +88,11 @@ export async function POST(req: Request) {
       .limit(200);
     const ids = (tg ?? []).map((t: any) => t.post_id);
     if (!ids.length) return [] as Item[];
-    const { data: posts } = await supabaseAdmin
+    const { data: posts0 } = await supabaseAdmin
       .from("content_posts")
-      .select("id, participant_id, user_id, video_url, photo_url, views, participants(display_name)")
+      .select("id, participant_id, user_id, video_url, photo_url, views, visibility, participants(display_name)")
       .in("id", ids);
+    const posts = await filterVisible(me, posts0 ?? [], (p: any) => p.user_id, (p: any) => p.visibility);
     const byId: Record<string, any> = {};
     (posts ?? []).forEach((p: any) => (byId[p.id] = p));
     const names = await authorNames(posts ?? []);

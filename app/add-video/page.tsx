@@ -1,248 +1,566 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import { apiPost } from "@/lib/authClient";
 import { bunnyUpload, videoDuration } from "@/lib/bunnyUpload";
 import BottomNav from "@/components/BottomNav";
-import PageHeader from "@/components/PageHeader";
 
-type Kind = "video" | "photo" | null;
+const MAX_ITEMS = 10;
+type Vis = "all" | "followers" | "me";
+type Item = {
+  key: string;
+  kind: "photo" | "video";
+  preview: string | null; // что показываем в плитке
+  url?: string; // готовая ссылка (фото, видео без Bunny)
+  videoId?: string; // видео в Bunny
+  progress: number; // 0..100, 100 = готово
+  error?: string;
+};
+type Place = { id?: string; name: string };
+type Person = { nick: string; name: string };
+type Sheet = null | "vis" | "place" | "people";
 
-export default function AddVideoPage() {
+const VIS: { v: Vis; t: string; d: string }[] = [
+  { v: "all", t: "Все", d: "Лента, профиль и поиск" },
+  { v: "followers", t: "Подписчики", d: "Только те, кто на вас подписан" },
+  { v: "me", t: "Только я", d: "Видна только вам в профиле" },
+];
+
+function Inner() {
   const router = useRouter();
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [kind, setKind] = useState<Kind>(null);
+  const sp = useSearchParams();
+  const [mode, setMode] = useState<"edit" | "drafts">(sp.get("drafts") ? "drafts" : "edit");
+  const [items, setItems] = useState<Item[]>([]);
   const [caption, setCaption] = useState("");
-  const [uploading, setUploading] = useState(false);
+  const [vis, setVis] = useState<Vis>("all");
+  const [place, setPlace] = useState<Place | null>(null);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [sheet, setSheet] = useState<Sheet>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<any[] | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [progress, setProgress] = useState<number | null>(null);
+  const [isPart, setIsPart] = useState(false);
+  const libRef = useRef<HTMLInputElement>(null);
+  const camRef = useRef<HTMLInputElement>(null);
 
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const libraryInputRef = useRef<HTMLInputElement>(null);
-
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-    // Автоматически определяем — видео идёт в ленту «Медиа», фото — в
-    // фотолента профиля.
-    if (f.type.startsWith("video/")) {
-      setKind("video");
-    } else if (f.type.startsWith("image/")) {
-      setKind("photo");
-    } else {
-      setKind(null);
-      setError("Этот файл не похож на фото или видео.");
-    }
-  }
-
-  async function handlePublish() {
-    if (!file || !kind) return;
-    setUploading(true);
-    setError("");
-
-    const u = await getCurrentUser();
-    if (!u) {
-      router.push("/login?redirect=/add-video");
-      return;
-    }
-
-    const { data: p } = await supabase
-      .from("participants")
-      .select("id")
-      .eq("user_id", u.id)
-      .maybeSingle();
-
-    // Видео — не длиннее 60 секунд.
-    if (kind === "video") {
-      const dur = await videoDuration(file);
-      if (dur > 60.5) {
-        setError("Видео длиннее 60 секунд. Выберите ролик покороче.");
-        setUploading(false);
+  useEffect(() => {
+    (async () => {
+      const u = await getCurrentUser();
+      if (!u) {
+        router.push("/login?redirect=/add-video");
         return;
       }
+      const { data: p } = await supabase.from("participants").select("id").eq("user_id", u.id).maybeSingle();
+      setIsPart(!!p);
+      loadDrafts();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-      // Основной путь для участниц: загрузка в Bunny.
-      const up = p ? await apiPost("/api/video/create-upload", {}) : null;
-      if (up?.ok && up.configured) {
-        try {
-          setProgress(0);
+  async function loadDrafts() {
+    const r = await apiPost("/api/post/drafts", { action: "list" });
+    setDrafts(r?.ok ? r.items : []);
+  }
+
+  const patch = (key: string, p: Partial<Item>) => setItems((a) => a.map((x) => (x.key === key ? { ...x, ...p } : x)));
+
+  // Каждый файл загружаем сразу после выбора, чтобы потом публикация и черновик были мгновенными.
+  async function uploadOne(f: File, key: string) {
+    const isVideo = f.type.startsWith("video/");
+    try {
+      if (isVideo) {
+        const dur = await videoDuration(f);
+        if (dur > 60.5) {
+          patch(key, { error: "Видео длиннее 60 секунд", progress: 0 });
+          return;
+        }
+        const up = isPart ? await apiPost("/api/video/create-upload", {}) : null;
+        if (up?.ok && up.configured) {
           await bunnyUpload(
-            file,
+            f,
             { videoId: up.videoId, libraryId: up.libraryId, signature: up.signature, expire: up.expire },
-            setProgress
+            (pct) => patch(key, { progress: Math.min(99, pct) })
           );
-        } catch (e: any) {
-          setError(e?.message || "Ошибка загрузки");
-          setUploading(false);
-          setProgress(null);
+          patch(key, { videoId: up.videoId, progress: 100 });
           return;
         }
-        const pub = await apiPost("/api/video/publish", { videoId: up.videoId, caption });
-        setProgress(null);
-        if (!pub?.ok) {
-          setError(
-            pub?.error === "too_long"
-              ? "Видео длиннее 60 секунд."
-              : "Не удалось опубликовать. Попробуйте ещё раз."
-          );
-          setUploading(false);
+        if (up && up.ok === false) {
+          patch(key, { error: "Сервис видео временно недоступен" });
           return;
         }
-        router.push("/media");
+      }
+      const u = await getCurrentUser();
+      const ext = (f.name.split(".").pop() || (isVideo ? "mp4" : "jpg")).toLowerCase();
+      const path = `${u?.id}-${Date.now()}-${key}.${ext}`;
+      const bucket = isVideo ? "media-videos" : "participant-photos";
+      const { error: e } = await supabase.storage.from(bucket).upload(path, f);
+      if (e) {
+        patch(key, { error: `Ошибка загрузки: ${e.message}` });
         return;
       }
-      if (up && up.ok === false) {
-        setError("Сервис видео временно недоступен.");
-        setUploading(false);
-        return;
-      }
-      // Bunny не настроен — старый способ ниже.
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+      patch(key, { url: data.publicUrl, progress: 100 });
+    } catch (e: any) {
+      patch(key, { error: e?.message || "Ошибка загрузки" });
     }
-
-    const fileExt = file.name.split(".").pop();
-    const filePath = `${p ? p.id : u.id}-${Date.now()}.${fileExt}`;
-    const bucket = kind === "video" ? "media-videos" : "participant-photos";
-
-    const { error: uploadError } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, file);
-
-    if (uploadError) {
-      setError(`Ошибка загрузки: ${uploadError.message}`);
-      setUploading(false);
-      return;
-    }
-
-    const { data: publicUrlData } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(filePath);
-
-    const { error: insertError } = await supabase.from("content_posts").insert({
-      participant_id: p ? p.id : null,
-      user_id: u.id,
-      platform: "vetoks",
-      media_type: kind,
-      video_url: kind === "video" ? publicUrlData.publicUrl : null,
-      photo_url: kind === "photo" ? publicUrlData.publicUrl : null,
-      caption,
-      is_verified: true,
-    });
-
-    if (insertError) {
-      setError(`Ошибка публикации: ${insertError.message}`);
-      setUploading(false);
-      return;
-    }
-
-    // Видео уходит в общую ленту «Медиа», фото — в фотоленту профиля.
-    router.push(!p ? "/profile" : kind === "video" ? "/media" : `/participant/${p.id}`);
   }
 
-  function reset() {
-    setFile(null);
-    setPreview(null);
-    setKind(null);
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const files: File[] = Array.from(e.target.files ?? []);
+    e.target.value = "";
     setError("");
+    const room = MAX_ITEMS - items.length;
+    if (files.length > room) setError(`Можно не больше ${MAX_ITEMS} фото и видео в одной публикации.`);
+    const add: Item[] = [];
+    files.slice(0, Math.max(0, room)).forEach((f: File, i: number) => {
+      const kind = f.type.startsWith("video/") ? "video" : f.type.startsWith("image/") ? "photo" : null;
+      if (!kind) {
+        setError("Этот файл не похож на фото или видео.");
+        return;
+      }
+      const key = `${Date.now()}-${i}`;
+      add.push({ key, kind, preview: URL.createObjectURL(f), progress: 0 });
+      uploadOne(f, key);
+    });
+    if (add.length) setItems((a) => [...a, ...add]);
   }
 
-  return (
-    <main className="min-h-screen pb-28">
-      <PageHeader />
-      <div className="px-6 flex flex-col items-center">
-        <h1 className="text-2xl font-semibold text-offwhite mb-2">
-          Добавить фото или видео
-        </h1>
-        <p className="text-muted text-xs text-center mb-6">
-          Видео (до 60 секунд) попадёт в общую ленту «Медиа», фото — в
-          фотоленту вашего профиля. После загрузки видео обрабатывается
-          около минуты.
-        </p>
+  function move(i: number) {
+    setItems((a) => {
+      if (i <= 0) return a;
+      const b = [...a];
+      [b[i - 1], b[i]] = [b[i], b[i - 1]];
+      return b;
+    });
+  }
+  const remove = (key: string) => setItems((a) => a.filter((x) => x.key !== key));
 
-        <div className="w-full max-w-sm aspect-[9/16] bg-bgSurface border border-muted rounded-xl overflow-hidden flex items-center justify-center mb-4">
-          {preview ? (
-            kind === "video" ? (
-              <video src={preview} controls className="w-full h-full object-cover" />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt="" className="w-full h-full object-cover" />
-            )
+  const uploading = items.some((x) => !x.error && x.progress < 100);
+  const failed = items.some((x) => x.error);
+  const ready = items.length > 0 && !uploading && !failed;
+
+  const mediaPayload = () => items.map((x) => ({ kind: x.kind, url: x.url, videoId: x.videoId }));
+
+  async function publish() {
+    if (!ready || busy) return;
+    setBusy(true);
+    setError("");
+    const r = await apiPost("/api/post/create", {
+      media: mediaPayload(),
+      caption,
+      visibility: vis,
+      placeId: place?.id,
+      placeName: place && !place.id ? place.name : undefined,
+      draftId,
+    });
+    if (!r?.ok) {
+      setError(
+        r?.error === "too_long"
+          ? "Видео длиннее 60 секунд."
+          : r?.error === "already_used"
+          ? "Это видео уже опубликовано."
+          : "Не удалось опубликовать. Попробуйте ещё раз."
+      );
+      setBusy(false);
+      return;
+    }
+    for (const p of people) await apiPost("/api/profile/tags", { action: "tag", postId: r.postId, nick: p.nick });
+    router.push(`/post/${r.postId}`);
+  }
+
+  async function saveDraft() {
+    if (busy) return;
+    if (uploading) {
+      setError("Подождите, файлы ещё загружаются.");
+      return;
+    }
+    setBusy(true);
+    const r = await apiPost("/api/post/drafts", {
+      action: "save",
+      id: draftId,
+      media: items.filter((x) => !x.error).map((x) => ({ kind: x.kind, url: x.url, videoId: x.videoId })),
+      caption,
+      visibility: vis,
+      placeId: place?.id,
+      placeName: place && !place.id ? place.name : place?.name,
+      tags: people.map((p) => p.nick),
+    });
+    setBusy(false);
+    if (!r?.ok) {
+      setError(r?.error === "empty" ? "Добавьте фото, видео или текст." : r?.error === "too_many" ? "Черновиков уже 20. Удалите ненужные." : "Не удалось сохранить.");
+      return;
+    }
+    router.push("/profile");
+  }
+
+  async function openDraft(id: string) {
+    const r = await apiPost("/api/post/drafts", { action: "get", id });
+    if (!r?.ok) return;
+    const d = r.draft;
+    setDraftId(d.id);
+    setCaption(d.caption ?? "");
+    setVis((d.visibility as Vis) || "all");
+    setPlace(d.place_name ? { id: d.place_id || undefined, name: d.place_name } : null);
+    setItems(
+      ((d.media as any[]) ?? []).map((m, i) => ({
+        key: `d${i}-${Date.now()}`,
+        kind: m.kind === "video" ? "video" : "photo",
+        preview: m.kind === "photo" ? m.url : null,
+        url: m.url || undefined,
+        videoId: m.videoId || undefined,
+        progress: 100,
+      }))
+    );
+    const nicks: string[] = Array.isArray(d.tags) ? d.tags : [];
+    setPeople(nicks.map((n) => ({ nick: n, name: n })));
+    setMode("edit");
+  }
+
+  async function delDraft(id: string) {
+    await apiPost("/api/post/drafts", { action: "delete", id });
+    setDrafts((a) => (a ? a.filter((x) => x.id !== id) : a));
+  }
+
+  const visLabel = VIS.find((x) => x.v === vis)?.t ?? "Все";
+
+  // ---------- Черновики ----------
+  if (mode === "drafts") {
+    return (
+      <main className="min-h-screen pb-28">
+        <Top title="Черновики" onBack={() => (sp.get("drafts") ? router.back() : setMode("edit"))} />
+        <div className="px-4">
+          {drafts === null ? (
+            <p className="text-muted text-sm text-center mt-10">Загружаем…</p>
+          ) : drafts.length === 0 ? (
+            <p className="text-muted text-sm text-center mt-10">Черновиков нет.</p>
           ) : (
-            <span className="text-muted text-sm px-4 text-center">
-              Нет фото или видео
-            </span>
+            drafts.map((d) => {
+              const first = (d.media as any[])?.[0];
+              return (
+                <div key={d.id} className="flex items-center gap-3 py-3 border-b border-muted/30">
+                  <button onClick={() => openDraft(d.id)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                    <span className="w-14 h-16 rounded-lg bg-bgSurface overflow-hidden flex-none flex items-center justify-center text-muted">
+                      {first?.kind === "photo" && first.url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={first.url} alt="" className="w-full h-full object-cover" />
+                      ) : first ? (
+                        "▶"
+                      ) : (
+                        "✎"
+                      )}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-offwhite text-sm truncate">{d.caption || "Без описания"}</span>
+                      <span className="block text-muted text-xs">
+                        {(d.media as any[])?.length ?? 0} шт. · {new Date(d.updated_at).toLocaleDateString("ru-RU")}
+                      </span>
+                    </span>
+                  </button>
+                  <button onClick={() => delDraft(d.id)} className="text-danger text-sm px-2" aria-label="Удалить">
+                    Удалить
+                  </button>
+                </div>
+              );
+            })
           )}
         </div>
+        <BottomNav />
+      </main>
+    );
+  }
 
-        {!file ? (
-          <div className="w-full max-w-sm flex flex-col gap-3 mb-4">
-            <button
-              onClick={() => cameraInputRef.current?.click()}
-              className="w-full text-center bg-bgPrimary border border-gold text-gold font-semibold py-3 rounded-full"
-            >
-              📷 Снять камерой
+  // ---------- Новая публикация ----------
+  return (
+    <main className="min-h-screen pb-40">
+      <Top
+        title="Новая публикация"
+        onBack={() => router.back()}
+        right={
+          drafts && drafts.length > 0 ? (
+            <button onClick={() => setMode("drafts")} className="text-gold text-sm">
+              Черновики ({drafts.length})
             </button>
-            <button
-              onClick={() => libraryInputRef.current?.click()}
-              className="w-full text-center bg-bgPrimary border border-muted text-offwhite font-semibold py-3 rounded-full"
-            >
-              🖼 Загрузить с телефона
+          ) : null
+        }
+      />
+
+      <div className="flex gap-2.5 px-4 pb-3 overflow-x-auto">
+        {items.map((it, i) => (
+          <div key={it.key} className="relative w-[84px] h-[104px] rounded-xl bg-bgSurface overflow-hidden flex-none">
+            {it.preview && it.kind === "photo" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={it.preview} alt="" className="w-full h-full object-cover" />
+            ) : it.preview ? (
+              <video src={it.preview} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+            ) : (
+              <span className="w-full h-full flex items-center justify-center text-muted text-xl">▶</span>
+            )}
+            <i className="absolute left-1.5 top-1.5 w-5 h-5 rounded-full bg-gold text-bgPrimary text-xs font-bold not-italic flex items-center justify-center">
+              {i + 1}
+            </i>
+            <button onClick={() => remove(it.key)} className="absolute right-1 top-1 w-6 h-6 rounded-full bg-black/70 text-white text-sm leading-none" aria-label="Убрать">
+              ×
             </button>
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*,video/*"
-              capture="environment"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <input
-              ref={libraryInputRef}
-              type="file"
-              accept="image/*,video/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
+            {i > 0 && (
+              <button onClick={() => move(i)} className="absolute left-1 bottom-1 w-6 h-6 rounded-full bg-black/70 text-white text-xs" aria-label="Сдвинуть влево">
+                ◀
+              </button>
+            )}
+            {it.kind === "video" && <span className="absolute right-1.5 bottom-1.5 text-[10px] text-white bg-black/60 rounded-full px-1.5">видео</span>}
+            {!it.error && it.progress < 100 && (
+              <div className="absolute inset-x-0 bottom-0 h-1 bg-black/50">
+                <div className="h-full bg-gold" style={{ width: `${it.progress}%` }} />
+              </div>
+            )}
+            {it.error && <div className="absolute inset-0 bg-black/75 text-danger text-[10px] p-1.5 flex items-center text-center">{it.error}</div>}
           </div>
-        ) : (
+        ))}
+        {items.length < MAX_ITEMS && (
           <button
-            onClick={reset}
-            className="w-full max-w-sm text-center bg-bgPrimary border border-muted text-muted font-semibold py-2 rounded-full mb-4 text-sm"
+            onClick={() => libRef.current?.click()}
+            className="w-[84px] h-[104px] rounded-xl border-[1.5px] border-dashed border-gold/60 text-gold text-3xl flex-none flex items-center justify-center"
+            aria-label="Добавить фото или видео"
           >
-            Выбрать другое фото/видео
+            +
           </button>
         )}
+      </div>
+      <input ref={libRef} type="file" accept="image/*,video/*" multiple onChange={onPick} className="hidden" />
+      <input ref={camRef} type="file" accept="image/*,video/*" capture="environment" onChange={onPick} className="hidden" />
+      {items.length === 0 && (
+        <div className="px-4 pb-3 flex gap-2">
+          <button onClick={() => libRef.current?.click()} className="flex-1 border border-gold text-gold rounded-full py-2.5 text-sm font-semibold">
+            Из галереи
+          </button>
+          <button onClick={() => camRef.current?.click()} className="flex-1 border border-muted text-offwhite rounded-full py-2.5 text-sm font-semibold">
+            Снять камерой
+          </button>
+        </div>
+      )}
+      <p className="px-4 text-muted text-xs pb-3">До {MAX_ITEMS} фото и видео (видео до 60 секунд). Первое — обложка. После загрузки видео обрабатывается около минуты.</p>
 
+      <div className="mx-4 bg-bgSurface rounded-2xl px-4 py-3">
         <textarea
           value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          placeholder="Подпись..."
-          rows={3}
-          className="w-full max-w-sm bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mb-4"
+          onChange={(e) => setCaption(e.target.value.slice(0, 500))}
+          placeholder="Добавьте описание…"
+          rows={4}
+          className="w-full bg-transparent text-offwhite outline-none resize-none text-base"
         />
-
-        <button
-          onClick={handlePublish}
-          disabled={!file || !kind || uploading}
-          className="w-full max-w-sm bg-gold text-bgPrimary font-semibold py-3 rounded-full disabled:opacity-50"
-        >
-          {uploading
-            ? progress !== null
-              ? `Загружаем ${progress}%`
-              : "Публикуем..."
-            : kind === "photo"
-            ? "Опубликовать фото"
-            : "Опубликовать видео"}
-        </button>
-
-        {error && <p className="text-danger text-sm mt-3">{error}</p>}
+        <div className="flex justify-between text-xs text-muted border-t border-muted/20 pt-2">
+          <span>Хештеги пишите в тексте: #vetoks</span>
+          <span>{caption.length} / 500</span>
+        </div>
       </div>
+
+      <div className="flex flex-wrap gap-2 px-4 pt-3.5">
+        <Tile onClick={() => setSheet("people")} active={people.length > 0}>
+          👤 {people.length ? `Отмечено: ${people.length}` : "Отметить людей"}
+        </Tile>
+        <Tile onClick={() => setSheet("place")} active={!!place}>
+          📍 {place ? place.name : "Добавить место"}
+        </Tile>
+        <Tile onClick={() => setSheet("vis")} active={vis !== "all"}>
+          🌐 Кто видит: {visLabel}
+        </Tile>
+      </div>
+
+      {error && <p className="text-danger text-sm px-4 mt-3">{error}</p>}
+
+      <div className="fixed left-0 right-0 bottom-[68px] z-40 px-4 pb-3 pt-2 bg-gradient-to-t from-bgPrimary via-bgPrimary to-transparent flex gap-2.5">
+        <button onClick={saveDraft} disabled={busy} className="px-5 rounded-full border border-muted text-offwhite font-semibold disabled:opacity-50">
+          Черновик
+        </button>
+        <button onClick={publish} disabled={!ready || busy} className="flex-1 bg-gold text-bgPrimary font-semibold py-3 rounded-full disabled:opacity-50">
+          {busy ? "Публикуем…" : uploading ? "Загружаем файлы…" : "Опубликовать"}
+        </button>
+      </div>
+
+      {sheet === "vis" && (
+        <Sheet title="Кто видит публикацию" onClose={() => setSheet(null)}>
+          {VIS.map((o) => (
+            <button key={o.v} onClick={() => setVis(o.v)} className="w-full flex items-center gap-3 py-3.5 border-b border-muted/20 text-left">
+              <span className="flex-1">
+                <span className="block text-offwhite">{o.t}</span>
+                <span className="block text-muted text-xs">{o.d}</span>
+              </span>
+              <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${vis === o.v ? "border-gold" : "border-muted"}`}>
+                {vis === o.v && <i className="w-2.5 h-2.5 rounded-full bg-gold block" />}
+              </span>
+            </button>
+          ))}
+          <button onClick={() => setSheet(null)} className="mt-4 w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full">
+            Готово
+          </button>
+        </Sheet>
+      )}
+      {sheet === "place" && (
+        <PlaceSheet
+          current={place}
+          onClose={() => setSheet(null)}
+          onPick={(p) => {
+            setPlace(p);
+            setSheet(null);
+          }}
+        />
+      )}
+      {sheet === "people" && <PeopleSheet people={people} onChange={setPeople} onClose={() => setSheet(null)} />}
       <BottomNav />
     </main>
+  );
+}
+
+function Top({ title, onBack, right }: { title: string; onBack: () => void; right?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between px-4 py-4" style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}>
+      <button onClick={onBack} className="text-offwhite text-xl w-8 text-left" aria-label="Назад">
+        ←
+      </button>
+      <b className="text-offwhite text-[17px]">{title}</b>
+      <span className="min-w-[32px] text-right">{right}</span>
+    </div>
+  );
+}
+
+function Tile({ children, onClick, active }: { children: React.ReactNode; onClick: () => void; active?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-2xl px-3.5 py-3 text-sm bg-bgSurface border ${active ? "border-gold text-gold" : "border-muted/40 text-offwhite"} max-w-full truncate`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end bg-black/70" onClick={onClose}>
+      <div
+        className="w-full max-h-[80dvh] overflow-y-auto bg-bgSurface rounded-t-3xl px-4 pt-3 pb-8"
+        onClick={(e) => e.stopPropagation()}
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)" }}
+      >
+        <i className="block w-10 h-1 rounded-full bg-muted/50 mx-auto mb-3" />
+        <p className="text-offwhite font-semibold mb-2">{title}</p>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function PlaceSheet({ current, onClose, onPick }: { current: Place | null; onClose: () => void; onPick: (p: Place | null) => void }) {
+  const [q, setQ] = useState("");
+  const [list, setList] = useState<{ id: string; name: string; count: number }[]>([]);
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      const r = await apiPost("/api/places", { action: "search", q });
+      if (r?.ok) setList(r.items);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q]);
+  const name = q.trim().replace(/\s+/g, " ");
+  const exact = list.some((p) => p.name.toLowerCase() === name.toLowerCase());
+  return (
+    <Sheet title="Добавить место" onClose={onClose}>
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value.slice(0, 60))}
+        placeholder="Название места…"
+        autoFocus
+        className="w-full bg-bgPrimary border border-gold/50 rounded-xl px-3.5 py-3 text-offwhite outline-none mb-1"
+      />
+      {list.map((p) => (
+        <button key={p.id} onClick={() => onPick({ id: p.id, name: p.name })} className="w-full flex items-center gap-3 py-3 border-b border-muted/20 text-left">
+          <span>📍</span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-offwhite truncate">{p.name}</span>
+            <span className="block text-muted text-xs">{p.count} публикаций</span>
+          </span>
+        </button>
+      ))}
+      {name.length >= 2 && !exact && (
+        <button onClick={() => onPick({ name })} className="w-full flex items-center gap-3 py-3.5 text-left text-gold font-semibold">
+          <span className="w-5 text-center text-lg">+</span>Добавить новое: «{name}»
+        </button>
+      )}
+      {current && (
+        <button onClick={() => onPick(null)} className="mt-2 text-danger text-sm">
+          Убрать место
+        </button>
+      )}
+      <p className="text-muted text-xs mt-3">Нажатие на место в публикации открывает все публикации оттуда.</p>
+    </Sheet>
+  );
+}
+
+function PeopleSheet({ people, onChange, onClose }: { people: Person[]; onChange: (p: Person[]) => void; onClose: () => void }) {
+  const [q, setQ] = useState("");
+  const [res, setRes] = useState<{ nick: string; name: string; photoUrl: string | null }[]>([]);
+  useEffect(() => {
+    const nick = q.trim().replace(/^@/, "");
+    if (nick.length < 2) {
+      setRes([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      const r = await apiPost("/api/profile/search", { q: nick });
+      if (r?.ok) setRes(r.items);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q]);
+  const has = (n: string) => people.some((p) => p.nick === n);
+  return (
+    <Sheet title="Отметить людей" onClose={onClose}>
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Ник человека…"
+        autoFocus
+        className="w-full bg-bgPrimary border border-gold/50 rounded-xl px-3.5 py-3 text-offwhite outline-none mb-2"
+      />
+      {people.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {people.map((p) => (
+            <button key={p.nick} onClick={() => onChange(people.filter((x) => x.nick !== p.nick))} className="bg-bgPrimary border border-gold/60 text-gold rounded-full px-3 py-1 text-sm">
+              @{p.nick} ×
+            </button>
+          ))}
+        </div>
+      )}
+      {res.map((r) => (
+        <button
+          key={r.nick}
+          disabled={has(r.nick) || people.length >= 10}
+          onClick={() => onChange([...people, { nick: r.nick, name: r.name }])}
+          className="w-full flex items-center gap-3 py-2.5 border-b border-muted/20 text-left disabled:opacity-40"
+        >
+          <span
+            className="w-9 h-9 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center flex-none"
+            style={r.photoUrl ? { backgroundImage: `url(${r.photoUrl})` } : undefined}
+          />
+          <span className="min-w-0">
+            <span className="block text-offwhite text-sm truncate">{r.name}</span>
+            <span className="block text-muted text-xs">@{r.nick}</span>
+          </span>
+        </button>
+      ))}
+      <button onClick={onClose} className="mt-4 w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full">
+        Готово
+      </button>
+      <p className="text-muted text-xs mt-3">Люди получат уведомление об отметке. До 10 человек.</p>
+    </Sheet>
+  );
+}
+
+export default function AddVideoPage() {
+  return (
+    <Suspense fallback={null}>
+      <Inner />
+    </Suspense>
   );
 }

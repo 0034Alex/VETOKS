@@ -175,6 +175,7 @@ export default function ParticipantProfilePage() {
       .from("content_posts")
       .select("id, video_url")
       .eq("participant_id", id)
+      .eq("visibility", "all")
       .not("video_url", "is", null)
       .order("submitted_at", { ascending: false });
     setVideoPosts((videosData as any) ?? []);
@@ -183,6 +184,7 @@ export default function ParticipantProfilePage() {
       .from("content_posts")
       .select("id, photo_url")
       .eq("participant_id", id)
+      .eq("visibility", "all")
       .not("photo_url", "is", null)
       .order("submitted_at", { ascending: false });
     setPhotoPosts((photosData as any) ?? []);

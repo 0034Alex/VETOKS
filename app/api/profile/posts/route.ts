@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { sameCountry } from "@/lib/countryServer";
+import { filterVisible } from "@/lib/postVisibility";
 
 export const dynamic = "force-dynamic";
 
@@ -15,14 +16,21 @@ export async function POST(req: Request) {
 
   const { data: posts } = await supabaseAdmin
     .from("content_posts")
-    .select("id, participant_id, user_id, video_url, photo_url, caption, views, submitted_at, participants(user_id, display_name, photo_url)")
+    .select("id, participant_id, user_id, video_url, photo_url, caption, views, submitted_at, extra_media, visibility, place_id, participants(user_id, display_name, photo_url)")
     .in("id", ids);
 
   const ownerOf = (p: any) => {
     const pp = Array.isArray(p.participants) ? p.participants[0] : p.participants;
     return (p.user_id ?? pp?.user_id) as string | undefined;
   };
-  const ownerIds = Array.from(new Set((posts ?? []).map(ownerOf).filter(Boolean))) as string[];
+  const visPosts = await filterVisible(me, posts ?? [], ownerOf, (p: any) => p.visibility);
+  const placeIds = Array.from(new Set(visPosts.map((p: any) => p.place_id).filter(Boolean))) as string[];
+  const placeMap: Record<string, string> = {};
+  if (placeIds.length) {
+    const { data: pls } = await supabaseAdmin.from("places").select("id, name").in("id", placeIds);
+    (pls ?? []).forEach((x: any) => (placeMap[x.id] = x.name));
+  }
+  const ownerIds = Array.from(new Set(visPosts.map(ownerOf).filter(Boolean))) as string[];
   const { data: users } = ownerIds.length
     ? await supabaseAdmin.from("users").select("id, first_name, nick, photo_url, email").in("id", ownerIds)
     : { data: [] as any[] };
@@ -46,7 +54,7 @@ export async function POST(req: Request) {
   const okOwner: Record<string, boolean> = {};
   for (const o of ownerIds) okOwner[o] = o === me ? true : await sameCountry(me, o);
 
-  const items = (posts ?? [])
+  const items = visPosts
     .filter((p: any) => {
       const o = ownerOf(p);
       return !!o && okOwner[o];
@@ -59,6 +67,14 @@ export async function POST(req: Request) {
         id: p.id as string,
         kind: p.video_url ? "video" : "photo",
         url: (p.video_url || p.photo_url) as string,
+        media: [
+          { kind: p.video_url ? "video" : "photo", url: (p.video_url || p.photo_url) as string },
+          ...(Array.isArray(p.extra_media) ? p.extra_media : [])
+            .filter((m: any) => m && typeof m.url === "string")
+            .map((m: any) => ({ kind: m.kind === "video" ? "video" : "photo", url: m.url as string })),
+        ],
+        place: p.place_id && placeMap[p.place_id] ? { id: p.place_id as string, name: placeMap[p.place_id] } : null,
+        visibility: (p.visibility as string) || "all",
         caption: (p.caption as string) ?? "",
         createdAt: p.submitted_at as string,
         views: Number(p.views) || 0,

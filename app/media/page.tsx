@@ -89,6 +89,7 @@ export default function MediaPage() {
         .select(
           "id, video_url, caption, participant_id, participants(display_name, photo_url, region_id, season_id)"
         )
+        .eq("visibility", "all")
         .not("video_url", "is", null)
         .not("participant_id", "is", null)
         .order("submitted_at", { ascending: false });

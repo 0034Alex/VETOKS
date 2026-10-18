@@ -28,6 +28,8 @@ type P = {
   comments: number;
   reposted: boolean;
   mine: boolean;
+  media?: { kind: "video" | "photo"; url: string }[];
+  place?: { id: string; name: string } | null;
 };
 
 type CU = { first_name: string | null; photo_url: string | null; nick: string | null };
@@ -40,6 +42,41 @@ function ago(s: string) {
   if (m < 1440) return `${Math.floor(m / 60)} ч`;
   if (m < 10080) return `${Math.floor(m / 1440)} д`;
   return `${Math.floor(m / 10080)} нед`;
+}
+
+function Carousel({ media }: { media: { kind: "video" | "photo"; url: string }[] }) {
+  const [i, setI] = useState(0);
+  return (
+    <>
+      <div
+        className="w-full h-full flex overflow-x-auto snap-x snap-mandatory"
+        style={{ scrollbarWidth: "none" }}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          setI(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
+        }}
+      >
+        {media.map((m, k) => (
+          <div key={k} className="w-full h-full flex-none snap-center bg-black">
+            {m.kind === "video" ? (
+              <video src={m.url} controls muted playsInline preload="metadata" className="w-full h-full object-contain" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={m.url} alt="" className="w-full h-full object-contain" />
+            )}
+          </div>
+        ))}
+      </div>
+      <span className="absolute right-2.5 top-2.5 bg-black/60 rounded-full px-2.5 py-1 text-[12px] text-white pointer-events-none">
+        {i + 1}/{media.length}
+      </span>
+      <div className="absolute left-0 right-0 bottom-2 flex justify-center gap-1.5 pointer-events-none">
+        {media.map((_, k) => (
+          <i key={k} className={`block rounded-full ${k === i ? "w-2 h-2 bg-gold" : "w-1.5 h-1.5 bg-white/50"}`} />
+        ))}
+      </div>
+    </>
+  );
 }
 
 const Heart = ({ on, size = 24 }: { on: boolean; size?: number }) => (
@@ -277,6 +314,11 @@ export default function PostFeedPage() {
                   {p.authorSub && <span className="block text-offwhite/70 text-xs truncate">{p.authorSub}</span>}
                 </span>
               </Link>
+              {p.place && (
+                <Link href={`/place/${p.place.id}`} className="text-offwhite/90 text-xs bg-black/40 rounded-full px-2.5 py-1 max-w-[40%] truncate">
+                  📍 {p.place.name}
+                </Link>
+              )}
               {!p.mine && (
                 <button onClick={() => setMenuFor(menuFor === p.id ? null : p.id)} className="text-offwhite text-2xl leading-none px-2" aria-label="Меню">
                   ⋯
@@ -300,7 +342,9 @@ export default function PostFeedPage() {
             {/* Рамка с фото или видео */}
             <div className="relative z-10 flex-1 min-h-0 rounded-3xl p-[3px]" style={{ background: "linear-gradient(160deg,#E8D48A,#8a6d12 40%,#E8D48A)" }}>
               <div className="relative w-full h-full rounded-[21px] overflow-hidden bg-black select-none" onPointerUp={() => onMediaTap(p)} style={{ touchAction: "manipulation" }}>
-                {p.kind === "video" ? (
+                {p.media && p.media.length > 1 ? (
+                  <Carousel media={p.media} />
+                ) : p.kind === "video" ? (
                   <>
                     <video
                       ref={(el) => {

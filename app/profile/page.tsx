@@ -450,6 +450,9 @@ export default function ProfilePage() {
           <Link href="/add-video" className="block text-center text-gold text-sm mt-5">
             ＋ Добавить видео или фото
           </Link>
+          <Link href="/add-video?drafts=1" className="block text-center text-muted text-xs mt-2">
+            Черновики
+          </Link>
         </div>
         <ProfileTabs />
       </div>

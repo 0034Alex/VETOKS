@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { sameCountry } from "@/lib/countryServer";
+import { filterVisible } from "@/lib/postVisibility";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
 
   const { data: p } = await supabaseAdmin
     .from("content_posts")
-    .select("id, participant_id, user_id, video_url, photo_url, caption, participants(user_id, display_name)")
+    .select("id, participant_id, user_id, video_url, photo_url, caption, visibility, participants(user_id, display_name)")
     .eq("id", id)
     .maybeSingle();
   if (!p) return bad("not_found", 404);
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
   const ownerId: string | undefined = (p as any).user_id ?? pp?.user_id;
   if (!ownerId) return bad("not_found", 404);
   if (ownerId !== me && !(await sameCountry(me, ownerId))) return bad("not_found", 404);
+  if ((await filterVisible(me, [p], () => ownerId, (x: any) => x.visibility)).length === 0) return bad("not_found", 404);
 
   const { data: u } = await supabaseAdmin.from("users").select("first_name, nick, photo_url").eq("id", ownerId).maybeSingle();
   return NextResponse.json({

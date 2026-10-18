@@ -73,6 +73,7 @@ export default function ParticipantVideosPage() {
         .from("content_posts")
         .select("id, video_url, caption")
         .eq("participant_id", participantId)
+        .eq("visibility", "all")
         .not("video_url", "is", null)
         .order("submitted_at", { ascending: false });
       setPosts((data as Post[]) ?? []);

@@ -71,6 +71,7 @@ export default function ParticipantPhotosPage() {
         .from("content_posts")
         .select("id, photo_url, caption")
         .eq("participant_id", participantId)
+        .eq("visibility", "all")
         .not("photo_url", "is", null)
         .order("submitted_at", { ascending: false });
       setPosts((data as Post[]) ?? []);
