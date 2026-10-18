@@ -111,8 +111,7 @@ export default function RatingView() {
       <div>
         <div className="px-6 mb-4">
           <p className="text-muted text-sm">
-            {scope === "region" ? "Титулы по вашему региону" : "Титулы по всей стране"} —
-            обновляются раз в сутки в 00:01
+            {scope === "region" ? "Титулы по вашему региону" : "Титулы по всей стране"}
           </p>
           {snapshotDate && (
             <p className="text-muted text-xs mt-1">

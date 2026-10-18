@@ -1,6 +1,7 @@
 "use client";
 
 import AdminStaffInvites from "@/components/AdminStaffInvites";
+import AdminOfficialPanel from "@/components/AdminOfficialPanel";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -23,7 +24,7 @@ import AdminTranslationsPanel from "@/components/AdminTranslationsPanel";
 import AdminDashboard from "@/components/AdminDashboard";
 import AdminPeoplePanel from "@/components/AdminPeoplePanel";
 import AdminActionLogPanel from "@/components/AdminActionLogPanel";
-import { getCrmCountry, setCrmCountry, crmRegionIds } from "@/lib/crmCountry";
+import { getCrmCountry, setCrmCountry, crmRegionIds, crmCur, loadCrmCur } from "@/lib/crmCountry";
 import { loadScoped, loadOwn, loadOwnRegion, scopedKey } from "@/lib/scopedSettings";
 
 // Список/запись «для выбранной страны CRM»: записи страны + общие.
@@ -32,6 +33,22 @@ function orCrm<T>(q: T): T {
   return c ? (q as any).or(`country_id.is.null,country_id.eq.${c}`) : q;
 }
 const crmId = () => getCrmCountry() || null;
+
+// Базовые цены рекламы по категориям — свои у каждой страны CRM
+// (platform_settings "ad_base_<категория>"); если нет — старая общая таблица.
+async function loadAdBasePrices(cats: string[]): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  const { data } = await supabase.from("ad_category_base_prices").select("category, base_price");
+  (data ?? []).forEach((r: { category: string; base_price: number }) => {
+    out[r.category] = Number(r.base_price);
+  });
+  const m = await loadScoped(cats.map((c) => "ad_base_" + c), getCrmCountry() || null);
+  cats.forEach((c) => {
+    const v = m["ad_base_" + c];
+    if (v !== undefined && v !== "" && Number.isFinite(Number(v))) out[c] = Number(v);
+  });
+  return out;
+}
 
 type Tab =
   | "dashboard"
@@ -67,7 +84,8 @@ type Tab =
   | "referrals"
   | "badges"
   | "translations"
-  | "action-log";
+  | "action-log"
+  | "official";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -104,12 +122,13 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "badges", label: "Галочки и статусы" },
   { key: "translations", label: "Переводы" },
   { key: "action-log", label: "Журнал действий" },
+  { key: "official", label: "Официальный аккаунт" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
 // Владелец (super_admin) видит всё независимо от галочек.
 const PERMISSION_TABS: Record<string, Tab[]> = {
-  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports", "home-settings", "clan", "referrals", "badges", "translations"],
+  moderation: ["official", "applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports", "home-settings", "clan", "referrals", "badges", "translations"],
   finance: ["dashboard", "goal", "referrals"],
   partners: ["partners", "ad-stats", "partner-logos", "banners", "magazine-ads", "ad-space", "ad-prices", "social", "branding"],
   staff: ["staff", "users"],
@@ -122,7 +141,7 @@ const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: 
   { key: "today", ic: "🏠", label: "Сегодня", desc: "Что требует действия прямо сейчас", tabs: ["dashboard", "support"] },
   { key: "people", ic: "👥", label: "Люди", desc: "Все, кто есть в приложении", tabs: ["users", "participants", "applications", "badges", "black-marks"] },
   { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["stages", "rating-admin", "goal", "tasks", "cards"] },
-  { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "media-demo-upload", "home-settings", "banners"] },
+  { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["official", "calendar", "media", "media-demo-upload", "home-settings", "banners"] },
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["reports", "clan"] },
   { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["app-prices", "referrals"] },
   { key: "ads", ic: "📣", label: "Реклама и партнёры", desc: "Всё, что приносит доход от партнёров", tabs: ["partners", "partner-logos", "ad-space", "ad-prices", "ad-stats", "magazine-ads", "branding"] },
@@ -223,6 +242,7 @@ export default function AdminPage() {
         return;
       }
       setMe(u);
+      await loadCrmCur();
       const staffOk = isStaff(u);
       setAllowed(staffOk);
       if (staffOk) {
@@ -403,6 +423,7 @@ export default function AdminPage() {
         {tab === "calendar" && <CalendarTab />}
         {tab === "social" && <SocialLinksTab />}
         {tab === "media" && <MediaMaterialsTab />}
+        {tab === "official" && <AdminOfficialPanel />}
           </fieldset>
           </div>
         </div>
@@ -500,9 +521,9 @@ function Dashboard() {
     { label: "Участниц", value: stats.participants },
     { label: "Подарков подарено", value: stats.gifts },
     { label: "Заданий выполнено", value: stats.tasksCompleted },
-    { label: "Заработано участницами", value: `${Math.round(stats.earnedByParticipants)} ₽` },
-    { label: "Оборот покупок", value: `${Math.round(stats.totalPurchases)} ₽` },
-    { label: "Доход компании", value: `${Math.round(stats.companyEarnings)} ₽` },
+    { label: "Заработано участницами", value: `${Math.round(stats.earnedByParticipants)} ${crmCur}` },
+    { label: "Оборот покупок", value: `${Math.round(stats.totalPurchases)} ${crmCur}` },
+    { label: "Доход компании", value: `${Math.round(stats.companyEarnings)} ${crmCur}` },
     { label: "Установок PWA (Android — точно, iOS может недосчитывать)", value: stats.pwaInstalls },
   ];
 
@@ -846,7 +867,7 @@ function ParticipantsTab() {
             </select>
           </label>
           <p className="text-sm mb-1">
-            Баланс: {Math.round(balances[r.user_id] ?? 0)} ₽
+            Баланс: {Math.round(balances[r.user_id] ?? 0)} {crmCur}
           </p>
           <p className="text-sm mb-3">
             Подарков получено: {giftCounts[r.id] ?? 0}
@@ -1250,7 +1271,7 @@ function PartnersTab() {
         <input
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          placeholder="Внесено, ₽"
+          placeholder={`Внесено, ${crmCur}`}
           type="number"
           className="w-full md:w-40 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
         />
@@ -1283,7 +1304,7 @@ function PartnersTab() {
             <p className="text-sm text-muted mb-1">
               Пакет: {s.package_type ?? "—"}
             </p>
-            <p className="text-sm mb-1">Внесено: {s.amount ?? 0} ₽</p>
+            <p className="text-sm mb-1">Внесено: {s.amount ?? 0} {crmCur}</p>
             <p className="text-sm text-muted mb-1">
               Контакты: {s.contact_info?.phone ?? "—"} / {s.contact_info?.email ?? "—"}
             </p>
@@ -1742,7 +1763,7 @@ function GoalTab() {
             rows={3}
             className="w-full bg-bgSurface border border-muted rounded-lg px-3 py-2 text-sm mt-1 mb-4"
           />
-          <label className="text-offwhite text-sm">Сумма цели, ₽</label>
+          <label className="text-offwhite text-sm">Сумма цели, {crmCur}</label>
           <input
             type="number"
             value={target}
@@ -2377,7 +2398,7 @@ function BannersTab() {
 
       <p className="text-muted text-sm mb-3">
         До 5 баннеров на каждое место показа, крутятся по кругу. Зритель
-        видит только баннеры своего региона + общероссийские.
+        видит только баннеры своего региона + общие по стране.
       </p>
 
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
@@ -3011,13 +3032,7 @@ function AdSpaceTab() {
   }
 
   async function loadBasePrices() {
-    const { data } = await supabase
-      .from("ad_category_base_prices")
-      .select("category, base_price");
-    const map: Record<string, number> = {};
-    (data ?? []).forEach((r: { category: string; base_price: number }) => {
-      map[r.category] = r.base_price;
-    });
+    const map = await loadAdBasePrices(AD_CATEGORIES.map((c) => c.key));
     setBasePrices(map);
   }
 
@@ -3349,7 +3364,7 @@ function AdSpaceTab() {
                   setFullPrice(e.target.value);
                   setPriceAutoFilled(false);
                 }}
-                placeholder="Полная цена, ₽"
+                placeholder={`Полная цена, ${crmCur}`}
                 type="number"
                 className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
               />
@@ -3373,7 +3388,7 @@ function AdSpaceTab() {
               <input
                 value={presalePrice}
                 onChange={(e) => setPresalePrice(e.target.value)}
-                placeholder="Цена предпродажи, ₽"
+                placeholder={`Цена предпродажи, ${crmCur}`}
                 type="number"
                 className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
               />
@@ -3555,11 +3570,11 @@ function AdSpaceTab() {
                               )}
                             </div>
                             <p className="text-muted text-xs mb-2">
-                              {Math.round(s.full_price)} ₽
+                              {Math.round(s.full_price)} {crmCur}
                               {s.presale_price && (
                                 <>
                                   {" "}
-                                  · предпродажа {Math.round(s.presale_price)} ₽ до{" "}
+                                  · предпродажа {Math.round(s.presale_price)} {crmCur} до{" "}
                                   {s.presale_until &&
                                     new Date(s.presale_until).toLocaleDateString("ru-RU")}
                                 </>
@@ -4033,7 +4048,7 @@ function MagazineAdsTab() {
         Рекламный блок появляется каждой 10-й страницей в журнале на главной
         — разворотом: слева текст с кнопкой-ссылкой, справа изображение/лого
         партнёра в такой же рамке, как у участниц. Зритель видит только
-        рекламу своего региона + общероссийскую.
+        рекламу своего региона + общую по стране.
       </p>
 
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
@@ -4861,16 +4876,16 @@ function AdPricesTab() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
-      .from("ad_category_base_prices")
-      .select("category, base_price");
+    const nums = await loadAdBasePrices(AD_CATEGORIES.map((c) => c.key));
     const map: Record<string, string> = {};
-    (data ?? []).forEach((r: { category: string; base_price: number }) => {
-      map[r.category] = String(r.base_price);
+    Object.keys(nums).forEach((k) => {
+      map[k] = String(nums[k]);
     });
     setPrices(map);
 
-    const { data: regionsData } = await supabase.from("regions").select("grade");
+    let regQ = supabase.from("regions").select("grade");
+    if (getCrmCountry()) regQ = regQ.eq("country_id", getCrmCountry());
+    const { data: regionsData } = await regQ;
     const counts = { A: 0, B: 0, C: 0, none: 0 };
     (regionsData ?? []).forEach((r: { grade: string | null }) => {
       if (r.grade === "A") counts.A++;
@@ -4890,8 +4905,8 @@ function AdPricesTab() {
     setSavingKey(category);
     const value = Number(prices[category] || 0);
     await supabase
-      .from("ad_category_base_prices")
-      .upsert({ category, base_price: value });
+      .from("platform_settings")
+      .upsert({ key: scopedKey("ad_base_" + category, getCrmCountry() || null), value: String(value) });
     setSavingKey(null);
   }
 
@@ -4926,7 +4941,7 @@ function AdPricesTab() {
                     setPrices((prev) => ({ ...prev, [cat.key]: e.target.value }))
                   }
                   type="number"
-                  placeholder="Базовая цена, ₽"
+                  placeholder={`Базовая цена, ${crmCur}`}
                   className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
                 />
                 <button
@@ -4939,9 +4954,9 @@ function AdPricesTab() {
               </div>
               {prices[cat.key] && (
                 <p className="text-muted text-[11px] mt-2">
-                  Грейд A: {Math.round(Number(prices[cat.key]) * 1.5)} ₽ · Грейд
-                  B: {Math.round(Number(prices[cat.key]))} ₽ · Грейд C:{" "}
-                  {Math.round(Number(prices[cat.key]) * 0.5)} ₽
+                  Грейд A: {Math.round(Number(prices[cat.key]) * 1.5)} {crmCur} · Грейд
+                  B: {Math.round(Number(prices[cat.key]))} {crmCur} · Грейд C:{" "}
+                  {Math.round(Number(prices[cat.key]) * 0.5)} {crmCur}
                 </p>
               )}
             </div>
