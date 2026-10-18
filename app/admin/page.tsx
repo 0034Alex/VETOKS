@@ -1,7 +1,6 @@
 "use client";
 
 import AdminStaffInvites from "@/components/AdminStaffInvites";
-import AdminOfficialPanel from "@/components/AdminOfficialPanel";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -84,8 +83,7 @@ type Tab =
   | "referrals"
   | "badges"
   | "translations"
-  | "action-log"
-  | "official";
+  | "action-log";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "Дашборд" },
@@ -122,13 +120,12 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "badges", label: "Галочки и статусы" },
   { key: "translations", label: "Переводы" },
   { key: "action-log", label: "Журнал действий" },
-  { key: "official", label: "Официальный аккаунт" },
 ];
 
 // Каждая галочка в «Персонал» открывает свой набор разделов.
 // Владелец (super_admin) видит всё независимо от галочек.
 const PERMISSION_TABS: Record<string, Tab[]> = {
-  moderation: ["official", "applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports", "home-settings", "clan", "referrals", "badges", "translations"],
+  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports", "home-settings", "clan", "referrals", "badges", "translations"],
   finance: ["dashboard", "goal", "referrals"],
   partners: ["partners", "ad-stats", "partner-logos", "banners", "magazine-ads", "ad-space", "ad-prices", "social", "branding"],
   staff: ["staff", "users"],
@@ -141,7 +138,7 @@ const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: 
   { key: "today", ic: "🏠", label: "Сегодня", desc: "Что требует действия прямо сейчас", tabs: ["dashboard", "support"] },
   { key: "people", ic: "👥", label: "Люди", desc: "Все, кто есть в приложении", tabs: ["users", "participants", "applications", "badges", "black-marks"] },
   { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["stages", "rating-admin", "goal", "tasks", "cards"] },
-  { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["official", "calendar", "media", "media-demo-upload", "home-settings", "banners"] },
+  { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "media-demo-upload", "home-settings", "banners"] },
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["reports", "clan"] },
   { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["app-prices", "referrals"] },
   { key: "ads", ic: "📣", label: "Реклама и партнёры", desc: "Всё, что приносит доход от партнёров", tabs: ["partners", "partner-logos", "ad-space", "ad-prices", "ad-stats", "magazine-ads", "branding"] },
@@ -423,7 +420,6 @@ export default function AdminPage() {
         {tab === "calendar" && <CalendarTab />}
         {tab === "social" && <SocialLinksTab />}
         {tab === "media" && <MediaMaterialsTab />}
-        {tab === "official" && <AdminOfficialPanel />}
           </fieldset>
           </div>
         </div>
