@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
+import { apiPost } from "@/lib/authClient";
+import { resetCurrentUserCache } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 
@@ -95,6 +97,12 @@ export default function MyApplicationPage() {
         photo_url: newPhotoUrl,
       })
       .eq("id", participant.id);
+
+    if (!error && displayName.trim()) {
+      // Имя в аккаунте тоже меняем, чтобы везде было одно имя.
+      await apiPost("/api/profile/update", { first_name: displayName });
+      resetCurrentUserCache();
+    }
 
     if (error) {
       setNotice(`Ошибка сохранения: ${error.message}`);

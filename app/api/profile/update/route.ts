@@ -20,6 +20,8 @@ export async function POST(req: Request) {
     const n = b.first_name.replace(/\s+/g, " ").trim().slice(0, 60);
     if (n.length < 1) return bad("name");
     patch.first_name = n;
+    // Одно имя везде: карточка участницы показывает то же имя.
+    await supabaseAdmin.from("participants").update({ display_name: n }).eq("user_id", uid);
   }
   if (typeof b.bio === "string") patch.bio = b.bio.trim().slice(0, 300) || null;
   if (b.photo_url === null) patch.photo_url = null;
