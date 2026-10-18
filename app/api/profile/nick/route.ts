@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireUser, bad } from "@/lib/shopServer";
 import { cleanNick, nickProblem, NICK_COOLDOWN_DAYS } from "@/lib/nick";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "profile/nick", 10, 3600, uid);
+  if (rl) return rl;
   const body = await req.json().catch(() => ({}));
   const action = String(body.action ?? "get");
 

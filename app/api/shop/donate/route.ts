@@ -3,6 +3,7 @@ import { countryOfUser, currencyOfUser } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { blockOtherCountry, bad, kyivWeekStart, notify, fanEvent, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
 import { getShare } from "@/lib/pricing";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "shop/donate", 20, 60, uid);
+  if (rl) return rl;
 
   const body = await req.json().catch(() => ({}));
   const participantId = String(body.participantId || "");

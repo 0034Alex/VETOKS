@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { cleanVisibility } from "@/lib/postVisibility";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 const MAX = 20;
@@ -10,6 +11,8 @@ const MAX = 20;
 export async function POST(req: Request) {
   const me = await requireUser(req);
   if (me instanceof NextResponse) return me;
+  const rl = await rateLimit(req, "post/drafts", 40, 60, me);
+  if (rl) return rl;
   const b = await req.json().catch(() => ({}));
   const action = String(b.action || "list");
 

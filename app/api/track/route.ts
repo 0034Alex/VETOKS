@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { userIdFromBearer } from "@/lib/authServer";
+import { rateLimit } from "@/lib/rateLimit";
 import { countryOfRegion } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,8 @@ const short = (v: unknown, n: number) => (typeof v === "string" && v.length <= n
 // Статистика рекламы: показы, просмотры, время на экране, клики, пролистывание.
 // Страну и регион для вошедшего человека берём на сервере, а не от клиента.
 export async function POST(req: Request) {
+  const rl = await rateLimit(req, "track", 90, 60);
+  if (rl) return rl;
   const b = await req.json().catch(() => ({}));
   const events: any[] = (Array.isArray(b.events) ? b.events : []).slice(0, 60);
   if (events.length === 0) return NextResponse.json({ ok: true });

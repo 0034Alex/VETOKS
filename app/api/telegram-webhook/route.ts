@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { normalizePhone } from "@/lib/phone";
 import { qualifyReferral } from "@/lib/referral";
+import { lockCheck, lockClear, lockFail, waitText } from "@/lib/rateLimit";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,16 +22,32 @@ async function sendMessage(chatId: string | number, text: string, extra?: object
 const REMOVE_KEYBOARD = { reply_markup: { remove_keyboard: true } };
 
 async function handleCode(chatId: string, code: string, username: string | undefined) {
-  const { data: codeRow } = await supabaseAdmin
+  // Подбор кодов через бота: 5 неверных подряд — блокировка этого чата (15 мин → час → сутки).
+  const lockKey = `botcode:${chatId}`;
+  const lk = await lockCheck(lockKey);
+  if (lk.locked) {
+    await sendMessage(chatId, `Слишком много неверных кодов. Повторите через ${waitText(lk.retry)}.`);
+    return;
+  }
+  // Код принимается только от Telegram-аккаунта владельца: его бот и отправил.
+  const { data: codeRows } = await supabaseAdmin
     .from("password_reset_codes")
-    .select("id, user_id, expires_at, used")
+    .select("id, user_id, expires_at, used, users!inner(telegram_id)")
     .eq("code", code)
-    .maybeSingle();
+    .eq("used", false)
+    .order("created_at", { ascending: false })
+    .limit(5);
+  const codeRow = (codeRows ?? []).find((r: any) => {
+    const u = Array.isArray(r.users) ? r.users[0] : r.users;
+    return String(u?.telegram_id ?? "") === String(chatId);
+  });
 
   if (!codeRow || codeRow.used || new Date(codeRow.expires_at) < new Date()) {
+    await lockFail(lockKey, 5);
     await sendMessage(chatId, "Код неверный или уже истёк. Запросите новый код в приложении.");
     return;
   }
+  await lockClear(lockKey);
 
   await supabaseAdmin.from("password_reset_codes").update({ used: true }).eq("id", codeRow.id);
   await supabaseAdmin.from("telegram_reset_sessions").upsert({
@@ -47,7 +64,7 @@ async function handleCode(chatId: string, code: string, username: string | undef
     linked_at: new Date().toISOString(),
   });
 
-  await sendMessage(chatId, "Код подтверждён! Введите новый пароль (минимум 6 символов):");
+  await sendMessage(chatId, "Код подтверждён! Введите новый пароль (минимум 8 символов):");
 }
 
 // Вход через бота из обычного браузера: /start login_<токен>
@@ -267,8 +284,8 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (session?.step === "awaiting_password") {
-    if (text.length < 6) {
-      await sendMessage(chatId, "Пароль слишком короткий — минимум 6 символов. Попробуйте ещё раз:");
+    if (text.length < 8) {
+      await sendMessage(chatId, "Пароль слишком короткий — минимум 8 символов. Попробуйте ещё раз:");
       return NextResponse.json({ ok: true });
     }
 

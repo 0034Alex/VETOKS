@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sameCountry } from "@/lib/countryServer";
 import { bad, notify, requireUser } from "@/lib/shopServer";
 import { blockState, findThread, pairOrder, recipientFollowsSender } from "@/lib/dmServer";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,8 @@ const CONTACT_RE = /(https?:\/\/|www\.|t\.me\/|[a-z0-9-]+\.(com|ua|ru|me|net|org
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "dm/send", 30, 60, uid);
+  if (rl) return rl;
 
   const b = await req.json().catch(() => ({}));
   const to = String(b.toUserId || "");

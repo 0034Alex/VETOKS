@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes, randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { userIdFromBearer, tokenHashForUser } from "@/lib/authServer";
+import { rateLimit } from "@/lib/rateLimit";
 import { familyMembers, familyRootId, MAX_SUB_ACCOUNTS } from "@/lib/familyServer";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,8 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   const userId = await userIdFromBearer(req);
   if (!userId) return NextResponse.json({ status: "error" }, { status: 401 });
+  const rl = await rateLimit(req, "accounts/create", 5, 3600, userId);
+  if (rl) return rl;
 
   const body = await req.json().catch(() => ({}));
   const firstName = String(body.firstName || "").trim().slice(0, 60);

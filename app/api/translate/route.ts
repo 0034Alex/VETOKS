@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { rateLimit } from "@/lib/rateLimit";
 import { GOOGLE_CODE, isLang } from "@/lib/langs";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,8 @@ function limited(ip: string) {
 const hash = (s: string) => createHash("sha256").update(s).digest("hex").slice(0, 40);
 
 export async function POST(req: Request) {
+  const rl = await rateLimit(req, "translate", 60, 60);
+  if (rl) return rl;
   const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "x";
   if (limited(ip)) return NextResponse.json({ ok: false, error: "rate" }, { status: 429 });
 

@@ -3,12 +3,15 @@ import { countryOfUser } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { blockOtherCountry, bad, fanEvent, notify, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
 import { applyGiftOverrides, getUsdRate, giftUahPrice } from "@/lib/pricing";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "shop/gift", 30, 60, uid);
+  if (rl) return rl;
 
   const body = await req.json().catch(() => ({}));
   const giftId = String(body.giftId || "");

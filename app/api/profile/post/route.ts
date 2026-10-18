@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { sameCountry } from "@/lib/countryServer";
 import { filterVisible } from "@/lib/postVisibility";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const me = await requireUser(req);
   if (me instanceof NextResponse) return me;
+  const rl = await rateLimit(req, "profile/post", 30, 60, me);
+  if (rl) return rl;
   const b = await req.json().catch(() => ({}));
   const id = String(b.postId || "");
   if (!id) return bad("bad_request");

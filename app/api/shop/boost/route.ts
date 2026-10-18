@@ -3,6 +3,7 @@ import { countryOfUser } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { blockOtherCountry, bad, notify, fanEvent, participantOwner, pay, refund, requireUser } from "@/lib/shopServer";
 import { getAppPrice } from "@/lib/pricing";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,8 @@ const BOOST_VOTES = 1000;
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "shop/boost", 20, 60, uid);
+  if (rl) return rl;
 
   const body = await req.json().catch(() => ({}));
   const participantId = String(body.participantId || "");

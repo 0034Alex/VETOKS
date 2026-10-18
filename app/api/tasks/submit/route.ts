@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,8 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "tasks/submit", 10, 600, uid);
+  if (rl) return rl;
   const body = await req.json().catch(() => ({}));
   const taskId = String(body.taskId ?? "");
   if (!taskId) return bad("no_task");

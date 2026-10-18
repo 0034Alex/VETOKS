@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "clan/report", 10, 3600, uid);
+  if (rl) return rl;
   const body = await req.json().catch(() => ({}));
   const messageId = String(body.messageId ?? "");
   if (!messageId) return bad("no_message");

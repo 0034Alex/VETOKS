@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { rateLimit } from "@/lib/rateLimit";
 import { verifyInitData } from "@/lib/telegramAuth";
 import { BOT_USERNAME, newToken, userIdFromBearer } from "@/lib/authServer";
 
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   const userId = await userIdFromBearer(req);
   if (!userId) return NextResponse.json({ status: "error" }, { status: 401 });
+  const rl = await rateLimit(req, "verify/start", 6, 600, userId);
+  if (rl) return rl;
 
   const { data: me } = await supabaseAdmin
     .from("users")

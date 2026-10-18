@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { phoneVariants } from "@/lib/phone";
+import { clientIp, lockCheck, lockClear, lockFail, lockedResponse, rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,27 @@ export async function POST(req: NextRequest) {
     { status: "error", message: "Неверные данные для входа или пароль." },
     { status: 401 }
   );
-  if (!id || !pass) return fail;
+  if (!id || !pass || id.length > 120 || pass.length > 200) return fail;
+
+  // Лимит запросов и блокировка: 3 неверных пароля → 15 мин → 1 час → сутки.
+  const limited = await rateLimit(req, "login", 40, 600);
+  if (limited) return limited;
+  const ip = clientIp(req);
+  const ident = id.toLowerCase();
+  const kPair = `login:${ident}:${ip}`;
+  const kIdent = `login:id:${ident}`;
+  const kIp = `login:ip:${ip}`;
+  for (const k of [kPair, kIdent, kIp]) {
+    const c = await lockCheck(k);
+    if (c.locked) return lockedResponse(c.retry);
+  }
+  async function bad() {
+    const a = await lockFail(kPair, 3);
+    const b = await lockFail(kIdent, 12);
+    const c = await lockFail(kIp, 40);
+    const hit = [a, b, c].find((x) => x.locked);
+    return hit ? lockedResponse(hit.retry) : fail;
+  }
 
   let email: string | null = null;
   if (id.includes("@")) {
@@ -33,7 +54,7 @@ export async function POST(req: NextRequest) {
       email = au?.user?.email ?? null;
     }
   }
-  if (!email) return fail;
+  if (!email) return bad();
 
   const anon = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,7 +62,8 @@ export async function POST(req: NextRequest) {
     { auth: { persistSession: false, autoRefreshToken: false } }
   );
   const { data, error } = await anon.auth.signInWithPassword({ email, password: pass });
-  if (error || !data.session) return fail;
+  if (error || !data.session) return bad();
+  await Promise.all([lockClear(kPair), lockClear(kIdent)]);
 
   return NextResponse.json({
     status: "ok",

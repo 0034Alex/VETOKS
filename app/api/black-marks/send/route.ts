@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { kyivIsSunday, kyivWeekStart } from "@/lib/kyiv";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "black-marks/send", 10, 3600, uid);
+  if (rl) return rl;
 
   const body = await req.json().catch(() => ({}));
   const targetId = String(body.targetId || "");

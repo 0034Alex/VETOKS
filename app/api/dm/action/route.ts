@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { findThread } from "@/lib/dmServer";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,8 @@ const REASONS = ["spam", "insult", "scam", "nudity", "violence", "hate", "fake",
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "dm/action", 30, 60, uid);
+  if (rl) return rl;
   const b = await req.json().catch(() => ({}));
   const action = String(b.action || "");
   const other = String(b.userId || "");

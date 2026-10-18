@@ -101,7 +101,7 @@ function RegisterForm() {
     setErrorMessage("");
     const err = validateCommon();
     if (err) return setErrorMessage(err);
-    if (password.length < 6) return setErrorMessage("Пароль должен быть не короче 6 символов.");
+    if (password.length < 8) return setErrorMessage("Пароль должен быть не короче 8 символов.");
     if (password !== passwordConfirm) return setErrorMessage("Пароли не совпадают.");
 
     setStatus("loading");

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { bunnyCfg, bunnyCreateVideo, bunnySignature } from "@/lib/bunny";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "video/create-upload", 12, 600, uid);
+  if (rl) return rl;
 
   const cfg = bunnyCfg();
   if (!cfg) return NextResponse.json({ ok: true, configured: false });

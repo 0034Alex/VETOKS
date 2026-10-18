@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,8 @@ const PROFILE_TASK_REWARD = 100;
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "tasks/claim-profile", 10, 600, uid);
+  if (rl) return rl;
 
   const { data: p } = await supabaseAdmin
     .from("participants")

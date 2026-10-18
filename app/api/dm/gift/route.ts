@@ -6,6 +6,7 @@ import { bad, fanEvent, notify, pay, refund, requireUser } from "@/lib/shopServe
 import { applyGiftOverrides, getUsdRate, giftUahPrice } from "@/lib/pricing";
 import { blockState, findThread, pairOrder, recipientFollowsSender } from "@/lib/dmServer";
 import { chatGiftEmoji } from "@/lib/chatGifts";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,8 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "dm/gift", 20, 60, uid);
+  if (rl) return rl;
 
   const b = await req.json().catch(() => ({}));
   const to = String(b.toUserId || "");

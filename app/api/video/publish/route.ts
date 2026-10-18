@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { countryOfUser, settingsForCountry } from "@/lib/countryServer";
 import { bunnyDeleteVideo, bunnyGetVideo, bunnyPlayUrl } from "@/lib/bunny";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "video/publish", 12, 600, uid);
+  if (rl) return rl;
 
   const gate = await settingsForCountry(["publishing_enabled"], await countryOfUser(uid));
   if (gate.publishing_enabled === "false") return bad("publishing_closed", 403);

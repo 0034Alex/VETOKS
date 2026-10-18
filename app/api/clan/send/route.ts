@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,8 @@ const LINK_RE = /(https?:|www\.|t\.me|tg:\/\/|@[a-z0-9_]{4,}|\b[a-z0-9-]+\.(com|
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "clan/send", 20, 60, uid);
+  if (rl) return rl;
   const body = await req.json().catch(() => ({}));
   const text = String(body.text ?? "").replace(/\s+/g, " ").trim();
   if (!text) return bad("empty");

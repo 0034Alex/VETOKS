@@ -5,6 +5,7 @@ import { bunnyDeleteVideo, bunnyGetVideo, bunnyPlayUrl } from "@/lib/bunny";
 import { cleanVisibility } from "@/lib/postVisibility";
 import { resolvePlace } from "@/lib/places";
 import { countryOfUser, settingsForCountry } from "@/lib/countryServer";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,8 @@ type In = { kind?: string; url?: string; videoId?: string };
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "post/create", 12, 600, uid);
+  if (rl) return rl;
   const b = await req.json().catch(() => ({}));
   const raw: In[] = Array.isArray(b.media) ? b.media.slice(0, 10) : [];
   if (!raw.length) return bad("no_media");

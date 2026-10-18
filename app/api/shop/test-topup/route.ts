@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { countryOfUser, settingsForCountry } from "@/lib/countryServer";
 import { bad, requireUser } from "@/lib/shopServer";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
+  const rl = await rateLimit(req, "shop/test-topup", 10, 3600, uid);
+  if (rl) return rl;
 
   const set = await settingsForCountry(["test_topup_enabled"], await countryOfUser(uid));
   const enabled = set.test_topup_enabled !== "false";

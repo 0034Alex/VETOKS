@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { rateLimit } from "@/lib/rateLimit";
 import { BOT_USERNAME, newToken } from "@/lib/authServer";
 
 export const dynamic = "force-dynamic";
 
 // Вход из обычного браузера: создаём одноразовую ссылку в бота.
-export async function POST() {
+export async function POST(req: Request) {
+  const rl = await rateLimit(req, "auth/tg-start", 20, 600);
+  if (rl) return rl;
   const token = newToken();
   const expires = new Date(Date.now() + 5 * 60 * 1000).toISOString();
   const { error } = await supabaseAdmin
