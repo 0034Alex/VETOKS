@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 
   const rate = await getUsdRate(cid);
   const total = giftUahPrice(gift as any, rate) * qty;
-  const share = Number(gift.participant_share_percent) || 0;
+  let share = Number(gift.participant_share_percent) || 0;
 
   // Адресат — участница текущего шоу?
   const { data: part } = await supabaseAdmin
@@ -100,6 +100,14 @@ export async function POST(req: Request) {
     }
     await fanEvent(uid, part.id as string, part.display_name as string, "gift", `${gift.name}${qty > 1 ? ` ×${qty}` : ""}`, total);
   } else {
+    // Обычному человеку — доля из CRM («Подарки обычным людям»), если задана.
+    const keys = ["user_gift_share_percent"];
+    if (cid) keys.push(`user_gift_share_percent:${cid}`);
+    const { data: ss } = await supabaseAdmin.from("platform_settings").select("key, value").in("key", keys);
+    const sm: Record<string, string> = {};
+    (ss ?? []).forEach((r: any) => (sm[r.key] = r.value));
+    const raw = (cid && sm[`user_gift_share_percent:${cid}`] !== undefined ? sm[`user_gift_share_percent:${cid}`] : sm.user_gift_share_percent) ?? "";
+    if (String(raw).trim() !== "" && Number.isFinite(Number(raw))) share = Math.min(100, Math.max(0, Number(raw)));
     const res = await pay(uid, total, "gift_sent", null, 0, meta);
     if (!res.ok) return bad(res.error, res.error === "not_enough" ? 402 : 500, { balance: res.balance });
     txId = res.tx_id;

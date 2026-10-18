@@ -43,6 +43,7 @@ export default function AdminPricesPanel() {
   const [rows, setRows] = useState<PriceRow[]>(PRICE_DEFAULTS);
   const [gifts, setGifts] = useState<GiftRow[]>([]);
   const [freeVotes, setFreeVotes] = useState("3");
+  const [userShare, setUserShare] = useState("");
   const [topupOn, setTopupOn] = useState(true);
   const [loading, setLoading] = useState(true);
   const [savedKey, setSavedKey] = useState("");
@@ -55,10 +56,11 @@ export default function AdminPricesPanel() {
   async function load() {
     setLoading(true);
 
-    const m = await loadScoped(["usd_to_uah_rate", "free_votes_total", "test_topup_enabled"], getCrmCountry() || null);
+    const m = await loadScoped(["usd_to_uah_rate", "free_votes_total", "test_topup_enabled", "user_gift_share_percent"], getCrmCountry() || null);
     const r = Number(m.usd_to_uah_rate);
     setRate(Number.isFinite(r) && r > 0 ? r : 41);
     setFreeVotes(m.free_votes_total ?? "3");
+    setUserShare(m.user_gift_share_percent ?? "");
     setTopupOn(m.test_topup_enabled !== "false");
 
     if (cc) {
@@ -289,6 +291,27 @@ export default function AdminPricesPanel() {
             </div>
           </div>
         ))}
+      </div>
+
+      <h3 className="text-offwhite font-semibold mb-2">Подарки обычным людям</h3>
+      <div className="bg-bgSurface border border-muted rounded-xl p-4 mb-6">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-offwhite text-sm">Доля получателя (не участницы) от цены подарка:</span>
+          <input
+            value={userShare}
+            onChange={(e) => setUserShare(e.target.value)}
+            placeholder="как у подарка"
+            className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm w-28"
+          />
+          <span className="text-muted text-sm">%</span>
+          <button
+            onClick={() => saveSetting("user_gift_share_percent", userShare.trim() === "" ? "" : String(Math.min(100, Math.max(0, Number(userShare) || 0))))}
+            className={`${btnCls} ml-auto`}
+          >
+            {savedKey === "user_gift_share_percent" ? "✓" : "Сохранить"}
+          </button>
+        </div>
+        <p className="text-muted text-xs mt-2">Пусто — берётся доля самого подарка (как у участниц). Для участниц эта цифра не действует.</p>
       </div>
 
       <h3 className="text-offwhite font-semibold mb-2">Голоса и тест</h3>

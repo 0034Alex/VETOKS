@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiPost } from "@/lib/authClient";
 import { supabase } from "@/lib/supabaseClient";
+import GiftShowcase from "@/components/GiftShowcase";
 import BottomNav from "@/components/BottomNav";
 import ProfileHero, { ProfileActions, BigBtn, TopBtn, shareLink } from "@/components/ProfileHero";
 import FollowsSheet from "@/components/FollowsSheet";
@@ -13,6 +14,7 @@ import ProfileTabs from "@/components/ProfileTabs";
 type Data = {
   isSelf: boolean;
   verified: boolean;
+  official?: boolean;
   name: string;
   photoUrl: string | null;
   bio: string;
@@ -95,7 +97,7 @@ export default function PublicUserPage() {
         <ProfileHero
           photoUrl={d.photoUrl}
           name={d.name}
-          city={d.city}
+          city={d.official ? "Официальная страница VETOKS" : d.city}
           bio={d.bio}
           verified={d.verified}
           socials={d.socials}
@@ -111,6 +113,9 @@ export default function PublicUserPage() {
             </TopBtn>
           }
         />
+        <div className="px-5 pt-5">
+          <GiftShowcase userId={id} />
+        </div>
         <ProfileActions>
           {d.canWrite ? (
             <BigBtn href={`/chats/${id}`}>✉️ Написать</BigBtn>

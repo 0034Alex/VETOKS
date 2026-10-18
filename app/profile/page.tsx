@@ -20,7 +20,7 @@ import AccountSwitcher from "@/components/AccountSwitcher";
 import { getCurrencySymbol } from "@/lib/currency";
 import { useT } from "@/lib/i18n";
 import { apiPost } from "@/lib/authClient";
-import { chatGiftEmoji } from "@/lib/chatGifts";
+import GiftShowcase from "@/components/GiftShowcase";
 
 type Participant = { id: string; display_name: string };
 type Post = { id: string; video_url?: string; photo_url?: string };
@@ -53,7 +53,6 @@ export default function ProfilePage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
-  const [chatGifts, setChatGifts] = useState<{ name: string; qty: number }[]>([]);
   const [goalText, setGoalText] = useState("");
   const [goalTarget, setGoalTarget] = useState(5000);
   const [goalCollected, setGoalCollected] = useState(0);
@@ -91,9 +90,6 @@ export default function ProfilePage() {
   useEffect(() => {
     apiPost("/api/dm/unread").then((r) => {
       if (r?.ok) setDmUnread(r.count);
-    });
-    apiPost("/api/dm/gifts-received").then((r) => {
-      if (r?.ok) setChatGifts(r.items);
     });
   }, []);
 
@@ -434,18 +430,7 @@ export default function ProfilePage() {
               <p className="text-muted text-xs mt-0.5">Вас перенесли в новую страну. Укажите свой регион, чтобы попасть в нужный рейтинг и ленту.</p>
             </a>
           )}
-          {chatGifts.length > 0 && (
-            <div className="bg-bgSurface border border-muted rounded-xl px-4 py-3 mt-5">
-              <p className="text-muted text-xs mb-1">Подарки вам в чатах</p>
-              <p className="text-offwhite text-sm flex flex-wrap gap-x-3 gap-y-1">
-                {chatGifts.map((g) => (
-                  <span key={g.name}>
-                    {chatGiftEmoji(g.name)} {g.name} ×{g.qty}
-                  </span>
-                ))}
-              </p>
-            </div>
-          )}
+          <GiftShowcase className="mt-5" />
 
           <Link href="/add-video" className="block text-center text-gold text-sm mt-5">
             ＋ Добавить видео или фото
