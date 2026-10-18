@@ -8,5 +8,14 @@ export const CHAT_GIFT_EMOJI: Record<string, string> = {
   Букет: "💐",
   Серенада: "🎶",
   Фейерверк: "🎆",
+  Роза: "🌹",
+  Сердце: "❤️",
+  Мишка: "🧸",
+  Единорог: "🦄",
+  Лев: "🦁",
+  Корона: "👑",
+  Бриллиант: "💎",
+  Ракета: "🚀",
+  Яхта: "🛥️",
 };
 export const chatGiftEmoji = (name: string) => CHAT_GIFT_EMOJI[name] ?? "🎁";
