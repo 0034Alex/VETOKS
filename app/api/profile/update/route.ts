@@ -57,6 +57,22 @@ export async function POST(req: Request) {
     }
   }
 
+  // Карточка участницы: только «о себе» и фото. Остальные поля меняет персонал.
+  const pp = b.participant;
+  if (pp && typeof pp === "object") {
+    const pPatch: Record<string, unknown> = {};
+    if (typeof pp.bio === "string") pPatch.bio = pp.bio.trim().slice(0, 300) || null;
+    if (typeof pp.photo_url === "string") {
+      const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+      if (!base || !pp.photo_url.startsWith(`${base}/storage/v1/object/public/`)) return bad("photo");
+      pPatch.photo_url = pp.photo_url.slice(0, 500);
+    }
+    if (Object.keys(pPatch).length) {
+      const { error: pe } = await supabaseAdmin.from("participants").update(pPatch).eq("user_id", uid);
+      if (pe) return bad("save", 500);
+    }
+  }
+
   if (Object.keys(patch).length === 0) return NextResponse.json({ ok: true });
   const { error } = await supabaseAdmin.from("users").update(patch).eq("id", uid);
   if (error) return bad("save", 500);

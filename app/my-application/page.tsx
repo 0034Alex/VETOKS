@@ -89,20 +89,12 @@ export default function MyApplicationPage() {
       newPhotoUrl = publicUrlData.publicUrl;
     }
 
-    const { error } = await supabase
-      .from("participants")
-      .update({
-        display_name: displayName,
-        bio,
-        photo_url: newPhotoUrl,
-      })
-      .eq("id", participant.id);
-
-    if (!error && displayName.trim()) {
-      // Имя в аккаунте тоже меняем, чтобы везде было одно имя.
-      await apiPost("/api/profile/update", { first_name: displayName });
-      resetCurrentUserCache();
-    }
+    const sv = await apiPost("/api/profile/update", {
+      first_name: displayName,
+      participant: { bio, photo_url: newPhotoUrl },
+    });
+    resetCurrentUserCache();
+    const error = sv?.ok ? null : { message: "Не удалось сохранить. Попробуйте ещё раз." };
 
     if (error) {
       setNotice(`Ошибка сохранения: ${error.message}`);

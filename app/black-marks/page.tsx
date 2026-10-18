@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
-import { kyivWeekStart } from "@/lib/kyiv";
+import { apiPost } from "@/lib/authClient";
 
 export default function BlackMarksReceivedPage() {
   const router = useRouter();
@@ -35,25 +35,11 @@ export default function BlackMarksReceivedPage() {
         return;
       }
       setIsParticipant(true);
-      const weekStart = kyivWeekStart();
 
       // Только количество. Кто именно отправил метку — не показываем никому.
-      const { count: marks } = await supabase
-        .from("black_marks")
-        .select("id", { count: "exact", head: true })
-        .eq("target_participant_id", p.id)
-        .eq("week_start", weekStart);
-      setCount(marks ?? 0);
-
-      // Штраф за прошедшую неделю (применяется в понедельник в 00:01).
-      const { data: penaltyRow } = await supabase
-        .from("black_mark_penalties")
-        .select("penalty_votes, week_start")
-        .eq("participant_id", p.id)
-        .order("week_start", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      setPenalty(penaltyRow?.penalty_votes ?? null);
+      const info = await apiPost("/api/black-marks/info", {});
+      setCount(info?.myCount ?? 0);
+      setPenalty(info?.myPenalty ?? null);
 
       setLoading(false);
     })();

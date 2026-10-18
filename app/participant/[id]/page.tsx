@@ -314,12 +314,8 @@ export default function ParticipantProfilePage() {
     if (id) load();
   }, [id]);
 
-  async function notify(recipientId: string, message: string, link?: string) {
-    await supabase.from("notifications").insert({
-      user_id: recipientId,
-      message,
-      link: link ?? null,
-    });
+  async function notifyFollow() {
+    await apiPost("/api/participants/follow-notify", { participantId: id });
   }
 
   async function toggleFollow() {
@@ -338,11 +334,7 @@ export default function ParticipantProfilePage() {
         .insert({ participant_id: id, user_id: userId });
       if (error) setNotice(`Ошибка: ${error.message}`);
       else
-        await notify(
-          participant.user_id,
-          `👥 У вас новый подписчик`,
-          `/participant/${id}`
-        );
+        await notifyFollow();
     }
     await load();
     setBusy(false);

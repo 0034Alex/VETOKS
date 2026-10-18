@@ -56,13 +56,12 @@ export default function BlackMarkModal({
         setMyParticipantId(myParticipant.id);
         setMyRegionId(myParticipant.region_id ?? null);
 
-        const { data: mySend } = await supabase
-          .from("black_marks")
-          .select("target_participant_id")
-          .eq("sender_participant_id", myParticipant.id)
-          .eq("week_start", weekStart)
-          .maybeSingle();
-        setAlreadySentTo(mySend?.target_participant_id ?? null);
+        const info = await apiPost("/api/black-marks/info", {});
+        setAlreadySentTo(info?.sentTo ?? null);
+        if (info?.leader) {
+          setLeader(info.leader);
+          setPenaltyVotes(info.leaderPenalty ?? null);
+        }
 
         if (myParticipant.region_id) {
           const { data: participantsData } = await supabase
@@ -77,37 +76,6 @@ export default function BlackMarkModal({
           );
         } else {
           setDebugInfo("У вашей анкеты не указан регион — обратитесь в поддержку.");
-        }
-      }
-
-      if (myParticipant?.region_id) {
-        const { data: marksData } = await supabase
-          .from("black_marks")
-          .select("target_participant_id")
-          .eq("region_id", myParticipant.region_id)
-          .eq("week_start", weekStart);
-        const counts: Record<string, number> = {};
-        (marksData ?? []).forEach((m: { target_participant_id: string }) => {
-          counts[m.target_participant_id] = (counts[m.target_participant_id] ?? 0) + 1;
-        });
-        const topId = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
-        if (topId) {
-          const { data: topParticipant } = await supabase
-            .from("participants")
-            .select("id, display_name, photo_url")
-            .eq("id", topId)
-            .maybeSingle();
-          if (topParticipant) {
-            setLeader({ ...(topParticipant as RegionParticipant), count: counts[topId] });
-          }
-
-          const { data: penaltyRow } = await supabase
-            .from("black_mark_penalties")
-            .select("penalty_votes")
-            .eq("participant_id", topId)
-            .eq("week_start", weekStart)
-            .maybeSingle();
-          setPenaltyVotes(penaltyRow?.penalty_votes ?? null);
         }
       }
 
