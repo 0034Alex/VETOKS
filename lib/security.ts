@@ -70,3 +70,24 @@ export async function logSecurity(
     /* защита не должна ронять сайт */
   }
 }
+
+/** Запомнить, с какого адреса человек регистрировался, входил, голосовал: так в CRM видно «много аккаунтов с одного адреса». */
+export async function recordActivity(req: Request, userId: string, kind: string, participantId?: string | null) {
+  try {
+    const ip = ipOf(req);
+    if (!ip) return;
+    if (!(await once(`act:${kind}:${userId}:${ip}:${participantId ?? ""}`, 21600))) return;
+    await supabaseAdmin.from("activity_ips").insert({ user_id: userId, ip, kind, participant_id: participantId ?? null });
+  } catch {
+    /* не должно мешать основному действию */
+  }
+}
+
+/** Завершить все входы аккаунта на всех устройствах (после смены пароля, блокировки). */
+export async function killSessions(userId: string) {
+  try {
+    await supabaseAdmin.rpc("vt_kill_sessions", { p_user: userId });
+  } catch {
+    /* если SQL ещё не выполнен — молча пропускаем */
+  }
+}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { lockCheck, lockClear, lockFail, lockedResponse, rateLimit } from "@/lib/rateLimit";
-import { logSecurity } from "@/lib/security";
+import { logSecurity, killSessions } from "@/lib/security";
 import { findUserForReset } from "@/lib/resetServer";
 
 export const dynamic = "force-dynamic";
@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
   if (updateError) return NextResponse.json({ error: "Не удалось сменить пароль." }, { status: 400 });
 
   await supabaseAdmin.from("password_reset_codes").update({ used: true }).eq("user_id", user.id).eq("used", false);
+  await killSessions(user.id);
   await lockClear(lockKey);
   return NextResponse.json({ ok: true });
 }

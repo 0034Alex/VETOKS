@@ -1,5 +1,6 @@
 "use client";
 
+import { cleanImage } from "@/lib/imageClean";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -82,12 +83,20 @@ export default function MyCardsPage() {
     if (!participantId || !userId) return;
     setUploadingStage(stage);
 
-    const fileExt = file.name.split(".").pop();
+    let up: File;
+    try {
+      up = await cleanImage(file);
+    } catch (e: any) {
+      setUploadingStage(null);
+      alert(e?.message || "Не удалось обработать фото.");
+      return;
+    }
+    const fileExt = up.name.split(".").pop();
     const filePath = `raw-${userId}-${stage}-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabase.storage
       .from("card-images")
-      .upload(filePath, file);
+      .upload(filePath, up);
 
     if (uploadError) {
       setUploadingStage(null);

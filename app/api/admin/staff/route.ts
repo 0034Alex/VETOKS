@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff, logAction } from "@/lib/staffServer";
+import { killSessions } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false }, { status: 403 });
     const value = !!b.value;
     await supabaseAdmin.from("users").update({ is_banned: value }).eq("id", target);
+    if (value) await killSessions(target);
     await logAction(uid, value ? "user_ban" : "user_unban", target);
     return NextResponse.json({ ok: true });
   }

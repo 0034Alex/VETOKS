@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import { normalizePhone } from "@/lib/phone";
 import { qualifyReferral } from "@/lib/referral";
@@ -215,11 +216,11 @@ async function handleContact(chatId: string, message: any) {
 }
 
 export async function POST(req: Request) {
-  const secretHeader = req.headers.get("x-telegram-bot-api-secret-token");
-  if (
-    process.env.TELEGRAM_WEBHOOK_SECRET &&
-    secretHeader !== process.env.TELEGRAM_WEBHOOK_SECRET
-  ) {
+  const secretHeader = req.headers.get("x-telegram-bot-api-secret-token") || "";
+  const wanted = process.env.TELEGRAM_WEBHOOK_SECRET || "";
+  const a = Buffer.from(secretHeader);
+  const b2 = Buffer.from(wanted);
+  if (wanted && !(a.length === b2.length && timingSafeEqual(a, b2))) {
     await logSecurity("webhook_bad_secret", {}, { req, alert: true, dedupeKey: "wh", dedupeSec: 300 });
     return NextResponse.json({ ok: false }, { status: 401 });
   }

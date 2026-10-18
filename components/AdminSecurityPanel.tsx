@@ -38,6 +38,9 @@ export default function AdminSecurityPanel() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [clusters, setClusters] = useState<any[] | null>(null);
+  const [backup, setBackup] = useState("");
+  const [backing, setBacking] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,6 +58,55 @@ export default function AdminSecurityPanel() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function loadClusters() {
+    const r = await apiPost("/api/admin/security", { action: "clusters", days: 7 });
+    setClusters(r?.ok ? r.clusters : []);
+  }
+
+  async function banUser(id: string) {
+    if (!confirm("Заблокировать этот аккаунт? Он будет выведен со всех устройств.")) return;
+    await apiPost("/api/admin/staff", { action: "ban", userId: id, value: true });
+    await loadClusters();
+  }
+
+  async function makeBackup() {
+    setBacking(true);
+    setBackup("Готовим...");
+    try {
+      const t = await apiPost("/api/admin/export", { action: "tables" });
+      if (!t?.ok) {
+        setBackup("Не получилось (лимит: не больше 6 копий в час, только владелец).");
+        setBacking(false);
+        return;
+      }
+      const out: Record<string, any[]> = {};
+      for (const table of t.tables as string[]) {
+        const all: any[] = [];
+        for (let off = 0; off < 200000; off += t.page) {
+          setBackup(`Скачиваем: ${table} (${all.length})`);
+          const r = await apiPost("/api/admin/export", { table, offset: off });
+          const rows = r?.rows ?? [];
+          all.push(...rows);
+          if (rows.length < t.page) break;
+        }
+        out[table] = all;
+      }
+      const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), tables: out })], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `vetoks-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setBackup("Готово. Файл сохранён, храните его в надёжном месте: в нём личные данные.");
+    } catch {
+      setBackup("Не получилось скачать. Попробуйте ещё раз.");
+    }
+    setBacking(false);
+  }
 
   async function unblock(key: string) {
     await apiPost("/api/admin/security", { action: "unblock", key });
@@ -123,6 +175,56 @@ export default function AdminSecurityPanel() {
             </button>
           </div>
         ))}
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h3 className="text-offwhite font-semibold">Много аккаунтов с одного адреса</h3>
+        <p className="text-muted text-xs">
+          Адреса, с которых за 7 дней входили, регистрировались или голосовали 4 и больше разных аккаунтов. Это может быть
+          накрутка, а может быть общая семья или общий Wi-Fi: проверяйте глазами.
+        </p>
+        <button onClick={loadClusters} className="self-start border border-gold text-gold rounded-lg px-4 py-2 text-sm">
+          {clusters === null ? "Показать" : "Обновить"}
+        </button>
+        {clusters && clusters.length === 0 && <p className="text-muted text-sm">Подозрительных групп нет.</p>}
+        {(clusters ?? []).map((c) => (
+          <div key={c.ip} className="bg-bgSurface border border-muted rounded-xl p-3 flex flex-col gap-2">
+            <p className="text-offwhite text-sm">
+              {c.ip} · {c.accounts.length} аккаунтов · {c.kinds.join(", ")}
+            </p>
+            {c.votesFor.length > 0 && (
+              <p className="text-muted text-xs">Голосовали за: {c.votesFor.map((v: any) => `${v.name} (${v.n})`).join(", ")}</p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {c.accounts.map((a: any) => (
+                <button
+                  key={a.id}
+                  onClick={() => !a.banned && banUser(a.id)}
+                  className={`text-xs rounded-full px-3 py-1 border ${a.banned ? "border-muted text-muted" : "border-danger text-danger"}`}
+                >
+                  {a.name}
+                  {a.banned ? " (заблокирован)" : " — заблокировать"}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h3 className="text-offwhite font-semibold">Резервная копия данных</h3>
+        <p className="text-muted text-xs">
+          Скачивает файл со всеми основными данными (люди, анкеты, балансы, голоса, подарки). Делайте раз в несколько дней и
+          храните в надёжном месте.
+        </p>
+        <button
+          onClick={makeBackup}
+          disabled={backing}
+          className="self-start bg-gold text-bgPrimary font-semibold rounded-lg px-4 py-2 text-sm disabled:opacity-50"
+        >
+          Скачать копию
+        </button>
+        {backup && <p className="text-gold text-xs">{backup}</p>}
       </section>
 
       <section className="flex flex-col gap-2">

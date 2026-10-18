@@ -1,5 +1,6 @@
 "use client";
 
+import { cleanImage } from "@/lib/imageClean";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -97,10 +98,11 @@ function Inner() {
         }
       }
       const u = await getCurrentUser();
-      const ext = (f.name.split(".").pop() || (isVideo ? "mp4" : "jpg")).toLowerCase();
+      const fc = isVideo ? f : await cleanImage(f);
+      const ext = (fc.name.split(".").pop() || (isVideo ? "mp4" : "jpg")).toLowerCase();
       const path = `${u?.id}-${Date.now()}-${key}.${ext}`;
       const bucket = isVideo ? "media-videos" : "participant-photos";
-      const { error: e } = await supabase.storage.from(bucket).upload(path, f);
+      const { error: e } = await supabase.storage.from(bucket).upload(path, fc);
       if (e) {
         patch(key, { error: `Ошибка загрузки: ${e.message}` });
         return;

@@ -1,5 +1,6 @@
 "use client";
 
+import { cleanImage } from "@/lib/imageClean";
 import { useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
@@ -51,12 +52,20 @@ export default function ApplyPage() {
     let photoUrl: string | null = null;
 
     if (photoFile) {
-      const fileExt = photoFile.name.split(".").pop();
+      let up: File;
+      try {
+        up = await cleanImage(photoFile);
+      } catch (e: any) {
+        setStatus("error");
+        setErrorMessage(e?.message || "Не удалось обработать фото.");
+        return;
+      }
+      const fileExt = up.name.split(".").pop();
       const filePath = `${currentUser.id}-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("participant-photos")
-        .upload(filePath, photoFile);
+        .upload(filePath, up);
 
       if (uploadError) {
         setStatus("error");

@@ -4,6 +4,7 @@ import { blockOtherCountry, bad, notify, participantOwner, requireUser } from "@
 
 import { pickText } from "@/lib/pushText";
 import { rateLimit } from "@/lib/rateLimit";
+import { recordActivity } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ export async function POST(req: Request) {
 
   // Участница узнаёт, что за неё проголосовали (не чаще раза в 30 минут, чтобы не спамить).
   if ((data as any).ok) {
+    await recordActivity(req, uid, "vote", participantId);
     try {
       const owner = await participantOwner(participantId);
       if (owner) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { cleanImage } from "@/lib/imageClean";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -106,9 +107,17 @@ export default function PartnerCabinetPage() {
     setUploading(true);
     const u = await getCurrentUser();
     if (!u) return;
-    const fileExt = creativeFile.name.split(".").pop();
+    let cf: File;
+    try {
+      cf = await cleanImage(creativeFile);
+    } catch (e: any) {
+      alert(e?.message || "Не удалось обработать файл.");
+      setUploading(false);
+      return;
+    }
+    const fileExt = cf.name.split(".").pop();
     const filePath = `${u.id}-${Date.now()}.${fileExt}`;
-    const { error } = await supabase.storage.from("partner-creatives").upload(filePath, creativeFile);
+    const { error } = await supabase.storage.from("partner-creatives").upload(filePath, cf);
     if (error) {
       alert(`Ошибка загрузки: ${error.message}`);
       setUploading(false);

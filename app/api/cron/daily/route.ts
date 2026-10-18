@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { runDailyJob } from "@/lib/dailyJob";
+
+function same(a: string, b: string): boolean {
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+}
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -15,7 +22,7 @@ export async function GET(req: Request) {
     url.searchParams.get("key") ||
     req.headers.get("x-cron-key") ||
     (req.headers.get("authorization") || "").replace(/^Bearer /, "");
-  if (given !== secret) return NextResponse.json({ ok: false }, { status: 401 });
+  if (!same(given, secret)) return NextResponse.json({ ok: false }, { status: 401 });
 
   const summary = await runDailyJob();
   return NextResponse.json({ ok: true, summary });

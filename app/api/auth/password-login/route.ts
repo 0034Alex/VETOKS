@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { phoneVariants } from "@/lib/phone";
-import { logSecurity } from "@/lib/security";
+import { logSecurity, recordActivity } from "@/lib/security";
 import { clientIp, lockCheck, lockClear, lockFail, lockedResponse, rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
   const { data, error } = await anon.auth.signInWithPassword({ email, password: pass });
   if (error || !data.session) return bad();
   await Promise.all([lockClear(kPair), lockClear(kIdent)]);
+  if (data.user?.id) await recordActivity(req, data.user.id, "login");
 
   return NextResponse.json({
     status: "ok",

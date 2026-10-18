@@ -32,6 +32,57 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, locks: locks ?? [], events: events ?? [] });
   }
 
+  // Много аккаунтов с одного адреса за последние дни: возможная накрутка.
+  if (action === "clusters") {
+    const days = Math.min(30, Math.max(1, Number(b.days) || 7));
+    const since = new Date(Date.now() - days * 86400000).toISOString();
+    const { data: rows } = await supabaseAdmin
+      .from("activity_ips")
+      .select("user_id, ip, kind, participant_id, created_at")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(20000);
+    const byIp = new Map<string, any[]>();
+    (rows ?? []).forEach((r: any) => {
+      const a = byIp.get(r.ip) ?? [];
+      a.push(r);
+      byIp.set(r.ip, a);
+    });
+    const groups = [...byIp.entries()]
+      .map(([ip, list]) => ({ ip, list, users: new Set(list.map((r) => r.user_id)) }))
+      .filter((g) => g.users.size >= 4)
+      .sort((a, b2) => b2.users.size - a.users.size)
+      .slice(0, 40);
+    const userIds = [...new Set(groups.flatMap((g) => [...g.users]))].slice(0, 400);
+    const partIds = [...new Set(groups.flatMap((g) => g.list.map((r) => r.participant_id).filter(Boolean)))].slice(0, 200);
+    const { data: us } = userIds.length
+      ? await supabaseAdmin.from("users").select("id, first_name, is_banned").in("id", userIds)
+      : { data: [] as any[] };
+    const { data: ps } = partIds.length
+      ? await supabaseAdmin.from("participants").select("id, display_name").in("id", partIds as string[])
+      : { data: [] as any[] };
+    const uname: Record<string, any> = {};
+    (us ?? []).forEach((u: any) => (uname[u.id] = u));
+    const pname: Record<string, string> = {};
+    (ps ?? []).forEach((p: any) => (pname[p.id] = p.display_name));
+    const out = groups.map((g) => {
+      const votesFor: Record<string, number> = {};
+      g.list.forEach((r) => {
+        if (r.kind === "vote" && r.participant_id) votesFor[r.participant_id] = (votesFor[r.participant_id] ?? 0) + 1;
+      });
+      return {
+        ip: g.ip,
+        accounts: [...g.users].map((id) => ({ id, name: uname[id]?.first_name ?? "—", banned: !!uname[id]?.is_banned })),
+        kinds: [...new Set(g.list.map((r) => r.kind))],
+        votesFor: Object.entries(votesFor)
+          .map(([id, n]) => ({ name: pname[id] ?? "—", n }))
+          .sort((a, b2) => b2.n - a.n)
+          .slice(0, 5),
+      };
+    });
+    return NextResponse.json({ ok: true, clusters: out });
+  }
+
   if (action === "unblock") {
     const key = String(b.key ?? "");
     if (!key) return NextResponse.json({ ok: false }, { status: 400 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { cleanImage } from "@/lib/imageClean";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -71,11 +72,19 @@ export default function MyApplicationPage() {
     let newPhotoUrl = photoUrl;
 
     if (photoFile) {
-      const fileExt = photoFile.name.split(".").pop();
+      let up: File;
+      try {
+        up = await cleanImage(photoFile);
+      } catch (e: any) {
+        setNotice(e?.message || "Не удалось обработать фото.");
+        setSaving(false);
+        return;
+      }
+      const fileExt = up.name.split(".").pop();
       const filePath = `${userId}-${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage
         .from("participant-photos")
-        .upload(filePath, photoFile);
+        .upload(filePath, up);
 
       if (uploadError) {
         setNotice(`Ошибка загрузки фото: ${uploadError.message}`);
