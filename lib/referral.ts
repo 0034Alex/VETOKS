@@ -3,7 +3,7 @@ import { notify } from "@/lib/shopServer";
 import { countryOfUser, sameCountry, currencyOfUser } from "@/lib/countryServer";
 import { familyRootId } from "@/lib/familyServer";
 
-export const REF_KEYS = ["referral_enabled", "referral_reward_referrer", "referral_reward_invited", "referral_daily_limit", "referral_max_rewarded"];
+export const REF_KEYS = ["referral_enabled", "referral_reward_referrer", "referral_reward_invited", "referral_daily_limit", "referral_max_rewarded", "referral_percent", "referral_percent_days"];
 
 // Награды и лимиты у каждой страны свои (ключ "<ключ>:<id страны>"), иначе общие.
 export async function getRefSettings(countryId?: string | null) {
@@ -28,6 +28,8 @@ export async function getRefSettings(countryId?: string | null) {
     rewardInvited: num("referral_reward_invited", 0),
     dailyLimit: num("referral_daily_limit", 20),
     maxRewarded: num("referral_max_rewarded", 50),
+    percent: Math.min(100, Math.max(0, num("referral_percent", 0))),
+    percentDays: Math.max(1, Math.floor(num("referral_percent_days", 30))),
   };
 }
 
@@ -105,4 +107,32 @@ export async function claimReferral(
   // Номер уже подтверждён до того, как мы запомнили приглашение — засчитываем сразу.
   if (me?.phone_verified) await qualifyReferral(uid);
   return { ok: true, referrerName: (refUser.first_name as string | null) ?? null };
+}
+
+// Процент пригласившему от покупок друга в течение N дней после того, как друг подтвердил номер.
+// Если процент в CRM не задан (0) — ничего не начисляется. Платит платформа, у друга ничего не списывается.
+export async function referralCommission(spenderId: string, amount: number, type: string) {
+  try {
+    if (!(amount > 0)) return;
+    const { data: r } = await supabaseAdmin
+      .from("referrals")
+      .select("referrer_id, qualified_at")
+      .eq("referred_id", spenderId)
+      .eq("status", "qualified")
+      .maybeSingle();
+    if (!r || !r.qualified_at) return;
+    const s = await getRefSettings(await countryOfUser(r.referrer_id as string));
+    if (!s.enabled || s.percent <= 0) return;
+    if (Date.now() - new Date(r.qualified_at as string).getTime() > s.percentDays * 86400000) return;
+    const bonus = Math.round(amount * s.percent) / 100;
+    if (bonus <= 0) return;
+    await supabaseAdmin.rpc("vt_credit", {
+      p_user: r.referrer_id,
+      p_amount: bonus,
+      p_type: "referral_commission",
+      p_meta: { referred: spenderId, spent: amount, percent: s.percent, via: type },
+    });
+  } catch {
+    /* бонус не должен ломать покупку */
+  }
 }

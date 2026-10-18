@@ -74,6 +74,10 @@ export async function pay(
     p_meta: meta,
   });
   if (error || !data) return { ok: false, error: "pay_failed", detail: error?.message };
+  if ((data as any).ok) {
+    const { referralCommission } = await import("@/lib/referral");
+    await referralCommission(userId, amount, type);
+  }
   return data as any;
 }
 

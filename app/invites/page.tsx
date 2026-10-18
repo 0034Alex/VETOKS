@@ -110,6 +110,7 @@ export default function InvitesPage() {
                   Друг считается приглашённым, когда зарегистрируется по вашей ссылке и подтвердит номер в Telegram.
                   {d.rewardReferrer > 0 ? ` За каждого вы получите ${Math.round(d.rewardReferrer)} ${cur}.` : ""}
                   {d.rewardInvited > 0 ? ` Друг получит ${Math.round(d.rewardInvited)} ${cur}.` : ""}
+                  {d.percent > 0 ? ` Плюс ${d.percent}% от его покупок в течение ${d.percentDays} дн. — бонус платит VETOKS, другу ничего не теряется.` : ""}
                 </p>
               </div>
 
@@ -153,7 +154,7 @@ export default function InvitesPage() {
                   <p className="text-muted text-[11px]">Подтвердили номер</p>
                 </div>
                 <div className="bg-bgSurface border border-muted rounded-xl p-3 text-center">
-                  <p className="text-gold text-xl font-semibold">{Math.round(d.earned)} {cur}</p>
+                  <p className="text-gold text-xl font-semibold">{Math.round((d.earned + (d.commission ?? 0)) * 100) / 100} {cur}</p>
                   <p className="text-muted text-[11px]">Заработано</p>
                 </div>
               </div>

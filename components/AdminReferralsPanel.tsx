@@ -20,6 +20,8 @@ export default function AdminReferralsPanel() {
         referral_reward_invited: String(r.settings.rewardInvited),
         referral_daily_limit: String(r.settings.dailyLimit),
         referral_max_rewarded: String(r.settings.maxRewarded),
+        referral_percent: String(r.settings.percent),
+        referral_percent_days: String(r.settings.percentDays),
       });
     }
   }
@@ -63,6 +65,8 @@ export default function AdminReferralsPanel() {
         </label>
         <Field k="referral_reward_referrer" label={`Награда пригласившему, ${crmCur}`} hint="0 — без награды. Начисляется, когда друг подтвердил номер." />
         <Field k="referral_reward_invited" label={`Бонус приглашённому, ${crmCur}`} hint="0 — без бонуса. Начисляется при подтверждении номера." />
+        <Field k="referral_percent" label="Процент от покупок друга, %" hint="0 — выключено. Пригласивший получает этот процент от каждой траты друга. Платит платформа, друг ничего не теряет." />
+        <Field k="referral_percent_days" label="Сколько дней после подтверждения номера друга" hint="Например 30. Потом процент перестаёт начисляться." />
         <Field k="referral_daily_limit" label="Новых приглашений в сутки на человека" hint="Защита от накрутки." />
         <Field k="referral_max_rewarded" label="Максимум оплачиваемых приглашений на человека" hint="После лимита приглашения считаются, но награда не платится." />
         <button onClick={save} className="w-full bg-gold text-bgPrimary font-semibold py-2.5 rounded-full text-sm">
