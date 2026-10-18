@@ -114,6 +114,8 @@ export default function PostFeedPage() {
   const [cur, setCur] = useState(0);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [reportFor, setReportFor] = useState<string | null>(null);
+  const [delFor, setDelFor] = useState<string | null>(null);
+  const [delBusy, setDelBusy] = useState(false);
   const [shareFor, setShareFor] = useState<P | null>(null);
   const [myPhoto, setMyPhoto] = useState<string | null>(null);
   const [toast, setToast] = useState("");
@@ -209,6 +211,20 @@ export default function PostFeedPage() {
   function flash(t: string) {
     setToast(t);
     setTimeout(() => setToast(""), 2200);
+  }
+
+  async function deletePost(id: string) {
+    setDelBusy(true);
+    const r = await apiPost("/api/post/delete", { postId: id });
+    setDelBusy(false);
+    if (!r?.ok) return;
+    setDelFor(null);
+    const rest = (items ?? []).filter((x) => x.id !== id);
+    if (rest.length === 0) {
+      router.back();
+      return;
+    }
+    setItems(rest);
   }
 
   async function setLike(p: P, on: boolean) {
@@ -322,12 +338,25 @@ export default function PostFeedPage() {
                   📍 {p.place.name}
                 </Link>
               )}
-              {!p.mine && (
+              {(
                 <button onClick={() => setMenuFor(menuFor === p.id ? null : p.id)} className="text-offwhite text-2xl leading-none px-2" aria-label="Меню">
                   ⋯
                 </button>
               )}
             </div>
+            {menuFor === p.id && p.mine && (
+              <div className="relative z-20 pb-2">
+                <button
+                  onClick={() => {
+                    setMenuFor(null);
+                    setDelFor(p.id);
+                  }}
+                  className="text-danger text-sm border border-danger rounded-full px-4 py-1.5 bg-black/50"
+                >
+                  Удалить публикацию
+                </button>
+              </div>
+            )}
             {menuFor === p.id && !p.mine && (
               <div className="relative z-20 pb-2">
                 <button
@@ -501,6 +530,18 @@ export default function PostFeedPage() {
         </div>
       )}
 
+      {delFor && (
+        <div className="fixed inset-0 z-[100] flex items-end bg-black/70" onClick={() => setDelFor(null)}>
+          <div className="w-full bg-bgSurface rounded-t-3xl px-4 pt-5 pb-8" onClick={(e) => e.stopPropagation()} style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)" }}>
+            <p className="text-offwhite font-semibold text-center">Удалить публикацию?</p>
+            <p className="text-muted text-sm text-center mt-1">Её лайки и комментарии тоже исчезнут. Это нельзя отменить.</p>
+            <button onClick={() => deletePost(delFor)} disabled={delBusy} className="mt-5 w-full bg-danger text-white font-semibold py-3 rounded-full disabled:opacity-50">
+              {delBusy ? "Удаляем…" : "Удалить"}
+            </button>
+            <button onClick={() => setDelFor(null)} className="mt-2 w-full text-offwhite py-3">Отмена</button>
+          </div>
+        </div>
+      )}
       <ReportSheet open={!!reportFor} onClose={() => setReportFor(null)} target={{ type: "post", postId: reportFor ?? "" }} />
       <ShareSheet open={!!shareFor} onClose={() => setShareFor(null)} postId={shareFor?.id ?? ""} caption={shareFor?.caption} />
 
