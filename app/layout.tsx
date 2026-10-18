@@ -8,6 +8,7 @@ import ReferralCapture from "@/components/ReferralCapture";
 import { LangProvider } from "@/lib/i18n";
 import AutoTranslate from "@/components/AutoTranslate";
 import ChunkReload from "@/components/ChunkReload";
+import ScrollGuard from "@/components/ScrollGuard";
 
 export const metadata: Metadata = {
   title: "VETOKS",
@@ -51,6 +52,7 @@ export default function RootLayout({
         <AutoTranslate />
         <ServiceWorkerRegister />
         <ChunkReload />
+        <ScrollGuard />
       </LangProvider>
       </body>
     </html>
