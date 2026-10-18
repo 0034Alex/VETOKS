@@ -48,6 +48,7 @@ export default function ChatPage() {
   const [giftMsg, setGiftMsg] = useState("");
   const [giftBusy, setGiftBusy] = useState("");
   const [giftSel, setGiftSel] = useState("");
+  const [giftQty, setGiftQty] = useState(1);
   const [showcase, setShowcase] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
   const count = useRef(0);
@@ -119,12 +120,13 @@ export default function ChatPage() {
     if (!id) return;
     setGiftBusy(id);
     setGiftMsg("");
-    const r = await apiPost("/api/dm/gift", { toUserId: other, giftId: id, qty: 1 });
+    const r = await apiPost("/api/dm/gift", { toUserId: other, giftId: id, qty: giftQty });
     setGiftBusy("");
     if (r?.ok) {
       setBalance(r.balance);
       setGiftOpen(false);
       setGiftSel("");
+      setGiftQty(1);
       await load();
     } else if (r?.error === "not_enough") {
       setGiftMsg("Недостаточно средств. Пополните баланс в разделе «Подарки».");
@@ -317,22 +319,45 @@ export default function ChatPage() {
                 <button
                   key={g.id}
                   disabled={!!giftBusy}
-                  onClick={() => setGiftSel(g.id)}
-                  className={`rounded-xl py-3 flex flex-col items-center gap-1 disabled:opacity-50 border ${giftSel === g.id ? "border-gold bg-gold/10" : "border-muted bg-bgPrimary"}`}
+                  onClick={() => {
+                    if (giftSel === g.id) setGiftQty((q) => Math.min(1000, q + 1));
+                    else {
+                      setGiftSel(g.id);
+                      setGiftQty(1);
+                    }
+                  }}
+                  className={`relative rounded-xl py-3 flex flex-col items-center gap-1 disabled:opacity-50 border ${giftSel === g.id ? "border-gold bg-gold/10" : "border-muted bg-bgPrimary"}`}
                 >
+                  {giftSel === g.id && (
+                    <span className="absolute -top-1.5 -right-1 min-w-[24px] h-6 px-1.5 rounded-full bg-gold text-bgPrimary text-xs font-bold flex items-center justify-center">+{giftQty}</span>
+                  )}
                   <span className="text-4xl leading-none">{chatGiftEmoji(g.name)}</span>
                   <span className="text-offwhite text-xs">{g.name}</span>
                   <span className="text-gold text-xs font-semibold">{g.price} ₴</span>
                 </button>
               ))}
             </div>
+            {giftSel && (
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <button onClick={() => setGiftQty((q) => Math.max(1, q - 1))} className="w-10 h-10 rounded-full border border-muted text-offwhite text-xl" aria-label="Меньше">−</button>
+                <input
+                  value={giftQty}
+                  inputMode="numeric"
+                  onChange={(e) => setGiftQty(Math.min(1000, Math.max(1, parseInt(e.target.value.replace(/\D/g, "") || "1", 10))))}
+                  className="w-20 h-10 text-center bg-bgPrimary border border-muted rounded-full text-offwhite"
+                />
+                <button onClick={() => setGiftQty((q) => Math.min(1000, q + 1))} className="w-10 h-10 rounded-full border border-muted text-offwhite text-xl" aria-label="Больше">+</button>
+                <button onClick={() => setGiftQty((q) => Math.min(1000, q + 10))} className="h-10 px-3 rounded-full border border-gold/60 text-gold text-sm">+10</button>
+                <button onClick={() => setGiftQty((q) => Math.min(1000, q + 100))} className="h-10 px-3 rounded-full border border-gold/60 text-gold text-sm">+100</button>
+              </div>
+            )}
             {gifts.length > 0 && (
               <button
                 onClick={() => sendGift(giftSel)}
                 disabled={!giftSel || !!giftBusy}
                 className="mt-4 w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full disabled:opacity-40"
               >
-                {giftBusy ? "Отправляем…" : giftSel ? `Подарить · ${gifts.find((g) => g.id === giftSel)?.price ?? ""} ₴` : "Выберите подарок"}
+                {giftBusy ? "Отправляем…" : giftSel ? `Подарить ${giftQty > 1 ? `×${giftQty} ` : ""}· ${(gifts.find((g) => g.id === giftSel)?.price ?? 0) * giftQty} ₴` : "Выберите подарок"}
               </button>
             )}
             {gifts.length === 0 && <p className="text-muted text-sm text-center py-4">Подарков пока нет.</p>}
@@ -358,7 +383,6 @@ export default function ChatPage() {
                   <span className="text-4xl leading-none">{chatGiftEmoji(g.name)}</span>
                   <span className="text-offwhite text-xs">{g.name}</span>
                   <span className="text-gold text-sm font-semibold">×{g.mine + g.theirs}</span>
-                  <span className="text-muted text-[10px]">вы {g.mine} · {name.split(" ")[0]} {g.theirs}</span>
                 </div>
               ))}
             </div>
@@ -366,9 +390,7 @@ export default function ChatPage() {
             {[...giftLog].reverse().map((m) => (
               <div key={m.id} className="flex items-center justify-between py-2 border-b border-muted/30 text-sm">
                 <span className="text-offwhite">{m.body}</span>
-                <span className="text-muted text-xs">
-                  {m.sender_id === me ? "вы" : name.split(" ")[0]} · {new Date(m.created_at).toLocaleDateString("ru-RU")}
-                </span>
+                <span className="text-muted text-xs">{new Date(m.created_at).toLocaleDateString("ru-RU")}</span>
               </div>
             ))}
             <button

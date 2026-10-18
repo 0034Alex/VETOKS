@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const to = String(b.toUserId || "");
   const giftId = String(b.giftId || "");
   const qty = Math.floor(Number(b.qty) || 1);
-  if (!to || to === uid || !giftId || qty < 1 || qty > 20) return bad("bad_request");
+  if (!to || to === uid || !giftId || qty < 1 || qty > 1000) return bad("bad_request");
 
   const { data: target } = await supabaseAdmin
     .from("users")
