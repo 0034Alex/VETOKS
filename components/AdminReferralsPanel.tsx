@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
-import { getCrmCountry } from "@/lib/crmCountry";
+import { getCrmCountry, crmCur } from "@/lib/crmCountry";
 
 // CRM → «Рефералы»: награды, лимиты и лучшие приглашающие.
 export default function AdminReferralsPanel() {
@@ -33,6 +33,11 @@ export default function AdminReferralsPanel() {
     setTimeout(() => setSaved(false), 2000);
   }
 
+  async function reject(id: string) {
+    await apiPost("/api/admin/referrals", { action: "reject", id });
+    load();
+  }
+
   if (!d?.ok) return <p className="text-muted">Загрузка...</p>;
 
   const Field = ({ k, label, hint }: { k: string; label: string; hint?: string }) => (
@@ -56,8 +61,8 @@ export default function AdminReferralsPanel() {
           <input type="checkbox" checked={v.referral_enabled === "true"} onChange={(e) => setV((p) => ({ ...p, referral_enabled: e.target.checked ? "true" : "false" }))} />
           Приглашения включены
         </label>
-        <Field k="referral_reward_referrer" label="Награда пригласившему, ₴" hint="0 — без награды. Начисляется, когда друг подтвердил номер." />
-        <Field k="referral_reward_invited" label="Бонус приглашённому, ₴" hint="0 — без бонуса. Начисляется при подтверждении номера." />
+        <Field k="referral_reward_referrer" label={`Награда пригласившему, ${crmCur}`} hint="0 — без награды. Начисляется, когда друг подтвердил номер." />
+        <Field k="referral_reward_invited" label={`Бонус приглашённому, ${crmCur}`} hint="0 — без бонуса. Начисляется при подтверждении номера." />
         <Field k="referral_daily_limit" label="Новых приглашений в сутки на человека" hint="Защита от накрутки." />
         <Field k="referral_max_rewarded" label="Максимум оплачиваемых приглашений на человека" hint="После лимита приглашения считаются, но награда не платится." />
         <button onClick={save} className="w-full bg-gold text-bgPrimary font-semibold py-2.5 rounded-full text-sm">
@@ -68,6 +73,26 @@ export default function AdminReferralsPanel() {
       <div className="bg-bgSurface border border-muted rounded-xl p-4">
         <p className="text-offwhite font-semibold text-sm mb-1">Итого</p>
         <p className="text-muted text-sm">Пришло по ссылкам: {d.totals.invited} · подтвердили номер: {d.totals.qualified}</p>
+      </div>
+
+      <div>
+        <p className="text-offwhite font-semibold text-sm mb-2">Последние приглашения</p>
+        {(d.recent ?? []).length === 0 && <p className="text-muted text-sm">Пока нет.</p>}
+        <div className="flex flex-col gap-2">
+          {(d.recent ?? []).map((r: any) => (
+            <div key={r.id} className="bg-bgSurface border border-muted rounded-xl px-3 py-2 flex justify-between items-center gap-2 text-sm">
+              <span className="text-offwhite min-w-0 truncate">{r.referrer} → {r.invited}</span>
+              <span className="flex items-center gap-2 shrink-0">
+                <span className={`text-xs ${r.status === "qualified" ? "text-success" : r.status === "rejected" ? "text-danger" : "text-muted"}`}>
+                  {r.status === "qualified" ? "засчитан" : r.status === "rejected" ? "отклонён" : "ждёт номер"}
+                </span>
+                {r.status === "pending" && (
+                  <button onClick={() => reject(r.id)} className="text-danger text-xs border border-danger rounded-full px-2 py-0.5">Отклонить</button>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div>

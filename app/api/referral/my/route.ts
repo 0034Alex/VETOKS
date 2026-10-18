@@ -3,13 +3,21 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireUser } from "@/lib/shopServer";
 import { getRefSettings } from "@/lib/referral";
 import { countryOfUser } from "@/lib/countryServer";
+import { BOT_USERNAME } from "@/lib/authServer";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
-  const { data: me } = await supabaseAdmin.from("users").select("referral_code, nick").eq("id", uid).maybeSingle();
+  const { data: me } = await supabaseAdmin.from("users").select("referral_code, nick, referred_by, created_at").eq("id", uid).maybeSingle();
+  // Кто пригласил меня (если уже привязано) и можно ли ещё ввести код руками (первые 7 дней).
+  let invitedBy: string | null = null;
+  if ((me as any)?.referred_by) {
+    const { data: ib } = await supabaseAdmin.from("users").select("first_name").eq("id", (me as any).referred_by).maybeSingle();
+    invitedBy = (ib as any)?.first_name ?? "друг";
+  }
+  const canEnterCode = !(me as any)?.referred_by && Date.now() - new Date((me as any)?.created_at ?? 0).getTime() < 7 * 86400000;
   const { data: rows } = await supabaseAdmin
     .from("referrals")
     .select("referred_id, status, reward_referrer, created_at, users:referred_id(first_name)")
@@ -25,6 +33,9 @@ export async function POST(req: Request) {
     ok: true,
     code: me?.referral_code ?? "",
     nick: (me as any)?.nick ?? null,
+    bot: BOT_USERNAME,
+    invitedBy,
+    canEnterCode,
     enabled: s.enabled,
     rewardReferrer: s.rewardReferrer,
     rewardInvited: s.rewardInvited,

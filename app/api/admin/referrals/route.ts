@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   if (body.action === "get") {
     const cid = body.countryId ? String(body.countryId) : null;
     const s = await getRefSettings(cid);
-    const { data: all } = await supabaseAdmin.from("referrals").select("referrer_id, status, created_at").limit(5000);
+    const { data: all } = await supabaseAdmin.from("referrals").select("id, referrer_id, referred_id, status, created_at").order("created_at", { ascending: false }).limit(5000);
     let rows: any[] = all ?? [];
     if (cid) {
       // Только приглашения тех, кто из выбранной страны.
@@ -51,12 +51,33 @@ export async function POST(req: Request) {
       }))
       .sort((a, b) => b.ok - a.ok || b.total - a.total)
       .slice(0, 30);
+    // Последние приглашения (для ручной проверки и отклонения накруток).
+    const recentRows = rows.slice(0, 40);
+    const rIds = Array.from(new Set(recentRows.flatMap((r: any) => [r.referrer_id, r.referred_id])));
+    const { data: ru } = rIds.length
+      ? await supabaseAdmin.from("users").select("id, first_name").in("id", rIds)
+      : { data: [] as any[] };
+    const rn = new Map<string, string>(((ru ?? []) as any[]).map((u: any) => [u.id, u.first_name]));
+    const recent = recentRows.map((r: any) => ({
+      id: r.id,
+      status: r.status,
+      created_at: r.created_at,
+      referrer: rn.get(r.referrer_id) ?? "—",
+      invited: rn.get(r.referred_id) ?? "—",
+    }));
     return NextResponse.json({
       ok: true,
+      recent,
       settings: s,
       totals: { invited: rows.length, qualified: rows.filter((r: any) => r.status === "qualified").length },
       top,
     });
+  }
+
+  if (body.action === "reject") {
+    // Отклонить можно только ожидающее приглашение: награда за него уже не будет выплачена.
+    await supabaseAdmin.from("referrals").update({ status: "rejected" }).eq("id", String(body.id)).eq("status", "pending");
+    return NextResponse.json({ ok: true });
   }
 
   if (body.action === "save") {

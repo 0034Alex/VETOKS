@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { notify } from "@/lib/shopServer";
-import { countryOfUser } from "@/lib/countryServer";
+import { countryOfUser, sameCountry } from "@/lib/countryServer";
+import { familyRootId } from "@/lib/familyServer";
 
 export const REF_KEYS = ["referral_enabled", "referral_reward_referrer", "referral_reward_invited", "referral_daily_limit", "referral_max_rewarded"];
 
@@ -57,4 +58,49 @@ export async function qualifyReferral(userId: string) {
   } catch {
     /* награда не должна ломать подтверждение номера */
   }
+}
+
+// Человек пришёл по ссылке/коду друга (код или ник пригласившего) — запоминаем, кто пригласил.
+// Общая точка для ссылки, Telegram-бота и ручного ввода кода.
+export async function claimReferral(
+  uid: string,
+  rawCode: string
+): Promise<{ ok: boolean; error?: string; referrerName?: string | null }> {
+  let code = String(rawCode ?? "").trim().slice(0, 40);
+  if (!code) return { ok: false, error: "no_code" };
+  // Вместо кода можно прислать ник пригласившего (с @ или без).
+  const asNick = code.replace(/^@/, "").toLowerCase();
+  if (/^[a-z][a-z0-9_]{2,19}$/.test(asNick)) {
+    const { data: byNick } = await supabaseAdmin.from("users").select("referral_code").eq("nick", asNick).maybeSingle();
+    if (byNick?.referral_code) code = String(byNick.referral_code);
+  }
+  const { data: refRows } = await supabaseAdmin
+    .from("users")
+    .select("id, first_name")
+    .in("referral_code", Array.from(new Set([code, code.toUpperCase(), code.toLowerCase()])))
+    .limit(1);
+  const refUser = (refRows ?? [])[0] as { id: string; first_name: string | null } | undefined;
+  if (!refUser?.id) return { ok: false, error: "bad_code" };
+  const refId = refUser.id as string;
+  if (refId === uid) return { ok: false, error: "self" };
+  // Пригласивший должен быть из той же страны: страны между собой не пересекаются.
+  if (!(await sameCountry(uid, refId))) return { ok: false, error: "other_country" };
+  // Свои дополнительные аккаунты (один Telegram — до 3 аккаунтов) не считаются приглашёнными.
+  const [a, b] = await Promise.all([familyRootId(uid), familyRootId(refId)]);
+  if (a && b && a === b) return { ok: false, error: "self" };
+  const s = await getRefSettings(await countryOfUser(uid));
+  if (!s.enabled) return { ok: false, error: "disabled" };
+  const { data } = await supabaseAdmin.rpc("vt_claim_referral", { p_user: uid, p_code: code, p_daily: s.dailyLimit });
+  const r = data as any;
+  if (!r?.ok) return { ok: false, error: r?.error ?? "error" };
+
+  const { data: me } = await supabaseAdmin.from("users").select("first_name, phone_verified").eq("id", uid).maybeSingle();
+  await notify(
+    refId,
+    `👋 По вашей ссылке пришёл${me?.first_name ? ` ${me.first_name}` : " новый человек"}. Когда он подтвердит номер в Telegram, приглашение засчитается.`,
+    "/invites"
+  ).catch(() => {});
+  // Номер уже подтверждён до того, как мы запомнили приглашение — засчитываем сразу.
+  if (me?.phone_verified) await qualifyReferral(uid);
+  return { ok: true, referrerName: (refUser.first_name as string | null) ?? null };
 }

@@ -242,6 +242,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // Ссылка друга: t.me/бот?start=ref_КОД — открываем приложение с кодом приглашения.
+    if (param && /^ref_[A-Za-z0-9_-]{2,40}$/.test(param)) {
+      const origin = new URL(req.url).origin;
+      await sendMessage(
+        chatId,
+        "👑 Друг приглашает вас в VETOKS — конкурс красоты, где голосуете вы!\n\nНажмите кнопку ниже, чтобы открыть приложение и зарегистрироваться.",
+        { reply_markup: { inline_keyboard: [[{ text: "Открыть VETOKS", web_app: { url: `${origin}/r/${param.slice(4)}` } }]] } }
+      );
+      return NextResponse.json({ ok: true });
+    }
+
     await sendMessage(
       chatId,
       "👑 Добро пожаловать в VETOKS!\n\nЭто официальный бот платформы VETOKS — конкурса красоты. Здесь можно войти, подтвердить номер и восстановить пароль.\n\nЧтобы открыть само приложение, нажмите кнопку меню внизу слева (☰ или «Открыть VETOKS»)."
