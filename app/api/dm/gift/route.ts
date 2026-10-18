@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sameCountry } from "@/lib/countryServer";
 import { bad, fanEvent, notify, pay, refund, requireUser } from "@/lib/shopServer";
 import { applyGiftOverrides, getUsdRate, giftUahPrice } from "@/lib/pricing";
-import { blockState, findThread } from "@/lib/dmServer";
+import { blockState, findThread, pairOrder, recipientFollowsSender } from "@/lib/dmServer";
 import { chatGiftEmoji } from "@/lib/chatGifts";
 
 export const dynamic = "force-dynamic";
@@ -34,8 +34,22 @@ export async function POST(req: Request) {
   if (bs.blockedByMe) return bad("you_blocked", 403);
   if (bs.blockedMe) return bad("cant_send", 403);
 
-  const thread = await findThread(uid, to);
-  if (!thread || !thread.accepted) return bad("need_chat", 403);
+  let thread = await findThread(uid, to);
+  if (!thread) {
+    // Подарок можно сделать и до первого сообщения — чат создаётся сам.
+    const auto = await recipientFollowsSender(to, uid);
+    const [x, y] = pairOrder(uid, to);
+    const { data: created } = await supabaseAdmin
+      .from("dm_threads")
+      .insert({ user_a: x, user_b: y, initiator: uid, accepted: auto })
+      .select("id, user_a, user_b, initiator, accepted, last_message, last_at")
+      .single();
+    if (!created) return bad("server", 500);
+    thread = created as any;
+  } else if (!thread.accepted && thread.initiator !== uid) {
+    return bad("need_chat", 403);
+  }
+  if (!thread) return bad("server", 500);
 
   const { data: giftRaw } = await supabaseAdmin
     .from("gift_catalog")

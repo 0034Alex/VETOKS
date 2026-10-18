@@ -30,6 +30,7 @@ type P = {
   mine: boolean;
   media?: { kind: "video" | "photo"; url: string }[];
   place?: { id: string; name: string } | null;
+  visibility?: string;
   allowComments?: boolean;
   allowLikes?: boolean;
   allowReposts?: boolean;
@@ -213,6 +214,12 @@ export default function PostFeedPage() {
     setTimeout(() => setToast(""), 2200);
   }
 
+  async function toggleHidden(p: P) {
+    const next = p.visibility === "me" ? "all" : "me";
+    const r = await apiPost("/api/post/update", { postId: p.id, visibility: next });
+    if (r?.ok) setItems((prev) => prev && prev.map((x) => (x.id === p.id ? { ...x, visibility: next } : x)));
+  }
+
   async function deletePost(id: string) {
     setDelBusy(true);
     const r = await apiPost("/api/post/delete", { postId: id });
@@ -338,39 +345,50 @@ export default function PostFeedPage() {
                   📍 {p.place.name}
                 </Link>
               )}
-              {(
-                <button onClick={() => setMenuFor(menuFor === p.id ? null : p.id)} className="text-offwhite text-2xl leading-none px-2" aria-label="Меню">
-                  ⋯
-                </button>
+              {p.mine && p.visibility === "me" && <span className="text-offwhite/80 text-[11px] bg-black/50 rounded-full px-2 py-1">🔒 Скрыта</span>}
+              <button onClick={() => setMenuFor(menuFor === p.id ? null : p.id)} className="text-offwhite text-2xl leading-none px-2" aria-label="Меню">
+                ⋯
+              </button>
+              {menuFor === p.id && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setMenuFor(null)} />
+                  <div className="absolute right-0 top-full mt-1 z-30 min-w-[210px] rounded-2xl bg-bgSurface/95 backdrop-blur border border-white/15 shadow-xl overflow-hidden">
+                    {p.mine ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            setMenuFor(null);
+                            toggleHidden(p);
+                          }}
+                          className="w-full text-left text-offwhite text-sm px-4 py-3 border-b border-white/10"
+                        >
+                          {p.visibility === "me" ? "Показать всем" : "Скрыть от всех"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setMenuFor(null);
+                            setDelFor(p.id);
+                          }}
+                          className="w-full text-left text-danger text-sm px-4 py-3"
+                        >
+                          Удалить
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setMenuFor(null);
+                          setReportFor(p.id);
+                        }}
+                        className="w-full text-left text-danger text-sm px-4 py-3"
+                      >
+                        Пожаловаться
+                      </button>
+                    )}
+                  </div>
+                </>
               )}
             </div>
-            {menuFor === p.id && p.mine && (
-              <div className="relative z-20 pb-2">
-                <button
-                  onClick={() => {
-                    setMenuFor(null);
-                    setDelFor(p.id);
-                  }}
-                  className="text-danger text-sm border border-danger rounded-full px-4 py-1.5 bg-black/50"
-                >
-                  Удалить публикацию
-                </button>
-              </div>
-            )}
-            {menuFor === p.id && !p.mine && (
-              <div className="relative z-20 pb-2">
-                <button
-                  onClick={() => {
-                    setMenuFor(null);
-                    setReportFor(p.id);
-                  }}
-                  className="text-danger text-sm border border-danger rounded-full px-4 py-1.5 bg-black/50"
-                >
-                  Пожаловаться
-                </button>
-              </div>
-            )}
-
             {/* Рамка с фото или видео */}
             <div className="relative z-10 flex-1 min-h-0 rounded-3xl p-[3px]" style={{ background: "linear-gradient(160deg,#E8D48A,#8a6d12 40%,#E8D48A)" }}>
               <div className="relative w-full h-full rounded-[21px] overflow-hidden bg-black select-none" onPointerUp={() => onMediaTap(p)} style={{ touchAction: "manipulation" }}>
