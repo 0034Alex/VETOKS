@@ -58,16 +58,27 @@ export async function POST(req: Request) {
       email_confirm: true,
     });
     if (error || !au?.user) return NextResponse.json({ ok: false, error: "server", detail: error?.message }, { status: 500 });
-    const { error: insErr } = await supabaseAdmin.from("users").insert({
+    const rowBase = {
       id: au.user.id,
       first_name: OFFICIAL_NAME,
-      nick: OFFICIAL_NICK,
       role: "viewer",
       region_id: reg.id,
       is_official: true,
       verified_badge: true,
       bio: "Официальная страница VETOKS",
-    });
+    };
+    let { error: insErr } = await supabaseAdmin.from("users").insert({ ...rowBase, nick: OFFICIAL_NICK });
+    if (insErr) {
+      // Ник уже занят (например, официальным аккаунтом другой страны) — добавляем код страны.
+      const r2 = await supabaseAdmin.from("users").insert({ ...rowBase, nick: `${OFFICIAL_NICK}_${tag}`.slice(0, 20) });
+      insErr = r2.error;
+      if (insErr) {
+        // Последняя попытка: без ника, чтобы аккаунт точно создался.
+        const r3 = await supabaseAdmin.from("users").insert(rowBase);
+        if (!r3.error) insErr = null;
+        else insErr = r3.error;
+      }
+    }
     if (insErr) {
       await supabaseAdmin.auth.admin.deleteUser(au.user.id);
       return NextResponse.json({ ok: false, error: "server", detail: insErr.message }, { status: 500 });

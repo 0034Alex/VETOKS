@@ -40,7 +40,13 @@ export default function AdminOfficialPanel() {
   async function create(countryId: string) {
     setMsg("");
     const r = await apiPost("/api/admin/official", { action: "create", countryId });
-    setMsg(r?.ok ? "Аккаунт создан, все люди страны подписаны." : r?.error === "no_regions" ? "В этой стране ещё нет регионов." : "Не получилось создать.");
+    setMsg(
+      r?.ok
+        ? "Аккаунт создан, все люди страны подписаны."
+        : r?.error === "no_regions"
+        ? "В этой стране ещё нет регионов."
+        : `Не получилось создать.${r?.detail ? ` Причина: ${r.detail}` : r?.error ? ` Код: ${r.error}` : ""}`
+    );
     load();
   }
 
