@@ -20,14 +20,19 @@ export async function POST(req: Request) {
   const canEnterCode = !(me as any)?.referred_by && Date.now() - new Date((me as any)?.created_at ?? 0).getTime() < 7 * 86400000;
   const { data: rows } = await supabaseAdmin
     .from("referrals")
-    .select("referred_id, status, reward_referrer, created_at, users:referred_id(first_name)")
+    .select("referred_id, status, reward_referrer, created_at")
     .eq("referrer_id", uid)
     .order("created_at", { ascending: false })
     .limit(100);
-  const list = (rows ?? []).map((r: any) => {
-    const u = Array.isArray(r.users) ? r.users[0] : r.users;
-    return { name: u?.first_name ?? "Гость", status: r.status, reward: Number(r.reward_referrer), created_at: r.created_at };
-  });
+  const ids = Array.from(new Set((rows ?? []).map((r: any) => r.referred_id as string)));
+  const { data: us } = ids.length ? await supabaseAdmin.from("users").select("id, first_name").in("id", ids) : { data: [] as any[] };
+  const nm = new Map<string, string>(((us ?? []) as any[]).map((u: any) => [u.id, u.first_name]));
+  const list = (rows ?? []).map((r: any) => ({
+    name: nm.get(r.referred_id) ?? "Гость",
+    status: r.status,
+    reward: Number(r.reward_referrer),
+    created_at: r.created_at,
+  }));
   const s = await getRefSettings(await countryOfUser(uid));
   let commission = 0;
   const { data: w } = await supabaseAdmin.from("wallets").select("id").eq("user_id", uid).order("id").limit(1).maybeSingle();

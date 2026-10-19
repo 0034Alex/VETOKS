@@ -271,7 +271,11 @@ export default function PostFeedPage() {
 
   async function sendComment() {
     if (!meId || !cOpen || !cText.trim()) return;
-    await supabase.from("media_comments").insert({ post_id: cOpen, user_id: meId, body: cText.trim().slice(0, 500) });
+    const rc = await apiPost("/api/comments/send", { postId: cOpen, text: cText });
+    if (!rc?.ok) {
+      flash(rc?.error === "bad_words" ? "В сообщении есть недопустимые слова. Пожалуйста, перепишите его без грубостей." : "Не получилось отправить. Попробуйте ещё раз.");
+      return;
+    }
     setCText("");
     setItems((prev) => prev && prev.map((x) => (x.id === cOpen ? { ...x, comments: x.comments + 1 } : x)));
     await openComments(cOpen);

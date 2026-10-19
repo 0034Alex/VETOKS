@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { userIdFromBearer } from "@/lib/authServer";
 import { rateLimit } from "@/lib/rateLimit";
+import { autoFollowOfficial } from "@/lib/officialFollow";
 
 export const dynamic = "force-dynamic";
 
@@ -36,5 +37,6 @@ export async function POST(req: Request) {
     role: "viewer",
   });
   if (error) return NextResponse.json({ ok: false, error: "save", message: error.message }, { status: 500 });
+  await autoFollowOfficial(uid, regionId);
   return NextResponse.json({ ok: true });
 }

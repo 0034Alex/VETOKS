@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { rateLimit } from "@/lib/rateLimit";
+import { hasBadWords } from "@/lib/badWords";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
   if (!text) return bad("empty");
   if (text.length > 500) return bad("long");
   if (LINK_RE.test(text)) return bad("links");
+  if (hasBadWords(text)) return bad("bad_words");
 
   const { data: u } = await supabaseAdmin
     .from("users")

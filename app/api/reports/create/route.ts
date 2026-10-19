@@ -29,5 +29,10 @@ export async function POST(req: Request) {
     .from("content_reports")
     .insert({ post_id: postId, reporter_id: uid, reason, details });
   if (error && !String(error.message).includes("duplicate")) return bad("failed", 500);
+  // Три разных жалобы: публикация скрывается до проверки модератором.
+  const { data: reps } = await supabaseAdmin.from("content_reports").select("reporter_id").eq("post_id", postId).eq("status", "open").limit(50);
+  if (new Set((reps ?? []).map((r: any) => r.reporter_id)).size >= 3) {
+    await supabaseAdmin.from("content_posts").update({ mod_status: "pending", mod_reason: "auto: 3 жалобы" }).eq("id", postId).eq("mod_status", "ok");
+  }
   return NextResponse.json({ ok: true });
 }

@@ -1,3 +1,4 @@
+import { autoFollowOfficial } from "@/lib/officialFollow";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes, randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -60,6 +61,8 @@ export async function POST(req: NextRequest) {
     await supabaseAdmin.auth.admin.deleteUser(created.user.id);
     return NextResponse.json({ status: "error", message: "Не удалось сохранить аккаунт." });
   }
+
+  await autoFollowOfficial(created.user.id, root.region_id as string);
 
   const tokenHash = await tokenHashForUser(created.user.id);
   if (!tokenHash) return NextResponse.json({ status: "error", message: "Ошибка входа." });

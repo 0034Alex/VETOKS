@@ -1,3 +1,4 @@
+import { autoFollowOfficial } from "@/lib/officialFollow";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -99,6 +100,8 @@ export async function POST(req: NextRequest) {
     await supabaseAdmin.auth.admin.deleteUser(created.user.id);
     return NextResponse.json({ status: "error", message: "Не удалось сохранить профиль." });
   }
+
+  await autoFollowOfficial(created.user.id, regionId);
 
   if (loginToken) {
     await supabaseAdmin.from("tg_login_tokens").update({ used: true }).eq("token", loginToken);

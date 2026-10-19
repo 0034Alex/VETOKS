@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { rateLimit } from "@/lib/rateLimit";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { recordActivity } from "@/lib/security";
+import { autoFollowOfficial } from "@/lib/officialFollow";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
     await supabaseAdmin.auth.admin.deleteUser(created.user.id);
     return NextResponse.json({ ok: false, error: "save", message: "Не удалось сохранить анкету. Попробуйте ещё раз." }, { status: 500 });
   }
+  await autoFollowOfficial(created.user.id, regionId);
   await recordActivity(req, created.user.id, "register");
   return NextResponse.json({ ok: true });
 }

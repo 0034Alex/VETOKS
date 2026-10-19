@@ -1,6 +1,8 @@
+import { hasBadWords } from "@/lib/badWords";
+import { checkImageNsfw } from "@/lib/nsfw";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { bad, requireUser } from "@/lib/shopServer";
+import { bad, notify, requireUser } from "@/lib/shopServer";
 import { bunnyDeleteVideo, bunnyGetVideo, bunnyPlayUrl } from "@/lib/bunny";
 import { cleanVisibility } from "@/lib/postVisibility";
 import { resolvePlace } from "@/lib/places";
@@ -22,6 +24,7 @@ export async function POST(req: Request) {
   const raw: In[] = Array.isArray(b.media) ? b.media.slice(0, 10) : [];
   if (!raw.length) return bad("no_media");
   const caption = String(b.caption ?? "").slice(0, 500);
+  if (hasBadWords(caption)) return bad("bad_words");
   const visibility = cleanVisibility(b.visibility);
 
   // Приём публикаций выключен в CRM: ничего не публикуем, материал уходит в черновики.
@@ -90,6 +93,20 @@ export async function POST(req: Request) {
     }
   }
 
+  // Проверка 18+: режим «сначала проверка» (CRM) или автопроверка фото (если подключена).
+  let held = "";
+  const modSet = await settingsForCountry(["moderation_mode"], await countryOfUser(uid));
+  if (modSet.moderation_mode === "before") held = "перед публикацией (режим CRM)";
+  if (!held) {
+    for (const i of items.filter((x) => x.kind === "photo").slice(0, 3)) {
+      const r = await checkImageNsfw(i.url);
+      if (r?.flag) {
+        held = r.reason;
+        break;
+      }
+    }
+  }
+
   const placeId = await resolvePlace(uid, b.placeId, b.placeName);
   const cover = items[0];
   const { data: row, error } = await supabaseAdmin
@@ -116,10 +133,16 @@ export async function POST(req: Request) {
     .maybeSingle();
   if (error || !row) return bad("insert_failed", 500);
 
+  if (held) {
+    // Отдельным запросом: если колонки ещё нет, публикация всё равно создана.
+    await supabaseAdmin.from("content_posts").update({ mod_status: "pending", mod_reason: held }).eq("id", row.id);
+    await notify(uid, "🛡 Публикация отправлена на проверку модератору. Она появится у всех после проверки.", "/profile");
+  }
+
   for (const i of items) {
     if (i.videoId) await supabaseAdmin.from("video_uploads").update({ used: true }).eq("video_id", i.videoId);
   }
   if (b.draftId) await supabaseAdmin.from("post_drafts").delete().eq("id", String(b.draftId)).eq("user_id", uid);
 
-  return NextResponse.json({ ok: true, postId: row.id, participantId: part?.id ?? null, hasVideo: items.some((i) => i.kind === "video") });
+  return NextResponse.json({ ok: true, postId: row.id, held: !!held, participantId: part?.id ?? null, hasVideo: items.some((i) => i.kind === "video") });
 }

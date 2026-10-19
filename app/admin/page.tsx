@@ -24,6 +24,8 @@ import AdminDashboard from "@/components/AdminDashboard";
 import AdminPeoplePanel from "@/components/AdminPeoplePanel";
 import AdminActionLogPanel from "@/components/AdminActionLogPanel";
 import AdminSecurityPanel from "@/components/AdminSecurityPanel";
+import AdminContentModerationPanel from "@/components/AdminContentModerationPanel";
+import AdminOfficialPanel from "@/components/AdminOfficialPanel";
 import { getCrmCountry, setCrmCountry, crmRegionIds, crmCur, loadCrmCur } from "@/lib/crmCountry";
 import { loadScoped, loadOwn, loadOwnRegion, scopedKey } from "@/lib/scopedSettings";
 
@@ -85,6 +87,8 @@ type Tab =
   | "badges"
   | "translations"
   | "action-log"
+  | "content-mod"
+  | "official"
   | "security";
 
 const TABS: { key: Tab; label: string }[] = [
@@ -115,6 +119,8 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "app-prices", label: "Цены (в долларах)" },
   { key: "rating-admin", label: "Рейтинг и титулы" },
   { key: "reports", label: "Жалобы" },
+  { key: "content-mod", label: "Проверка контента" },
+  { key: "official", label: "Официальный аккаунт" },
   { key: "ad-stats", label: "Статистика рекламы" },
   { key: "home-settings", label: "Главная" },
   { key: "clan", label: "Чат кланов" },
@@ -128,7 +134,7 @@ const TABS: { key: Tab; label: string }[] = [
 // Каждая галочка в «Персонал» открывает свой набор разделов.
 // Владелец (super_admin) видит всё независимо от галочек.
 const PERMISSION_TABS: Record<string, Tab[]> = {
-  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports", "home-settings", "clan", "referrals", "badges", "translations"],
+  moderation: ["applications", "participants", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports", "content-mod", "official", "home-settings", "clan", "referrals", "badges", "translations"],
   finance: ["dashboard", "goal", "referrals"],
   partners: ["partners", "ad-stats", "partner-logos", "banners", "magazine-ads", "ad-space", "ad-prices", "social", "branding"],
   staff: ["staff", "users"],
@@ -141,8 +147,8 @@ const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: 
   { key: "today", ic: "🏠", label: "Сегодня", desc: "Что требует действия прямо сейчас", tabs: ["dashboard", "support"] },
   { key: "people", ic: "👥", label: "Люди", desc: "Все, кто есть в приложении", tabs: ["users", "participants", "applications", "badges", "black-marks"] },
   { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["stages", "rating-admin", "goal", "tasks", "cards"] },
-  { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "media-demo-upload", "home-settings", "banners"] },
-  { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["reports", "clan"] },
+  { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "official", "media-demo-upload", "home-settings", "banners"] },
+  { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["content-mod", "reports", "clan"] },
   { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["app-prices", "referrals"] },
   { key: "ads", ic: "📣", label: "Реклама и партнёры", desc: "Всё, что приносит доход от партнёров", tabs: ["partners", "partner-logos", "ad-space", "ad-prices", "ad-stats", "magazine-ads", "branding"] },
   { key: "set", ic: "⚙️", label: "Настройки", desc: "Страны, языки, доступы", tabs: ["countries", "translations", "social", "documents", "staff", "action-log", "security"] },
@@ -410,6 +416,8 @@ export default function AdminPage() {
         {tab === "black-marks" && <AdminBlackMarksPanel />}
         {tab === "rating-admin" && <AdminRatingPanel />}
         {tab === "reports" && <AdminReportsPanel />}
+        {tab === "content-mod" && <AdminContentModerationPanel />}
+        {tab === "official" && <AdminOfficialPanel />}
         {tab === "ad-stats" && <AdminAdStatsPanel />}
         {tab === "home-settings" && <AdminHomeSettingsPanel />}
         {tab === "clan" && <AdminClanPanel />}

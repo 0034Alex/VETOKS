@@ -1,3 +1,4 @@
+import { hasBadWords } from "@/lib/badWords";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
@@ -19,10 +20,13 @@ export async function POST(req: Request) {
   if (typeof b.first_name === "string") {
     const n = b.first_name.replace(/\s+/g, " ").trim().slice(0, 60);
     if (n.length < 1) return bad("name");
+    if (hasBadWords(n)) return bad("bad_words");
     patch.first_name = n;
     // Одно имя везде: карточка участницы показывает то же имя.
     await supabaseAdmin.from("participants").update({ display_name: n }).eq("user_id", uid);
   }
+  if (typeof b.bio === "string" && hasBadWords(b.bio)) return bad("bad_words");
+  if (typeof b.participant?.bio === "string" && hasBadWords(b.participant.bio)) return bad("bad_words");
   if (typeof b.bio === "string") patch.bio = b.bio.trim().slice(0, 300) || null;
   if (b.photo_url === null) patch.photo_url = null;
   if (typeof b.photo_url === "string") {

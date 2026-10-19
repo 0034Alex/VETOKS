@@ -44,7 +44,19 @@ export async function filterVisible<T>(
     return v === "followers" && ownerOf(r) && ownerOf(r) !== viewer;
   });
   const followed = need.length ? await followedOwners(viewer, need.map((r) => ownerOf(r) as string)) : new Set<string>();
+  // Публикации «на проверке» и скрытые модератором видит только автор.
+  const heldIds = new Set<string>();
+  const allIds = rows.map((r) => (r as any)?.id as string | undefined).filter(Boolean) as string[];
+  for (let i = 0; i < allIds.length; i += 200) {
+    const { data: held } = await supabaseAdmin
+      .from("content_posts")
+      .select("id")
+      .in("id", allIds.slice(i, i + 200))
+      .neq("mod_status", "ok");
+    (held ?? []).forEach((h: any) => heldIds.add(h.id));
+  }
   return rows.filter((r) => {
+    if (heldIds.has((r as any)?.id) && ownerOf(r) !== viewer) return false;
     const v = visOf(r) || "all";
     const o = ownerOf(r);
     if (v === "all") return true;

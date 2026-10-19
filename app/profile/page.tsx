@@ -202,18 +202,9 @@ export default function ProfilePage() {
         );
       }
 
-      const { count: referrals } = await supabase
-        .from("referrals")
-        .select("id", { count: "exact", head: true })
-        .eq("referrer_id", u.id);
-      setReferralCount(referrals ?? 0);
-
-      const { count: unread } = await supabase
-        .from("notifications")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", u.id)
-        .eq("is_read", false);
-      setUnreadCount(unread ?? 0);
+      const cnt = await apiPost("/api/notifications/my", { action: "count" });
+      setReferralCount(cnt?.referrals ?? 0);
+      setUnreadCount(cnt?.unread ?? 0);
 
       const { data: wallet } = await supabase
         .from("wallets")

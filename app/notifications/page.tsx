@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/currentUser";
-import { supabase } from "@/lib/supabaseClient";
+import { apiPost } from "@/lib/authClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 
@@ -30,19 +30,8 @@ export default function NotificationsPage() {
         return;
       }
 
-      const { data } = await supabase
-        .from("notifications")
-        .select("id, message, link, is_read, created_at")
-        .eq("user_id", u.id)
-        .order("created_at", { ascending: false })
-        .limit(50);
-      setItems((data as Notification[]) ?? []);
-
-      await supabase
-        .from("notifications")
-        .update({ is_read: true })
-        .eq("user_id", u.id)
-        .eq("is_read", false);
+      const r = await apiPost("/api/notifications/my", {});
+      setItems((r?.items as Notification[]) ?? []);
 
       setLoading(false);
     })();

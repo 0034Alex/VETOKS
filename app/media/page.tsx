@@ -1,5 +1,6 @@
 "use client";
 
+import { apiPost } from "@/lib/authClient";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -227,11 +228,11 @@ export default function MediaPage() {
 
   async function sendComment() {
     if (!me || !openComments || !commentText.trim()) return;
-    await supabase.from("media_comments").insert({
-      post_id: openComments,
-      user_id: me.id,
-      body: commentText,
-    });
+    const rc = await apiPost("/api/comments/send", { postId: openComments, text: commentText });
+    if (!rc?.ok) {
+      alert(rc?.error === "bad_words" ? "В сообщении есть недопустимые слова. Пожалуйста, перепишите его без грубостей." : "Не получилось отправить. Попробуйте ещё раз.");
+      return;
+    }
     setCommentText("");
     setCommentCounts((prev) => ({ ...prev, [openComments]: (prev[openComments] ?? 0) + 1 }));
     await openCommentsFor(openComments);

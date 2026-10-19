@@ -103,7 +103,9 @@ export default function MyApplicationPage() {
       participant: { bio, photo_url: newPhotoUrl },
     });
     resetCurrentUserCache();
-    const error = sv?.ok ? null : { message: "Не удалось сохранить. Попробуйте ещё раз." };
+    const error = sv?.ok
+      ? null
+      : { message: sv?.error === "bad_words" ? "Есть недопустимые слова. Перепишите без грубостей." : "Не удалось сохранить. Попробуйте ещё раз." };
 
     if (error) {
       setNotice(`Ошибка сохранения: ${error.message}`);

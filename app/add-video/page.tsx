@@ -173,7 +173,9 @@ function Inner() {
     }
     if (!r?.ok) {
       setError(
-        r?.error === "too_long"
+        r?.error === "bad_words"
+          ? "Есть недопустимые слова. Перепишите без грубостей."
+          : r?.error === "too_long"
           ? "Видео длиннее 60 секунд."
           : r?.error === "already_used"
           ? "Это видео уже опубликовано."

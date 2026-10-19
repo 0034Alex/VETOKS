@@ -143,7 +143,9 @@ export default function EditProfilePage() {
 
     if (!sv?.ok) {
       setNotice(
-        sv?.error === "phone_taken"
+        sv?.error === "bad_words"
+          ? "Есть недопустимые слова. Перепишите без грубостей."
+          : sv?.error === "phone_taken"
           ? "Этот номер уже используется другим аккаунтом."
           : sv?.error === "phone"
           ? "Проверьте номер телефона."

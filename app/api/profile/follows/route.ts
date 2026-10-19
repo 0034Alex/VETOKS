@@ -31,7 +31,15 @@ export async function POST(req: Request) {
       .in("id", ids);
     return (users ?? [])
       .filter((x: any) => !x.is_banned && (!regionIds.length || regionIds.includes(x.region_id)))
-      .map((x: any) => ({ href: `/u/${x.id}`, name: x.first_name || "Без имени", sub: x.nick ? `@${x.nick}` : "", photo: x.photo_url ?? null }));
+      .map((x: any) => ({ href: `/u/${x.id}`, name: x.first_name || "Без имени", sub: x.nick ? `@${x.nick}` : "", photo: x.photo_url ?? null, uid: x.id as string }));
+  };
+  // Кому из этого списка я уже подписан (для кнопки «Подписаться в ответ»).
+  const markMine = async (list: any[]) => {
+    const uids = list.map((x) => x.uid).filter(Boolean) as string[];
+    if (!uids.length) return list;
+    const { data: mine } = await supabaseAdmin.from("user_follows").select("followed_id").eq("follower_id", me).in("followed_id", uids);
+    const set = new Set((mine ?? []).map((r: any) => r.followed_id as string));
+    return list.map((x) => (x.uid ? { ...x, canFollow: x.uid !== me, iFollow: set.has(x.uid) } : x));
   };
 
   const { data: part } = await supabaseAdmin.from("participants").select("id").eq("user_id", target).maybeSingle();
@@ -44,7 +52,7 @@ export async function POST(req: Request) {
     }
     const { data: uf } = await supabaseAdmin.from("user_follows").select("follower_id").eq("followed_id", target).limit(300);
     ids = Array.from(new Set([...ids, ...(uf ?? []).map((r: any) => r.follower_id as string)]));
-    return NextResponse.json({ ok: true, items: await userItems(ids) });
+    return NextResponse.json({ ok: true, items: await markMine(await userItems(ids)) });
   }
 
   // Подписки: участницы (старый способ) и обычные люди.
@@ -58,6 +66,6 @@ export async function POST(req: Request) {
       .map((x: any) => ({ href: `/participant/${x.id}`, name: x.display_name, sub: "Участница", photo: x.photo_url ?? null }));
   }
   const { data: uf2 } = await supabaseAdmin.from("user_follows").select("followed_id").eq("follower_id", target).limit(300);
-  items = items.concat(await userItems((uf2 ?? []).map((r: any) => r.followed_id as string)));
+  items = items.concat(await markMine(await userItems((uf2 ?? []).map((r: any) => r.followed_id as string))));
   return NextResponse.json({ ok: true, items });
 }
