@@ -1,5 +1,6 @@
 "use client";
 
+import OtherCommentActions from "@/components/OtherCommentActions";
 import OwnTextActions from "@/components/OwnTextActions";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useRef, useState } from "react";
@@ -531,7 +532,20 @@ export default function PostFeedPage() {
                           <p className="text-offwhite text-sm leading-snug break-words">{c.body}</p>
                         </OwnTextActions>
                       ) : (
-                        <p className="text-offwhite text-sm leading-snug break-words">{c.body}</p>
+                        <>
+                          <p className="text-offwhite text-sm leading-snug break-words">{c.body}</p>
+                          <OtherCommentActions
+                            commentId={c.id}
+                            canDelete={!!meId && items?.find((x) => x.id === cOpen)?.ownerUserId === meId}
+                            loggedIn={!!meId}
+                            onDeleted={() => {
+                              if (cOpen) {
+                                setItems((prev) => prev && prev.map((x) => (x.id === cOpen ? { ...x, comments: Math.max(0, x.comments - 1) } : x)));
+                                openComments(cOpen);
+                              }
+                            }}
+                          />
+                        </>
                       )}
                     </div>
                   </div>

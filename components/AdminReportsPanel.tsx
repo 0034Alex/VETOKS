@@ -97,6 +97,59 @@ function DmReports() {
   );
 }
 
+type CItem = { comment_id: string; count: number; reasons: Record<string, number>; details: string[]; body: string; author: string };
+
+// Жалобы на комментарии
+function CommentReports() {
+  const [items, setItems] = useState<CItem[]>([]);
+  const [needSql, setNeedSql] = useState(false);
+
+  async function load() {
+    const r = await apiPost("/api/admin/comment-reports", { action: "list" });
+    setItems(r?.items ?? []);
+    setNeedSql(!!r?.needSql);
+  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function act(action: "keep" | "delete", commentId: string) {
+    if (action === "delete" && !confirm("Удалить комментарий?")) return;
+    await apiPost("/api/admin/comment-reports", { action, commentId });
+    await load();
+  }
+
+  if (needSql) return <p className="text-danger text-xs mb-6">Для жалоб на комментарии нужно выполнить SQL (он есть в сообщении).</p>;
+  if (items.length === 0) return null;
+  return (
+    <div className="max-w-lg flex flex-col gap-4 mb-8">
+      <p className="text-offwhite font-semibold">💬 Жалобы на комментарии</p>
+      {items.map((it) => (
+        <div key={it.comment_id} className="bg-bgSurface border border-muted rounded-xl p-3">
+          <p className="text-offwhite text-sm font-semibold">
+            {it.author} · жалоб: {it.count}
+          </p>
+          <p className="text-muted text-xs mb-2">
+            {(Object.entries(it.reasons) as [string, number][])
+              .map(([k, n]) => `${LABELS[k] ?? k}${n > 1 ? ` ×${n}` : ""}`)
+              .join(", ")}
+            {it.details.length ? ` · «${it.details.slice(0, 3).join("», «")}»` : ""}
+          </p>
+          <p className="bg-bgPrimary rounded-lg p-2 mb-2 text-offwhite text-sm">{it.body}</p>
+          <div className="flex gap-2">
+            <button onClick={() => act("keep", it.comment_id)} className="flex-1 border border-muted text-offwhite rounded-full py-2 text-sm">
+              Оставить
+            </button>
+            <button onClick={() => act("delete", it.comment_id)} className="flex-1 bg-danger text-white rounded-full py-2 text-sm">
+              Удалить
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // CRM → «Жалобы»
 export default function AdminReportsPanel() {
   const [items, setItems] = useState<Item[]>([]);
@@ -124,6 +177,7 @@ export default function AdminReportsPanel() {
     return (
       <>
         <DmReports />
+        <CommentReports />
         <p className="text-muted text-sm">Новых жалоб на ролики нет 🎉</p>
       </>
     );
@@ -131,6 +185,7 @@ export default function AdminReportsPanel() {
   return (
     <>
     <DmReports />
+    <CommentReports />
     <div className="max-w-lg flex flex-col gap-4">
       {items.map((it) => (
         <div key={it.post_id} className="bg-bgSurface border border-muted rounded-xl p-3">

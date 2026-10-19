@@ -1,5 +1,6 @@
 "use client";
 
+import OtherCommentActions from "@/components/OtherCommentActions";
 import OwnTextActions from "@/components/OwnTextActions";
 import { apiPost } from "@/lib/authClient";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -321,7 +322,20 @@ export default function ParticipantPhotosPage() {
                       <span className="text-offwhite">{c.body}</span>
                     </OwnTextActions>
                   ) : (
-                    <span className="text-offwhite">{c.body}</span>
+                    <>
+                      <span className="text-offwhite">{c.body}</span>
+                      <OtherCommentActions
+                        commentId={c.id}
+                        canDelete={!!me && ownerUserId === me.id}
+                        loggedIn={!!me}
+                        onDeleted={() => {
+                          if (openComments) {
+                            setCommentCounts((prev) => ({ ...prev, [openComments]: Math.max(0, (prev[openComments] ?? 1) - 1) }));
+                            openCommentsFor(openComments);
+                          }
+                        }}
+                      />
+                    </>
                   )}
                 </div>
               ))}

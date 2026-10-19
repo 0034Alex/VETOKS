@@ -6,7 +6,8 @@ import { apiPost } from "@/lib/authClient";
 export type ReportTarget =
   | { type: "post"; postId: string }
   | { type: "dm"; userId: string }
-  | { type: "clan"; messageId: string };
+  | { type: "clan"; messageId: string }
+  | { type: "comment"; commentId: string };
 
 // Причины жалоб: одинаковые по всему приложению.
 export const REPORT_REASONS: { key: string; title: string; hint: string }[] = [
@@ -27,6 +28,7 @@ const TITLES: Record<ReportTarget["type"], string> = {
   post: "Пожаловаться на публикацию",
   dm: "Пожаловаться на переписку",
   clan: "Пожаловаться на сообщение",
+  comment: "Пожаловаться на комментарий",
 };
 
 // Окно жалобы: сначала выбираешь причину, потом по желанию описываешь своими словами.
@@ -63,6 +65,8 @@ export default function ReportSheet({ open, onClose, target }: { open: boolean; 
         ? await apiPost("/api/reports/create", { postId: target.postId, ...body })
         : target.type === "dm"
         ? await apiPost("/api/dm/action", { action: "report", userId: target.userId, ...body })
+        : target.type === "comment"
+        ? await apiPost("/api/comments/report", { commentId: target.commentId, ...body })
         : await apiPost("/api/clan/report", { messageId: target.messageId, ...body });
     setSending(false);
     if (r?.ok) setStep("done");

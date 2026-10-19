@@ -1,5 +1,6 @@
 "use client";
 
+import OtherCommentActions from "@/components/OtherCommentActions";
 import OwnTextActions from "@/components/OwnTextActions";
 import { apiPost } from "@/lib/authClient";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -26,7 +27,7 @@ type Post = {
   video_url: string;
   caption: string | null;
   participant_id: string;
-  participants: { display_name: string; photo_url: string | null; region_id: string | null; season_id: string | null } | null;
+  participants: { display_name: string; photo_url: string | null; region_id: string | null; season_id: string | null; user_id?: string | null } | null;
 };
 
 type Comment = {
@@ -89,7 +90,7 @@ export default function MediaPage() {
       const { data } = await supabase
         .from("content_posts")
         .select(
-          "id, video_url, caption, participant_id, participants(display_name, photo_url, region_id, season_id)"
+          "id, video_url, caption, participant_id, participants(display_name, photo_url, region_id, season_id, user_id)"
         )
         .eq("visibility", "all")
         .not("video_url", "is", null)
@@ -462,7 +463,20 @@ export default function MediaPage() {
                       <span className="text-offwhite">{c.body}</span>
                     </OwnTextActions>
                   ) : (
-                    <span className="text-offwhite">{c.body}</span>
+                    <>
+                      <span className="text-offwhite">{c.body}</span>
+                      <OtherCommentActions
+                        commentId={c.id}
+                        canDelete={!!me && allPosts.find((x) => x.id === openComments)?.participants?.user_id === me.id}
+                        loggedIn={!!me}
+                        onDeleted={() => {
+                          if (openComments) {
+                            setCommentCounts((prev) => ({ ...prev, [openComments]: Math.max(0, (prev[openComments] ?? 1) - 1) }));
+                            openCommentsFor(openComments);
+                          }
+                        }}
+                      />
+                    </>
                   )}
                 </div>
               ))}
