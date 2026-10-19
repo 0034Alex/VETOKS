@@ -9,6 +9,7 @@ import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import { apiPost } from "@/lib/authClient";
 import ReportSheet from "@/components/ReportSheet";
+import OwnTextActions from "@/components/OwnTextActions";
 
 type Message = {
   id: string;
@@ -168,7 +169,13 @@ export default function RegionClanPage() {
                     {senderName ?? "Гость"}
                   </button>
                 )}
-                {m.body}
+                {isMine ? (
+                  <OwnTextActions api="/api/clan/manage" id={m.id} body={m.body} light onDone={() => me.region_id && load(me.region_id)}>
+                    {m.body}
+                  </OwnTextActions>
+                ) : (
+                  m.body
+                )}
                 {!isMine && (
                   <button
                     onClick={() => report(m.id)}

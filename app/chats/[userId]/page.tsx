@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import SharedPost from "@/components/SharedPost";
+import OwnTextActions from "@/components/OwnTextActions";
 import ReportSheet from "@/components/ReportSheet";
 import { apiPost } from "@/lib/authClient";
 import { chatGiftEmoji } from "@/lib/chatGifts";
@@ -270,7 +271,19 @@ export default function ChatPage() {
                   mine ? "bg-gold text-bgPrimary" : "bg-bgSurface text-offwhite border border-muted"
                 }`}
               >
-                {m.kind === "gift" ? <span className="text-lg">{m.body}</span> : m.kind === "post" && m.meta?.postId ? <SharedPost postId={String(m.meta.postId)} /> : m.body}
+                {m.kind === "gift" ? (
+                  <span className="text-lg">{m.body}</span>
+                ) : m.kind === "post" && m.meta?.postId ? (
+                  <SharedPost postId={String(m.meta.postId)} />
+                ) : m.meta?.deleted ? (
+                  <span className="italic opacity-60">{m.body}</span>
+                ) : mine && (!m.kind || m.kind === "text") ? (
+                  <OwnTextActions api="/api/dm/manage" id={m.id} body={m.body} light onDone={() => load()}>
+                    {m.body}
+                  </OwnTextActions>
+                ) : (
+                  m.body
+                )}
                 <span className={`block text-[10px] mt-0.5 ${mine ? "text-bgPrimary/60" : "text-muted"}`}>
                   {new Date(m.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
                 </span>

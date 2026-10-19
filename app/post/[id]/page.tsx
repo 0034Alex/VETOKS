@@ -1,5 +1,6 @@
 "use client";
 
+import OwnTextActions from "@/components/OwnTextActions";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -37,7 +38,7 @@ type P = {
 };
 
 type CU = { first_name: string | null; photo_url: string | null; nick: string | null };
-type Cm = { id: string; body: string; created_at: string; users: CU | CU[] | null };
+type Cm = { id: string; user_id?: string; body: string; created_at: string; users: CU | CU[] | null };
 const cu = (c: Cm): CU | null => (Array.isArray(c.users) ? c.users[0] ?? null : c.users);
 const EMOJIS = ["❤️", "🙌", "🔥", "👏", "😢", "😍", "😮", "😂"];
 function ago(s: string) {
@@ -263,7 +264,7 @@ export default function PostFeedPage() {
     setCOpen(id);
     const { data } = await supabase
       .from("media_comments")
-      .select("id, body, created_at, users(first_name, photo_url, nick)")
+      .select("id, user_id, body, created_at, users(first_name, photo_url, nick)")
       .eq("post_id", id)
       .order("created_at", { ascending: true });
     setCList((data as unknown as Cm[]) ?? []);
@@ -515,7 +516,23 @@ export default function PostFeedPage() {
                         <b className="mr-1.5">{nm}</b>
                         <span className="text-muted text-xs">{ago(c.created_at)}</span>
                       </p>
-                      <p className="text-offwhite text-sm leading-snug break-words">{c.body}</p>
+                      {meId && c.user_id === meId ? (
+                        <OwnTextActions
+                          api="/api/comments/manage"
+                          id={c.id}
+                          body={c.body}
+                          onDone={(k) => {
+                            if (cOpen) {
+                              if (k === "delete") setItems((prev) => prev && prev.map((x) => (x.id === cOpen ? { ...x, comments: Math.max(0, x.comments - 1) } : x)));
+                              openComments(cOpen);
+                            }
+                          }}
+                        >
+                          <p className="text-offwhite text-sm leading-snug break-words">{c.body}</p>
+                        </OwnTextActions>
+                      ) : (
+                        <p className="text-offwhite text-sm leading-snug break-words">{c.body}</p>
+                      )}
                     </div>
                   </div>
                 );

@@ -1,5 +1,6 @@
 "use client";
 
+import OwnTextActions from "@/components/OwnTextActions";
 import { apiPost } from "@/lib/authClient";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useRef, useState } from "react";
@@ -30,6 +31,7 @@ type Post = {
 
 type Comment = {
   id: string;
+  user_id?: string;
   body: string;
   created_at: string;
   users: { first_name: string } | null;
@@ -220,7 +222,7 @@ export default function MediaPage() {
     setOpenComments(postId);
     const { data } = await supabase
       .from("media_comments")
-      .select("id, body, created_at, users(first_name)")
+      .select("id, user_id, body, created_at, users(first_name)")
       .eq("post_id", postId)
       .order("created_at", { ascending: true });
     setComments((data as unknown as Comment[]) ?? []);
@@ -447,7 +449,21 @@ export default function MediaPage() {
                   <span className="text-gold font-semibold">
                     {c.users?.first_name ?? "Гость"}:{" "}
                   </span>
-                  <span className="text-offwhite">{c.body}</span>
+                  {me && c.user_id === me.id ? (
+                    <OwnTextActions
+                      api="/api/comments/manage"
+                      id={c.id}
+                      body={c.body}
+                      onDone={(k) => {
+                        if (k === "delete" && openComments) setCommentCounts((prev) => ({ ...prev, [openComments]: Math.max(0, (prev[openComments] ?? 1) - 1) }));
+                        if (openComments) openCommentsFor(openComments);
+                      }}
+                    >
+                      <span className="text-offwhite">{c.body}</span>
+                    </OwnTextActions>
+                  ) : (
+                    <span className="text-offwhite">{c.body}</span>
+                  )}
                 </div>
               ))}
             </div>
