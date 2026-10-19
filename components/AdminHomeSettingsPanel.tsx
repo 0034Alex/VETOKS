@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getCrmCountry, crmCur } from "@/lib/crmCountry";
 import { loadScoped, scopedKey } from "@/lib/scopedSettings";
+import { apiPost } from "@/lib/authClient";
 
-const KEYS = ["publishing_enabled", "strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text", "fanzone_enabled", "fanzone_min_amount", "media_season_id"];
+const KEYS = ["publishing_enabled", "strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text", "fanzone_enabled", "fanzone_min_amount", "media_season_id", "survey_question"];
 
 type SeasonOpt = { id: string; title: string };
 
@@ -15,6 +16,12 @@ export default function AdminHomeSettingsPanel() {
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [seasons, setSeasons] = useState<SeasonOpt[]>([]);
+  const [answers, setAnswers] = useState<{ question: string; total: number; items: { name: string; answer: string; at: string }[] } | null>(null);
+
+  async function loadAnswers() {
+    const r = await apiPost("/api/admin/survey", { countryId: getCrmCountry() || undefined });
+    setAnswers(r?.ok ? { question: r.question, total: r.total, items: r.items } : { question: "", total: 0, items: [] });
+  }
 
   useEffect(() => {
     (async () => {
@@ -123,6 +130,45 @@ export default function AdminHomeSettingsPanel() {
         <p className="text-muted text-xs mt-1">
           В «Медиа» видны только ролики участниц этого шоу. Старые фото и видео остаются на страницах участниц. Выбранный сезон действует только для своей страны, остальные страны используют свой самый свежий сезон. Когда начнётся новое шоу, выберите его здесь (или оставьте «Автоматически»).
         </p>
+      </div>
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
+        <p className="text-offwhite font-semibold text-sm mb-2">📋 Опрос на главной</p>
+        <input
+          value={v.survey_question ?? ""}
+          onChange={(e) => set("survey_question", e.target.value)}
+          maxLength={200}
+          placeholder="Например: Какой конкурс вам интереснее всего?"
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+        />
+        <p className="text-muted text-xs mt-1">
+          Вопрос показывается на главной в блоке «ОПРОС»: человек пишет ответ своими словами, один ответ на вопрос. Пусто — опроса на главной нет. Новый вопрос начинает новый опрос, старые ответы сохраняются. Не забудьте нажать «Сохранить» внизу.
+        </p>
+        <button onClick={loadAnswers} className="mt-3 border border-gold text-gold rounded-lg px-4 py-2 text-sm">
+          {answers ? "Обновить ответы" : "Показать ответы"}
+        </button>
+        {answers && (
+          <div className="mt-3 flex flex-col gap-2">
+            {!answers.question ? (
+              <p className="text-muted text-xs">Вопрос сейчас не задан (или не сохранён).</p>
+            ) : (
+              <>
+                <p className="text-offwhite text-xs">
+                  Вопрос: «{answers.question}». Ответов: <b>{answers.total}</b>
+                </p>
+                {answers.items.length === 0 && <p className="text-muted text-xs">Пока никто не ответил.</p>}
+                {answers.items.map((a, i) => (
+                  <div key={i} className="bg-bgPrimary border border-muted/50 rounded-lg px-3 py-2">
+                    <p className="text-offwhite text-sm">{a.answer}</p>
+                    <p className="text-muted text-[11px] mt-0.5">
+                      {a.name} · {new Date(a.at).toLocaleString("ru-RU")}
+                    </p>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <button onClick={save} className="bg-gold text-bgPrimary font-semibold py-2.5 rounded-full text-sm">

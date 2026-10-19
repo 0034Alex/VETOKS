@@ -17,6 +17,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import EntryPopup from "@/components/EntryPopup";
 import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { loadScoped } from "@/lib/scopedSettings";
+import { apiPost } from "@/lib/authClient";
 
 // Настоящий 3D-переворот страниц — библиотека работает только в браузере,
 // поэтому подключаем её динамически, без серверной отрисовки.
@@ -625,18 +626,11 @@ function Survey() {
 
   useEffect(() => {
     (async () => {
-      const sq = await loadScoped(["survey_question"], (await getMyCountry()).countryId);
-      const data = sq.survey_question ? { value: sq.survey_question } : null;
-      setQuestion(data?.value ?? "");
       const u = await getCurrentUser();
-      if (u && data?.value) {
-        const { data: prev } = await supabase
-          .from("survey_answers")
-          .select("id")
-          .eq("user_id", u.id)
-          .eq("question", data.value)
-          .limit(1);
-        if (prev && prev.length > 0) setSent(true);
+      if (u) {
+        const r = await apiPost("/api/survey", {});
+        setQuestion(r?.question ?? "");
+        if (r?.answered) setSent(true);
       }
       setLoading(false);
     })();
@@ -644,24 +638,9 @@ function Survey() {
 
   async function submit() {
     if (!answer.trim()) return;
-    const u = await getCurrentUser();
-    if (!u) return;
-    const { data: already } = await supabase
-      .from("survey_answers")
-      .select("id")
-      .eq("user_id", u.id)
-      .eq("question", question)
-      .limit(1);
-    if (already && already.length > 0) {
-      setSent(true);
-      return;
-    }
-    await supabase.from("survey_answers").insert({
-      user_id: u.id,
-      question,
-      answer,
-    });
-    setSent(true);
+    const r = await apiPost("/api/survey", { action: "answer", answer });
+    if (r?.ok) setSent(true);
+    else alert("Не получилось отправить. Попробуйте ещё раз.");
   }
 
   if (loading || !question) return null;
