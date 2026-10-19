@@ -1,5 +1,6 @@
 "use client";
 
+import AdminStorageCleanup from "@/components/AdminStorageCleanup";
 import { useCallback, useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
 
@@ -12,6 +13,7 @@ const KINDS: Record<string, string> = {
   webhook_bad_secret: "Поддельный запрос к боту",
   bad_upload_url: "Подозрительная ссылка на файл",
   client_error: "Ошибка в приложении у человека",
+  bad_upload_file: "Загрузили файл, который не фото и не видео",
   server_error: "Ошибка на сервере",
 };
 
@@ -272,6 +274,7 @@ export default function AdminSecurityPanel() {
           </div>
         ))}
       </section>
+      <AdminStorageCleanup />
     </div>
   );
 }

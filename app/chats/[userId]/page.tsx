@@ -1,5 +1,6 @@
 "use client";
 
+import PresenceLine from "@/components/PresenceLine";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -181,7 +182,10 @@ export default function ChatPage() {
           >
             {!photo && (name || "?").slice(0, 1).toUpperCase()}
           </div>
-          <p className="text-offwhite font-semibold flex-1 truncate">{name}</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-offwhite font-semibold truncate">{name}</p>
+            <PresenceLine userId={other} />
+          </div>
         </button>
         <button onClick={() => setMenu((v) => !v)} className="text-offwhite text-2xl leading-none px-2">⋯</button>
         {menu && (
@@ -280,9 +284,13 @@ export default function ChatPage() {
                 ) : mine && (!m.kind || m.kind === "text") ? (
                   <OwnTextActions api="/api/dm/manage" id={m.id} body={m.body} light onDone={() => load()}>
                     {m.body}
+                    {m.meta?.edited && <span className="opacity-60 text-[10px] ml-1">изменено</span>}
                   </OwnTextActions>
                 ) : (
-                  m.body
+                  <>
+                    {m.body}
+                    {m.meta?.edited && <span className="opacity-60 text-[10px] ml-1">изменено</span>}
+                  </>
                 )}
                 <span className={`block text-[10px] mt-0.5 ${mine ? "text-bgPrimary/60" : "text-muted"}`}>
                   {new Date(m.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}

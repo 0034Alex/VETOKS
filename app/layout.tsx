@@ -10,6 +10,7 @@ import AutoTranslate from "@/components/AutoTranslate";
 import ChunkReload from "@/components/ChunkReload";
 import ScrollGuard from "@/components/ScrollGuard";
 import ErrorReporter from "@/components/ErrorReporter";
+import PresenceBeat from "@/components/PresenceBeat";
 
 export const metadata: Metadata = {
   title: "VETOKS",
@@ -55,6 +56,7 @@ export default function RootLayout({
         <ChunkReload />
         <ScrollGuard />
         <ErrorReporter />
+        <PresenceBeat />
       </LangProvider>
       </body>
     </html>

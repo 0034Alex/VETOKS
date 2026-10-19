@@ -1,5 +1,6 @@
 "use client";
 
+import PresenceLine from "@/components/PresenceLine";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -110,6 +111,8 @@ type Props = {
   topRight: ReactNode;
   belowCrown?: ReactNode;
   verified?: boolean;
+  /** Показать «в сети» / «был(а) недавно» для этого человека. */
+  presenceUserId?: string;
   statusTone?: StatusTone;
   statusTalent?: boolean;
   badges?: { icon: string; label: string; hint: string }[];
@@ -156,6 +159,7 @@ export default function ProfileHero({
   topRight,
   belowCrown,
   verified = false,
+  presenceUserId,
   statusTone = "base",
   statusTalent = false,
   badges = [],
@@ -248,6 +252,7 @@ export default function ProfileHero({
             <span>{name}</span>
             {verified && VerifiedMark}
           </h1>
+          {presenceUserId && <PresenceLine userId={presenceUserId} className="mt-2" />}
           {handle && <p className="mt-3 text-[15px] text-[#c9c9ce]">{handle}</p>}
           {city && (
             <p className="mt-4 flex items-center gap-2 text-sm text-muted">

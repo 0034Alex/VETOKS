@@ -11,6 +11,7 @@ export const SECURITY_TITLES: Record<string, string> = {
   webhook_bad_secret: "Поддельный запрос к Telegram-боту",
   bad_upload_url: "Подозрительная ссылка на файл",
   client_error: "Ошибка в приложении у человека",
+  bad_upload_file: "Загрузили файл, который не фото и не видео",
   server_error: "Ошибка на сервере",
 };
 

@@ -78,6 +78,12 @@ export default function ApplyPage() {
         .from("participant-photos")
         .getPublicUrl(filePath);
       photoUrl = publicUrlData.publicUrl;
+      const chk = await apiPost("/api/upload/verify", { url: photoUrl, want: "image" });
+      if (!chk?.ok) {
+        setStatus("error");
+        setErrorMessage("Этот файл не похож на фото. Загрузите JPG, PNG или WebP.");
+        return;
+      }
     }
 
     // Один общий национальный сезон — идёт одновременно во всех регионах,

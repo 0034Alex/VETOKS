@@ -1,3 +1,4 @@
+import { verifyStoredFile } from "@/lib/fileCheck";
 import { hasBadWords } from "@/lib/badWords";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
     // Только наши картинки из хранилища.
     const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
     if (!base || !b.photo_url.startsWith(`${base}/storage/v1/object/public/`)) return bad("photo");
+    if (!(await verifyStoredFile(b.photo_url, "image"))) return bad("bad_file");
     patch.photo_url = b.photo_url.slice(0, 500);
   }
 
@@ -69,6 +71,7 @@ export async function POST(req: Request) {
     if (typeof pp.photo_url === "string") {
       const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
       if (!base || !pp.photo_url.startsWith(`${base}/storage/v1/object/public/`)) return bad("photo");
+      if (!(await verifyStoredFile(pp.photo_url, "image"))) return bad("bad_file");
       pPatch.photo_url = pp.photo_url.slice(0, 500);
     }
     if (Object.keys(pPatch).length) {

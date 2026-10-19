@@ -463,6 +463,7 @@ export default function ParticipantProfilePage() {
           onShare={share}
           hideShare
           verified={owner?.verified ?? false}
+          presenceUserId={participant.user_id}
           topRight={
             <>
               <TopBtn onClick={() => router.back()} label="Назад">

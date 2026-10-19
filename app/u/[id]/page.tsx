@@ -100,6 +100,7 @@ export default function PublicUserPage() {
           city={d.official ? "Официальная страница VETOKS" : d.city}
           bio={d.bio}
           verified={d.verified}
+          presenceUserId={id}
           socials={d.socials}
           stats={[
             { value: d.posts, label: "Публикации" },

@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     const { data: th } = await supabaseAdmin.from("dm_threads").select("accepted").eq("id", threadId).maybeSingle();
     if (!(th as any)?.accepted && CONTACT_RE.test(text)) return bad("no_contacts_in_request");
     newBody = text;
-    const { error } = await supabaseAdmin.from("dm_messages").update({ body: newBody }).eq("id", id);
+    const { error } = await supabaseAdmin.from("dm_messages").update({ body: newBody, meta: { edited: true } }).eq("id", id);
     if (error) return bad("failed", 500);
   } else {
     return bad("bad_action");

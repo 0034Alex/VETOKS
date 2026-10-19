@@ -2,6 +2,22 @@
 
 // Защитные заголовки для всех страниц.
 // frame-ancestors: сайт можно встраивать только в Telegram (мини-приложение), чужим сайтам нельзя.
+// Откуда странице разрешено грузить скрипты, картинки и куда ходить за данными.
+// Всё остальное браузер блокирует: чужой скрипт не запустится и данные на чужой сайт не уйдут.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://telegram.org https://challenges.cloudflare.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://video.bunnycdn.com https://*.b-cdn.net https://challenges.cloudflare.com https://telegram.org",
+  "frame-src https://challenges.cloudflare.com",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "",
+].join("; ");
+
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -11,7 +27,7 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
   {
     key: "Content-Security-Policy",
-    value: "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://webz.telegram.org https://telegram.org; base-uri 'self'; object-src 'none'; form-action 'self'",
+    value: CSP + "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://webz.telegram.org https://telegram.org; base-uri 'self'; object-src 'none'; form-action 'self'",
   },
 ];
 

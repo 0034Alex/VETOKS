@@ -1,3 +1,4 @@
+import { verifyStoredFile } from "@/lib/fileCheck";
 import { hasBadWords } from "@/lib/badWords";
 import { checkImageNsfw } from "@/lib/nsfw";
 import { NextResponse } from "next/server";
@@ -88,6 +89,10 @@ export async function POST(req: Request) {
       if (!okBucket || !fname.startsWith(`${uid}-`)) {
         await logSecurity("bad_upload_url", { url: url.slice(0, 120) }, { req, userId: uid });
         return bad("bad_url");
+      }
+      if (!(await verifyStoredFile(url, kind === "video" ? "video" : "image"))) {
+        await logSecurity("bad_upload_file", { bucket, name: fname.slice(0, 80) }, { req, userId: uid });
+        return bad("bad_file");
       }
       items.push({ kind, url });
     }
