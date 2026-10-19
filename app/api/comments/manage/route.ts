@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     const text = String(b.text ?? "").replace(/\s+/g, " ").trim().slice(0, 500);
     if (!text) return bad("empty");
     if (hasBadWords(text)) return bad("bad_words", 400, { message: BAD_WORDS_MESSAGE });
-    const { error } = await supabaseAdmin.from("media_comments").update({ body: text }).eq("id", id);
+    const { error } = await supabaseAdmin.from("media_comments").update({ body: text, edited_at: new Date().toISOString() }).eq("id", id);
     if (error) return bad("failed", 500);
     return NextResponse.json({ ok: true });
   }

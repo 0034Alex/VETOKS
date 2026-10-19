@@ -27,5 +27,22 @@ export async function POST(req: Request) {
     .from("comment_reports")
     .insert({ comment_id: commentId, reporter_id: uid, reason, details });
   if (error && !String(error.message).includes("duplicate")) return bad("failed", 500);
+
+  // 3 разных человека пожаловались — комментарий удаляется сам (как посты), жалобы закрываются.
+  const { data: open } = await supabaseAdmin.from("comment_reports").select("reporter_id").eq("comment_id", commentId).eq("status", "open");
+  const distinct = new Set(((open ?? []) as any[]).map((r) => r.reporter_id));
+  if (distinct.size >= 3) {
+    await supabaseAdmin.from("media_comments").delete().eq("id", commentId);
+    await supabaseAdmin
+      .from("comment_reports")
+      .update({ status: "deleted", resolved_at: new Date().toISOString() })
+      .eq("comment_id", commentId)
+      .eq("status", "open");
+    await supabaseAdmin.from("notifications").insert({
+      user_id: (c as any).user_id,
+      message: "Ваш комментарий удалён: на него пришло несколько жалоб.",
+    });
+    return NextResponse.json({ ok: true, removed: true });
+  }
   return NextResponse.json({ ok: true });
 }

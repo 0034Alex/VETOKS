@@ -35,7 +35,7 @@ export default function RegionClanPage() {
   async function load(regionId: string) {
     const { data } = await supabase
       .from("region_clan_messages")
-      .select("id, user_id, body, created_at, users(first_name)")
+      .select("id, user_id, body, created_at, edited_at, users(first_name)")
       .eq("region_id", regionId)
       .eq("is_hidden", false)
       .order("created_at", { ascending: true })
@@ -172,6 +172,7 @@ export default function RegionClanPage() {
                 {isMine ? (
                   <OwnTextActions api="/api/clan/manage" id={m.id} body={m.body} light onDone={() => me.region_id && load(me.region_id)}>
                     {m.body}
+                    {(m as any).edited_at && <span className="opacity-60 text-[10px] ml-1">изменено</span>}
                   </OwnTextActions>
                 ) : (
                   m.body

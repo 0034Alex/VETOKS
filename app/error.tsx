@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { sendClientError } from "@/lib/errorReport";
 
 // Если страница упала — показываем причину текстом (её можно сфотографировать) и даём выйти из зависшей сессии.
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
@@ -15,6 +16,9 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
           window.location.reload();
         }
       } catch {}
+    }
+    if (!/ChunkLoadError|Loading chunk|Failed to fetch dynamically imported/i.test(String(error?.message))) {
+      sendClientError(`Страница упала: ${error?.message ?? ""}`, { stack: error?.stack, where: window.location.pathname });
     }
     setInfo(`${error?.name ?? "Error"}: ${error?.message ?? ""}\n${window.location.pathname}`);
   }, [error]);

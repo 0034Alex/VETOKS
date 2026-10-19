@@ -1,8 +1,9 @@
 "use client";
 
+import ConsentLinks from "@/components/ConsentLinks";
+import { apiPost } from "@/lib/authClient";
 import { cleanImage } from "@/lib/imageClean";
 import { useState } from "react";
-import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
@@ -117,6 +118,7 @@ export default function ApplyPage() {
       setStatus("error");
       setErrorMessage(error.message);
     } else {
+      await apiPost("/api/consent/record", { place: "apply" });
       setStatus("success");
     }
   }
@@ -223,12 +225,7 @@ export default function ApplyPage() {
             />
             <span>
               Я принимаю{" "}
-              <Link
-                href="/legal/participation"
-                className="text-gold underline"
-              >
-                соглашение об участии и лицензию на контент
-              </Link>
+              <ConsentLinks place="apply" fallbackHref="/legal/participation" fallbackText="соглашение об участии и лицензию на контент" />
             </span>
           </label>
 

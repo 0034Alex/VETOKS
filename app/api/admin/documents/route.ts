@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   if (a === "list") {
     const { data } = await supabaseAdmin
       .from("documents")
-      .select("id, title, content, audience, is_active, version, updated_at, sort_order")
+      .select("id, title, content, audience, is_active, version, updated_at, sort_order, show_at")
       .order("sort_order", { ascending: true });
     return NextResponse.json({ ok: true, docs: data ?? [] });
   }
@@ -83,6 +83,14 @@ export async function POST(req: Request) {
       .update({ title, content, version: ver + 1, updated_at: new Date().toISOString() })
       .eq("id", id);
     await logAction(uid, a === "restore" ? "doc_restore" : "doc_edit", null, { document: id, from_version: ver });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (a === "show_at") {
+    const v = ["register", "apply", "both"].includes(body.value) ? body.value : "";
+    const { error } = await supabaseAdmin.from("documents").update({ show_at: v }).eq("id", id);
+    if (error) return NextResponse.json({ ok: false, error: "need_sql" }, { status: 500 });
+    await logAction(uid, "doc_show_at", null, { document: id, value: v });
     return NextResponse.json({ ok: true });
   }
 

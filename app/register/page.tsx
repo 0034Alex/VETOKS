@@ -1,5 +1,6 @@
 "use client";
 
+import ConsentLinks from "@/components/ConsentLinks";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -72,7 +73,7 @@ function RegisterForm() {
   function validateCommon(): string {
     if (!firstName.trim()) return "Введите имя.";
     if (!regionId) return "Выберите регион.";
-    if (!agreed) return "Нужно принять пользовательское соглашение и публичную оферту.";
+    if (!agreed) return "Нужно принять условия и документы под галочкой.";
     return "";
   }
 
@@ -185,9 +186,7 @@ function RegisterForm() {
       />
       <span>
         Я принимаю{" "}
-        <Link href="/legal/offer" className="text-gold underline">
-          пользовательское соглашение и публичную оферту
-        </Link>
+        <ConsentLinks place="register" fallbackHref="/legal/offer" fallbackText="пользовательское соглашение и публичную оферту" />
       </span>
     </label>
   );

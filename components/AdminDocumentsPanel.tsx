@@ -109,6 +109,17 @@ export default function AdminDocumentsPanel() {
                   <button onClick={() => act({ action: "toggle", id: d.id, active: !d.is_active })} className={`text-xs px-3 py-1 rounded-full ${d.is_active ? "bg-success text-bgPrimary" : "bg-bgPrimary border border-muted text-muted"}`}>
                     {d.is_active ? "Активен" : "Выключен"}
                   </button>
+                  <select
+                    value={(d as any).show_at ?? ""}
+                    onChange={(e) => act({ action: "show_at", id: d.id, value: e.target.value })}
+                    className="text-xs px-2 py-1 rounded-full bg-bgPrimary border border-gold text-offwhite"
+                    title="Где показывать этот документ рядом с галочкой согласия"
+                  >
+                    <option value="">Не показывать при входе</option>
+                    <option value="register">При регистрации</option>
+                    <option value="apply">При подаче анкеты</option>
+                    <option value="both">В обоих местах</option>
+                  </select>
                   <button onClick={() => confirm("Удалить документ вместе с историей?") && act({ action: "delete", id: d.id })} className="text-xs px-3 py-1 rounded-full bg-danger text-bgPrimary">Удалить</button>
                 </div>
               </>

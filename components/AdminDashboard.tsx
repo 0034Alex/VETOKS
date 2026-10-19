@@ -21,6 +21,7 @@ export default function AdminDashboard({ onGo }: { onGo: (tab: string) => void }
   const [stats, setStats] = useState<Stats>({});
   const [att, setAtt] = useState<Record<string, number>>({});
   const [pwa, setPwa] = useState(0);
+  const [pwa7, setPwa7] = useState(0);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(false);
 
@@ -41,6 +42,7 @@ export default function AdminDashboard({ onGo }: { onGo: (tab: string) => void }
         setStats(r.stats ?? {});
         setAtt(r.attention ?? {});
         setPwa(r.pwa ?? 0);
+        setPwa7(r.pwa7 ?? 0);
       }
       setLoading(false);
     })();
@@ -70,6 +72,7 @@ export default function AdminDashboard({ onGo }: { onGo: (tab: string) => void }
     ["Начислено участницам", money("to_participants")],
     ["Выплачено за задания", money("tasks_paid")],
     ["Установок PWA (всего)", String(pwa)],
+    ["Открывали PWA за 7 дней", String(pwa7)],
   ];
 
   return (

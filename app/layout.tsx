@@ -9,6 +9,7 @@ import { LangProvider } from "@/lib/i18n";
 import AutoTranslate from "@/components/AutoTranslate";
 import ChunkReload from "@/components/ChunkReload";
 import ScrollGuard from "@/components/ScrollGuard";
+import ErrorReporter from "@/components/ErrorReporter";
 
 export const metadata: Metadata = {
   title: "VETOKS",
@@ -53,6 +54,7 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         <ChunkReload />
         <ScrollGuard />
+        <ErrorReporter />
       </LangProvider>
       </body>
     </html>

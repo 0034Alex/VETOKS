@@ -4,6 +4,7 @@ import { rateLimit } from "@/lib/rateLimit";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { recordActivity } from "@/lib/security";
 import { autoFollowOfficial } from "@/lib/officialFollow";
+import { recordConsents } from "@/lib/consents";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "save", message: "Не удалось сохранить анкету. Попробуйте ещё раз." }, { status: 500 });
   }
   await autoFollowOfficial(created.user.id, regionId);
+  await recordConsents(created.user.id, "register");
   await recordActivity(req, created.user.id, "register");
   return NextResponse.json({ ok: true });
 }

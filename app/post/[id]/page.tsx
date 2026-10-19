@@ -265,7 +265,7 @@ export default function PostFeedPage() {
     setCOpen(id);
     const { data } = await supabase
       .from("media_comments")
-      .select("id, user_id, body, created_at, users(first_name, photo_url, nick)")
+      .select("id, user_id, body, created_at, edited_at, users(first_name, photo_url, nick)")
       .eq("post_id", id)
       .order("created_at", { ascending: true });
     setCList((data as unknown as Cm[]) ?? []);
@@ -529,11 +529,11 @@ export default function PostFeedPage() {
                             }
                           }}
                         >
-                          <p className="text-offwhite text-sm leading-snug break-words">{c.body}</p>
+                          <p className="text-offwhite text-sm leading-snug break-words">{c.body}{(c as any).edited_at && <span className="text-muted text-[10px] ml-1">изменено</span>}</p>
                         </OwnTextActions>
                       ) : (
                         <>
-                          <p className="text-offwhite text-sm leading-snug break-words">{c.body}</p>
+                          <p className="text-offwhite text-sm leading-snug break-words">{c.body}{(c as any).edited_at && <span className="text-muted text-[10px] ml-1">изменено</span>}</p>
                           <OtherCommentActions
                             commentId={c.id}
                             canDelete={!!meId && items?.find((x) => x.id === cOpen)?.ownerUserId === meId}

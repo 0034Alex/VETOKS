@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     if (hasBadWords(text)) return bad("bad_words");
     const { data: u } = await supabaseAdmin.from("users").select("clan_muted_until").eq("id", uid).maybeSingle();
     if ((u as any)?.clan_muted_until && new Date((u as any).clan_muted_until) > new Date()) return bad("muted", 403);
-    const { error } = await supabaseAdmin.from("region_clan_messages").update({ body: text }).eq("id", id);
+    const { error } = await supabaseAdmin.from("region_clan_messages").update({ body: text, edited_at: new Date().toISOString() }).eq("id", id);
     if (error) return bad("failed", 500);
     return NextResponse.json({ ok: true });
   }

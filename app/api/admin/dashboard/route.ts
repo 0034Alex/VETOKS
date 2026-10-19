@@ -53,5 +53,7 @@ export async function POST(req: Request) {
 
   const pwa = await cnt(supabaseAdmin.from("pwa_installs").select("id", { count: "exact", head: true }));
 
-  return NextResponse.json({ ok: true, stats: stats ?? {}, attention, pwa });
+  const since7 = new Date(Date.now() - 7 * 86400000).toISOString();
+  const pwa7 = await cnt(supabaseAdmin.from("pwa_installs").select("id", { count: "exact", head: true }).gte("last_seen", since7));
+  return NextResponse.json({ ok: true, stats: stats ?? {}, attention, pwa, pwa7 });
 }

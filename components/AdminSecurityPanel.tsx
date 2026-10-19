@@ -11,6 +11,8 @@ const KINDS: Record<string, string> = {
   admin_denied: "Попытка зайти в CRM без прав",
   webhook_bad_secret: "Поддельный запрос к боту",
   bad_upload_url: "Подозрительная ссылка на файл",
+  client_error: "Ошибка в приложении у человека",
+  server_error: "Ошибка на сервере",
 };
 
 function keyLabel(key: string): string {

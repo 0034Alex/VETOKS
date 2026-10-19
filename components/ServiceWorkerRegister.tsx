@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { getCurrentUser } from "@/lib/currentUser";
+import { apiPost } from "@/lib/authClient";
 
 export default function ServiceWorkerRegister() {
   useEffect(() => {
@@ -12,11 +11,26 @@ export default function ServiceWorkerRegister() {
       });
     }
 
-    async function handleInstalled() {
-      const u = await getCurrentUser();
-      await supabase.from("pwa_installs").insert({ user_id: u?.id ?? null });
+    function ping(event: "install" | "open") {
+      apiPost("/api/pwa/ping", { event }).catch(() => {});
     }
 
+    // Запуск с экрана «Домой»: не чаще раза в сутки на устройство.
+    try {
+      const standalone = window.matchMedia?.("(display-mode: standalone)").matches || (navigator as any).standalone === true;
+      if (standalone) {
+        const k = "vt_pwa_ping";
+        const last = Number(localStorage.getItem(k) ?? 0);
+        if (Date.now() - last > 86400000) {
+          localStorage.setItem(k, String(Date.now()));
+          ping("open");
+        }
+      }
+    } catch {
+      /* без localStorage просто не считаем */
+    }
+
+    const handleInstalled = () => ping("install");
     window.addEventListener("appinstalled", handleInstalled);
     return () => window.removeEventListener("appinstalled", handleInstalled);
   }, []);

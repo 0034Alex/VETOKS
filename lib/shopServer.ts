@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { userIdFromBearer } from "@/lib/authServer";
+import { logSecurity } from "@/lib/security";
 
-export const bad = (error: string, status = 400, extra: object = {}) =>
-  NextResponse.json({ ok: false, error, ...extra }, { status });
+export const bad = (error: string, status = 400, extra: object = {}) => {
+  // Серверные ошибки (500+) попадают в журнал и владельцу в Telegram (не чаще раза в 5 минут на один вид ошибки).
+  if (status >= 500) void logSecurity("server_error", { error, status }, { alert: true, dedupeKey: error, dedupeSec: 300 });
+  return NextResponse.json({ ok: false, error, ...extra }, { status });
+};
 
 // Кто делает запрос. Заблокированным покупки и голоса недоступны.
 export async function requireUser(req: Request): Promise<string | NextResponse> {

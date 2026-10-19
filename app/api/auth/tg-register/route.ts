@@ -1,4 +1,5 @@
 import { autoFollowOfficial } from "@/lib/officialFollow";
+import { recordConsents } from "@/lib/consents";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -102,6 +103,7 @@ export async function POST(req: NextRequest) {
   }
 
   await autoFollowOfficial(created.user.id, regionId);
+  await recordConsents(created.user.id, "register");
 
   if (loginToken) {
     await supabaseAdmin.from("tg_login_tokens").update({ used: true }).eq("token", loginToken);

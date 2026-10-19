@@ -162,7 +162,7 @@ export default function ParticipantPhotosPage() {
     setOpenComments(postId);
     const { data } = await supabase
       .from("media_comments")
-      .select("id, user_id, body, created_at, users(first_name)")
+      .select("id, user_id, body, created_at, edited_at, users(first_name)")
       .eq("post_id", postId)
       .order("created_at", { ascending: true });
     setComments((data as unknown as Comment[]) ?? []);
@@ -319,11 +319,11 @@ export default function ParticipantPhotosPage() {
                         if (openComments) openCommentsFor(openComments);
                       }}
                     >
-                      <span className="text-offwhite">{c.body}</span>
+                      <span className="text-offwhite">{c.body}</span>{(c as any).edited_at && <span className="text-muted text-[10px] ml-1">изменено</span>}
                     </OwnTextActions>
                   ) : (
                     <>
-                      <span className="text-offwhite">{c.body}</span>
+                      <span className="text-offwhite">{c.body}</span>{(c as any).edited_at && <span className="text-muted text-[10px] ml-1">изменено</span>}
                       <OtherCommentActions
                         commentId={c.id}
                         canDelete={!!me && ownerUserId === me.id}
