@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { rateLimit } from "@/lib/rateLimit";
 import { countryOfUser, regionIdsOfCountry } from "@/lib/countryServer";
-import { currentStageOfCountry, pollResults } from "@/lib/stagePoll";
+import { currentStageOfCountry, pollResults, pollVoterCount } from "@/lib/stagePoll";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     myPid = pid;
   }
 
-  if (!myPid) return NextResponse.json({ ok: true, question: stage.question, answered: false, results: [], total: 0 });
+  if (!myPid) return NextResponse.json({ ok: true, question: stage.question, answered: false, results: [], total: 0, voters: await pollVoterCount(stage.id), endsAt: stage.ends_at });
 
   const { total, rows } = await pollResults(stage.id);
   const ids = rows.map((r) => r.participant_id);
@@ -90,5 +90,5 @@ export async function POST(req: Request) {
     }));
   const mine = results.find((r) => r.mine);
   if (mine) results = [mine, ...results.filter((r) => !r.mine)];
-  return NextResponse.json({ ok: true, question: stage.question, answered: true, results, total });
+  return NextResponse.json({ ok: true, question: stage.question, answered: true, results, total, voters: total, endsAt: stage.ends_at });
 }

@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-export type PollStage = { id: string; stage_number: number; title: string; question: string };
+export type PollStage = { id: string; stage_number: number; title: string; question: string; ends_at: string | null };
 
 // Текущий этап страны (как на главной): самый свежий сезон страны,
 // первый этап с датой окончания в будущем, иначе без даты, иначе первый.
@@ -24,6 +24,7 @@ export async function currentStageOfCountry(countryId: string | null): Promise<P
     stage_number: cur.stage_number,
     title: cur.title ?? "",
     question: String(cur.poll_question ?? "").trim(),
+    ends_at: (cur.ends_at as string | null) ?? null,
   };
 }
 
@@ -53,4 +54,9 @@ export async function pollResults(stageId: string): Promise<{ total: number; row
   }
   const rows = Array.from(counts.values()).sort((a, b) => b.votes - a.votes);
   return { total, rows };
+}
+
+export async function pollVoterCount(stageId: string): Promise<number> {
+  const { count } = await supabaseAdmin.from("stage_poll_votes").select("id", { count: "exact", head: true }).eq("stage_id", stageId);
+  return count ?? 0;
 }
