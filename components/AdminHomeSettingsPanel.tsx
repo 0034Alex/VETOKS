@@ -134,15 +134,8 @@ export default function AdminHomeSettingsPanel() {
 
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
         <p className="text-offwhite font-semibold text-sm mb-2">📋 Опрос на главной</p>
-        <input
-          value={v.survey_question ?? ""}
-          onChange={(e) => set("survey_question", e.target.value)}
-          maxLength={200}
-          placeholder="Например: Какой конкурс вам интереснее всего?"
-          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
-        />
-        <p className="text-muted text-xs mt-1">
-          Вопрос показывается на главной в блоке «ОПРОС»: человек пишет ответ своими словами, один ответ на вопрос. Пусто — опроса на главной нет. Новый вопрос начинает новый опрос, старые ответы сохраняются. Не забудьте нажать «Сохранить» внизу.
+        <p className="text-muted text-xs">
+          Вопрос опроса теперь задаётся для каждого этапа: «Конкурс» → «Этапы сезона» → поле «Вопрос опроса этапа». Люди выбирают участницу, один бесплатный голос на этап. Здесь — итоги текущего этапа: за кого голосовали.
         </p>
         <button onClick={loadAnswers} className="mt-3 border border-gold text-gold rounded-lg px-4 py-2 text-sm">
           {answers ? "Обновить ответы" : "Показать ответы"}

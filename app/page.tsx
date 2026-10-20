@@ -1,6 +1,7 @@
 "use client";
 
 import { useT } from "@/lib/i18n";
+import StagePoll from "@/components/StagePoll";
 import { getVoteTotals } from "@/lib/voteTotals";
 import { useEffect, useRef, useState } from "react";
 import { AdWatch, trackAdClick, withUtm } from "@/lib/track";
@@ -17,7 +18,6 @@ import LoadingScreen from "@/components/LoadingScreen";
 import EntryPopup from "@/components/EntryPopup";
 import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { loadScoped } from "@/lib/scopedSettings";
-import { apiPost } from "@/lib/authClient";
 
 // Настоящий 3D-переворот страниц — библиотека работает только в браузере,
 // поэтому подключаем её динамически, без серверной отрисовки.
@@ -618,62 +618,6 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
   );
 }
 
-function Survey() {
-  const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [sent, setSent] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      const u = await getCurrentUser();
-      if (u) {
-        const r = await apiPost("/api/survey", {});
-        setQuestion(r?.question ?? "");
-        if (r?.answered) setSent(true);
-      }
-      setLoading(false);
-    })();
-  }, []);
-
-  async function submit() {
-    if (!answer.trim()) return;
-    const r = await apiPost("/api/survey", { action: "answer", answer });
-    if (r?.ok) setSent(true);
-    else alert("Не получилось отправить. Попробуйте ещё раз.");
-  }
-
-  if (loading || !question) return null;
-
-  return (
-    <div className="px-6 mb-8">
-      <div className="bg-gradient-to-br from-[#7C3AED]/20 to-[#EC4899]/20 border border-gold/30 rounded-2xl p-5">
-        <p className="text-gold text-xs tracking-widest mb-2">ОПРОС</p>
-        <h3 className="text-offwhite font-semibold text-lg mb-4">{question}</h3>
-        {sent ? (
-          <p className="text-success text-sm">Спасибо за ответ!</p>
-        ) : (
-          <>
-            <input
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              placeholder="Ваш ответ..."
-              className="w-full bg-bgPrimary text-offwhite border border-muted rounded-lg px-4 py-2.5 mb-3"
-            />
-            <button
-              onClick={submit}
-              disabled={!answer.trim()}
-              className="bg-gold text-bgPrimary font-semibold px-6 py-2 rounded-full text-sm disabled:opacity-40"
-            >
-              Отправить
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function Home() {
   const { t } = useT();
   const router = useRouter();
@@ -1152,7 +1096,7 @@ export default function Home() {
           </div>
         )}
 
-        <Survey />
+        <StagePoll />
 
         <PartnersShowcase />
       </div>

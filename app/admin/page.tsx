@@ -1299,6 +1299,7 @@ type StageRow = {
   ends_at: string | null;
   promo_video_url: string | null;
   banner_image_url: string | null;
+  poll_question: string | null;
 };
 
 function toDatetimeLocal(iso: string | null): string {
@@ -1364,7 +1365,7 @@ function StagesTab() {
     setLoading(true);
     const { data } = await supabase
       .from("season_stages")
-      .select("id, stage_number, title, starts_at, ends_at, promo_video_url, banner_image_url")
+      .select("id, stage_number, title, starts_at, ends_at, promo_video_url, banner_image_url, poll_question")
       .eq("season_id", seasonId)
       .order("stage_number", { ascending: true });
     setStages((data as StageRow[]) ?? []);
@@ -1457,6 +1458,7 @@ function StagesTab() {
           title: s.title,
           starts_at: s.starts_at ? new Date(s.starts_at).toISOString() : null,
           ends_at: s.ends_at ? new Date(s.ends_at).toISOString() : null,
+          poll_question: (s.poll_question ?? "").trim() || null,
         })
         .eq("id", s.id);
     }
@@ -1610,6 +1612,17 @@ function StagesTab() {
               onChange={(e) => updateStage(i, "ends_at", e.target.value)}
               className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mt-1 mb-2"
             />
+            <label className="text-offwhite text-xs">Вопрос опроса этапа (на главной)</label>
+            <input
+              value={s.poll_question ?? ""}
+              onChange={(e) => updateStage(i, "poll_question", e.target.value)}
+              maxLength={200}
+              placeholder="Например: Кто победит на этапе «Интервью»?"
+              className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mt-1 mb-1"
+            />
+            <p className="text-muted text-[11px] mb-3">
+              Люди выбирают участницу из своей страны — один бесплатный голос на этап. Пусто — опроса на этом этапе нет.
+            </p>
             <label className="text-offwhite text-xs">Промо-ролик этапа</label>
             {s.promo_video_url && (
               <p className="text-success text-xs mt-1 mb-1">Видео загружено ✓</p>
