@@ -833,7 +833,6 @@ export default function Home() {
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
       >
         <Logo size={32} />
-        <CategorySwitch />
         <Link
           href="/hall-of-fame"
           className="text-gold text-xs font-semibold border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap"
@@ -868,6 +867,7 @@ export default function Home() {
           </button>
         </div>
 
+        <div className="relative">
         <div
           className="mx-6 mb-6 rounded-2xl overflow-hidden relative flex flex-col justify-end p-5 md:p-8 min-h-[260px] md:min-h-[320px]"
           style={{
@@ -954,6 +954,8 @@ export default function Home() {
               to { --vetoks-angle-2: 360deg; }
             }
           `}</style>
+        </div>
+        <CategorySwitch />
         </div>
 
         {homeCfg.howitworks_enabled === "true" && (
