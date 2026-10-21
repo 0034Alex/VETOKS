@@ -59,7 +59,6 @@ export default function Top25Page() {
       let lq = supabase
         .from("top25_daily")
         .select("snapshot_date")
-        .eq("age_category", rc)
         .order("snapshot_date", { ascending: false })
         .limit(1);
       if (mc.countryId) lq = lq.eq("country_id", mc.countryId);
@@ -122,7 +121,9 @@ export default function Top25Page() {
       {loading && <LoadingScreen inline />}
       {!loading && rows.length === 0 && (
         <p className="text-muted text-center px-6">
-          Итоги ещё не подведены. Топ-25 обновляется каждую ночь в 00:01.
+          {date
+            ? `В категории ${viewInfo(rc).label} за прошедшие сутки пока никто не набрал голосов. Как только появятся — участницы окажутся здесь.`
+            : "Итоги ещё не подведены. Топ-25 обновляется каждую ночь в 00:01."}
         </p>
       )}
 

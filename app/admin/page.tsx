@@ -339,7 +339,7 @@ export default function AdminPage() {
         <button onClick={() => setMenuOpen(true)} className="md:hidden text-2xl text-gold leading-none" aria-label="Открыть меню">
           ☰
         </button>
-        <h1 className="md:hidden text-xl font-semibold text-gold">VETOKS CRM</h1>
+        <h1 className="md:hidden text-xl font-semibold text-gold">CRM</h1>
         <span className="text-xs border border-gold/60 text-gold rounded-full px-2.5 py-1 whitespace-nowrap" title={me?.email ?? ""}>
           {roleLabel}
         </span>
