@@ -222,6 +222,18 @@ export default function AdminPeoplePanel() {
                   {(Array.isArray(card.user.regions) ? card.user.regions[0]?.name : card.user.regions?.name) ?? "регион не указан"}
                 </p>
 
+                {card.user.age_category === "teen" && (
+                  <div className="border border-gold/50 rounded-lg p-3 mb-3 text-xs text-offwhite">
+                    <p className="text-gold font-semibold mb-1">Согласие родителей</p>
+                    {(card.consents ?? []).length === 0 && <p className="text-danger">Не получено</p>}
+                    {(card.consents ?? []).map((c: any, i: number) => (
+                      <p key={i}>
+                        {c.status === "approved" ? "✅ Дано" : c.status === "revoked" ? "⛔ Отозвано" : "⏳ Ждёт номер"} · {c.parent_name ?? "—"} · {c.parent_phone ?? "—"}{c.parent_tg_username ? ` · @${c.parent_tg_username}` : ""} · {c.agreed_at ? new Date(c.agreed_at).toLocaleString("ru-RU") : ""}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
                 {card.signs.length > 0 && (
                   <div className="border border-danger rounded-lg p-3 mb-3">
                     <p className="text-danger text-xs font-semibold mb-1">⚠ Признаки накрутки / проблем</p>

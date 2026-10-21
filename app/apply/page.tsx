@@ -89,6 +89,14 @@ export default function ApplyPage() {
     // Один общий национальный сезон — идёт одновременно во всех регионах,
     // регион не влияет на выбор сезона, только на то, где участница
     // отображается в списках/рейтинге.
+    if (currentUser.age_category === "teen") {
+      const pc = await apiPost("/api/parent/start", { action: "status" });
+      if (!(pc?.ok && pc.approved)) {
+        setStatus("error");
+        setErrorMessage("Для участия в TEEN нужно согласие родителей. Откройте «Согласие родителей» на главной и отправьте ссылку маме, папе или опекуну.");
+        return;
+      }
+    }
     const mcA = await getMyCountry();
     let seQ = supabase
       .from("seasons")

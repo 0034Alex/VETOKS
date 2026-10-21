@@ -96,6 +96,14 @@ export async function POST(req: Request) {
       }
     }
 
+    const { data: consents } = await supabaseAdmin
+      .from("parental_consents")
+      .select("status, parent_phone, parent_tg_username, parent_name, agreed_at, revoked_at, doc_version")
+      .eq("user_id", id)
+      .neq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(3);
+
     const { data: log } = await supabaseAdmin
       .from("admin_log")
       .select("action, created_at, meta")
@@ -105,6 +113,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
+      consents: consents ?? [],
       user,
       balance: Number(wallet?.balance ?? 0),
       votesCast: votesCast ?? 0,

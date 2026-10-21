@@ -4,6 +4,7 @@ import { userIdFromBearer } from "@/lib/authServer";
 import { logSecurity } from "@/lib/security";
 
 export const bad = (error: string, status = 400, extra: object = {}) => {
+  if (error === "need_parent") status = 403;
   // Серверные ошибки (500+) попадают в журнал и владельцу в Telegram (не чаще раза в 5 минут на один вид ошибки).
   if (status >= 500) void logSecurity("server_error", { error, status }, { alert: true, dedupeKey: error, dedupeSec: 300 });
   return NextResponse.json({ ok: false, error, ...extra }, { status });
@@ -63,6 +64,11 @@ export async function pay(
   | { ok: true; tx_id: string; earning: number; balance: number }
   | { ok: false; error: string; balance?: number; detail?: string }
 > {
+  // Несовершеннолетним (TEEN) платежи — только с согласием родителя.
+  {
+    const { parentConsentOk } = await import("@/lib/parentServer");
+    if (!(await parentConsentOk(userId))) return { ok: false, error: "need_parent" };
+  }
   // Амбассадорам к доле добавляется их бонус (только если доля вообще положена).
   let finalShare = share;
   if (participantId && share > 0) {

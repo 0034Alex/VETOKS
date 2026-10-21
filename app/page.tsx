@@ -3,6 +3,7 @@
 import { useT } from "@/lib/i18n";
 import StagePoll from "@/components/StagePoll";
 import CategorySwitch, { CategoryStrip } from "@/components/CategorySwitch";
+import TeenConsentBanner from "@/components/TeenConsentBanner";
 import { useViewCategory } from "@/lib/viewCategory";
 import { categoryInfo } from "@/lib/ageCategory";
 import { getVoteTotals } from "@/lib/voteTotals";
@@ -841,6 +842,7 @@ export default function Home() {
 
       <div className="max-w-5xl mx-auto">
         <CategoryStrip />
+        <TeenConsentBanner />
         <div className="px-6 mb-4 flex gap-2">
           <button
             onClick={() => setScope("region")}

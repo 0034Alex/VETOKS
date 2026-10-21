@@ -215,6 +215,112 @@ async function handleContact(chatId: string, message: any) {
   await sendMessage(chatId, "✅ Номер подтверждён! Возвращайтесь в приложение VETOKS.", REMOVE_KEYBOARD);
 }
 
+
+// ---------- Согласие родителей (категория TEEN 15–17) ----------
+async function handleParentStart(chatId: string, token: string, from: any, origin: string) {
+  const { data: row } = await supabaseAdmin
+    .from("parental_consents")
+    .select("id, user_id, status, expires_at")
+    .eq("token", token)
+    .maybeSingle();
+  if (!row || row.status !== "pending" || new Date(row.expires_at) < new Date()) {
+    await sendMessage(chatId, "Посилання застаріло або вже використане. Попросіть доньку створити нове в застосунку VETOKS.");
+    return;
+  }
+  const { data: kid } = await supabaseAdmin.from("users").select("first_name, telegram_id").eq("id", row.user_id).maybeSingle();
+  if (kid?.telegram_id && String(kid.telegram_id) === String(from.id)) {
+    await sendMessage(chatId, "Згоду має дати один із батьків або опікунів — з їхнього власного Telegram, не з акаунта учасниці.");
+    return;
+  }
+  await supabaseAdmin
+    .from("parental_consents")
+    .update({ parent_telegram_id: String(from.id), parent_tg_username: from.username ?? null })
+    .eq("id", row.id);
+  await sendMessage(
+    chatId,
+    `👑 VETOKS — конкурс краси.\n\n${kid?.first_name ?? "Ваша донька"} (15–17 років) хоче взяти участь у категорії TEEN. Для цього потрібна згода одного з батьків або опікунів.\n\nЩо це означає:\n• фото та відео доньки публікуються в застосунку;\n• у застосунку є платні функції (голоси, подарунки), їх оплата можлива лише з вашою згодою;\n• підлітки спілкуються лише з підлітками, «чорних міток» у TEEN немає;\n• ви можете будь-коли відкликати згоду командою /stop — доступ до платних функцій і участь буде призупинено.\n\nДокументи: ${origin}/documents`,
+    { reply_markup: { inline_keyboard: [[{ text: "✅ Я батько/мати/опікун і даю згоду", callback_data: `pc_yes_${token}` }]] } }
+  );
+}
+
+async function handleParentYes(chatId: string, token: string, from: any) {
+  const { data: row } = await supabaseAdmin
+    .from("parental_consents")
+    .select("id, status, expires_at, parent_telegram_id")
+    .eq("token", token)
+    .maybeSingle();
+  if (!row || row.status !== "pending" || new Date(row.expires_at) < new Date() || String(row.parent_telegram_id) !== String(from.id)) {
+    await sendMessage(chatId, "Посилання застаріло. Попросіть доньку створити нове в застосунку.");
+    return;
+  }
+  await supabaseAdmin
+    .from("parental_consents")
+    .update({ status: "await_phone", parent_name: [from.first_name, from.last_name].filter(Boolean).join(" ") || null })
+    .eq("id", row.id);
+  await sendMessage(chatId, "Дякуємо. Останній крок — підтвердіть свій номер телефону кнопкою нижче.", {
+    reply_markup: {
+      keyboard: [[{ text: "📱 Поділитися номером", request_contact: true }]],
+      resize_keyboard: true,
+      one_time_keyboard: true,
+    },
+  });
+}
+
+// Возвращает true, если контакт был ответом родителя.
+async function handleParentContact(chatId: string, message: any): Promise<boolean> {
+  const from = message.from;
+  const { data: row } = await supabaseAdmin
+    .from("parental_consents")
+    .select("id, user_id")
+    .eq("parent_telegram_id", String(from?.id ?? ""))
+    .eq("status", "await_phone")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!row) return false;
+  const contact = message.contact;
+  if (!contact?.phone_number || contact.user_id !== from.id) {
+    await sendMessage(chatId, "Потрібен саме ваш номер — через кнопку «Поділитися номером».");
+    return true;
+  }
+  await supabaseAdmin
+    .from("parental_consents")
+    .update({
+      status: "approved",
+      parent_phone: normalizePhone(contact.phone_number),
+      agreed_at: new Date().toISOString(),
+    })
+    .eq("id", row.id);
+  await sendMessage(chatId, "✅ Згоду отримано. Щоб відкликати її, напишіть /stop.", REMOVE_KEYBOARD);
+  await supabaseAdmin.from("notifications").insert({
+    user_id: row.user_id,
+    message: "✅ Батьки підтвердили участь. Тепер вам доступні всі функції TEEN.",
+    link: "/profile",
+  });
+  return true;
+}
+
+async function handleParentStop(chatId: string) {
+  const { data } = await supabaseAdmin
+    .from("parental_consents")
+    .update({ status: "revoked", revoked_at: new Date().toISOString() })
+    .eq("parent_telegram_id", chatId)
+    .eq("status", "approved")
+    .select("user_id");
+  if (!data || data.length === 0) {
+    await sendMessage(chatId, "Активних згод немає.");
+    return;
+  }
+  for (const r of data as any[]) {
+    await supabaseAdmin.from("notifications").insert({
+      user_id: r.user_id,
+      message: "⛔ Батьки відкликали згоду. Платні функції призупинено.",
+      link: "/parent-consent",
+    });
+  }
+  await sendMessage(chatId, "Згоду відкликано. Платні функції для доньки призупинено.");
+}
+
 export async function POST(req: Request) {
   const secretHeader = req.headers.get("x-telegram-bot-api-secret-token") || "";
   const wanted = process.env.TELEGRAM_WEBHOOK_SECRET || "";
@@ -226,6 +332,12 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
+  const cb = body?.callback_query;
+  if (cb?.data && cb?.message?.chat?.id && /^pc_yes_[a-f0-9]{32}$/.test(String(cb.data))) {
+    await handleParentYes(String(cb.message.chat.id), String(cb.data).slice(7), cb.from);
+    return NextResponse.json({ ok: true });
+  }
+
   const message = body?.message;
   if (!message?.chat?.id) {
     return NextResponse.json({ ok: true });
@@ -235,6 +347,7 @@ export async function POST(req: Request) {
 
   // Контакт (подтверждение номера).
   if (message.contact) {
+    if (await handleParentContact(chatId, message)) return NextResponse.json({ ok: true });
     await handleContact(chatId, message);
     return NextResponse.json({ ok: true });
   }
@@ -246,12 +359,21 @@ export async function POST(req: Request) {
   const text = String(message.text).trim();
   const username: string | undefined = message.from?.username;
 
+  if (text === "/stop") {
+    await handleParentStop(chatId);
+    return NextResponse.json({ ok: true });
+  }
+
   // /start — приветствие, либо /start КОД (сброс пароля), либо вход/подтверждение номера.
   if (text.startsWith("/start")) {
     const param = text.split(" ")[1];
 
     if (param && /^\d{6}$/.test(param)) {
       await handleCode(chatId, param, username);
+      return NextResponse.json({ ok: true });
+    }
+    if (param && /^parent_[a-f0-9]{32}$/.test(param)) {
+      await handleParentStart(chatId, param.slice(7), message.from, new URL(req.url).origin);
       return NextResponse.json({ ok: true });
     }
     if (param && /^login_[a-f0-9]{32}$/.test(param)) {

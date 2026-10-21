@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { countryOfUser, settingsForCountry } from "@/lib/countryServer";
 import { bad, requireUser } from "@/lib/shopServer";
 import { rateLimit } from "@/lib/rateLimit";
+import { parentConsentOk } from "@/lib/parentServer";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   if (body?.check) return NextResponse.json({ ok: true, enabled });
   if (!enabled) return bad("disabled", 403);
+  if (!(await parentConsentOk(uid))) return bad("need_parent", 403);
 
   const { data, error } = await supabaseAdmin.rpc("vt_topup", { p_user: uid, p_amount: 1000 });
   if (error) return bad("server", 500);
