@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useViewCategory } from "@/lib/viewCategory";
 
 type Item = {
   id: string;
@@ -21,6 +22,7 @@ const ICON: Record<string, string> = { gift: "🎁", boost: "🚀", card: "🃏"
 export default function FanZoneStrip() {
   const [items, setItems] = useState<Item[]>([]);
   const [enabled, setEnabled] = useState(true);
+  const vc = useViewCategory();
 
   useEffect(() => {
     let stop = false;
@@ -29,7 +31,7 @@ export default function FanZoneStrip() {
       try {
         const { data: sess } = await supabase.auth.getSession();
         const token = sess.session?.access_token;
-        const r = await fetch("/api/fanzone", {
+        const r = await fetch(`/api/fanzone?cat=${vc.view}`, {
           cache: "no-store",
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -45,7 +47,7 @@ export default function FanZoneStrip() {
       stop = true;
       clearInterval(t);
     };
-  }, []);
+  }, [vc.view]);
 
   if (!enabled) return null;
 

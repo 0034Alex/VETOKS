@@ -29,7 +29,7 @@ export async function getCardInfo(participantId: string): Promise<CardInfo | nul
   if (!/^[0-9a-f-]{36}$/i.test(participantId)) return null;
   const { data: p } = await supabaseAdmin
     .from("participants")
-    .select("id, display_name, photo_url, user_id, region_id, is_eliminated")
+    .select("id, display_name, photo_url, user_id, region_id, is_eliminated, age_category")
     .eq("id", participantId)
     .maybeSingle();
   if (!p) return null;
@@ -49,6 +49,7 @@ export async function getCardInfo(participantId: string): Promise<CardInfo | nul
       .from("participants")
       .select("id")
       .eq("region_id", p.region_id)
+      .eq("age_category", (p as any).age_category ?? "main")
       .eq("is_eliminated", false);
     const totals = await allTotals();
     const ids = (mates ?? []).map((m: any) => m.id as string);

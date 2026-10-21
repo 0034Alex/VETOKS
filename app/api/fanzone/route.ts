@@ -44,5 +44,14 @@ export async function GET(req: Request) {
   if (regionId) q = q.eq("region_id", regionId);
   else if (countryRegions) q = q.in("region_id", countryRegions);
   const { data } = await q;
-  return NextResponse.json({ enabled: true, items: data ?? [] });
+  let items = (data ?? []) as any[];
+  // Лента показывает только выбранную возрастную категорию (?cat=teen|main|adult; без параметра или «all» — все).
+  const cat = new URL(req.url).searchParams.get("cat") ?? "all";
+  if (["teen", "main", "adult"].includes(cat) && items.length) {
+    const ids = Array.from(new Set(items.map((i) => i.participant_id).filter(Boolean)));
+    const { data: ps } = await supabaseAdmin.from("participants").select("id, age_category").in("id", ids);
+    const catOf = new Map<string, string>(((ps ?? []) as any[]).map((p) => [p.id, p.age_category ?? "main"]));
+    items = items.filter((i) => (catOf.get(i.participant_id) ?? "main") === cat);
+  }
+  return NextResponse.json({ enabled: true, items });
 }

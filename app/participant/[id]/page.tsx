@@ -200,10 +200,12 @@ export default function ParticipantProfilePage() {
       .eq("participant_id", id);
     setFollowerCount(followers ?? 0);
 
-    // Позиция в общем рейтинге по голосам.
+    // Позиция в рейтинге по голосам — внутри её возрастной категории.
+    const { data: meCat } = await supabase.from("participants").select("age_category").eq("id", id).maybeSingle();
     const { data: allParticipants } = await supabase
       .from("participants")
       .select("id")
+      .eq("age_category", (meCat as any)?.age_category ?? "main")
       .eq("is_eliminated", false);
     if (allParticipants) {
       const sorted = allParticipants

@@ -638,6 +638,7 @@ type ParticipantRow = {
   display_name: string;
   user_id: string;
   is_editors_choice: boolean;
+  age_category?: string | null;
   region_id: string | null;
   season_id: string | null;
   users: {
@@ -659,7 +660,7 @@ function ParticipantsTab() {
     let pq = supabase
       .from("participants")
       .select(
-        "id, display_name, user_id, is_editors_choice, region_id, season_id"
+        "id, display_name, user_id, is_editors_choice, age_category, region_id, season_id"
       );
     const prids = await crmRegionIds();
     if (prids) pq = pq.in("region_id", prids);
@@ -708,14 +709,19 @@ function ParticipantsTab() {
   }
 
   async function setEditorsChoice(participantId: string) {
-    // Снимаем флаг со всех, ставим только на выбранную — титул один.
-    await supabase.from("participants").update({ is_editors_choice: false }).neq("id", participantId);
+    // Титул один на каждую возрастную категорию: снимаем флаг у остальных только в этой же категории.
+    const { data: me } = await supabase.from("participants").select("age_category").eq("id", participantId).maybeSingle();
+    await supabase
+      .from("participants")
+      .update({ is_editors_choice: false })
+      .eq("age_category", (me as any)?.age_category ?? "main")
+      .neq("id", participantId);
     await supabase.from("participants").update({ is_editors_choice: true }).eq("id", participantId);
     await load();
   }
 
-  async function clearEditorsChoice() {
-    await supabase.from("participants").update({ is_editors_choice: false }).eq("is_editors_choice", true);
+  async function clearEditorsChoice(participantId: string) {
+    await supabase.from("participants").update({ is_editors_choice: false }).eq("id", participantId);
     await load();
   }
 
@@ -793,7 +799,7 @@ function ParticipantsTab() {
             </button>
             <button
               onClick={() =>
-                r.is_editors_choice ? clearEditorsChoice() : setEditorsChoice(r.id)
+                r.is_editors_choice ? clearEditorsChoice(r.id) : setEditorsChoice(r.id)
               }
               className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
                 r.is_editors_choice
@@ -801,7 +807,8 @@ function ParticipantsTab() {
                   : "bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
               }`}
             >
-              {r.is_editors_choice ? "✕ Убрать выбор редакции" : "Назначить выбор редакции"}
+              {r.is_editors_choice ? "✕ Убрать выбор редакции" : "Назначить выбор редакции"}{" "}
+              <span className="opacity-70">({r.age_category === "teen" ? "TEEN" : r.age_category === "adult" ? "LADY" : "MISS"})</span>
             </button>
           </div>
         </div>
