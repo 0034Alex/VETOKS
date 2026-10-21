@@ -16,7 +16,7 @@ import { getVoteTotals } from "@/lib/voteTotals";
 import { apiPost } from "@/lib/authClient";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory } from "@/lib/viewCategory";
-import { categoryInfo } from "@/lib/ageCategory";
+import { viewInfo } from "@/lib/viewCategory";
 import { CategoryStrip } from "@/components/CategorySwitch";
 
 type Participant = {
@@ -58,8 +58,8 @@ export default function ParticipantsPage() {
     let pq = supabase
       .from("participants")
       .select("id, display_name, bio, photo_url, created_at, season_id, region_id")
-      .eq("is_eliminated", false)
-      .eq("age_category", vc.view);
+      .eq("is_eliminated", false);
+    if (vc.view !== "all") pq = pq.eq("age_category", vc.view);
     if (mc.countryId) pq = pq.in("region_id", mc.regionIds);
     const { data: participantsData } = await pq;
 
@@ -245,7 +245,7 @@ export default function ParticipantsPage() {
             ))}
           </div>
           {tab === "people" && (
-            <p className="text-muted text-sm">{categoryInfo(vc.view).label} · {filtered.length} анкет</p>
+            <p className="text-muted text-sm">{viewInfo(vc.view).label} · {filtered.length} анкет</p>
           )}
         </div>
 

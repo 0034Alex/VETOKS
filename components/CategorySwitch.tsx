@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CATEGORIES, AgeCategory, categoryInfo } from "@/lib/ageCategory";
-import { useViewCategory } from "@/lib/viewCategory";
+import { CATEGORIES } from "@/lib/ageCategory";
+import { useViewCategory, viewInfo, type ViewCat } from "@/lib/viewCategory";
 
 // Полукруг, «свисающий» с верха экрана по центру шапки. Нажали — раскрывается веер из трёх категорий.
 export default function CategorySwitch() {
-  const { view, mine, setView, ready } = useViewCategory();
+  const { view, mine, setView, ready, canAll } = useViewCategory();
   const [open, setOpen] = useState(false);
   const [teenOpen, setTeenOpen] = useState(false);
 
@@ -18,9 +18,10 @@ export default function CategorySwitch() {
   }, []);
 
   if (!ready) return null;
-  const pos: Record<AgeCategory, [number, number]> = { teen: [-78, 60], main: [0, 80], adult: [78, 60] };
-  const items = CATEGORIES.filter((c) => c.key !== "teen" || teenOpen || mine === "teen" || view === "teen");
-  const cur = categoryInfo(view);
+  const pos: Record<ViewCat, [number, number]> = { teen: [-78, 60], main: [0, 80], adult: [78, 60], all: [0, 150] };
+  const items: { key: ViewCat; label: string; ages: string }[] = [...CATEGORIES];
+  if (canAll) items.push({ key: "all", label: "ВСЕ", ages: "все" });
+  const cur = viewInfo(view);
   const other = view !== mine;
 
   return (
@@ -40,11 +41,13 @@ export default function CategorySwitch() {
         {items.map((c) => {
           const [x, y] = pos[c.key];
           const on = c.key === view;
+          const locked = c.key === "teen" && !teenOpen && mine !== "teen" && !canAll;
           return (
             <button
               key={c.key}
               type="button"
               onClick={() => {
+                if (locked) return;
                 setView(c.key);
                 setOpen(false);
               }}
@@ -63,7 +66,7 @@ export default function CategorySwitch() {
               }}
             >
               <b className="text-[11px] font-extrabold">{c.label}</b>
-              <small className="text-[8px] mt-0.5 text-muted font-semibold">{c.ages}</small>
+              <small className="text-[8px] mt-0.5 text-muted font-semibold">{locked ? "🔒 скоро" : c.ages}</small>
               {c.key === mine && (
                 <i className="absolute -bottom-2 not-italic text-[8px] font-extrabold text-bgPrimary bg-gold rounded-md px-1.5 py-px">
                   ТВОЯ
@@ -101,13 +104,13 @@ export function CategoryStrip() {
   if (!ready || view === mine) return null;
   return (
     <div className="mx-6 mb-3 flex items-center justify-between gap-2 rounded-xl border border-gold/30 bg-gold/10 py-1.5 pl-3 pr-1.5 text-xs text-goldSoft">
-      <span>Вы смотрите категорию {categoryInfo(view).label}</span>
+      <span>Вы смотрите категорию {viewInfo(view).label}</span>
       <button
         type="button"
         onClick={() => setView(mine)}
         className="min-h-[36px] whitespace-nowrap rounded-full bg-gold px-3 text-xs font-bold text-bgPrimary"
       >
-        ← В мою: {categoryInfo(mine).label}
+        ← В мою: {viewInfo(mine).label}
       </button>
     </div>
   );

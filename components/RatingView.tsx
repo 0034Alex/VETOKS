@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import { formatCompact } from "@/lib/formatCompact";
 import { getMyCountry } from "@/lib/myCountry";
-import { useViewCategory } from "@/lib/viewCategory";
+import { useViewCategory, rankCat } from "@/lib/viewCategory";
 
 type Ranking = {
   title_key: string;
@@ -25,6 +25,7 @@ type Participant = { id: string; display_name: string; photo_url: string | null 
 
 export default function RatingView() {
   const vc = useViewCategory();
+  const rc = rankCat(vc.view, vc.mine);
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [scope, setScope] = useState<"region" | "country">("region");
   const [rankings, setRankings] = useState<Ranking[]>([]);
@@ -50,7 +51,7 @@ export default function RatingView() {
       .from("title_rankings_v2")
       .select("snapshot_date")
       .eq("scope", scope === "region" && me?.region_id ? "region" : "country")
-      .eq("age_category", vc.view)
+      .eq("age_category", rc)
       .order("snapshot_date", { ascending: false })
       .limit(1);
     if (scope === "region" && me?.region_id) q = q.eq("region_id", me.region_id);
@@ -63,7 +64,7 @@ export default function RatingView() {
         .from("title_rankings_v2")
         .select("title_key, participant_id, metric_value")
         .eq("scope", scope === "region" && me?.region_id ? "region" : "country")
-        .eq("age_category", vc.view)
+        .eq("age_category", rc)
         .eq("snapshot_date", latest.snapshot_date);
       if (scope === "region" && me?.region_id) r = r.eq("region_id", me.region_id);
       else if (mc.countryId) r = r.eq("country_id", mc.countryId);
@@ -91,7 +92,7 @@ export default function RatingView() {
       .from("participants")
       .select("id, display_name, photo_url")
       .eq("is_editors_choice", true)
-      .eq("age_category", vc.view);
+      .eq("age_category", rc);
     if (mc.countryId) eq2 = eq2.in("region_id", mc.regionIds);
     const { data: editorsData } = await eq2.limit(1).maybeSingle();
     setEditorsChoice((editorsData as Participant) ?? null);
@@ -109,7 +110,7 @@ export default function RatingView() {
   useEffect(() => {
     if (me !== null && vc.ready) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [me, scope, vc.ready, vc.view]);
+  }, [me, scope, vc.ready, rc]);
 
   return (
     <div>

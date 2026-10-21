@@ -9,7 +9,7 @@ import PageHeader from "@/components/PageHeader";
 import { msToNextUpdate } from "@/lib/kyiv";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory } from "@/lib/viewCategory";
-import { categoryInfo } from "@/lib/ageCategory";
+import { viewInfo, rankCat } from "@/lib/viewCategory";
 import { CategoryStrip } from "@/components/CategorySwitch";
 
 type Row = {
@@ -47,6 +47,7 @@ export default function Top25Page() {
   const [loading, setLoading] = useState(true);
   const timeLeft = useCountdownToUpdate();
   const vc = useViewCategory();
+  const rc = rankCat(vc.view, vc.mine);
 
   useEffect(() => {
     if (!vc.ready) return;
@@ -58,7 +59,7 @@ export default function Top25Page() {
       let lq = supabase
         .from("top25_daily")
         .select("snapshot_date")
-        .eq("age_category", vc.view)
+        .eq("age_category", rc)
         .order("snapshot_date", { ascending: false })
         .limit(1);
       if (mc.countryId) lq = lq.eq("country_id", mc.countryId);
@@ -75,7 +76,7 @@ export default function Top25Page() {
         .from("top25_daily")
         .select("rank, participant_id, votes")
         .eq("snapshot_date", latest.snapshot_date)
-        .eq("age_category", vc.view)
+        .eq("age_category", rc)
         .order("rank");
       if (mc.countryId) tq = tq.eq("country_id", mc.countryId);
       const { data: top } = await tq;
@@ -98,7 +99,7 @@ export default function Top25Page() {
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vc.ready, vc.view]);
+  }, [vc.ready, rc]);
 
   return (
     <main className="min-h-screen pb-28">
@@ -106,7 +107,7 @@ export default function Top25Page() {
       <CategoryStrip />
 
       <div className="px-6 mb-6 text-center">
-        <h1 className="text-2xl font-semibold text-gold mb-2">Топ-25 за сутки · {categoryInfo(vc.view).label}</h1>
+        <h1 className="text-2xl font-semibold text-gold mb-2">Топ-25 за сутки · {viewInfo(rc).label}</h1>
         <p className="text-muted text-sm">
           Обновление рейтинга через{" "}
           <span className="text-gold font-mono">{timeLeft}</span>

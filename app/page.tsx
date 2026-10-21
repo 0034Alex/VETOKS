@@ -4,8 +4,7 @@ import { useT } from "@/lib/i18n";
 import StagePoll from "@/components/StagePoll";
 import CategorySwitch, { CategoryStrip } from "@/components/CategorySwitch";
 import TeenConsentBanner from "@/components/TeenConsentBanner";
-import { useViewCategory } from "@/lib/viewCategory";
-import { categoryInfo } from "@/lib/ageCategory";
+import { useViewCategory, viewInfo, inView } from "@/lib/viewCategory";
 import { getVoteTotals } from "@/lib/voteTotals";
 import { useEffect, useRef, useState } from "react";
 import { AdWatch, trackAdClick, withUtm } from "@/lib/track";
@@ -122,6 +121,7 @@ type MagazinePage =
     };
 
 function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRegionId: string | null }) {
+  const vcM = useViewCategory();
   const [pages, setPages] = useState<MagazinePage[]>([]);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
@@ -175,6 +175,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
           "id, display_name, photo_url, region_id, magazine_answers(q1_question, q1_answer, q2_question, q2_answer, q3_question, q3_answer)"
         )
         .eq("is_eliminated", false);
+      if (vcM.view !== "all") mq = mq.eq("age_category", vcM.view);
       if (mc.countryId) mq = mq.in("region_id", mc.regionIds);
       const { data: participantsData } = await mq;
       if (cancelled) return;
@@ -268,7 +269,8 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
     return () => {
       cancelled = true;
     };
-  }, [scope, userRegionId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope, userRegionId, vcM.view, vcM.ready]);
 
   async function toggleFollow(participantId: string) {
     if (!userId) return;
@@ -798,7 +800,7 @@ export default function Home() {
 
   if (!checked) return <LoadingScreen />;
 
-  const inCat = allParticipants.filter((p) => p.age_category === vc.view);
+  const inCat = allParticipants.filter((p) => inView(vc.view, p.age_category));
   const filtered =
     scope === "region" && user?.region_id
       ? inCat.filter((p) => p.region_id === user.region_id)
@@ -878,7 +880,7 @@ export default function Home() {
         >
           <div className="w-1/2">
             <p className="text-goldSoft text-xs tracking-widest mb-1">
-              {categoryInfo(vc.view).label}
+              {viewInfo(vc.view).label}
             </p>
             <h1 className="text-2xl md:text-4xl font-bold text-offwhite mb-1 leading-tight">
               {scope === "country" ? countryName || t("home.country") : user?.regions?.name ?? t("home.soon")}

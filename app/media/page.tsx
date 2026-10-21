@@ -12,7 +12,7 @@ import BottomNav from "@/components/BottomNav";
 import ReportButton from "@/components/ReportButton";
 import ShareButton from "@/components/ShareButton";
 import { getMyCountry } from "@/lib/myCountry";
-import { useViewCategory } from "@/lib/viewCategory";
+import { useViewCategory, inView } from "@/lib/viewCategory";
 import { loadScoped } from "@/lib/scopedSettings";
 import {
   IconHeart,
@@ -145,7 +145,7 @@ export default function MediaPage() {
   }, []);
 
   const posts = (() => {
-    let list = allPosts.filter((p) => (p.participants?.age_category ?? "main") === vc.view);
+    let list = allPosts.filter((p) => inView(vc.view, p.participants?.age_category));
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       return list.filter((p) => p.participants?.display_name?.toLowerCase().includes(q));

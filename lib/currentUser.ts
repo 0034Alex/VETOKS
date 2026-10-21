@@ -20,6 +20,7 @@ export type CurrentUser = {
   bio?: string | null;
   birth_date?: string | null;
   age_category?: string | null;
+  is_official?: boolean | null;
   regions: { name: string } | null;
 };
 

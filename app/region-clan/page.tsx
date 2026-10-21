@@ -11,7 +11,7 @@ import { apiPost } from "@/lib/authClient";
 import ReportSheet from "@/components/ReportSheet";
 import OwnTextActions from "@/components/OwnTextActions";
 import { useViewCategory } from "@/lib/viewCategory";
-import { categoryInfo } from "@/lib/ageCategory";
+import { viewInfo } from "@/lib/viewCategory";
 import { CategoryStrip } from "@/components/CategorySwitch";
 
 type Message = {
@@ -37,21 +37,21 @@ export default function RegionClanPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   async function load(regionId: string, cat: string = vc.view) {
-    const { data } = await supabase
+    let mq = supabase
       .from("region_clan_messages")
       .select("id, user_id, body, created_at, edited_at, users(first_name)")
       .eq("region_id", regionId)
-      .eq("age_category", cat)
-      .eq("is_hidden", false)
-      .order("created_at", { ascending: true })
-      .limit(200);
+      .eq("is_hidden", false);
+    if (cat !== "all") mq = mq.eq("age_category", cat);
+    const { data } = await mq.order("created_at", { ascending: true }).limit(200);
     setMessages((data as unknown as Message[]) ?? []);
 
-    const { count } = await supabase
+    let cq = supabase
       .from("users")
       .select("id", { count: "exact", head: true })
-      .eq("region_id", regionId)
-      .eq("age_category", cat);
+      .eq("region_id", regionId);
+    if (cat !== "all") cq = cq.eq("age_category", cat);
+    const { count } = await cq;
     setMemberCount(count ?? 0);
   }
 
@@ -145,7 +145,7 @@ export default function RegionClanPage() {
         <CategoryStrip />
         <div className="px-6 mb-4">
           <h1 className="text-xl font-semibold text-offwhite">
-            Клан «{me.regions?.name ?? "Мой регион"}» · {categoryInfo(vc.view).label}
+            Клан «{me.regions?.name ?? "Мой регион"}» · {viewInfo(vc.view).label}
           </h1>
           <p className="text-muted text-xs mt-1">
             {memberCount} {memberCount === 1 ? "участник" : "участников"} региона

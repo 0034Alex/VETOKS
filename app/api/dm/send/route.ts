@@ -35,9 +35,10 @@ export async function POST(req: Request) {
   if (!(await sameCountry(uid, to))) return bad("no_user", 404);
   // Подростки общаются только с подростками.
   {
-    const { data: both } = await supabaseAdmin.from("users").select("id, age_category").in("id", [uid, to]);
+    const { data: both } = await supabaseAdmin.from("users").select("id, age_category, is_official").in("id", [uid, to]);
     const t = (id: string) => ((both ?? []) as any[]).find((x) => x.id === id)?.age_category === "teen";
-    if (t(uid) !== t(to)) return bad("no_user", 404);
+    const off = ((both ?? []) as any[]).some((x) => x.is_official);
+    if (!off && t(uid) !== t(to)) return bad("no_user", 404);
   }
   if ((target.privacy as any)?.dm === false) return bad("dm_closed", 403);
 

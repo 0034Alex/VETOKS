@@ -142,6 +142,12 @@ function ShopContent() {
           .select("id, display_name, user_id, photo_url, season_id, region_id, regions(name)")
           .eq("is_eliminated", false);
         if (mcs.countryId) sq = sq.in("region_id", mcs.regionIds);
+        {
+          const me0 = await getCurrentUser();
+          const stored = (() => { try { return localStorage.getItem("vetoks_view_cat"); } catch { return null; } })();
+          const cat = stored && ["teen", "main", "adult"].includes(stored) ? stored : me0?.age_category ?? "main";
+          sq = sq.eq("age_category", cat);
+        }
         const { data: participantsData } = await sq;
         setParticipants((participantsData as unknown as Participant[]) ?? []);
 

@@ -261,7 +261,7 @@ export default function ProfilePage() {
         b = b || (pr as any)?.bio || "";
         const { data: st } = await supabase
           .from("participants")
-          .select("contest, stage_key, crown")
+          .select("contest, stage_key, crown, age_category")
           .eq("id", participant.id)
           .maybeSingle();
         setStatusRaw((st as any) ?? null);
@@ -272,7 +272,7 @@ export default function ProfilePage() {
           .eq("participant_id", participant.id);
         setFollowers(fc ?? 0);
         const totals = await getVoteTotals();
-        const { data: all } = await supabase.from("participants").select("id").eq("is_eliminated", false);
+        const { data: all } = await supabase.from("participants").select("id").eq("is_eliminated", false).eq("age_category", (st as any)?.age_category ?? "main");
         const sorted = (all ?? [])
           .map((x: { id: string }) => ({ id: x.id, v: totals[x.id] ?? 0 }))
           .sort((a, c) => c.v - a.v);
