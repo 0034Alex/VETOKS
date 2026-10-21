@@ -41,6 +41,15 @@ export default function AdminPeoplePanel() {
   const [newPass, setNewPass] = useState("");
   const [passMsg, setPassMsg] = useState("");
 
+  const [teenOn, setTeenOn] = useState<boolean | null>(null);
+  useEffect(() => {
+    apiPost("/api/admin/teen-open", { action: "get" }).then((r) => setTeenOn(r?.ok ? !!r.open : null));
+  }, []);
+  async function toggleTeen() {
+    const r = await apiPost("/api/admin/teen-open", { action: "set", open: !teenOn });
+    if (r?.ok) setTeenOn(!!r.open);
+  }
+
   useEffect(() => {
     supabase.from("countries").select("id, name").order("name").then(({ data }) => setCountries((data as any) ?? []));
   }, []);
@@ -115,6 +124,12 @@ export default function AdminPeoplePanel() {
 
   return (
     <div className="max-w-2xl">
+      {teenOn !== null && (
+        <label className="flex items-center gap-2 text-offwhite text-sm mb-3 bg-bgSurface border border-muted rounded-lg px-3 py-2">
+          <input type="checkbox" checked={teenOn} onChange={toggleTeen} />
+          Открыта категория TEEN 15–17 (регистрация и участие). Включайте только когда всё готово.
+        </label>
+      )}
       <div className="flex gap-2 mb-3">
         <input
           value={q}

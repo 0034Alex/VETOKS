@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
   const { data: u } = await supabaseAdmin
     .from("users")
-    .select("region_id, phone_verified, clan_muted_until")
+    .select("region_id, phone_verified, clan_muted_until, age_category")
     .eq("id", uid)
     .maybeSingle();
   if (!u?.region_id) return bad("no_region");
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
   const { error } = await supabaseAdmin
     .from("region_clan_messages")
-    .insert({ region_id: u.region_id, user_id: uid, body: text });
+    .insert({ region_id: u.region_id, user_id: uid, body: text, age_category: (u as any).age_category || "main" });
   if (error) return bad("failed", 500);
   return NextResponse.json({ ok: true });
 }

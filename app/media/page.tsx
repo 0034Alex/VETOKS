@@ -12,6 +12,7 @@ import BottomNav from "@/components/BottomNav";
 import ReportButton from "@/components/ReportButton";
 import ShareButton from "@/components/ShareButton";
 import { getMyCountry } from "@/lib/myCountry";
+import { useViewCategory } from "@/lib/viewCategory";
 import { loadScoped } from "@/lib/scopedSettings";
 import {
   IconHeart,
@@ -27,7 +28,7 @@ type Post = {
   video_url: string;
   caption: string | null;
   participant_id: string;
-  participants: { display_name: string; photo_url: string | null; region_id: string | null; season_id: string | null; user_id?: string | null } | null;
+  participants: { age_category?: string; display_name: string; photo_url: string | null; region_id: string | null; season_id: string | null; user_id?: string | null } | null;
 };
 
 type Comment = {
@@ -57,6 +58,7 @@ export default function MediaPage() {
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [, setVotedIds] = useState<string[]>([]);
   const [, setVoteModalParticipant] = useState<string | null>(null);
+  const vc = useViewCategory();
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [openComments, setOpenComments] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export default function MediaPage() {
       const { data } = await supabase
         .from("content_posts")
         .select(
-          "id, video_url, caption, participant_id, participants(display_name, photo_url, region_id, season_id, user_id)"
+          "id, video_url, caption, participant_id, participants(display_name, photo_url, region_id, season_id, user_id, age_category)"
         )
         .eq("visibility", "all")
         .not("video_url", "is", null)
@@ -143,7 +145,7 @@ export default function MediaPage() {
   }, []);
 
   const posts = (() => {
-    let list = allPosts;
+    let list = allPosts.filter((p) => (p.participants?.age_category ?? "main") === vc.view);
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       return list.filter((p) => p.participants?.display_name?.toLowerCase().includes(q));

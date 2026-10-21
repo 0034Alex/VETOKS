@@ -28,20 +28,23 @@ export async function POST(req: Request) {
 
   const { data: mine } = await supabaseAdmin
     .from("participants")
-    .select("id, region_id, is_eliminated")
+    .select("id, region_id, is_eliminated, age_category")
     .eq("user_id", uid)
     .maybeSingle();
   if (!mine || mine.is_eliminated) return bad("not_participant", 403);
   if (!mine.region_id) return bad("no_region", 400);
+  // Для категории TEEN чёрных меток нет.
+  if (mine.age_category === "teen") return bad("teen_off", 403);
   if (mine.id === targetId) return bad("self", 400);
 
   const { data: target } = await supabaseAdmin
     .from("participants")
-    .select("id, region_id, is_eliminated")
+    .select("id, region_id, is_eliminated, age_category")
     .eq("id", targetId)
     .maybeSingle();
   if (!target || target.is_eliminated) return bad("no_target", 404);
   if (target.region_id !== mine.region_id) return bad("other_region", 403);
+  if ((target.age_category ?? "main") !== (mine.age_category ?? "main")) return bad("other_category", 403);
 
   const weekStart = kyivWeekStart();
   const { data: already } = await supabaseAdmin

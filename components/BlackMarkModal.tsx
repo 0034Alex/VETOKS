@@ -40,7 +40,7 @@ export default function BlackMarkModal({
       // не полагаясь на то, что передала родительская страница.
       const { data: myParticipant, error: participantError } = await supabase
         .from("participants")
-        .select("id, region_id")
+        .select("id, region_id, age_category")
         .eq("user_id", userId)
         .maybeSingle();
 
@@ -68,6 +68,7 @@ export default function BlackMarkModal({
             .from("participants")
             .select("id, display_name, photo_url")
             .eq("region_id", myParticipant.region_id)
+            .eq("age_category", (myParticipant as any).age_category ?? "main")
             .eq("is_eliminated", false);
           setRegionParticipants(
             ((participantsData as RegionParticipant[]) ?? []).filter(

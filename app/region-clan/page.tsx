@@ -10,6 +10,9 @@ import PageHeader from "@/components/PageHeader";
 import { apiPost } from "@/lib/authClient";
 import ReportSheet from "@/components/ReportSheet";
 import OwnTextActions from "@/components/OwnTextActions";
+import { useViewCategory } from "@/lib/viewCategory";
+import { categoryInfo } from "@/lib/ageCategory";
+import { CategoryStrip } from "@/components/CategorySwitch";
 
 type Message = {
   id: string;
@@ -21,6 +24,7 @@ type Message = {
 
 export default function RegionClanPage() {
   const router = useRouter();
+  const vc = useViewCategory();
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
@@ -32,11 +36,12 @@ export default function RegionClanPage() {
   const [reportFor, setReportFor] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  async function load(regionId: string) {
+  async function load(regionId: string, cat: string = vc.view) {
     const { data } = await supabase
       .from("region_clan_messages")
       .select("id, user_id, body, created_at, edited_at, users(first_name)")
       .eq("region_id", regionId)
+      .eq("age_category", cat)
       .eq("is_hidden", false)
       .order("created_at", { ascending: true })
       .limit(200);
@@ -45,7 +50,8 @@ export default function RegionClanPage() {
     const { count } = await supabase
       .from("users")
       .select("id", { count: "exact", head: true })
-      .eq("region_id", regionId);
+      .eq("region_id", regionId)
+      .eq("age_category", cat);
     setMemberCount(count ?? 0);
   }
 
@@ -61,16 +67,21 @@ export default function RegionClanPage() {
         return;
       }
       setMe(u);
-      await load(u.region_id);
       setLoading(false);
     })();
   }, [router]);
 
   useEffect(() => {
+    if (me?.region_id && vc.ready) load(me.region_id, vc.view);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.region_id, vc.ready, vc.view]);
+
+  useEffect(() => {
     if (!me?.region_id) return;
-    const interval = setInterval(() => load(me.region_id!), 6000);
+    const interval = setInterval(() => load(me.region_id!, vc.view), 6000);
     return () => clearInterval(interval);
-  }, [me?.region_id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.region_id, vc.view]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -95,7 +106,7 @@ export default function RegionClanPage() {
     const r = await apiPost("/api/clan/send", { text });
     if (r?.ok) {
       setText("");
-      await load(me.region_id);
+      await load(me.region_id, vc.view);
     } else {
       setErr(ERRORS[r?.error] ?? "Не удалось отправить, попробуйте ещё раз.");
       if (r?.error === "verify") window.dispatchEvent(new Event("vetoks:verify-phone"));
@@ -131,9 +142,10 @@ export default function RegionClanPage() {
     <main className="min-h-screen pb-28 flex flex-col">
       <PageHeader />
       <div className="max-w-3xl mx-auto w-full flex flex-col flex-1">
+        <CategoryStrip />
         <div className="px-6 mb-4">
           <h1 className="text-xl font-semibold text-offwhite">
-            Клан «{me.regions?.name ?? "Мой регион"}»
+            Клан «{me.regions?.name ?? "Мой регион"}» · {categoryInfo(vc.view).label}
           </h1>
           <p className="text-muted text-xs mt-1">
             {memberCount} {memberCount === 1 ? "участник" : "участников"} региона
@@ -170,7 +182,7 @@ export default function RegionClanPage() {
                   </button>
                 )}
                 {isMine ? (
-                  <OwnTextActions api="/api/clan/manage" id={m.id} body={m.body} light onDone={() => me.region_id && load(me.region_id)}>
+                  <OwnTextActions api="/api/clan/manage" id={m.id} body={m.body} light onDone={() => me.region_id && load(me.region_id, vc.view)}>
                     {m.body}
                     {(m as any).edited_at && <span className="opacity-60 text-[10px] ml-1">изменено</span>}
                   </OwnTextActions>
@@ -193,7 +205,10 @@ export default function RegionClanPage() {
         </div>
 
         {err && <p className="px-6 mt-3 text-danger text-xs">{err}</p>}
-        <div className="px-6 mt-2 flex gap-2">
+        {vc.view !== vc.mine && (
+          <p className="px-6 mt-2 text-muted text-xs text-center">Чужая категория: читать можно, писать — только в своей.</p>
+        )}
+        <div className={`px-6 mt-2 flex gap-2 ${vc.view !== vc.mine ? "hidden" : ""}`}>
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
