@@ -3,6 +3,7 @@
 import { useT } from "@/lib/i18n";
 import StagePoll from "@/components/StagePoll";
 import CategorySwitch, { CategoryStrip } from "@/components/CategorySwitch";
+import { adAllowed } from "@/lib/adAudience";
 import TeenConsentBanner from "@/components/TeenConsentBanner";
 import { useViewCategory, viewInfo, inView } from "@/lib/viewCategory";
 import { getVoteTotals } from "@/lib/voteTotals";
@@ -198,13 +199,14 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
       const { data: adsRaw } = await orCountry(
         supabase
           .from("magazine_ads")
-          .select("id, image_url, description, button_text, button_link, all_regions, magazine_ad_regions(region_id)")
+          .select("id, image_url, description, button_text, button_link, all_regions, audience, magazine_ad_regions(region_id)")
           .eq("is_active", true)
           .order("sort_order", { ascending: true }),
         mc.countryId
       );
       // Реклама журнала: «все регионы» или регион зрителя в списке выбранных.
-      const ads = (adsRaw ?? []).filter(
+      const meAd = await getCurrentUser();
+      const ads = (adsRaw ?? []).filter((a: any) => adAllowed(a.audience, meAd?.age_category)).filter(
         (a: any) =>
           a.all_regions ||
           !userRegionId ||

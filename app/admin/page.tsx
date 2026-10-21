@@ -1,5 +1,6 @@
 "use client";
 
+import AdAudience from "@/components/AdAudience";
 import AdminStaffInvites from "@/components/AdminStaffInvites";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -1987,6 +1988,7 @@ function BannersTab() {
               <p className="text-gold text-[10px] mt-0.5">
                 {b.all_regions ? "Все регионы" : b.region_names.join(", ") || "регион не выбран"}
               </p>
+              <AdAudience table="promo_banners" id={b.id} />
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={() => toggleActive(b)}
@@ -2313,6 +2315,7 @@ function PartnerLogosTab() {
               <p className="text-muted text-xs">
                 {r.all_regions === false ? `Регионы: ${(r.region_names ?? []).join(", ") || "—"}` : "Все регионы страны"}
               </p>
+              <AdAudience table="partner_logos" id={r.id} />
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={() => toggleActive(r)}
@@ -3508,6 +3511,7 @@ function MagazineAdsTab() {
               <p className="text-gold text-[10px] mt-1">
                 {ad.all_regions ? "Все регионы" : ad.region_names.join(", ") || "регион не выбран"}
               </p>
+              <AdAudience table="magazine_ads" id={ad.id} />
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={() => toggleActive(ad)}

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getMyCountry } from "@/lib/myCountry";
 import { loadScoped } from "@/lib/scopedSettings";
+import { adAllowed } from "@/lib/adAudience";
 import { getCurrentUser } from "@/lib/currentUser";
 import { AdWatch, withUtm } from "@/lib/track";
 
@@ -39,7 +40,7 @@ export default function PromoBannerCarousel({
       // «Все регионы» означает все регионы СВОЕЙ страны (country_id), а не всех стран.
       let nq = supabase
         .from("promo_banners")
-        .select("id, image_url, link_url, sort_order, country_id")
+        .select("id, image_url, link_url, sort_order, country_id, audience")
         .eq("is_active", true)
         .eq("placement", placement)
         .eq("all_regions", true);
@@ -55,7 +56,7 @@ export default function PromoBannerCarousel({
         const { data: regionalRows, error: regionalError } = await supabase
           .from("promo_banner_regions")
           .select(
-            "banner_id, promo_banners(id, image_url, link_url, sort_order, is_active, all_regions, placement)"
+            "banner_id, promo_banners(id, image_url, link_url, sort_order, is_active, all_regions, placement, audience)"
           )
           .eq("region_id", myRegionId);
         if (regionalError) {
@@ -67,6 +68,7 @@ export default function PromoBannerCarousel({
       }
 
       const merged = [...(nationwide ?? []), ...regional]
+        .filter((b: any) => adAllowed(b.audience, u?.age_category))
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
         .slice(0, 5);
 

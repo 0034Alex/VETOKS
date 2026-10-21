@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { supabase } from "@/lib/supabaseClient";
 import { useAdWatch, withUtm } from "@/lib/track";
+import { adAllowed } from "@/lib/adAudience";
 import { getCurrentUser } from "@/lib/currentUser";
 import { visibleInRegion } from "@/lib/regionFilter";
 
@@ -57,11 +58,11 @@ export default function PartnersShowcase() {
     (async () => {
       const mc = await getMyCountry();
       const { data } = await orCountry(
-        supabase.from("partner_logos").select("id, name, logo_url, link_url, all_regions, partner_logo_regions(region_id)").eq("is_active", true).limit(30),
+        supabase.from("partner_logos").select("id, name, logo_url, link_url, all_regions, audience, partner_logo_regions(region_id)").eq("is_active", true).limit(30),
         mc.countryId
       );
       const me = await getCurrentUser();
-      const list = shuffle(visibleInRegion((data as any[]) ?? [], me?.region_id ?? null, "partner_logo_regions") as Partner[]);
+      const list = shuffle(visibleInRegion(((data as any[]) ?? []).filter((x: any) => adAllowed(x.audience, me?.age_category)), me?.region_id ?? null, "partner_logo_regions") as Partner[]);
       setPartners(list);
     })();
   }, []);

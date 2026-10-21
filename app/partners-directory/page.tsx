@@ -7,6 +7,7 @@ import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import { adAllowed } from "@/lib/adAudience";
 import { getCurrentUser } from "@/lib/currentUser";
 import { visibleInRegion } from "@/lib/regionFilter";
 import { useAdWatch, withUtm } from "@/lib/track";
@@ -53,13 +54,13 @@ export default function PartnersDirectoryPage() {
       const { data } = await orCountry(
         supabase
           .from("partner_logos")
-          .select("id, name, logo_url, link_url, all_regions, partner_logo_regions(region_id)")
+          .select("id, name, logo_url, link_url, all_regions, audience, partner_logo_regions(region_id)")
           .eq("is_active", true)
           .order("sort_order", { ascending: true }),
         mc.countryId
       );
       const me = await getCurrentUser();
-      setPartners(visibleInRegion((data as any[]) ?? [], me?.region_id ?? null, "partner_logo_regions") as Partner[]);
+      setPartners(visibleInRegion(((data as any[]) ?? []).filter((x: any) => adAllowed(x.audience, me?.age_category)), me?.region_id ?? null, "partner_logo_regions") as Partner[]);
       setLoading(false);
     })();
   }, []);
