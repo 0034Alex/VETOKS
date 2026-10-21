@@ -10,7 +10,7 @@ import { pickText } from "@/lib/pushText";
 //  4) снимок голосов для стрелочек ↑/↓.
 // Запускать можно сколько угодно раз — результат за дату перезаписывается.
 
-type P = { id: string; user_id: string; region_id: string | null; created_at: string };
+type P = { id: string; user_id: string; region_id: string | null; created_at: string; age_category: string };
 type Setting = { key: string; label: string; unit: string; metric: string; enabled: boolean; sort_order: number };
 
 async function selectAll<T>(
@@ -149,7 +149,7 @@ async function notifyRankChanges(participants: P[], totals: Record<string, numbe
 
   const byRegion: Record<string, P[]> = {};
   participants.forEach((p) => {
-    if (p.region_id) (byRegion[p.region_id] ??= []).push(p);
+    if (p.region_id) (byRegion[p.region_id + "|" + (p.age_category || "main")] ??= []).push(p);
   });
 
   let sent = 0;
@@ -198,7 +198,7 @@ export async function runDailyJob() {
   const participants = await selectAll<P>((a, b) =>
     supabaseAdmin
       .from("participants")
-      .select("id, user_id, region_id, created_at")
+      .select("id, user_id, region_id, created_at, age_category")
       .eq("is_eliminated", false)
       .range(a, b) as any
   );
@@ -282,17 +282,23 @@ export async function runDailyJob() {
   const countryOf = (p: P) => (p.region_id ? regionCountry[p.region_id] ?? null : null);
   const countryIds = [...new Set(participants.map(countryOf).filter(Boolean))] as string[];
 
+  // Каждая возрастная категория (TEEN / MISS / LADY) считается отдельно.
+  const CATS = ["teen", "main", "adult"];
+  const catOf = (p: P) => (p.age_category || "main");
   const rows: any[] = [];
-  for (const cid of countryIds) {
-    compute(participants.filter((p) => countryOf(p) === cid)).forEach((r) =>
-      rows.push({ snapshot_date: today, scope: "country", region_id: null, country_id: cid, ...r })
-    );
-  }
-  const regionIds = [...new Set(participants.map((p) => p.region_id).filter(Boolean))] as string[];
-  for (const rid of regionIds) {
-    compute(participants.filter((p) => p.region_id === rid)).forEach((r) =>
-      rows.push({ snapshot_date: today, scope: "region", region_id: rid, country_id: regionCountry[rid] ?? null, ...r })
-    );
+  for (const cat of CATS) {
+    const inCat = participants.filter((p) => catOf(p) === cat);
+    for (const cid of countryIds) {
+      compute(inCat.filter((p) => countryOf(p) === cid)).forEach((r) =>
+        rows.push({ snapshot_date: today, scope: "country", region_id: null, country_id: cid, age_category: cat, ...r })
+      );
+    }
+    const regionIds = [...new Set(inCat.map((p) => p.region_id).filter(Boolean))] as string[];
+    for (const rid of regionIds) {
+      compute(inCat.filter((p) => p.region_id === rid)).forEach((r) =>
+        rows.push({ snapshot_date: today, scope: "region", region_id: rid, country_id: regionCountry[rid] ?? null, age_category: cat, ...r })
+      );
+    }
   }
   await supabaseAdmin.from("title_rankings_v2").delete().eq("snapshot_date", today);
   for (let i = 0; i < rows.length; i += 500) {
@@ -300,15 +306,17 @@ export async function runDailyJob() {
   }
 
   // 4) Топ-25 за прошедшие сутки (бесплатные голоса)
-  const top: { snapshot_date: string; rank: number; participant_id: string; votes: number; country_id: string }[] = [];
-  for (const cid of countryIds) {
-    [...participants]
-      .filter((p) => countryOf(p) === cid && (dayVotes[p.id] ?? 0) > 0)
-      .sort((a, b) => (dayVotes[b.id] ?? 0) - (dayVotes[a.id] ?? 0) || (totals[b.id] ?? 0) - (totals[a.id] ?? 0))
-      .slice(0, 25)
-      .forEach((p, i) =>
-        top.push({ snapshot_date: today, rank: i + 1, participant_id: p.id, votes: dayVotes[p.id], country_id: cid })
-      );
+  const top: { snapshot_date: string; rank: number; participant_id: string; votes: number; country_id: string; age_category: string }[] = [];
+  for (const cat of CATS) {
+    for (const cid of countryIds) {
+      [...participants]
+        .filter((p) => catOf(p) === cat && countryOf(p) === cid && (dayVotes[p.id] ?? 0) > 0)
+        .sort((a, b) => (dayVotes[b.id] ?? 0) - (dayVotes[a.id] ?? 0) || (totals[b.id] ?? 0) - (totals[a.id] ?? 0))
+        .slice(0, 25)
+        .forEach((p, i) =>
+          top.push({ snapshot_date: today, rank: i + 1, participant_id: p.id, votes: dayVotes[p.id], country_id: cid, age_category: cat })
+        );
+    }
   }
   await supabaseAdmin.from("top25_daily").delete().eq("snapshot_date", today);
   if (top.length) await supabaseAdmin.from("top25_daily").insert(top);

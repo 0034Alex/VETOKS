@@ -2,6 +2,9 @@
 
 import { useT } from "@/lib/i18n";
 import StagePoll from "@/components/StagePoll";
+import CategorySwitch, { CategoryStrip } from "@/components/CategorySwitch";
+import { useViewCategory } from "@/lib/viewCategory";
+import { categoryInfo } from "@/lib/ageCategory";
 import { getVoteTotals } from "@/lib/voteTotals";
 import { useEffect, useRef, useState } from "react";
 import { AdWatch, trackAdClick, withUtm } from "@/lib/track";
@@ -31,6 +34,7 @@ type Participant = {
   gifts: number;
   followers: number;
   region_id: string | null;
+  age_category: string;
 };
 
 function useSundayCountdown() {
@@ -628,6 +632,7 @@ export default function Home() {
   const [currentStage, setCurrentStage] = useState<Stage | null>(null);
   const [totalStages, setTotalStages] = useState(0);
   const [allParticipants, setAllParticipants] = useState<Participant[]>([]);
+  const vc = useViewCategory();
   const [scope, setScope] = useState<"region" | "country">("region");
   const [homeCfg, setHomeCfg] = useState<Record<string, string>>({});
   const [countryName, setCountryName] = useState("");
@@ -701,7 +706,7 @@ export default function Home() {
       const mc2 = await getMyCountry();
       let hq = supabase
         .from("participants")
-        .select("id, display_name, photo_url, season_id, region_id")
+        .select("id, display_name, photo_url, season_id, region_id, age_category")
         .eq("is_eliminated", false);
       if (mc2.countryId) hq = hq.in("region_id", mc2.regionIds);
       const { data: participantsData } = await hq;
@@ -734,6 +739,7 @@ export default function Home() {
           photo_url: string | null;
           season_id: string;
           region_id: string | null;
+          age_category?: string;
         }) => ({
           id: p.id,
           display_name: p.display_name,
@@ -742,6 +748,7 @@ export default function Home() {
           gifts: giftCounts[p.id] ?? 0,
           followers: followCounts[p.id] ?? 0,
           region_id: p.region_id,
+          age_category: p.age_category ?? "main",
         })
       );
       setAllParticipants(list);
@@ -790,10 +797,11 @@ export default function Home() {
 
   if (!checked) return <LoadingScreen />;
 
+  const inCat = allParticipants.filter((p) => p.age_category === vc.view);
   const filtered =
     scope === "region" && user?.region_id
-      ? allParticipants.filter((p) => p.region_id === user.region_id)
-      : allParticipants;
+      ? inCat.filter((p) => p.region_id === user.region_id)
+      : inCat;
   const participants = [...filtered].sort((a, b) => b.votes - a.votes).slice(0, 5);
 
   let stageProgress = 0;
@@ -818,10 +826,11 @@ export default function Home() {
         style={{ background: "linear-gradient(180deg, #2b2040 0%, #1d1530 55%, #150f22 100%)" }}
       >
       <div
-        className="flex items-center justify-between px-6 py-4"
+        className="relative flex items-center justify-between px-6 py-4"
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
       >
         <Logo size={32} />
+        <CategorySwitch />
         <Link
           href="/hall-of-fame"
           className="text-gold text-xs font-semibold border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap"
@@ -831,6 +840,7 @@ export default function Home() {
       </div>
 
       <div className="max-w-5xl mx-auto">
+        <CategoryStrip />
         <div className="px-6 mb-4 flex gap-2">
           <button
             onClick={() => setScope("region")}
@@ -866,7 +876,7 @@ export default function Home() {
         >
           <div className="w-1/2">
             <p className="text-goldSoft text-xs tracking-widest mb-1">
-              MISS
+              {categoryInfo(vc.view).label}
             </p>
             <h1 className="text-2xl md:text-4xl font-bold text-offwhite mb-1 leading-tight">
               {scope === "country" ? countryName || t("home.country") : user?.regions?.name ?? t("home.soon")}
@@ -1096,7 +1106,7 @@ export default function Home() {
           </div>
         )}
 
-        <StagePoll />
+        {vc.view === vc.mine && <StagePoll />}
 
         <PartnersShowcase />
       </div>

@@ -8,6 +8,9 @@ import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import { msToNextUpdate } from "@/lib/kyiv";
 import { getMyCountry } from "@/lib/myCountry";
+import { useViewCategory } from "@/lib/viewCategory";
+import { categoryInfo } from "@/lib/ageCategory";
+import { CategoryStrip } from "@/components/CategorySwitch";
 
 type Row = {
   rank: number;
@@ -43,21 +46,26 @@ export default function Top25Page() {
   const [date, setDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const timeLeft = useCountdownToUpdate();
+  const vc = useViewCategory();
 
   useEffect(() => {
+    if (!vc.ready) return;
     (async () => {
+      setLoading(true);
       // Таблицу Топ-25 раз в сутки в 00:01 составляет сервер по
       // бесплатным голосам за прошедшие сутки.
       const mc = await getMyCountry();
       let lq = supabase
         .from("top25_daily")
         .select("snapshot_date")
+        .eq("age_category", vc.view)
         .order("snapshot_date", { ascending: false })
         .limit(1);
       if (mc.countryId) lq = lq.eq("country_id", mc.countryId);
       const { data: latest } = await lq.maybeSingle();
 
       if (!latest?.snapshot_date) {
+        setRows([]);
         setLoading(false);
         return;
       }
@@ -67,6 +75,7 @@ export default function Top25Page() {
         .from("top25_daily")
         .select("rank, participant_id, votes")
         .eq("snapshot_date", latest.snapshot_date)
+        .eq("age_category", vc.view)
         .order("rank");
       if (mc.countryId) tq = tq.eq("country_id", mc.countryId);
       const { data: top } = await tq;
@@ -88,14 +97,16 @@ export default function Top25Page() {
       );
       setLoading(false);
     })();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vc.ready, vc.view]);
 
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
+      <CategoryStrip />
 
       <div className="px-6 mb-6 text-center">
-        <h1 className="text-2xl font-semibold text-gold mb-2">Топ-25 за сутки</h1>
+        <h1 className="text-2xl font-semibold text-gold mb-2">Топ-25 за сутки · {categoryInfo(vc.view).label}</h1>
         <p className="text-muted text-sm">
           Обновление рейтинга через{" "}
           <span className="text-gold font-mono">{timeLeft}</span>

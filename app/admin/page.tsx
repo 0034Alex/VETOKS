@@ -539,11 +539,12 @@ function Applications() {
 
     const { data: applicant } = await supabase
       .from("users")
-      .select("region_id")
+      .select("region_id, age_category")
       .eq("id", app.user_id)
       .maybeSingle();
 
     await supabase.from("participants").insert({
+      age_category: (applicant as any)?.age_category ?? "main",
       user_id: app.user_id,
       season_id: app.season_id,
       region_id: applicant?.region_id ?? null,

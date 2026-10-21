@@ -23,10 +23,20 @@ export async function POST(req: Request) {
   if (oc) return oc;
 
 
-  const { data, error } = await supabaseAdmin.rpc("vt_cast_votes", {
+  // Бесплатные голоса — только своей возрастной категории; в чужую категорию можно голосовать за купленные.
+  const [{ data: vu }, { data: vp }] = await Promise.all([
+    supabaseAdmin.from("users").select("age_category").eq("id", uid).maybeSingle(),
+    supabaseAdmin.from("participants").select("age_category").eq("id", participantId).maybeSingle(),
+  ]);
+  const myCat = (vu as any)?.age_category || "main";
+  const herCat = (vp as any)?.age_category || "main";
+  const cross = myCat !== herCat;
+
+  const { data, error } = await supabaseAdmin.rpc("vt_cast_votes_cat", {
     p_user: uid,
     p_participant: participantId,
     p_count: count,
+    p_paid_only: cross,
   });
   if (error || !data) return bad("server", 500);
 
@@ -56,5 +66,5 @@ export async function POST(req: Request) {
       /* уведомление не должно ломать голосование */
     }
   }
-  return NextResponse.json(data);
+  return NextResponse.json(cross && data && typeof data === "object" ? { ...(data as object), cross_category: true } : data);
 }

@@ -22,6 +22,9 @@ export async function POST(req: Request) {
   if (!stage || !stage.question) return NextResponse.json({ ok: true, question: "", answered: false, results: [], total: 0 });
 
   const regionIds = countryId ? await regionIdsOfCountry(countryId) : [];
+  // Опрос идёт внутри возрастной категории человека: участницы и итоги только своей категории.
+  const { data: me } = await supabaseAdmin.from("users").select("age_category").eq("id", uid).maybeSingle();
+  const myCat = ["teen", "main", "adult"].includes(String((me as any)?.age_category)) ? String((me as any).age_category) : "main";
 
   const { data: prev } = await supabaseAdmin
     .from("stage_poll_votes")
@@ -38,6 +41,7 @@ export async function POST(req: Request) {
       .from("participants")
       .select("id, display_name, photo_url, region_id")
       .eq("is_eliminated", false)
+      .eq("age_category", myCat)
       .in("region_id", regionIds)
       .ilike("display_name", `%${q}%`)
       .limit(5);
@@ -58,10 +62,10 @@ export async function POST(req: Request) {
     if (!pid) return bad("empty");
     const { data: p } = await supabaseAdmin
       .from("participants")
-      .select("id, region_id, is_eliminated")
+      .select("id, region_id, is_eliminated, age_category")
       .eq("id", pid)
       .maybeSingle();
-    if (!p || (p as any).is_eliminated || (regionIds.length && !regionIds.includes((p as any).region_id))) return bad("not_found", 404);
+    if (!p || (p as any).is_eliminated || ((p as any).age_category ?? "main") !== myCat || (regionIds.length && !regionIds.includes((p as any).region_id))) return bad("not_found", 404);
     const { error } = await supabaseAdmin
       .from("stage_poll_votes")
       .insert({ stage_id: stage.id, user_id: uid, participant_id: pid });
@@ -71,15 +75,17 @@ export async function POST(req: Request) {
 
   if (!myPid) return NextResponse.json({ ok: true, question: stage.question, answered: false, results: [], total: 0, voters: await pollVoterCount(stage.id), endsAt: stage.ends_at });
 
-  const { total, rows } = await pollResults(stage.id);
+  const all = await pollResults(stage.id);
+  const rows = all.rows;
   const ids = rows.map((r) => r.participant_id);
   const info = new Map<string, { name: string; photo: string | null }>();
   for (let i = 0; i < ids.length; i += 200) {
-    const { data } = await supabaseAdmin.from("participants").select("id, display_name, photo_url").in("id", ids.slice(i, i + 200));
-    ((data ?? []) as any[]).forEach((p) => info.set(p.id, { name: p.display_name, photo: p.photo_url ?? null }));
+    const { data } = await supabaseAdmin.from("participants").select("id, display_name, photo_url, age_category").in("id", ids.slice(i, i + 200));
+    ((data ?? []) as any[]).filter((p) => (p.age_category ?? "main") === myCat).forEach((p) => info.set(p.id, { name: p.display_name, photo: p.photo_url ?? null }));
   }
-  let results = rows
-    .filter((r) => info.has(r.participant_id))
+  const inCat = rows.filter((r) => info.has(r.participant_id));
+  const total = inCat.reduce((a, r) => a + r.votes, 0);
+  let results = inCat
     .map((r) => ({
       id: r.participant_id,
       name: info.get(r.participant_id)!.name,

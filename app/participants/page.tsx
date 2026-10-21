@@ -15,6 +15,9 @@ import BlackMarkModal from "@/components/BlackMarkModal";
 import { getVoteTotals } from "@/lib/voteTotals";
 import { apiPost } from "@/lib/authClient";
 import { getMyCountry } from "@/lib/myCountry";
+import { useViewCategory } from "@/lib/viewCategory";
+import { categoryInfo } from "@/lib/ageCategory";
+import { CategoryStrip } from "@/components/CategorySwitch";
 
 type Participant = {
   id: string;
@@ -29,6 +32,7 @@ type Participant = {
 type Filter = "all" | "top" | "new";
 
 export default function ParticipantsPage() {
+  const vc = useViewCategory();
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [scope, setScope] = useState<"region" | "country">("region");
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -54,7 +58,8 @@ export default function ParticipantsPage() {
     let pq = supabase
       .from("participants")
       .select("id, display_name, bio, photo_url, created_at, season_id, region_id")
-      .eq("is_eliminated", false);
+      .eq("is_eliminated", false)
+      .eq("age_category", vc.view);
     if (mc.countryId) pq = pq.in("region_id", mc.regionIds);
     const { data: participantsData } = await pq;
 
@@ -150,7 +155,6 @@ export default function ParticipantsPage() {
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("tab") === "rating") setTab("rating");
-    loadData();
     getCurrentUser().then(async (u) => {
       setMe(u);
       if (u) {
@@ -165,6 +169,11 @@ export default function ParticipantsPage() {
     const stored = localStorage.getItem("vetoks_voted_ids");
     if (stored) setVotedIds(JSON.parse(stored));
   }, []);
+
+  useEffect(() => {
+    if (vc.ready) loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vc.ready, vc.view]);
 
   // Поиск людей по нику (по начальным буквам).
   useEffect(() => {
@@ -214,6 +223,7 @@ export default function ParticipantsPage() {
         <PageHeader />
         <PromoBannerCarousel />
 
+        <CategoryStrip />
         <div className="px-6 mb-4">
           <div className="flex items-baseline justify-between">
             {(["people", "rating"] as const).map((k) => (
@@ -235,7 +245,7 @@ export default function ParticipantsPage() {
             ))}
           </div>
           {tab === "people" && (
-            <p className="text-muted text-sm">MISS · {filtered.length} анкет</p>
+            <p className="text-muted text-sm">{categoryInfo(vc.view).label} · {filtered.length} анкет</p>
           )}
         </div>
 

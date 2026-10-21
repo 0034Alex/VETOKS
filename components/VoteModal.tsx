@@ -69,7 +69,7 @@ export default function VoteModal({
       return;
     }
     if (r.error === "own") setError("За себя голосовать нельзя.");
-    else if (r.error === "not_enough") setError("Не хватает голосов.");
+    else if (r.error === "not_enough") setError("Не хватает голосов. Бесплатные голоса работают только в вашей категории — за участницу другой категории нужны купленные.");
     else if (r.error === "banned") setError("Аккаунт заблокирован.");
     else setError("Не удалось засчитать голос. Попробуйте ещё раз.");
     loadInfo();
