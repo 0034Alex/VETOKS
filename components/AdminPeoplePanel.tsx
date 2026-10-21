@@ -11,6 +11,10 @@ const FILTERS: [string, string][] = [
   ["unverified", "Без номера"],
   ["new7", "Новые (7 дней)"],
   ["banned", "Заблокированные"],
+  ["teen", "TEEN 15–17"],
+  ["main", "MISS 18–29"],
+  ["adult", "LADY 30+"],
+  ["nobirth", "Без даты рождения"],
 ];
 
 const ACTION_LABELS: Record<string, string> = {
@@ -173,6 +177,7 @@ export default function AdminPeoplePanel() {
               </div>
               <div className="flex flex-col items-end gap-0.5 text-[10px] flex-shrink-0">
                 {u.participant && <span className="text-gold">участница{u.participant.is_eliminated ? " (скрыта)" : ""}</span>}
+                {u.age_category && <span className="text-goldSoft">{u.age_category === "teen" ? "TEEN" : u.age_category === "adult" ? "LADY" : "MISS"}</span>}
                 {u.phone_verified ? <span className="text-success">номер ✓</span> : <span className="text-muted">без номера</span>}
                 {u.is_banned && <span className="text-danger">заблокирован</span>}
               </div>
@@ -215,6 +220,7 @@ export default function AdminPeoplePanel() {
                   <p>Телефон: {card.user.phone ?? "—"} {card.user.phone_verified ? "✓ подтверждён" : "(не подтверждён)"}</p>
                   <p>Почта: {card.user.email ?? "—"}</p>
                   <p>Роль: {card.user.role}</p>
+                  <p>Категория: {card.user.age_category ? ({ teen: "TEEN 15–17", main: "MISS 18–29", adult: "LADY 30+" } as Record<string, string>)[card.user.age_category] : "—"} · Дата рождения: {card.user.birth_date ?? "не указана"}</p>
                   <p>Регистрация: {fmt(card.user.created_at)}</p>
                   <p>Последний вход: {fmt(card.user.last_login_at)}</p>
                   <p>Баланс: {Math.round(card.balance)} {crmCur}</p>

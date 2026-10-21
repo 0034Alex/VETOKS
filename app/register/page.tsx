@@ -1,6 +1,7 @@
 "use client";
 
 import ConsentLinks from "@/components/ConsentLinks";
+import BirthField from "@/components/BirthField";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -29,6 +30,7 @@ function RegisterForm() {
   const [regionId, setRegionId] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [birth, setBirth] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [captcha, setCaptcha] = useState("");
   const [capKey, setCapKey] = useState(0);
@@ -73,6 +75,7 @@ function RegisterForm() {
   function validateCommon(): string {
     if (!firstName.trim()) return "Введите имя.";
     if (!regionId) return "Выберите регион.";
+    if (!birth) return "Укажите дату рождения.";
     if (!agreed) return "Нужно принять условия и документы под галочкой.";
     return "";
   }
@@ -89,6 +92,7 @@ function RegisterForm() {
       loginToken,
       firstName,
       regionId,
+      birthDate: birth,
       agreed,
     });
     if (r.status !== "ok" || !(await openSession(r.token_hash))) {
@@ -115,6 +119,7 @@ function RegisterForm() {
       password,
       first_name: firstName.trim(),
       region_id: regionId,
+      birth_date: birth,
       turnstile: captcha,
     });
     // Токен капчи одноразовый: после любой попытки просим новый.
@@ -211,6 +216,7 @@ function RegisterForm() {
           </p>
           {nameInput}
           {regionSelect}
+          <BirthField onChange={setBirth} />
           {consent}
           <button
             type="submit"
@@ -239,6 +245,7 @@ function RegisterForm() {
               />
             </div>
             {regionSelect}
+            <BirthField onChange={setBirth} />
             <div>
               <label className="text-offwhite text-sm">Пароль</label>
               <input

@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
     let query = supabaseAdmin
       .from("users")
-      .select("id, first_name, username, phone, email, is_banned, phone_verified, created_at, last_login_at, region_id, photo_url, role, regions(name)")
+      .select("id, first_name, username, phone, email, is_banned, phone_verified, created_at, last_login_at, region_id, photo_url, role, age_category, regions(name)")
       .order("created_at", { ascending: false })
       .limit(60);
     if (q) {
@@ -28,6 +28,8 @@ export async function POST(req: Request) {
     }
     if (region) query = query.eq("region_id", region);
     else if (body.countryId) query = query.in("region_id", await regionIdsOfCountry(String(body.countryId)));
+    if (filter === "teen" || filter === "main" || filter === "adult") query = query.eq("age_category", filter);
+    if (filter === "nobirth") query = query.is("birth_date", null);
     if (filter === "banned") query = query.eq("is_banned", true);
     if (filter === "unverified") query = query.eq("phone_verified", false);
     if (filter === "new7") query = query.gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString());
@@ -50,7 +52,7 @@ export async function POST(req: Request) {
     const id = String(body.userId ?? "");
     const { data: user } = await supabaseAdmin
       .from("users")
-      .select("id, first_name, username, phone, email, is_banned, phone_verified, phone_verified_at, created_at, last_login_at, role, regions(name)")
+      .select("id, first_name, username, phone, email, is_banned, phone_verified, phone_verified_at, created_at, last_login_at, role, age_category, birth_date, regions(name)")
       .eq("id", id)
       .maybeSingle();
     if (!user) return NextResponse.json({ ok: false }, { status: 404 });
@@ -113,6 +115,21 @@ export async function POST(req: Request) {
       signs,
       log: log ?? [],
     });
+  }
+
+  if (action === "setpass") {
+    // Новый пароль человеку — только владелец.
+    const { data: me } = await supabaseAdmin.from("users").select("role").eq("id", uid).maybeSingle();
+    if (me?.role !== "super_admin") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+    const id = String(body.userId ?? "");
+    const password = String(body.password ?? "");
+    if (!id || password.length < 8) return NextResponse.json({ ok: false, error: "short" }, { status: 400 });
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(id, { password, email_confirm: true });
+    if (error) return NextResponse.json({ ok: false, error: "server", detail: error.message }, { status: 500 });
+    await logAction(uid, "set_password", id);
+    const { data: au } = await supabaseAdmin.auth.admin.getUserById(id);
+    const { data: u } = await supabaseAdmin.from("users").select("phone, phone_verified, email").eq("id", id).maybeSingle();
+    return NextResponse.json({ ok: true, loginEmail: u?.email ?? null, authEmail: au?.user?.email ?? null, phone: u?.phone ?? null, phoneVerified: !!u?.phone_verified });
   }
 
   if (action === "ban") {

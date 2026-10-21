@@ -18,6 +18,8 @@ export type CurrentUser = {
   region_changed_at?: string | null;
   photo_url?: string | null;
   bio?: string | null;
+  birth_date?: string | null;
+  age_category?: string | null;
   regions: { name: string } | null;
 };
 

@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
 
   const { data: root } = await supabaseAdmin
     .from("users")
-    .select("phone_verified, region_id, is_banned")
+    .select("phone_verified, region_id, is_banned, birth_date, age_category")
     .eq("id", rootId)
     .maybeSingle();
   if (!root?.phone_verified) {
@@ -51,6 +51,8 @@ export async function POST(req: NextRequest) {
     id: created.user.id,
     first_name: firstName,
     region_id: root.region_id,
+    birth_date: (root as any).birth_date ?? null,
+    age_category: (root as any).age_category ?? null,
     role: "viewer",
     parent_user_id: rootId,
     // Номер подтверждён у основного — дополнительному повторно не нужен.

@@ -5,6 +5,7 @@ import { verifyTurnstile } from "@/lib/turnstile";
 import { recordActivity } from "@/lib/security";
 import { autoFollowOfficial } from "@/lib/officialFollow";
 import { recordConsents } from "@/lib/consents";
+import { checkBirthForSignup } from "@/lib/ageServer";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,9 @@ export async function POST(req: NextRequest) {
   if (!firstName || !regionId)
     return NextResponse.json({ ok: false, error: "bad_request", message: "Заполните имя и регион." }, { status: 400 });
 
+  const bc = await checkBirthForSignup(b.birth_date);
+  if (!bc.ok) return NextResponse.json({ ok: false, error: bc.error, message: bc.message }, { status: 400 });
+
   const { data: reg } = await supabaseAdmin.from("regions").select("id").eq("id", regionId).maybeSingle();
   if (!reg) return NextResponse.json({ ok: false, error: "no_region", message: "Выберите регион." }, { status: 400 });
 
@@ -53,6 +57,8 @@ export async function POST(req: NextRequest) {
     first_name: firstName,
     email,
     region_id: regionId,
+    birth_date: bc.birth,
+    age_category: bc.category,
     role: "viewer",
   });
   if (insErr) {

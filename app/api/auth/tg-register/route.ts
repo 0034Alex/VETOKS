@@ -1,5 +1,6 @@
 import { autoFollowOfficial } from "@/lib/officialFollow";
 import { recordConsents } from "@/lib/consents";
+import { checkBirthForSignup } from "@/lib/ageServer";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -15,6 +16,8 @@ export async function POST(req: NextRequest) {
   const regionId = String(body.regionId || "");
   if (!firstName) return NextResponse.json({ status: "error", message: "Введите имя." });
   if (!regionId) return NextResponse.json({ status: "error", message: "Выберите регион." });
+  const bc = await checkBirthForSignup(body.birthDate);
+  if (!bc.ok) return NextResponse.json({ status: "error", message: bc.message });
   if (!body.agreed) {
     return NextResponse.json({
       status: "error",
@@ -94,6 +97,8 @@ export async function POST(req: NextRequest) {
     id: created.user.id,
     first_name: firstName,
     region_id: regionId,
+    birth_date: bc.birth,
+    age_category: bc.category,
     telegram_id: telegramId,
     role: "viewer",
   });

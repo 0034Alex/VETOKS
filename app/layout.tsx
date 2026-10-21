@@ -11,6 +11,7 @@ import ChunkReload from "@/components/ChunkReload";
 import ScrollGuard from "@/components/ScrollGuard";
 import ErrorReporter from "@/components/ErrorReporter";
 import PresenceBeat from "@/components/PresenceBeat";
+import BirthPopup from "@/components/BirthPopup";
 
 export const metadata: Metadata = {
   title: "VETOKS",
@@ -57,6 +58,7 @@ export default function RootLayout({
         <ScrollGuard />
         <ErrorReporter />
         <PresenceBeat />
+        <BirthPopup />
       </LangProvider>
       </body>
     </html>
