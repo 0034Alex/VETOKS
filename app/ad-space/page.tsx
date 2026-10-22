@@ -444,11 +444,11 @@ export default function AdSpacePage() {
 
       {selected && (
         <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 px-6"
+          className="fixed inset-0 bg-black/80 flex overflow-y-auto overscroll-contain z-[60] px-6"
           onClick={() => setSelected(null)}
         >
           <div
-            className="bg-bgSurface border border-gold/40 rounded-2xl p-6 w-full max-w-sm"
+            className="bg-bgSurface border border-gold/40 rounded-2xl p-6 w-full max-w-sm m-auto my-8"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-gold text-xs tracking-widest mb-1">
