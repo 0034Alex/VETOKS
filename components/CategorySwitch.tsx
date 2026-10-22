@@ -25,75 +25,80 @@ export default function CategorySwitch() {
   const cur = viewInfo(view);
   const other = view !== mine;
 
+  // После закрытия «будим» прокрутку: на iOS Safari и в Telegram она иногда залипает.
+  function close() {
+    setOpen(false);
+    try {
+      const y = window.scrollY;
+      window.scrollTo(0, y + 1);
+      window.scrollTo(0, y);
+    } catch {
+      /* не критично */
+    }
+  }
+
   return (
     <>
       {open && (
-        <button
-          type="button"
-          aria-label="Закрыть"
-          onClick={() => setOpen(false)}
-          className="fixed inset-0 z-40 bg-bgPrimary/60"
-        />
+        <div aria-hidden onClick={close} className="fixed inset-0 z-40 bg-bgPrimary/60" />
       )}
       <div className="absolute z-50" style={{ top: 12, right: 36, width: 54, height: 54 }}>
-        {items.map((c) => {
-          const [x, y] = pos[c.key];
-          const on = c.key === view;
-          const locked = c.key === "teen" && !teenOpen && mine !== "teen" && !canAll;
-          return (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => {
-                if (locked) return;
-                setView(c.key);
-                setOpen(false);
-              }}
-              className={`absolute flex flex-col items-center justify-center rounded-full border-2 leading-none ${
-                on ? "border-gold bg-[#2a2412] text-gold" : "border-[#3a3a3e] bg-bgSurface text-offwhite"
-              } ${locked ? "opacity-50" : ""}`}
-              style={{
-                left: 0,
-                top: 0,
-                width: 54,
-                height: 54,
-                opacity: open ? (locked ? 0.5 : 1) : 0,
-                pointerEvents: open ? "auto" : "none",
-                transform: open ? `translate(${x}px, ${y}px) scale(1)` : "translate(0,0) scale(0.3)",
-                transition: "transform .35s cubic-bezier(.3,1.5,.5,1), opacity .2s",
-              }}
-            >
-              <b className="text-[11px] font-extrabold">{c.label}</b>
-              <small className="text-[8px] mt-0.5 text-muted font-semibold">{locked ? "🔒" : c.ages}</small>
-              {c.key === mine && (
-                <i className="absolute -bottom-2 not-italic text-[8px] font-extrabold text-bgPrimary bg-gold rounded-md px-1.5 py-px">
-                  ТВОЯ
-                </i>
-              )}
-            </button>
-          );
-        })}
+        {open &&
+          items.map((c, idx) => {
+            const [x, y] = pos[c.key];
+            const on = c.key === view;
+            const locked = c.key === "teen" && !teenOpen && mine !== "teen" && !canAll;
+            return (
+              <button
+                key={c.key}
+                type="button"
+                onClick={() => {
+                  if (locked) return;
+                  setView(c.key);
+                  close();
+                }}
+                className={`absolute flex flex-col items-center justify-center rounded-full border-2 leading-none ${
+                  on ? "border-gold bg-[#2a2412] text-gold" : "border-[#3a3a3e] bg-bgSurface text-offwhite"
+                } ${locked ? "opacity-50" : ""}`}
+                style={{
+                  left: 0,
+                  top: 0,
+                  width: 54,
+                  height: 54,
+                  touchAction: "manipulation",
+                  ["--x" as any]: `${x}px`,
+                  ["--y" as any]: `${y}px`,
+                  animation: `vetoksCatPetal .35s cubic-bezier(.3,1.5,.5,1) ${idx * 40}ms both`,
+                }}
+              >
+                <b className="text-[11px] font-extrabold">{c.label}</b>
+                <small className="text-[8px] mt-0.5 text-muted font-semibold">{locked ? "🔒" : c.ages}</small>
+                {c.key === mine && (
+                  <i className="absolute -bottom-2 not-italic text-[8px] font-extrabold text-bgPrimary bg-gold rounded-md px-1.5 py-px">
+                    ТВОЯ
+                  </i>
+                )}
+              </button>
+            );
+          })}
         <button
           type="button"
           aria-label="Категория"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => (open ? close() : setOpen(true))}
           className="absolute inset-0 flex flex-col items-center justify-center rounded-full leading-none text-offwhite"
           style={{
             border: `2px ${other ? "dashed" : "solid"} #C9A227`,
             background: "radial-gradient(circle at 30% 25%, #3a2f10, #161618 70%)",
             boxShadow: "0 0 0 4px rgba(201,162,39,.12), 0 6px 18px rgba(0,0,0,.5)",
+            animation: open ? "none" : "vetoksCatGlow 2.4s ease-out infinite",
             zIndex: 5,
+            touchAction: "manipulation",
           }}
         >
-          <span
-            aria-hidden
-            className="absolute rounded-full border border-gold/40 pointer-events-none"
-            style={{ inset: -9, animation: "vetoksCatPulse 2.4s ease-out infinite" }}
-          />
           <b className="text-[11px] font-extrabold tracking-wide">{cur.label}</b>
           <small className="text-[8px] mt-0.5 text-goldSoft font-semibold">{cur.ages}</small>
         </button>
-        <style>{`@keyframes vetoksCatPulse{from{transform:scale(.85);opacity:.9}to{transform:scale(1.25);opacity:0}}`}</style>
+        <style>{`@keyframes vetoksCatGlow{0%{box-shadow:0 0 0 0 rgba(201,162,39,.55),0 6px 18px rgba(0,0,0,.5)}70%{box-shadow:0 0 0 12px rgba(201,162,39,0),0 6px 18px rgba(0,0,0,.5)}100%{box-shadow:0 0 0 0 rgba(201,162,39,0),0 6px 18px rgba(0,0,0,.5)}}@keyframes vetoksCatPetal{from{transform:translate(0,0) scale(.3);opacity:0}to{transform:translate(var(--x),var(--y)) scale(1);opacity:1}}`}</style>
       </div>
     </>
   );
