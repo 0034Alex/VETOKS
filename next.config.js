@@ -7,10 +7,10 @@
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://telegram.org https://challenges.cloudflare.com",
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
-  "font-src 'self' data:",
+  "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://video.bunnycdn.com https://*.b-cdn.net https://challenges.cloudflare.com https://telegram.org",
   "frame-src https://challenges.cloudflare.com",
   "worker-src 'self' blob:",
