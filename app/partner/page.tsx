@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getMyCountry } from "@/lib/myCountry";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
+import { apiPost } from "@/lib/authClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import PromoBannerCarousel from "@/components/PromoBannerCarousel";
@@ -35,18 +36,8 @@ export default function PartnerPage() {
     e.preventDefault();
     setStatus("loading");
 
-    const u = await getCurrentUser();
-    const myC = await getMyCountry();
-
-    const { error } = await supabase.from("sponsors").insert({
-      country_id: myC.countryId,
-      name,
-      status: "lead",
-      region_id: regionId || null,
-      contact_info: { phone, email, message },
-      user_id: u?.id ?? null,
-    });
-
+    const r = await apiPost("/api/partner/apply", { name, phone, email, message, regionId: regionId || null });
+    const error = !r?.ok;
     setStatus(error ? "error" : "sent");
   }
 
