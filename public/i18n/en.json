@@ -711,5 +711,8 @@
  "Не удалось начать загрузку": "Could not start the upload",
  "Сервер видео не ответил": "The video server did not respond",
  "Сбой загрузки": "Upload failed",
- "Нет связи — попробуйте ещё раз": "No connection — try again"
+ "Нет связи — попробуйте ещё раз": "No connection — try again",
+ "Мой профиль": "My profile",
+ "Для конкурса": "For the contest",
+ "Имя участницы меняется через поддержку.": "A participant's name can be changed via support."
 }

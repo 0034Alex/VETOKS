@@ -3,7 +3,7 @@
 import { cleanImage } from "@/lib/imageClean";
 import LoadingScreen from "@/components/LoadingScreen";
 import { apiPost } from "@/lib/authClient";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser, resetCurrentUserCache } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
@@ -32,6 +32,7 @@ export default function EditProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
+  const partRow = useRef<{ photo_url: string | null; bio: string | null } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -44,10 +45,11 @@ export default function EditProfilePage() {
 
       const { data: p } = await supabase
         .from("participants")
-        .select("id")
+        .select("id, photo_url, bio")
         .eq("user_id", u.id)
         .maybeSingle();
       setIsParticipant(!!p);
+      partRow.current = p ? { photo_url: (p as any).photo_url ?? null, bio: (p as any).bio ?? null } : null;
 
       const { data: enabledCountries } = await supabase.from("countries").select("id").eq("enabled", true);
       const countryIds = (enabledCountries ?? []).map((c: { id: string }) => c.id);
@@ -72,7 +74,9 @@ export default function EditProfilePage() {
           const until = new Date(new Date((row as any).region_changed_at).getTime() + 42 * 86400000);
           if (until.getTime() > Date.now()) setLockedUntil(until);
         }
-        setPhotoUrl(row.photo_url ?? null);
+        // у участницы одно фото и одно «о себе» на всё: берём из анкеты, если она есть
+        setPhotoUrl(partRow.current?.photo_url ?? row.photo_url ?? null);
+        if (partRow.current?.bio) setBio(partRow.current.bio);
       }
       setLoading(false);
     })();
@@ -134,10 +138,11 @@ export default function EditProfilePage() {
     }
 
     const sv = await apiPost("/api/profile/update", {
-      first_name: firstName,
+      ...(isParticipant ? {} : { first_name: firstName }),
       phone,
       photo_url: newPhotoUrl,
       bio: bio.trim().slice(0, 300),
+      ...(isParticipant ? { participant: { bio: bio.trim().slice(0, 300), photo_url: newPhotoUrl } } : {}),
     });
     resetCurrentUserCache();
 
@@ -172,7 +177,7 @@ export default function EditProfilePage() {
       <PageHeader />
       <div className="px-6 flex flex-col items-center">
         <h1 className="text-2xl font-semibold text-offwhite mb-6">
-          Редактировать профиль
+          Мой профиль
         </h1>
 
         <div className="w-28 h-28 rounded-full bg-bgSurface border border-muted overflow-hidden flex items-center justify-center mb-2">
@@ -203,8 +208,10 @@ export default function EditProfilePage() {
             <input
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className="bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3"
+              disabled={isParticipant}
+              className="bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 disabled:opacity-60"
             />
+            {isParticipant && <p className="text-muted text-[11px]">Имя участницы меняется через поддержку.</p>}
           </div>
 
           <div className="flex flex-col gap-1">
@@ -278,28 +285,22 @@ export default function EditProfilePage() {
           )}
 
           {isParticipant && (
-            <div className="bg-bgSurface border border-muted rounded-xl divide-y divide-muted mt-6">
-              <a
-                href="/my-application"
-                className="p-4 flex items-center justify-between text-muted text-sm"
-              >
-                <span>📝 Моя анкета</span>
-                <span>→</span>
-              </a>
-              <a
-                href="/my-magazine"
-                className="p-4 flex items-center justify-between text-muted text-sm"
-              >
-                <span>📖 Моя страница в журнале</span>
-                <span>→</span>
-              </a>
-              <a
-                href="/my-cards"
-                className="p-4 flex items-center justify-between text-muted text-sm"
-              >
-                <span>🃏 Мои карточки</span>
-                <span>→</span>
-              </a>
+            <div className="mt-6">
+              <p className="text-gold text-xs font-semibold mb-2 tracking-wide">Для конкурса</p>
+              <div className="bg-bgSurface border border-muted rounded-xl divide-y divide-muted">
+                <a href="/poster" className="p-4 flex items-center justify-between text-offwhite text-sm">
+                  <span>🎀 Моя афіша</span>
+                  <span>→</span>
+                </a>
+                <a href="/my-magazine" className="p-4 flex items-center justify-between text-offwhite text-sm">
+                  <span>📖 Моя страница в журнале</span>
+                  <span>→</span>
+                </a>
+                <a href="/my-cards" className="p-4 flex items-center justify-between text-offwhite text-sm">
+                  <span>🃏 Мои карточки</span>
+                  <span>→</span>
+                </a>
+              </div>
             </div>
           )}
         </div>

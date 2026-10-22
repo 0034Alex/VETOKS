@@ -22,9 +22,14 @@ export async function POST(req: Request) {
     const n = b.first_name.replace(/\s+/g, " ").trim().slice(0, 60);
     if (n.length < 1) return bad("name");
     if (hasBadWords(n)) return bad("bad_words");
-    patch.first_name = n;
-    // Одно имя везде: карточка участницы показывает то же имя.
-    await supabaseAdmin.from("participants").update({ display_name: n }).eq("user_id", uid);
+    // Имя участницы после подачи анкеты меняется только через поддержку.
+    const { data: part } = await supabaseAdmin.from("participants").select("id").eq("user_id", uid).maybeSingle();
+    if (part) {
+      const { data: cur } = await supabaseAdmin.from("users").select("first_name").eq("id", uid).maybeSingle();
+      if (String(cur?.first_name ?? "").trim() !== n) return bad("name_locked", 403);
+    } else {
+      patch.first_name = n;
+    }
   }
   if (typeof b.bio === "string" && hasBadWords(b.bio)) return bad("bad_words");
   if (typeof b.participant?.bio === "string" && hasBadWords(b.participant.bio)) return bad("bad_words");
