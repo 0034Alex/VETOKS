@@ -122,6 +122,12 @@ export default function AdSpacePage() {
     await loadMine();
   }
 
+  const [reserved, setReserved] = useState<Record<string, "mine" | "other">>({});
+  async function loadReserved() {
+    const r = await apiPost("/api/ad/reserved");
+    if (r?.ok) setReserved(r.reserved ?? {});
+  }
+
   useEffect(() => {
     (async () => {
       const u = await getCurrentUser();
@@ -133,6 +139,7 @@ export default function AdSpacePage() {
       // Кабинет открыт любому вошедшему: выбираешь места, отправляешь заявку, после одобрения оплачиваешь.
       setAllowed(true);
       loadMine();
+      loadReserved();
 
       const mc = await getMyCountry();
       if (mc.countryId) {
@@ -173,12 +180,17 @@ export default function AdSpacePage() {
     })();
   }, [router]);
 
+  function isSeat(s: Slot) {
+    return ["magazine", "magazine_gf", "jury", "jury_gf"].includes(String(s.category));
+  }
+
   function isFull(s: Slot) {
     return s.capacity != null && s.sold_count >= s.capacity;
   }
 
   function openSlot(slot: Slot) {
     if (slot.status === "sold" || isFull(slot)) return;
+    if (reserved[slot.id] && isSeat(slot)) return;
     setSelected(slot);
     setName("");
     setPhone("");
@@ -319,20 +331,24 @@ export default function AdSpacePage() {
                 <div className="px-6 grid grid-cols-3 md:grid-cols-4 gap-3">
                   {catSlots.map((s) => {
                     const sold = s.status === "sold";
+                    const rv = !sold ? reserved[s.id] : undefined;
                     return (
                       <button
                         key={s.id}
                         onClick={() => openSlot(s)}
-                        disabled={sold}
+                        disabled={sold || !!rv}
                         className={`aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-semibold p-2 ${
                           sold
                             ? "bg-danger/20 border border-danger/40 text-danger/70 cursor-not-allowed"
+                            : rv
+                            ? "bg-bgSurface border border-dashed border-gold/60 text-gold/70 cursor-not-allowed"
                             : "bg-bgSurface border border-gold text-gold"
                         }`}
                       >
-                        <span className="text-lg mb-1">{sold ? "✕" : "✦"}</span>
+                        <span className="text-lg mb-1">{sold ? "✕" : rv ? "⏳" : "✦"}</span>
                         <span className="text-center leading-tight">Место {s.slot_number}</span>
                         {sold && <span className="text-[10px] mt-1">Занято</span>}
+                        {rv && <span className="text-[10px] mt-1">{rv === "mine" ? "Ваша бронь" : "Бронь места"}</span>}
                       </button>
                     );
                   })}

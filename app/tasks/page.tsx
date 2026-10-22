@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
-import Logo from "@/components/Logo";
+import PageHeader from "@/components/PageHeader";
 import { getCurrencySymbol } from "@/lib/currency";
 import { apiPost } from "@/lib/authClient";
 import { getMyCountry } from "@/lib/myCountry";
@@ -160,12 +160,15 @@ export default function TasksPage() {
 
   if (!isParticipant) {
     return (
-      <main className="min-h-screen px-6 py-12 pb-28 flex flex-col items-center justify-center text-center">
-        <h1 className="text-2xl font-semibold text-gold mb-4">Задания</h1>
-        <p className="text-muted max-w-sm">
-          Этот раздел доступен только участницам конкурса. Подайте анкету на
-          главной странице, чтобы получить доступ.
-        </p>
+      <main className="min-h-screen pb-28">
+        <PageHeader />
+        <div className="px-6 py-12 flex flex-col items-center justify-center text-center min-h-[60vh]">
+          <h1 className="text-2xl font-semibold text-gold mb-4">Задания</h1>
+          <p className="text-muted max-w-sm">
+            Этот раздел доступен только участницам конкурса. Подайте анкету на
+            главной странице, чтобы получить доступ.
+          </p>
+        </div>
         <BottomNav />
       </main>
     );
@@ -173,10 +176,8 @@ export default function TasksPage() {
 
   return (
     <main className="min-h-screen pb-28">
+      <PageHeader />
       <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between px-6 py-4">
-          <Logo size={28} />
-        </div>
 
         <div className="px-6 mb-6">
           <h1 className="text-2xl font-semibold text-offwhite mb-4">

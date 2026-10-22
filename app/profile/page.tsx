@@ -529,7 +529,6 @@ export default function ProfilePage() {
           {participant && <Row href="/black-marks" label={t("profile.blackMarks")} />}
           <Row href="/edit-profile" label={t("profile.edit")} />
           {(participant || isPartner) && <Row href="/documents" label={t("profile.docs")} />}
-          {(participant || isPartner) && <Row href="/ad-space" label={t("profile.ads")} />}
           {!participant && <Row href="/balance" label={t("profile.balance")} />}
           <Row href="/settings" label={t("profile.settings")} />
           <Row href="/support" label={t("profile.support")} />
@@ -540,7 +539,7 @@ export default function ProfilePage() {
             <span className="text-white font-semibold text-sm">{t("profile.partnerCabinet")}</span>
           </a>
         ) : (
-          <a href="/partner" className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mt-5 text-center">
+          <a href="/ad-space" className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mt-5 text-center">
             <span className="text-white font-semibold text-sm">{t("profile.becomePartner")}</span>
           </a>
         )}
