@@ -2369,6 +2369,13 @@ type AdSlotRequestRow = {
   message: string | null;
   status: string;
   created_at: string;
+  user_id?: string | null;
+  email?: string | null;
+  link_url?: string | null;
+  ad_text?: string | null;
+  image_url?: string | null;
+  decision_note?: string | null;
+  price?: number | null;
 };
 
 type AdMode = "tiers" | "capacity" | "seats";
@@ -2516,7 +2523,7 @@ function AdSpaceTab() {
     setLoading(true);
     const { data } = await supabase
       .from("ad_slot_requests")
-      .select("id, slot_id, name, phone, message, status, created_at, ad_slots(title, category, slot_number)")
+      .select("id, slot_id, name, phone, message, status, created_at, user_id, email, link_url, ad_text, image_url, decision_note, price, ad_slots(title, category, slot_number)")
       .order("created_at", { ascending: false });
     const mapped = (data as any[] ?? []).map((r) => {
       const slotInfo = Array.isArray(r.ad_slots) ? r.ad_slots[0] : r.ad_slots;
@@ -2666,6 +2673,13 @@ function AdSpaceTab() {
       .eq("id", id);
     setEditingId(null);
     await loadSlots();
+  }
+
+  const [reqNotes, setReqNotes] = useState<Record<string, string>>({});
+  async function decideRequest(id: string, action: "approve" | "reject") {
+    const r = await apiPost("/api/admin/ad-requests", { action, id, note: reqNotes[id] ?? "" });
+    if (!r?.ok) alert(r?.error === "slot_full" ? "Это место уже занято." : "Не получилось. Попробуйте ещё раз.");
+    await loadRequests();
   }
 
   async function markRequestStatus(id: string, status: string) {
@@ -3089,19 +3103,46 @@ function AdSpaceTab() {
               <p className="text-muted text-xs mb-2">{r.slot_title ?? "Место удалено"}</p>
               <p className="text-offwhite text-sm font-semibold mb-1">{r.name}</p>
               <p className="text-muted text-xs mb-1">{r.phone ?? "телефон не указан"}</p>
+              {r.email && <p className="text-muted text-xs mb-1">{r.email}</p>}
+              {r.link_url && <p className="text-gold text-xs mb-1 break-all">{r.link_url}</p>}
+              {r.ad_text && <p className="text-offwhite text-sm mb-2 whitespace-pre-wrap">{r.ad_text}</p>}
+              {r.image_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={r.image_url} alt="" className="max-h-40 rounded-lg mb-2 border border-muted" />
+              )}
               {r.message && <p className="text-muted text-sm mb-2">{r.message}</p>}
               <p className="text-muted text-[10px] mb-2">
                 {new Date(r.created_at).toLocaleString("ru-RU")}
               </p>
-              <select
-                value={r.status}
-                onChange={(e) => markRequestStatus(r.id, e.target.value)}
-                className="bg-bgPrimary border border-muted rounded-lg px-3 py-1 text-xs"
-              >
-                <option value="new">Новая</option>
-                <option value="contacted">Связались</option>
-                <option value="closed">Закрыта</option>
-              </select>
+              {r.status === "new" && r.user_id ? (
+                <div className="flex flex-col gap-2">
+                  <input
+                    value={reqNotes[r.id] ?? ""}
+                    onChange={(e) => setReqNotes((p) => ({ ...p, [r.id]: e.target.value }))}
+                    placeholder="Комментарий для человека (для отказа — причина)"
+                    className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-xs"
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => decideRequest(r.id, "approve")} className="bg-success text-bgPrimary px-4 py-1.5 rounded-full text-xs font-semibold">✅ Одобрить</button>
+                    <button onClick={() => decideRequest(r.id, "reject")} className="border border-danger text-danger px-4 py-1.5 rounded-full text-xs">Отклонить</button>
+                  </div>
+                  <p className="text-muted text-[11px]">После «Одобрить» человек получит уведомление с ценой и оплатит с баланса.</p>
+                </div>
+              ) : r.user_id ? (
+                <p className="text-xs text-gold">
+                  {r.status === "approved" ? `✅ Одобрена · ждём оплату${r.price ? ` (${Math.round(Number(r.price))})` : ""}` : r.status === "paying" ? "Идёт оплата" : r.status === "paid" ? "💳 Оплачена" : r.status === "rejected" ? `✖ Отклонена${r.decision_note ? `: ${r.decision_note}` : ""}` : r.status}
+                </p>
+              ) : (
+                <select
+                  value={r.status}
+                  onChange={(e) => markRequestStatus(r.id, e.target.value)}
+                  className="bg-bgPrimary border border-muted rounded-lg px-3 py-1 text-xs"
+                >
+                  <option value="new">Новая</option>
+                  <option value="contacted">Связались</option>
+                  <option value="closed">Закрыта</option>
+                </select>
+              )}
             </div>
           ))}
         </div>

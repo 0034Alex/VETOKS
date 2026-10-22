@@ -199,6 +199,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // Одобрить / отклонить заявку, пришедшую из приложения: человек получает уведомление.
+  if (a === "approve" || a === "reject") {
+    const { data: sp } = await supabaseAdmin.from("sponsors").select("id, user_id, name").eq("id", id).maybeSingle();
+    if (!sp?.user_id) return NextResponse.json({ ok: false, error: "no_user" }, { status: 400 });
+    const ok = a === "approve";
+    await supabaseAdmin.from("sponsors").update({ status: ok ? "approved" : "rejected" }).eq("id", id);
+    await logAction(uid, ok ? "partner_approve" : "partner_reject", String(sp.user_id), { sponsor: id });
+    const { notify } = await import("@/lib/shopServer");
+    await notify(
+      String(sp.user_id),
+      ok
+        ? "✅ Ваша заявка партнёра одобрена! Откройте «Рекламный кабинет» и выберите места для рекламы."
+        : "К сожалению, заявка партнёра пока не одобрена. Если есть вопросы — напишите в поддержку.",
+      ok ? "/ad-space" : "/support",
+      "other"
+    );
+    return NextResponse.json({ ok: true });
+  }
+
   if (a === "unlink") {
     await supabaseAdmin.from("sponsors").update({ user_id: null, status: "active" }).eq("id", id);
     return NextResponse.json({ ok: true });

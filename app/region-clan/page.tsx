@@ -126,13 +126,15 @@ export default function RegionClanPage() {
 
   if (!me?.region_id) {
     return (
-      <main className="min-h-screen px-6 py-12 pb-28 flex flex-col items-center justify-center text-center">
+      <main className="min-h-screen pb-28">
         <PageHeader />
+        <div className="px-6 py-12 flex flex-col items-center justify-center text-center min-h-[60vh]">
         <h1 className="text-2xl font-semibold text-gold mb-4">Клан региона</h1>
         <p className="text-muted max-w-sm">
           Сначала укажите свой регион в «Редактировать профиль» — клан
           определяется автоматически по нему.
         </p>
+        </div>
         <BottomNav />
       </main>
     );

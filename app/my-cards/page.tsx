@@ -135,12 +135,14 @@ export default function MyCardsPage() {
 
   if (!participantId) {
     return (
-      <main className="min-h-screen px-6 py-12 pb-28 flex flex-col items-center justify-center text-center">
+      <main className="min-h-screen pb-28">
         <PageHeader />
+        <div className="px-6 py-12 flex flex-col items-center justify-center text-center min-h-[60vh]">
         <h1 className="text-2xl font-semibold text-gold mb-4">Мои карточки</h1>
         <p className="text-muted max-w-sm">
           Этот раздел доступен только участницам конкурса.
         </p>
+        </div>
         <BottomNav />
       </main>
     );

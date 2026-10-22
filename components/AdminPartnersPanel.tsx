@@ -135,7 +135,7 @@ export default function AdminPartnersPanel() {
                   <p className="text-gold font-semibold">{s.name}</p>
                   <p className="text-muted text-xs">
                     {s.package_type ?? "без пакета"} · внесено {Math.round(Number(s.amount ?? 0))} {crmCur}
-                    {s.user_id ? " · кабинет открыт" : ""}
+                    {s.status === "approved" ? " · кабинет открыт" : ""}
                   </p>
                   {s.follow_up_at && (
                     <p className={`text-xs ${overdue ? "text-gold" : "text-muted"}`}>
@@ -154,6 +154,22 @@ export default function AdminPartnersPanel() {
                   ))}
                 </select>
               </div>
+
+              {s.status === "lead" && s.user_id && (
+                <div className="mt-3 border border-gold rounded-lg p-3 bg-bgPrimary">
+                  <p className="text-gold text-xs font-semibold mb-1">🆕 Заявка из приложения — ждёт решения</p>
+                  <p className="text-offwhite text-xs">
+                    {[s.contact_info?.phone, s.contact_info?.email].filter(Boolean).join(" · ") || "контакты не указаны"}
+                  </p>
+                  {s.contact_info?.message && <p className="text-muted text-xs mt-1">{s.contact_info.message}</p>}
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={() => act({ action: "approve", id: s.id })} className="bg-success text-bgPrimary px-4 py-1.5 rounded-full text-xs font-semibold">✅ Одобрить</button>
+                    <button onClick={() => act({ action: "reject", id: s.id })} className="border border-danger text-danger px-4 py-1.5 rounded-full text-xs">Отклонить</button>
+                  </div>
+                  <p className="text-muted text-[11px] mt-1">После «Одобрить» человек получит уведомление и сможет выбрать места в Рекламном кабинете.</p>
+                </div>
+              )}
+              {s.status === "rejected" && <p className="text-danger text-xs mt-2">Заявка отклонена.</p>}
 
               <button
                 onClick={() => {
@@ -258,7 +274,7 @@ export default function AdminPartnersPanel() {
 
                   <div>
                     <p className="text-offwhite text-xs font-semibold mb-1">Личный кабинет партнёра</p>
-                    {s.user_id ? (
+                    {s.user_id && s.status === "approved" ? (
                       <button onClick={() => act({ action: "unlink", id: s.id })} className="text-xs px-3 py-1.5 rounded-full border border-danger text-danger">Отвязать кабинет</button>
                     ) : (
                       <div className="flex flex-col gap-2">

@@ -53,9 +53,11 @@ export default function BlackMarksReceivedPage() {
 
   if (!isParticipant) {
     return (
-      <main className="min-h-screen px-6 py-12 pb-28 flex flex-col items-center justify-center text-center">
+      <main className="min-h-screen pb-28">
         <PageHeader />
+        <div className="px-6 py-12 flex flex-col items-center justify-center text-center min-h-[60vh]">
         <p className="text-muted max-w-sm">Этот раздел доступен только участницам.</p>
+        </div>
         <BottomNav />
       </main>
     );

@@ -8,6 +8,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import { apiPost } from "@/lib/authClient";
+import { cleanImage } from "@/lib/imageClean";
 
 type Slot = {
   id: string;
@@ -86,9 +88,39 @@ export default function AdSpacePage() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [adText, setAdText] = useState("");
   const [message, setMessage] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [formErr, setFormErr] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [mine, setMine] = useState<{ id: string; status: string; title: string; price: number | null; note: string | null; created_at: string }[]>([]);
+  const [cur, setCur] = useState("₴");
+  const [payMsg, setPayMsg] = useState("");
+  const [paying, setPaying] = useState<string | null>(null);
+
+  async function loadMine() {
+    const r = await apiPost("/api/ad/mine");
+    if (r?.ok) {
+      setMine(r.items ?? []);
+      if (r.currency) setCur(r.currency);
+    }
+  }
+
+  async function payRequest(id: string) {
+    setPaying(id);
+    setPayMsg("");
+    const r = await apiPost("/api/ad/pay", { requestId: id });
+    if (r?.ok) setPayMsg("Оплачено! Место закреплено за вами. Материалы загрузите в «Кабинете партнёра».");
+    else if (r?.error === "not_enough") setPayMsg(`Не хватает денег на балансе (сейчас ${Math.round(Number(r.balance ?? 0))} ${cur}). Пополните баланс и нажмите «Оплатить» ещё раз.`);
+    else if (r?.error === "need_parent") setPayMsg("Для оплаты нужно согласие родителей.");
+    else if (r?.error === "slot_full") setPayMsg("Это место уже выкуплено.");
+    else setPayMsg("Не получилось оплатить. Попробуйте ещё раз.");
+    setPaying(null);
+    await loadMine();
+  }
 
   useEffect(() => {
     (async () => {
@@ -98,18 +130,9 @@ export default function AdSpacePage() {
         return;
       }
 
-      const { data: sponsor } = await supabase
-        .from("sponsors")
-        .select("id")
-        .eq("user_id", u.id)
-        .eq("status", "approved")
-        .maybeSingle();
-
-      if (!sponsor) {
-        setLoading(false);
-        return;
-      }
+      // Кабинет открыт любому вошедшему: выбираешь места, отправляешь заявку, после одобрения оплачиваешь.
       setAllowed(true);
+      loadMine();
 
       const mc = await getMyCountry();
       if (mc.countryId) {
@@ -159,20 +182,56 @@ export default function AdSpacePage() {
     setSelected(slot);
     setName("");
     setPhone("");
+    setEmail("");
+    setLinkUrl("");
+    setAdText("");
     setMessage("");
+    setFile(null);
+    setFormErr("");
     setSent(false);
   }
 
   async function submitRequest() {
-    if (!selected || !name) return;
+    if (!selected || !name.trim()) return;
+    if (!phone.trim() && !email.trim()) {
+      setFormErr("Укажите телефон или почту для связи.");
+      return;
+    }
     setSending(true);
-    await supabase.from("ad_slot_requests").insert({
-      slot_id: selected.id,
-      name,
-      phone,
-      message,
-    });
-    setSent(true);
+    setFormErr("");
+    try {
+      const fd = new FormData();
+      fd.set("slotId", selected.id);
+      fd.set("company", name);
+      fd.set("phone", phone);
+      fd.set("email", email);
+      fd.set("linkUrl", linkUrl);
+      fd.set("adText", adText);
+      fd.set("comment", message);
+      if (file) fd.set("file", await cleanImage(file, 1600));
+      const { data: sess } = await supabase.auth.getSession();
+      const res = await fetch("/api/ad/request", {
+        method: "POST",
+        headers: sess.session?.access_token ? { Authorization: `Bearer ${sess.session.access_token}` } : {},
+        body: fd,
+      });
+      const r = await res.json().catch(() => ({}));
+      if (r?.ok) {
+        setSent(true);
+        loadMine();
+      } else {
+        const m: Record<string, string> = {
+          already: "Вы уже отправили заявку на это место.",
+          slot_full: "Это место уже занято.",
+          image_big: "Картинка слишком большая — не больше 3 МБ.",
+          bad_image: "Файл должен быть картинкой.",
+          empty_contact: "Укажите телефон или почту для связи.",
+        };
+        setFormErr(m[r?.error] ?? "Не получилось отправить. Попробуйте ещё раз.");
+      }
+    } catch (e: any) {
+      setFormErr(e?.message || "Не получилось отправить. Попробуйте ещё раз.");
+    }
     setSending(false);
   }
 
@@ -184,14 +243,16 @@ export default function AdSpacePage() {
 
   if (!allowed) {
     return (
-      <main className="min-h-screen px-6 py-12 pb-28 flex flex-col items-center justify-center text-center">
+      <main className="min-h-screen pb-28">
         <PageHeader />
+        <div className="px-6 py-12 flex flex-col items-center justify-center text-center min-h-[60vh]">
         <h1 className="text-2xl font-semibold text-gold mb-4">Рекламный кабинет</h1>
         <p className="text-muted max-w-sm">
           Этот раздел доступен только одобренным партнёрам VETOKS. Если вы
           хотите разместить рекламу — оставьте заявку на странице «Стать
           партнёром», и мы откроем вам доступ.
         </p>
+        </div>
         <BottomNav />
       </main>
     );
@@ -204,8 +265,37 @@ export default function AdSpacePage() {
         Рекламный кабинет
       </h1>
       <p className="text-muted text-sm mb-6 px-6">
-        Все разделы сразу — выберите подходящее место или формат.
+        Выберите место, заполните данные и отправьте заявку. После одобрения вы получите уведомление и оплатите с баланса.
       </p>
+
+      {mine.length > 0 && (
+        <div className="mx-6 mb-6 rounded-xl border border-gold/50 bg-bgSurface p-4">
+          <p className="text-gold font-semibold text-sm mb-2">Мои заявки</p>
+          {mine.map((m) => (
+            <div key={m.id} className="border-t border-muted/40 py-2 first:border-t-0">
+              <p className="text-offwhite text-sm">{m.title}</p>
+              {m.status === "new" && <p className="text-muted text-xs">⏳ На рассмотрении</p>}
+              {m.status === "approved" && (
+                <div className="flex items-center justify-between gap-2 mt-1">
+                  <p className="text-success text-xs">✅ Одобрено · к оплате {Math.round(Number(m.price ?? 0))} {cur}</p>
+                  <button
+                    onClick={() => payRequest(m.id)}
+                    disabled={paying === m.id}
+                    className="bg-gold text-bgPrimary font-semibold px-4 py-1.5 rounded-full text-xs disabled:opacity-50"
+                  >
+                    {paying === m.id ? "Оплата..." : "Оплатить"}
+                  </button>
+                </div>
+              )}
+              {m.status === "paying" && <p className="text-muted text-xs">Идёт оплата…</p>}
+              {m.status === "paid" && <p className="text-success text-xs">💳 Оплачено — место за вами</p>}
+              {m.status === "rejected" && <p className="text-danger text-xs">✖ Отклонено{m.note ? `: ${m.note}` : ""}</p>}
+              {(m.status === "contacted" || m.status === "closed") && <p className="text-muted text-xs">Обрабатывается менеджером</p>}
+            </div>
+          ))}
+          {payMsg && <p className="text-gold text-xs mt-2">{payMsg}</p>}
+        </div>
+      )}
 
       {!loading &&
         CATEGORIES.map((cat) => {
@@ -370,7 +460,7 @@ export default function AdSpacePage() {
 
             {sent ? (
               <p className="text-success text-sm text-center py-4">
-                Заявка отправлена! Мы свяжемся с вами для оплаты.
+                Заявка отправлена на рассмотрение! Когда мы её одобрим, вы получите уведомление и сможете оплатить в «Мои заявки».
               </p>
             ) : (
               <div className="flex flex-col gap-2">
@@ -384,15 +474,43 @@ export default function AdSpacePage() {
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ваше имя / компания"
+                  placeholder="Компания или имя *"
                   className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
                 />
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Телефон"
+                  placeholder="Телефон *"
                   className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
                 />
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Почта"
+                  className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+                />
+                <input
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  placeholder="Ссылка, куда вести клиентов"
+                  className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+                />
+                <textarea
+                  value={adText}
+                  onChange={(e) => setAdText(e.target.value)}
+                  rows={3}
+                  placeholder="Текст рекламы"
+                  className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
+                />
+                <label className="text-muted text-xs">
+                  Картинка или логотип (до 3 МБ)
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    className="block mt-1 text-xs text-offwhite"
+                  />
+                </label>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
@@ -400,12 +518,13 @@ export default function AdSpacePage() {
                   placeholder="Комментарий (необязательно)"
                   className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
                 />
+                {formErr && <p className="text-danger text-xs">{formErr}</p>}
                 <button
                   onClick={submitRequest}
                   disabled={!name || sending}
                   className="bg-gold text-bgPrimary font-semibold py-3 rounded-full text-sm disabled:opacity-40 mt-1"
                 >
-                  {sending ? "Отправляем..." : "Оставить заявку на покупку"}
+                  {sending ? "Отправляем..." : "Отправить на рассмотрение"}
                 </button>
               </div>
             )}
