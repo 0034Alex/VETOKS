@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireUser } from "@/lib/shopServer";
 import { rateLimit } from "@/lib/rateLimit";
 import { parentConsentOk } from "@/lib/parentServer";
+import { hasBadWords } from "@/lib/badWords";
 import { posterProfile, posterChat, sendPosterToTg, POSTER_CAT_LABEL } from "@/lib/posterServer";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,9 @@ export async function POST(req: Request) {
   const h = Math.round(Number(form.get("height")));
   const height = h >= 120 && h <= 220 ? h : null;
   const bad = String(form.get("bad")) === "1";
+  const interests = String(form.get("interests") ?? "").trim().slice(0, 80);
+  const about = String(form.get("about") ?? "").trim().slice(0, 120);
+  if (hasBadWords(`${interests} ${about}`)) return NextResponse.json({ ok: false, error: "bad_words" }, { status: 400 });
 
   const path = `${uid}/${Date.now()}.jpg`;
   const buf = Buffer.from(await file.arrayBuffer());
@@ -47,6 +51,8 @@ export async function POST(req: Request) {
       image_url: url,
       height_cm: height,
       bad_cutout: bad,
+      interests: interests || null,
+      about_text: about || null,
     })
     .select("id")
     .single();

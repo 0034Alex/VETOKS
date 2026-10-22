@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -11,7 +11,7 @@ import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import LoadingScreen from "@/components/LoadingScreen";
 
-const SCRIPT = '"Great Vibes", cursive';
+const SERIF = '"Cormorant Garamond", Georgia, serif';
 const SANS = 'Jost, "Helvetica Neue", Arial, sans-serif';
 
 type Info = {
@@ -23,6 +23,8 @@ type Info = {
   city: string;
   country: string;
   height: number | null;
+  interests: string;
+  about: string;
   latest: { url: string; at: string } | null;
   canCutout: boolean;
   needParent: boolean;
@@ -43,7 +45,7 @@ async function ensureFonts() {
       const l = document.createElement("link");
       l.id = "poster-fonts";
       l.rel = "stylesheet";
-      l.href = "https://fonts.googleapis.com/css2?family=Great+Vibes&family=Jost:wght@400;500;600&display=swap&subset=cyrillic";
+      l.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@400;500;600;700&display=swap&subset=cyrillic";
       l.onload = () => res();
       l.onerror = () => res();
       document.head.appendChild(l);
@@ -53,10 +55,13 @@ async function ensureFonts() {
   const sample = "Аліна Київ абвгґдеєжзиіїйклмнопрстуфхцчшщьюя";
   try {
     await Promise.all([
-      document.fonts.load('400 100px "Great Vibes"', sample),
+      document.fonts.load('500 100px "Cormorant Garamond"', sample),
+      document.fonts.load('600 100px "Cormorant Garamond"', sample),
+      document.fonts.load('700 100px "Cormorant Garamond"', sample),
       document.fonts.load("400 40px Jost", sample),
       document.fonts.load("500 40px Jost", sample),
-      document.fonts.load("600 100px Jost", "MISSLADYTEEN"),
+      document.fonts.load("600 40px Jost", sample),
+      document.fonts.load("700 40px Jost", sample),
     ]);
   } catch {
     /* шрифты не загрузились — рисуем запасными */
@@ -67,6 +72,7 @@ const ERR: Record<string, string> = {
   need_consent: "Постав галочку про згоду на публікацію.",
   need_parent: "Для публікації потрібна згода одного з батьків. Вона підтверджується в Telegram.",
   bad_file: "Не вдалося обробити фото. Спробуй інше.",
+  bad_words: "У тексті «Інтереси» або «Про себе» є неприпустимі слова. Перепиши без грубощів.",
   not_participant: "Афіша доступна лише учасницям конкурсу.",
 };
 
@@ -75,6 +81,9 @@ export default function PosterPage() {
   const [loading, setLoading] = useState(true);
   const [info, setInfo] = useState<Info | null>(null);
   const [height, setHeight] = useState("");
+  const [interests, setInterests] = useState("");
+  const [about, setAbout] = useState("");
+  const base = useRef<{ img: HTMLImageElement; cutout: boolean } | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
@@ -97,17 +106,56 @@ export default function PosterPage() {
       if (r?.ok) {
         setInfo(r as Info);
         if (r.height) setHeight(String(r.height));
+        if (r.interests) setInterests(r.interests);
+        if (r.about) setAbout(r.about);
       }
       setLoading(false);
     })();
   }, [router]);
 
-  async function build(f: File, h: number) {
+  const draw = useCallback(async () => {
+    if (!info || !base.current) return;
+    const h = Number(height);
+    try {
+      await ensureFonts();
+      const out = await renderPoster({
+        cat: (["teen", "main", "adult"].includes(info.cat) ? info.cat : "main") as PosterCat,
+        photo: base.current.img,
+        cutout: base.current.cutout,
+        first: info.first,
+        last: info.last,
+        age: info.age,
+        height: h >= 120 && h <= 220 ? h : null,
+        city: info.city,
+        country: info.country,
+        interests,
+        about,
+        fonts: { serif: SERIF, sans: SANS },
+      });
+      setBlob(out);
+      setPreviewUrl(URL.createObjectURL(out));
+      setSentUrl(null);
+    } catch (e: any) {
+      setErr(e?.message || "Не вдалося створити афішу. Спробуй інше фото.");
+    }
+  }, [info, height, interests, about]);
+
+  // поменяла рост или текст — афіша перерисовывается сама (фон заново не вырезаем)
+  useEffect(() => {
+    if (!base.current) return;
+    const t = setTimeout(() => {
+      draw();
+    }, 400);
+    return () => clearTimeout(t);
+  }, [draw]);
+
+  async function build(f: File) {
     if (!info) return;
     setErr("");
     setBlob(null);
     setPreviewUrl(null);
     setBad(false);
+    base.current = null;
     try {
       setBusy("Готуємо фото…");
       const clean = await cleanImage(f, 1400);
@@ -135,21 +183,8 @@ export default function PosterPage() {
       const photo = cutImg ?? (await loadImg(URL.createObjectURL(clean)));
       setBad(!cutout);
       setBusy("Збираємо афішу…");
-      await ensureFonts();
-      const out = await renderPoster({
-        cat: (["teen", "main", "adult"].includes(info.cat) ? info.cat : "main") as PosterCat,
-        photo,
-        cutout,
-        first: info.first,
-        last: info.last,
-        age: info.age,
-        height: h,
-        city: info.city,
-        country: info.country,
-        fonts: { script: SCRIPT, sans: SANS },
-      });
-      setBlob(out);
-      setPreviewUrl(URL.createObjectURL(out));
+      base.current = { img: photo, cutout };
+      await draw();
     } catch (e: any) {
       setErr(e?.message || "Не вдалося створити афішу. Спробуй інше фото.");
     }
@@ -165,7 +200,7 @@ export default function PosterPage() {
       setErr("Спочатку вкажи свій зріст (120–220 см), потім обери фото.");
       return;
     }
-    build(f, h);
+    build(f);
   }
 
   async function send() {
@@ -183,6 +218,8 @@ export default function PosterPage() {
       fd.append("height", height);
       fd.append("bad", bad ? "1" : "0");
       fd.append("consent", "1");
+      fd.append("interests", interests);
+      fd.append("about", about);
       const res = await fetch("/api/poster/upload", {
         method: "POST",
         headers: { Authorization: `Bearer ${data.session?.access_token ?? ""}` },
@@ -252,6 +289,23 @@ export default function PosterPage() {
           className="w-full bg-bgSurface border border-gold/30 rounded-xl px-4 py-3 text-offwhite mb-4"
         />
 
+        <label className="block text-muted text-xs mb-1">Мої інтереси (до трьох, через кому)</label>
+        <input
+          value={interests}
+          maxLength={60}
+          onChange={(e) => setInterests(e.target.value)}
+          placeholder="Танці, подорожі, фотографія"
+          className="w-full bg-bgSurface border border-gold/30 rounded-xl px-4 py-3 text-offwhite mb-4"
+        />
+        <label className="block text-muted text-xs mb-1">Коротко про себе (до 90 знаків)</label>
+        <input
+          value={about}
+          maxLength={90}
+          onChange={(e) => setAbout(e.target.value)}
+          placeholder="Люблю сцену і вірю в красу з характером"
+          className="w-full bg-bgSurface border border-gold/30 rounded-xl px-4 py-3 text-offwhite mb-4"
+        />
+
         <input ref={inp} type="file" accept="image/*" hidden onChange={(e) => pick(e.target.files?.[0] ?? null)} />
         <button
           onClick={() => inp.current?.click()}
@@ -270,7 +324,7 @@ export default function PosterPage() {
             <img src={previewUrl} alt="Афіша" className="w-full rounded-xl border border-gold/30" />
             {bad && (
               <p className="text-muted text-xs mt-2">
-                Фон не вдалося вирізати — фото стоїть у рамці. Для кращого результату обери фото на однотонному світлому фоні.
+                Фон не вдалося вирізати — фото розміщено на розмитому тлі. Для кращого результату обери фото на однотонному світлому фоні.
               </p>
             )}
           </div>

@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   if (!p) return NextResponse.json({ ok: true, participant: false });
   const { data: last } = await supabaseAdmin
     .from("participant_posters")
-    .select("image_url, height_cm, created_at")
+    .select("image_url, height_cm, created_at, interests, about_text")
     .eq("user_id", uid)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -29,6 +29,8 @@ export async function POST(req: Request) {
     city: p.city,
     country: p.country,
     height: (last as any)?.height_cm ?? null,
+    interests: (last as any)?.interests ?? "",
+    about: (last as any)?.about_text ?? "",
     latest: last ? { url: (last as any).image_url, at: (last as any).created_at } : null,
     canCutout: !!(process.env.PHOTOROOM_API_KEY || process.env.REMOVEBG_API_KEY),
     needParent: !(await parentConsentOk(uid)),
