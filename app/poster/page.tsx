@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import { apiPost } from "@/lib/authClient";
 import { cleanImage } from "@/lib/imageClean";
-import { renderPoster, PosterCat } from "@/lib/posterRender";
+import { renderPoster, FRAME, POSTER_UNIT, PosterCat } from "@/lib/posterRender";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -26,9 +26,10 @@ type Info = {
   interests: string;
   about: string;
   latest: { url: string; at: string } | null;
-  canCutout: boolean;
   needParent: boolean;
 };
+
+type Crop = { z: number; cx: number; cy: number }; // масштаб и центр кадра (доли размера фото)
 
 function loadImg(src: string): Promise<HTMLImageElement> {
   return new Promise((res, rej) => {
@@ -45,7 +46,8 @@ async function ensureFonts() {
       const l = document.createElement("link");
       l.id = "poster-fonts";
       l.rel = "stylesheet";
-      l.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@400;500;600;700&display=swap&subset=cyrillic";
+      l.href =
+        "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@400;500;600;700&display=swap&subset=cyrillic";
       l.onload = () => res();
       l.onerror = () => res();
       document.head.appendChild(l);
@@ -68,6 +70,24 @@ async function ensureFonts() {
   }
 }
 
+// Какую часть фото видно в кадре при данном масштабе и центре (в пикселях фото).
+function region(iw: number, ih: number, f: number, c: Crop) {
+  let vw: number;
+  let vh: number;
+  if (iw / ih > f) {
+    vh = ih;
+    vw = ih * f;
+  } else {
+    vw = iw;
+    vh = iw / f;
+  }
+  vw /= c.z;
+  vh /= c.z;
+  const x = Math.min(Math.max(c.cx * iw - vw / 2, 0), iw - vw);
+  const y = Math.min(Math.max(c.cy * ih - vh / 2, 0), ih - vh);
+  return { x, y, vw, vh };
+}
+
 const ERR: Record<string, string> = {
   need_consent: "Постав галочку про згоду на публікацію.",
   need_parent: "Для публікації потрібна згода одного з батьків. Вона підтверджується в Telegram.",
@@ -83,17 +103,18 @@ export default function PosterPage() {
   const [height, setHeight] = useState("");
   const [interests, setInterests] = useState("");
   const [about, setAbout] = useState("");
-  const base = useRef<{ img: HTMLImageElement; cutout: boolean } | null>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [hasPhoto, setHasPhoto] = useState(false);
+  const [crop, setCrop] = useState<Crop>({ z: 1, cx: 0.5, cy: 0.4 });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
-  const [bad, setBad] = useState(false);
   const [busy, setBusy] = useState("");
   const [consent, setConsent] = useState(false);
   const [err, setErr] = useState("");
   const [sentUrl, setSentUrl] = useState<string | null>(null);
-  
+  const img = useRef<HTMLImageElement | null>(null);
   const inp = useRef<HTMLInputElement>(null);
+  const editor = useRef<HTMLCanvasElement>(null);
+  const drag = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -113,15 +134,37 @@ export default function PosterPage() {
     })();
   }, [router]);
 
+  const cat = ((info && ["teen", "main", "adult"].includes(info.cat) ? info.cat : "main") as PosterCat);
+  const frame = FRAME[cat];
+
+  // редактор кадра: показываем ту часть фото, что попадёт на афішу
+  useEffect(() => {
+    const cv = editor.current;
+    const im = img.current;
+    if (!cv || !im || !hasPhoto) return;
+    const cw = cv.clientWidth || 260;
+    cv.width = Math.round(cw * 2);
+    cv.height = Math.round((cw * 2 * frame.h) / frame.w);
+    const r = region(im.naturalWidth, im.naturalHeight, frame.w / frame.h, crop);
+    const c = cv.getContext("2d")!;
+    c.drawImage(im, r.x, r.y, r.vw, r.vh, 0, 0, cv.width, cv.height);
+  }, [crop, hasPhoto, frame.w, frame.h]);
+
   const draw = useCallback(async () => {
-    if (!info || !base.current) return;
+    const im = img.current;
+    if (!info || !im) return;
     const h = Number(height);
     try {
       await ensureFonts();
-      const out = await renderPoster({
-        cat: (["teen", "main", "adult"].includes(info.cat) ? info.cat : "main") as PosterCat,
-        photo: base.current.img,
-        cutout: base.current.cutout,
+      const k = POSTER_UNIT * 1.5;
+      const out = document.createElement("canvas");
+      out.width = Math.round(frame.w * k);
+      out.height = Math.round(frame.h * k);
+      const r = region(im.naturalWidth, im.naturalHeight, frame.w / frame.h, crop);
+      out.getContext("2d")!.drawImage(im, r.x, r.y, r.vw, r.vh, 0, 0, out.width, out.height);
+      const b = await renderPoster({
+        cat,
+        photo: out,
         first: info.first,
         last: info.last,
         age: info.age,
@@ -132,75 +175,64 @@ export default function PosterPage() {
         about,
         fonts: { serif: SERIF, sans: SANS },
       });
-      setBlob(out);
-      setPreviewUrl(URL.createObjectURL(out));
+      setBlob(b);
+      setPreviewUrl(URL.createObjectURL(b));
       setSentUrl(null);
     } catch (e: any) {
       setErr(e?.message || "Не вдалося створити афішу. Спробуй інше фото.");
     }
-  }, [info, height, interests, about]);
+  }, [info, height, interests, about, crop, cat, frame.w, frame.h]);
 
-  // поменяла рост или текст — афіша перерисовывается сама (фон заново не вырезаем)
+  // что-то поменяла (кадр, рост, текст) — афіша перерисовывается сама
   useEffect(() => {
-    if (!base.current) return;
+    if (!hasPhoto) return;
     const t = setTimeout(() => {
       draw();
-    }, 400);
+    }, 450);
     return () => clearTimeout(t);
-  }, [draw]);
+  }, [draw, hasPhoto]);
 
-  async function build(f: File) {
-    if (!info) return;
+  async function pick(f: File | null) {
+    if (!f) return;
     setErr("");
+    setSentUrl(null);
     setBlob(null);
     setPreviewUrl(null);
-    setBad(false);
-    base.current = null;
+    setBusy("Готуємо фото…");
     try {
-      setBusy("Готуємо фото…");
-      const clean = await cleanImage(f, 1400);
-      let cutImg: HTMLImageElement | null = null;
-      if (info.canCutout) {
-        setBusy("Вирізаємо фон… це може зайняти до пів хвилини");
-        try {
-          const { data } = await supabase.auth.getSession();
-          const fd = new FormData();
-          fd.append("file", clean, "photo.jpg");
-          const res = await fetch("/api/poster/cutout", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${data.session?.access_token ?? ""}` },
-            body: fd,
-          });
-          if (res.ok && (res.headers.get("content-type") || "").includes("image/png")) {
-            const b = await res.blob();
-            cutImg = await loadImg(URL.createObjectURL(b));
-          }
-        } catch {
-          cutImg = null;
-        }
-      }
-      const cutout = !!cutImg;
-      const photo = cutImg ?? (await loadImg(URL.createObjectURL(clean)));
-      setBad(!cutout);
-      setBusy("Збираємо афішу…");
-      base.current = { img: photo, cutout };
-      await draw();
-    } catch (e: any) {
-      setErr(e?.message || "Не вдалося створити афішу. Спробуй інше фото.");
+      const clean = await cleanImage(f, 2000);
+      img.current = await loadImg(URL.createObjectURL(clean));
+      setCrop({ z: 1, cx: 0.5, cy: 0.4 });
+      setHasPhoto(true);
+    } catch {
+      setErr("Не вдалося обробити фото. Спробуй інше.");
     }
     setBusy("");
   }
 
-  function pick(f: File | null) {
-    setFile(f);
-    setSentUrl(null);
-    if (!f) return;
-    const h = Number(height);
-    if (!(h >= 120 && h <= 220)) {
-      setErr("Спочатку вкажи свій зріст (120–220 см), потім обери фото.");
-      return;
-    }
-    build(f);
+  function onDown(e: React.PointerEvent<HTMLCanvasElement>) {
+    drag.current = { x: e.clientX, y: e.clientY };
+    (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
+  }
+  function onMove(e: React.PointerEvent<HTMLCanvasElement>) {
+    const d = drag.current;
+    const im = img.current;
+    const cv = editor.current;
+    if (!d || !im || !cv) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    drag.current = { x: e.clientX, y: e.clientY };
+    const r = region(im.naturalWidth, im.naturalHeight, frame.w / frame.h, crop);
+    const kx = r.vw / cv.clientWidth;
+    const ky = r.vh / cv.clientHeight;
+    setCrop((c) => ({
+      ...c,
+      cx: Math.min(1, Math.max(0, c.cx - (dx * kx) / im.naturalWidth)),
+      cy: Math.min(1, Math.max(0, c.cy - (dy * ky) / im.naturalHeight)),
+    }));
+  }
+  function onUp() {
+    drag.current = null;
   }
 
   async function send() {
@@ -216,7 +248,7 @@ export default function PosterPage() {
       const fd = new FormData();
       fd.append("file", blob, "poster.jpg");
       fd.append("height", height);
-      fd.append("bad", bad ? "1" : "0");
+      fd.append("bad", "0");
       fd.append("consent", "1");
       fd.append("interests", interests);
       fd.append("about", about);
@@ -271,11 +303,10 @@ export default function PosterPage() {
           <p className="text-gold text-sm font-semibold mb-2">Яке фото підійде</p>
           <ul className="text-offwhite text-sm space-y-1.5 list-none">
             <li>✅ Вертикальне фото по пояс або на повний зріст</li>
-            <li>✅ Однотонна світла стіна: біла, бежева, сіра</li>
-            <li>✅ Рівне денне світло, без фільтрів</li>
+            <li>✅ Гарне місце або однотонна світла стіна позаду</li>
+            <li>✅ Рівне денне світло, обличчя добре видно</li>
             <li>✅ Ти одна в кадрі, руки не закривають обличчя</li>
-            <li>❌ Одяг або волосся не мають зливатися з фоном</li>
-            <li>❌ Без людей, меблів і яскравих плям позаду</li>
+            <li>❌ Без фільтрів, написів і чужих людей позаду</li>
           </ul>
         </div>
 
@@ -288,7 +319,6 @@ export default function PosterPage() {
           placeholder="Наприклад, 172"
           className="w-full bg-bgSurface border border-gold/30 rounded-xl px-4 py-3 text-offwhite mb-4"
         />
-
         <label className="block text-muted text-xs mb-1">Мої інтереси (до трьох, через кому)</label>
         <input
           value={interests}
@@ -312,8 +342,33 @@ export default function PosterPage() {
           disabled={!!busy}
           className="w-full bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold rounded-xl py-3.5 mb-4 disabled:opacity-60"
         >
-          {file ? "Обрати інше фото" : "📷 Обрати фото"}
+          {hasPhoto ? "Обрати інше фото" : "📷 Обрати фото"}
         </button>
+
+        {hasPhoto && (
+          <div className="bg-bgSurface border border-gold/30 rounded-xl p-4 mb-4">
+            <p className="text-gold text-sm font-semibold mb-1">Постав кадр</p>
+            <p className="text-muted text-xs mb-3">Тягни фото пальцем, щоб обличчя було в потрібному місці. Повзунок збільшує фото.</p>
+            <canvas
+              ref={editor}
+              onPointerDown={onDown}
+              onPointerMove={onMove}
+              onPointerUp={onUp}
+              onPointerCancel={onUp}
+              className="block mx-auto rounded-xl border border-gold/40 w-full"
+              style={{ maxWidth: 240, aspectRatio: `${frame.w} / ${frame.h}`, touchAction: "none", cursor: "grab" }}
+            />
+            <input
+              type="range"
+              min={100}
+              max={300}
+              value={Math.round(crop.z * 100)}
+              onChange={(e) => setCrop((c) => ({ ...c, z: Number(e.target.value) / 100 }))}
+              className="w-full mt-3"
+              aria-label="Масштаб"
+            />
+          </div>
+        )}
 
         {busy && <p className="text-gold text-sm text-center mb-4">{busy}</p>}
         {err && <p className="text-danger text-sm mb-4">{err}</p>}
@@ -322,11 +377,6 @@ export default function PosterPage() {
           <div className="mb-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={previewUrl} alt="Афіша" className="w-full rounded-xl border border-gold/30" />
-            {bad && (
-              <p className="text-muted text-xs mt-2">
-                Фон не вдалося вирізати — фото розміщено на розмитому тлі. Для кращого результату обери фото на однотонному світлому фоні.
-              </p>
-            )}
           </div>
         )}
 

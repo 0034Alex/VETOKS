@@ -9,8 +9,7 @@ export type PosterCat = "teen" | "main" | "adult";
 
 export type PosterOpts = {
   cat: PosterCat;
-  photo: HTMLImageElement; // вырезанная девушка (PNG с прозрачностью) или обычное фото
-  cutout: boolean; // true — фон вырезан; false — обычное фото, вписываем целиком на размытом фоне
+  photo: CanvasImageSource & { width: number; height: number }; // уже обрезанное под кадр фото (см. FRAME)
   first: string;
   last: string;
   age: number | null;
@@ -26,17 +25,17 @@ const W = 1080;
 const H = 1350;
 const U = W / 100; // 1 «cqw» макета
 
+// Размер кадра для фото в единицах U (1 U = 10.8 px на афіше). Страница обрезает фото под эти пропорции.
+export const FRAME: Record<PosterCat, { w: number; h: number }> = {
+  main: { w: 55, h: 125 },
+  adult: { w: 55, h: 125 },
+  teen: { w: 49, h: 103 },
+};
+export const POSTER_UNIT = U;
+
 type Ctx = CanvasRenderingContext2D;
 
 // ---------- мелкие помощники ----------
-function rnd(seed: number) {
-  let s = seed;
-  return () => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    return s / 4294967296;
-  };
-}
-
 function yearsWord(n: number) {
   const m = n % 10;
   const c = n % 100;
@@ -165,107 +164,14 @@ function blurInto(ctx: Ctx, src: CanvasImageSource, sw: number, sh: number, dx: 
   ctx.restore();
 }
 
-// Обрезаем прозрачные поля вокруг вырезанной девушки, чтобы она вписывалась ровно.
-function trimAlpha(img: HTMLImageElement): HTMLCanvasElement {
-  const maxSide = 1600;
-  const k = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
-  const w = Math.round(img.naturalWidth * k);
-  const h = Math.round(img.naturalHeight * k);
-  const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
-  const x = c.getContext("2d", { willReadFrequently: true })!;
-  x.drawImage(img, 0, 0, w, h);
-  const d = x.getImageData(0, 0, w, h).data;
-  let x0 = w, y0 = h, x1 = 0, y1 = 0;
-  for (let y = 0; y < h; y++) {
-    for (let xx = 0; xx < w; xx++) {
-      if (d[(y * w + xx) * 4 + 3] > 40) {
-        if (xx < x0) x0 = xx;
-        if (xx > x1) x1 = xx;
-        if (y < y0) y0 = y;
-        if (y > y1) y1 = y;
-      }
-    }
-  }
-  if (x1 <= x0 || y1 <= y0) return c;
-  const o = document.createElement("canvas");
-  o.width = x1 - x0 + 1;
-  o.height = y1 - y0 + 1;
-  o.getContext("2d")!.drawImage(c, x0, y0, o.width, o.height, 0, 0, o.width, o.height);
-  return o;
-}
-
-type Box = { x: number; w: number; h: number; dx: number }; // область фото: слева x, ширина w, высота h, сдвиг центра dx
-
-// Рисуем человека: вырезанного — вписанным и прижатым к низу, обычное фото — целиком на размытом фоне.
-function drawPerson(ctx: Ctx, o: PosterOpts, box: Box, style: "soft" | "sticker") {
-  const bx = box.x * U;
-  const bw = box.w * U;
-  const bh = box.h * U;
-  if (o.cutout) {
-    const t = trimAlpha(o.photo);
-    const k = Math.min(bh / t.height, bw / t.width);
-    const w = t.width * k;
-    const h = t.height * k;
-    const x = bx + (bw - w) / 2 + box.dx * U;
-    const y = H - h;
-    if (style === "sticker") {
-      // белый контур, как у наклейки
-      const out = document.createElement("canvas");
-      out.width = Math.round(w + 6 * U);
-      out.height = Math.round(h + 6 * U);
-      const oc = out.getContext("2d")!;
-      const r = 0.55 * U;
-      for (let a = 0; a < 24; a++) {
-        const ang = (a / 24) * Math.PI * 2;
-        oc.drawImage(t, 3 * U + Math.cos(ang) * r, 3 * U + Math.sin(ang) * r, w, h);
-      }
-      oc.globalCompositeOperation = "source-in";
-      oc.fillStyle = "#fff";
-      oc.fillRect(0, 0, out.width, out.height);
-      ctx.save();
-      ctx.shadowColor = "rgba(60,10,90,0.5)";
-      ctx.shadowBlur = 2.6 * U;
-      ctx.shadowOffsetY = 1.6 * U;
-      ctx.drawImage(out, x - 3 * U, y - 3 * U);
-      ctx.restore();
-      ctx.drawImage(t, x, y, w, h);
-    } else {
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.45)";
-      ctx.shadowBlur = 3 * U;
-      ctx.shadowOffsetY = 2 * U;
-      ctx.drawImage(t, x, y, w, h);
-      ctx.restore();
-      ctx.save();
-      ctx.shadowColor = "rgba(255,255,255,0.22)";
-      ctx.shadowBlur = 1.6 * U;
-      ctx.drawImage(t, x, y, w, h);
-      ctx.restore();
-    }
-  } else {
-    const img = o.photo;
-    const iw = img.naturalWidth;
-    const ih = img.naturalHeight;
-    // размытая копия на всю область
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(bx, 0, bw + (style === "sticker" ? 0 : 6 * U), H);
-    ctx.clip();
-    const kc = Math.max((bw + 10 * U) / iw, H / ih);
-    const cw = iw * kc;
-    const ch = ih * kc;
-    blurInto(ctx, img, iw, ih, bx + (bw - cw) / 2, (H - ch) / 2, cw, ch, 18);
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.fillRect(bx, 0, bw + 6 * U, H);
-    // само фото — целиком
-    const k = Math.min(bw / iw, bh / ih);
-    const w = iw * k;
-    const h = ih * k;
-    ctx.drawImage(img, bx + (bw - w) / 2, H - h, w, h);
-    ctx.restore();
-  }
+// Размытая копия фото на весь постер (фон под панелью).
+function blurredBase(ctx: Ctx, o: PosterOpts, dark: string) {
+  const iw = o.photo.width;
+  const ih = o.photo.height;
+  const k = Math.max(W / iw, H / ih);
+  blurInto(ctx, o.photo, iw, ih, (W - iw * k) / 2, (H - ih * k) / 2, iw * k, ih * k, 22);
+  ctx.fillStyle = dark;
+  ctx.fillRect(0, 0, W, H);
 }
 
 // Перенос текста по ширине (не больше maxLines строк, лишнее — «…»).
@@ -418,33 +324,16 @@ function drawPanelText(ctx: Ctx, o: PosterOpts, pal: Pal, tag: string, x0: numbe
 
 // ---------- MISS: дуга ----------
 function drawMiss(ctx: Ctx, o: PosterOpts) {
-  const pw = 57 * U;
-  // фон области фото
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, "#1b1308");
-  g.addColorStop(0.7, "#070606");
-  g.addColorStop(1, "#070606");
-  ctx.fillStyle = g;
+  ctx.fillStyle = "#070606";
   ctx.fillRect(0, 0, W, H);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, pw, H);
-  ctx.clip();
-  glow(ctx, pw * 0.5, H * 0.28, pw * 0.6, H * 0.4, "rgba(255,214,140,0.55)");
-  glow(ctx, pw * 0.12, H * 0.7, pw * 0.4, H * 0.3, "rgba(214,160,70,0.35)");
-  [[10, 18, 9], [28, 8, 6], [44, 30, 7], [16, 48, 5], [36, 60, 8], [8, 72, 6], [50, 12, 5]].forEach(([l, t, s]) => {
-    glow(ctx, (l / 100) * pw + (s * U) / 2, (t / 100) * H + (s * U) / 2, (s * U) / 2, (s * U) / 2, "rgba(255,226,160,0.32)");
-  });
-  const r = rnd(7);
-  for (let j = 0; j < 8; j++) sparkle(ctx, (4 + r() * 48) * U, (8 + r() * 60) * U, (1.8 + r() * 2.6) * U, "#FFE3A0", 0.35 + r() * 0.4);
-  ctx.restore();
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, pw, H);
-  ctx.clip();
-  drawPerson(ctx, o, { x: 0, w: 53, h: 119, dx: 1 }, "soft");
-  ctx.restore();
+  blurredBase(ctx, o, "rgba(0,0,0,0.45)");
+  // фото слева — на всю высоту
+  ctx.drawImage(o.photo, 0, 0, o.photo.width, o.photo.height, 0, 0, FRAME.main.w * U, H);
+  const fade = ctx.createLinearGradient(0, H - 30 * U, 0, H);
+  fade.addColorStop(0, "rgba(0,0,0,0)");
+  fade.addColorStop(1, "rgba(0,0,0,0.35)");
+  ctx.fillStyle = fade;
+  ctx.fillRect(0, H - 30 * U, FRAME.main.w * U, 30 * U);
 
   // панель
   const px = 55 * U;
@@ -479,50 +368,10 @@ function drawMiss(ctx: Ctx, o: PosterOpts) {
 
 // ---------- LADY: стекло ----------
 function drawLady(ctx: Ctx, o: PosterOpts) {
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, "#f2e6d3");
-  g.addColorStop(1, "#d9c3a3");
-  ctx.fillStyle = g;
+  ctx.fillStyle = "#EFE3CE";
   ctx.fillRect(0, 0, W, H);
-  glow(ctx, W * 0.5, H * 0.3, W * 0.7, H * 0.45, "rgba(255,255,255,0.95)");
-
-  // цветы справа внизу
-  ctx.save();
-  ctx.globalAlpha = 0.9;
-  ctx.fillStyle = "#fff";
-  const fx = 100 * U + 6 * U - 46 * U;
-  const fy = 125 * U + 4 * U - 46 * U;
-  const ks = (46 * U) / 200;
-  [[120, 150, 46, 22, -35], [150, 120, 44, 20, -70], [90, 170, 40, 18, -10]].forEach(([cx, cy, rx, ry, deg]) => {
-    ctx.beginPath();
-    ctx.ellipse(fx + cx * ks, fy + cy * ks, rx * ks, ry * ks, (deg * Math.PI) / 180, 0, Math.PI * 2);
-    ctx.fill();
-  });
-  ctx.restore();
-  // шёлковые линии слева вверху
-  ctx.save();
-  ctx.globalAlpha = 0.55;
-  ctx.strokeStyle = "#fff";
-  ctx.lineWidth = 0.35 * U;
-  const lx = -4 * U;
-  const ly = 125 * U * 0.06;
-  const ls = (34 * U) / 200;
-  ctx.beginPath();
-  ctx.moveTo(lx, ly + 40 * ls);
-  ctx.bezierCurveTo(lx + 60 * ls, ly + 10 * ls, lx + 120 * ls, ly + 70 * ls, lx + 200 * ls, ly + 20 * ls);
-  ctx.moveTo(lx, ly + 90 * ls);
-  ctx.bezierCurveTo(lx + 70 * ls, ly + 50 * ls, lx + 130 * ls, ly + 110 * ls, lx + 200 * ls, ly + 70 * ls);
-  ctx.stroke();
-  ctx.restore();
-  const r = rnd(21);
-  for (let j = 0; j < 6; j++) sparkle(ctx, (6 + r() * 44) * U, (8 + r() * 60) * U, (1.8 + r() * 2.4) * U, "#D9B25F", 0.4 + r() * 0.4);
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, 54 * U, H);
-  ctx.clip();
-  drawPerson(ctx, o, { x: 0, w: 49, h: 119, dx: 3 }, "soft");
-  ctx.restore();
+  blurredBase(ctx, o, "rgba(255,248,235,0.18)");
+  ctx.drawImage(o.photo, 0, 0, o.photo.width, o.photo.height, 0, 0, FRAME.adult.w * U, H);
 
   // стеклянная панель
   const px = 53 * U;
@@ -545,7 +394,7 @@ function drawLady(ctx: Ctx, o: PosterOpts) {
   snap.height = H;
   snap.getContext("2d")!.drawImage(ctx.canvas, 0, 0);
   blurInto(ctx, snap, W, H, 0, 0, W, H, 12);
-  ctx.fillStyle = "rgba(253,250,244,0.7)";
+  ctx.fillStyle = "rgba(253,250,244,0.72)";
   ctx.fillRect(px, py, pw, ph);
   ctx.restore();
   roundRectPath(ctx, px, py, pw, ph, 5 * U, 5 * U, 5 * U, 5 * U);
@@ -593,12 +442,28 @@ function drawTeen(ctx: Ctx, o: PosterOpts) {
   sparkle(ctx, 91.5 * U, 31.5 * U, 3 * U, "#fff", 0.9);
   sparkle(ctx, 57.3 * U, 4.3 * U, 2.6 * U, "#fff", 0.9);
 
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(45 * U, 0, W - 45 * U, H);
-  ctx.clip();
-  drawPerson(ctx, o, { x: 46, w: 54, h: 119, dx: 0 }, "sticker");
-  ctx.restore();
+  // фото в скруглённой рамке с белым контуром
+  {
+    const fx = 47 * U;
+    const fy = 13 * U;
+    const fw = FRAME.teen.w * U;
+    const fh = FRAME.teen.h * U;
+    ctx.save();
+    roundRectPath(ctx, fx, fy, fw, fh, 5 * U, 5 * U, 5 * U, 5 * U);
+    ctx.shadowColor = "rgba(60,10,90,0.5)";
+    ctx.shadowBlur = 3 * U;
+    ctx.shadowOffsetY = 1.8 * U;
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    roundRectPath(ctx, fx + 0.7 * U, fy + 0.7 * U, fw - 1.4 * U, fh - 1.4 * U, 4.4 * U, 4.4 * U, 4.4 * U, 4.4 * U);
+    ctx.clip();
+    ctx.drawImage(o.photo, 0, 0, o.photo.width, o.photo.height, fx + 0.7 * U, fy + 0.7 * U, fw - 1.4 * U, fh - 1.4 * U);
+    ctx.restore();
+    sparkle(ctx, 96 * U, 11 * U, 5 * U, "#fff", 0.95);
+    sparkle(ctx, 45 * U, 118 * U, 4 * U, "#fff", 0.95);
+  }
 
   // левая колонка
   const x0 = 4.5 * U;
