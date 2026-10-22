@@ -41,13 +41,11 @@ type Comment = {
 
 type FeedTab = "region" | "following" | "country";
 
-function shuffle<T>(arr: T[]): T[] {
-  const copy = [...arr];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
+// Порядок «случайный», но стабильный: у каждого ролика свой случайный ключ, выданный один раз.
+// Иначе лента перемешивалась при каждом нажатии (лайк, подписка) и прыгала.
+const RKEY: Record<string, number> = {};
+function shuffle<T extends { id: string }>(arr: T[]): T[] {
+  return [...arr].sort((a, b) => (RKEY[a.id] ??= Math.random()) - (RKEY[b.id] ??= Math.random()));
 }
 
 export default function MediaPage() {
@@ -68,6 +66,15 @@ export default function MediaPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
+  // Звук: браузер разрешает его только после нажатия, поэтому по умолчанию выключен.
+  const [soundOn, setSoundOn] = useState(false);
+  function toggleSound() {
+    const next = !soundOn;
+    setSoundOn(next);
+    Object.values(videoRefs.current).forEach((v) => {
+      if (v) (v as HTMLVideoElement).muted = !next;
+    });
+  }
 
   useEffect(() => {
     (async () => {
@@ -151,7 +158,10 @@ export default function MediaPage() {
       return list.filter((p) => p.participants?.display_name?.toLowerCase().includes(q));
     }
     if (feedTab === "region" && me?.region_id) {
-      list = shuffle(list.filter((p) => p.participants?.region_id === me.region_id));
+      // сначала ролики из моего региона, потом остальные из страны
+      const near = list.filter((p) => p.participants?.region_id === me.region_id);
+      const far = list.filter((p) => p.participants?.region_id !== me.region_id);
+      list = [...shuffle(near), ...shuffle(far)];
     } else if (feedTab === "following") {
       list = list.filter((p) => followedIds.has(p.participant_id));
     } else {
@@ -256,7 +266,7 @@ export default function MediaPage() {
   return (
     <main className="min-h-screen bg-black flex justify-center">
       <div
-        className="h-screen w-full max-w-md overflow-y-scroll snap-y snap-mandatory relative"
+        className="h-screen h-[100dvh] w-full max-w-md overflow-y-scroll snap-y snap-mandatory relative"
         style={{ scrollSnapType: "y mandatory" }}
       >
         {/* Верхние вкладки + поиск */}
@@ -321,7 +331,7 @@ export default function MediaPage() {
         </div>
 
         {posts.length === 0 && (
-          <div className="h-screen w-full flex items-center justify-center px-8 text-center">
+          <div className="h-screen h-[100dvh] w-full flex items-center justify-center px-8 text-center">
             <p className="text-muted text-sm">
               {searchQuery
                 ? "Никого не нашли по этому имени."
@@ -335,7 +345,7 @@ export default function MediaPage() {
         {posts.map((p) => (
           <div
             key={p.id}
-            className="h-screen w-full snap-start relative flex items-center justify-center"
+            className="h-screen h-[100dvh] w-full snap-start relative flex items-center justify-center"
           >
             <video
               ref={(el) => {
@@ -343,10 +353,18 @@ export default function MediaPage() {
               }}
               src={p.video_url}
               loop
-              muted
+              muted={!soundOn}
               playsInline
               className="w-full h-full object-cover"
             />
+
+            <button
+              onClick={toggleSound}
+              aria-label={soundOn ? "Выключить звук" : "Включить звук"}
+              className="absolute right-3 top-16 z-20 w-10 h-10 rounded-full bg-black/50 text-white text-lg flex items-center justify-center"
+            >
+              {soundOn ? "🔊" : "🔇"}
+            </button>
 
             <div className="absolute bottom-0 left-0 right-0 p-4 pb-24 bg-gradient-to-t from-black/90 to-transparent">
               <Link
