@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useTeenOpen } from "@/lib/teenFlag";
 import { DEFAULT_AUDIENCE } from "@/lib/adAudience";
 
 const OPTS: [string, string][] = [
@@ -13,6 +14,7 @@ const OPTS: [string, string][] = [
 // CRM: для кого показывать рекламу. Нажали на категорию — сохранилось сразу.
 export default function AdAudience({ table, id }: { table: "promo_banners" | "magazine_ads" | "partner_logos"; id: string }) {
   const [val, setVal] = useState<string[] | null>(null);
+  const teenOpen = useTeenOpen();
 
   useEffect(() => {
     supabase
@@ -35,7 +37,7 @@ export default function AdAudience({ table, id }: { table: "promo_banners" | "ma
   return (
     <div className="flex items-center gap-1 mt-2 flex-wrap">
       <span className="text-muted text-[10px] mr-1">Показывать:</span>
-      {OPTS.map(([k, label]) => (
+      {OPTS.filter(([k]) => k !== "teen" || teenOpen).map(([k, label]) => (
         <button
           key={k}
           type="button"

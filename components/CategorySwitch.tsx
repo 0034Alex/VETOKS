@@ -1,26 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CATEGORIES } from "@/lib/ageCategory";
 import { useViewCategory, viewInfo, type ViewCat } from "@/lib/viewCategory";
 
 // Золотая медаль в правом верхнем углу главного баннера.
 // Нажали — три «лепестка» разлетаются дугой вниз-влево. Ставится внутрь контейнера с position: relative.
 export default function CategorySwitch() {
-  const { view, mine, setView, ready, canAll } = useViewCategory();
+  const { view, mine, setView, ready, canAll, teenHidden } = useViewCategory();
   const [open, setOpen] = useState(false);
-  const [teenOpen, setTeenOpen] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/categories/open")
-      .then((r) => r.json())
-      .then((d) => setTeenOpen(!!d?.teen_open))
-      .catch(() => {});
-  }, []);
-
   if (!ready) return null;
   const pos: Record<ViewCat, [number, number]> = { teen: [-122, 14], main: [-72, 70], adult: [-8, 106], all: [-132, 78] };
-  const items: { key: ViewCat; label: string; ages: string }[] = [...CATEGORIES];
+  const items: { key: ViewCat; label: string; ages: string }[] = CATEGORIES.filter((c) => !(c.key === "teen" && teenHidden));
   if (canAll) items.push({ key: "all", label: "ВСЕ", ages: "все" });
   const cur = viewInfo(view);
   const other = view !== mine;
@@ -47,7 +38,7 @@ export default function CategorySwitch() {
           items.map((c, idx) => {
             const [x, y] = pos[c.key];
             const on = c.key === view;
-            const locked = c.key === "teen" && !teenOpen && mine !== "teen" && !canAll;
+            const locked = false;
             return (
               <button
                 key={c.key}

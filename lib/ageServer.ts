@@ -15,7 +15,7 @@ export async function checkBirthForSignup(s: unknown): Promise<BirthCheck> {
     return {
       ok: false,
       error: "too_young",
-      message: "Регистрация для возраста 15–17 откроется позже. Мы сообщим.",
+      message: "Регистрация доступна с 18 лет.",
     };
   }
   return r;

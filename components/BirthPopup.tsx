@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeenOpen } from "@/lib/teenFlag";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -15,6 +16,7 @@ const SKIP_KEY = "vt_birth_skip";
 export default function BirthPopup() {
   const pathname = usePathname() || "/";
   const [open, setOpen] = useState(false);
+  const teenOpen = useTeenOpen();
   const [birth, setBirth] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
@@ -63,7 +65,9 @@ export default function BirthPopup() {
       <div className="w-full max-w-sm bg-bgSurface border border-gold/40 rounded-2xl p-5">
         <h2 className="text-gold font-semibold text-lg mb-1">Укажите дату рождения</h2>
         <p className="text-muted text-xs mb-4">
-          В VETOKS три возрастные категории: TEEN 15–17, MISS 18–29, LADY 30+. По дате мы определим вашу. Пока она не указана, вы в категории MISS.
+          {teenOpen
+            ? "В VETOKS три возрастные категории: TEEN 15–17, MISS 18–29, LADY 30+. По дате мы определим вашу. Пока она не указана, вы в категории MISS."
+            : "В VETOKS две возрастные категории: MISS 18–29 и LADY 30+. По дате мы определим вашу. Пока она не указана, вы в категории MISS."}
         </p>
         <BirthField onChange={setBirth} />
         {msg && <p className="text-danger text-sm mt-2">{msg}</p>}

@@ -263,14 +263,12 @@ function detect(): Lang {
   try {
     const saved = localStorage.getItem("vt_lang");
     if (isLang(saved)) return saved;
-    const nav = (navigator.language || "ru").toLowerCase().slice(0, 2);
-    if (isLang(nav)) return nav;
   } catch {}
-  return "ru";
+  return "uk"; // по умолчанию украинский; другой язык — только по выбору человека
 }
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>("ru");
+  const [lang, setLangState] = useState<Lang>("uk");
 
   useEffect(() => {
     setLangState(detect());

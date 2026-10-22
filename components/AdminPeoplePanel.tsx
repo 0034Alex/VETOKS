@@ -125,10 +125,22 @@ export default function AdminPeoplePanel() {
   return (
     <div className="max-w-2xl">
       {teenOn !== null && (
-        <label className="flex items-center gap-2 text-offwhite text-sm mb-3 bg-bgSurface border border-muted rounded-lg px-3 py-2">
-          <input type="checkbox" checked={teenOn} onChange={toggleTeen} />
-          Открыта категория TEEN 15–17 (регистрация и участие). Включайте только когда всё готово.
-        </label>
+        <div className={`flex items-center justify-between gap-3 mb-3 rounded-xl border px-4 py-3 ${teenOn ? "border-gold bg-gold/10" : "border-muted bg-bgSurface"}`}>
+          <div className="min-w-0">
+            <p className="text-offwhite text-sm font-semibold">Раздел TEEN 15–17: {teenOn ? "ВКЛЮЧЁН" : "ВЫКЛЮЧЕН"}</p>
+            <p className="text-muted text-xs">
+              {teenOn
+                ? "Подростки могут регистрироваться и участвовать, раздел виден в приложении."
+                : "В приложении про TEEN ничего нет: ни в переключателе категорий, ни при регистрации. Вход с 18 лет."}
+            </p>
+          </div>
+          <button
+            onClick={toggleTeen}
+            className={`flex-shrink-0 rounded-lg px-4 py-2 text-sm font-semibold ${teenOn ? "bg-danger text-white" : "bg-gold text-bgPrimary"}`}
+          >
+            {teenOn ? "Выключить" : "Включить"}
+          </button>
+        </div>
       )}
       <div className="flex gap-2 mb-3">
         <input

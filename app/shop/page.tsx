@@ -1,5 +1,6 @@
 "use client";
 
+import { loadTeenOpen } from "@/lib/teenFlag";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -145,7 +146,9 @@ function ShopContent() {
         {
           const me0 = await getCurrentUser();
           const stored = (() => { try { return localStorage.getItem("vetoks_view_cat"); } catch { return null; } })();
-          const cat = stored && ["teen", "main", "adult"].includes(stored) ? stored : me0?.age_category ?? "main";
+          const tOpen = await loadTeenOpen();
+          let cat = stored && ["teen", "main", "adult"].includes(stored) ? stored : me0?.age_category ?? "main";
+          if (cat === "teen" && !tOpen && me0?.age_category !== "teen") cat = me0?.age_category ?? "main";
           sq = sq.eq("age_category", cat);
         }
         const { data: participantsData } = await sq;

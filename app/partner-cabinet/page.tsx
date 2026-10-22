@@ -30,12 +30,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   homepage: "Главная",
   banner_participants: "Баннер — Участницы",
   banner_rating: "Баннер — Рейтинг",
-  jury: "Место в жюри",
+  jury: "Жюри от спонсоров",
   magazine_gf: "Гранд-финал · Журнал",
   homepage_gf: "Гранд-финал · Главная",
   banner_participants_gf: "Гранд-финал · Баннер Участницы",
   banner_rating_gf: "Гранд-финал · Баннер Рейтинг",
-  jury_gf: "Гранд-финал · Жюри",
+  jury_gf: "Гранд-финал · Жюри от спонсоров",
 };
 
 export default function PartnerCabinetPage() {

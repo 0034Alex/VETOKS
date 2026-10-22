@@ -581,7 +581,7 @@ export default function ParticipantProfilePage() {
                     disabled={busy || !userId}
                     className="bg-gold text-bgPrimary font-semibold px-4 py-2 rounded-full text-sm disabled:opacity-40"
                   >
-                    Задонатить
+                    Поддержать цель
                   </button>
                 </div>
               )}

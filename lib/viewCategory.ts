@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getCurrentUser } from "@/lib/currentUser";
 import { categoryInfo, type AgeCategory } from "@/lib/ageCategory";
+import { useTeenOpen } from "@/lib/teenFlag";
 
 // «all» — только для сотрудников и официальной страницы VETOKS: видят все категории сразу.
 export type ViewCat = AgeCategory | "all";
@@ -39,6 +40,7 @@ export function useViewCategory() {
   const [stored, setStored] = useState<ViewCat | null>(null);
   const [canAll, setCanAll] = useState(false);
   const [ready, setReady] = useState(false);
+  const teenOpen = useTeenOpen();
 
   useEffect(() => {
     let alive = true;
@@ -69,6 +71,9 @@ export function useViewCategory() {
     window.dispatchEvent(new Event(EVT));
   }, []);
 
-  const view: ViewCat = stored && (stored !== "all" || canAll) ? stored : mine;
-  return { view, mine, setView, ready, canAll };
+  // TEEN выключен в CRM: чужую TEEN-ленту не показываем (свою — только если человек уже в ней)
+  const teenHidden = !teenOpen && mine !== "teen";
+  const ok = stored && (stored !== "all" || canAll) && !(stored === "teen" && teenHidden);
+  const view: ViewCat = ok ? (stored as ViewCat) : mine;
+  return { view, mine, setView, ready, canAll, teenHidden };
 }
