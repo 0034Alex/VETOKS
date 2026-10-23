@@ -45,3 +45,10 @@ body {
 p, h1, h2, h3 {
   overflow-wrap: anywhere;
 }
+
+
+/* Нижнее меню всегда сверху (z-index 90). Всплывающие окна с прокруткой
+   получают нижний отступ, чтобы их содержимое прокручивалось выше меню. */
+.fixed.inset-0.overflow-y-auto {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}

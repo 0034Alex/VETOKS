@@ -10,6 +10,7 @@ import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import { apiPost } from "@/lib/authClient";
 import { cleanImage } from "@/lib/imageClean";
+import { payAdRequest } from "@/lib/adPayClient";
 
 type Slot = {
   id: string;
@@ -112,12 +113,8 @@ export default function AdSpacePage() {
   async function payRequest(id: string) {
     setPaying(id);
     setPayMsg("");
-    const r = await apiPost("/api/ad/pay", { requestId: id });
-    if (r?.ok) setPayMsg("Оплачено! Место закреплено за вами. Материалы загрузите в «Кабинете партнёра».");
-    else if (r?.error === "not_enough") setPayMsg(`Не хватает денег на балансе (сейчас ${Math.round(Number(r.balance ?? 0))} ${cur}). Пополните баланс и нажмите «Оплатить» ещё раз.`);
-    else if (r?.error === "need_parent") setPayMsg("Для оплаты нужно согласие родителей.");
-    else if (r?.error === "slot_full") setPayMsg("Это место уже выкуплено.");
-    else setPayMsg("Не получилось оплатить. Попробуйте ещё раз.");
+    const r = await payAdRequest(id);
+    setPayMsg(r.message + (r.test ? " (тест: баланс пополнен на 1000)" : ""));
     setPaying(null);
     await loadMine();
   }

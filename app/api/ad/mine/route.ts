@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   if (uid instanceof NextResponse) return uid;
   const { data } = await supabaseAdmin
     .from("ad_slot_requests")
-    .select("id, status, name, created_at, decision_note, price, ad_slots(title, category, slot_number, duration, full_price, presale_price, presale_until)")
+    .select("id, status, name, created_at, decided_at, decision_note, price, ad_slots(title, category, slot_number, duration, full_price, presale_price, presale_until)")
     .eq("user_id", uid)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -23,6 +23,9 @@ export async function POST(req: Request) {
       status: r.status,
       created_at: r.created_at,
       note: r.decision_note ?? null,
+      decided_at: r.decided_at ?? null,
+      // На оплату даётся 24 часа с момента одобрения.
+      expires_at: r.decided_at ? new Date(new Date(r.decided_at).getTime() + 24 * 3600 * 1000).toISOString() : null,
       title: sl?.title ?? "Место удалено",
       category: sl?.category ?? "",
       price: r.price != null ? Number(r.price) : sl ? slotPrice(sl) : null,

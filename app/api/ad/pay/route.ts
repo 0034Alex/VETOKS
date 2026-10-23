@@ -17,6 +17,12 @@ export async function POST(req: Request) {
   const id = String(b.requestId ?? "");
   if (!id) return bad("bad_request");
 
+  // 24 часа на оплату с момента одобрения (продлить можно повторным одобрением в CRM).
+  const { data: chk } = await supabaseAdmin.from("ad_slot_requests").select("status, decided_at").eq("id", id).eq("user_id", uid).maybeSingle();
+  if (chk?.status === "approved" && chk.decided_at && Date.now() - new Date(chk.decided_at as string).getTime() > 24 * 3600 * 1000) {
+    return bad("expired", 409);
+  }
+
   // Берём заявку под замок: только одобренная и только своя.
   const { data: locked } = await supabaseAdmin
     .from("ad_slot_requests")

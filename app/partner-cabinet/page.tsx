@@ -9,6 +9,19 @@ import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import PartnerAdStats from "@/components/PartnerAdStats";
+import { apiPost } from "@/lib/authClient";
+import { payAdRequest } from "@/lib/adPayClient";
+import { adHintFor } from "@/lib/adHints";
+
+type MyReq = { id: string; status: string; title: string; category: string; price: number | null; note: string | null; expires_at: string | null };
+
+function fmtLeft(ms: number) {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const sec = t % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
 
 type Purchase = {
   id: string;
@@ -46,11 +59,55 @@ export default function PartnerCabinetPage() {
   const [docs, setDocs] = useState<DocRow[]>([]);
   const [openDocId, setOpenDocId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reqs, setReqs] = useState<MyReq[]>([]);
+  const [cur, setCur] = useState("₴");
+  const [now, setNow] = useState(Date.now());
+  const [paying, setPaying] = useState<string | null>(null);
+  const [payMsg, setPayMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [placeId, setPlaceId] = useState("");
 
   const [creativeFile, setCreativeFile] = useState<File | null>(null);
   const [creativeNote, setCreativeNote] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadedList, setUploadedList] = useState<{ id: string; file_url: string; note: string | null; status: string }[]>([]);
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  async function loadReqs() {
+    const r = await apiPost("/api/ad/mine");
+    if (r?.ok) {
+      setReqs(r.items ?? []);
+      if (r.currency) setCur(r.currency);
+      return (r.items ?? []) as MyReq[];
+    }
+    return [] as MyReq[];
+  }
+
+  async function payNow(id: string) {
+    setPaying(id);
+    setPayMsg(null);
+    const r = await payAdRequest(id);
+    setPayMsg({ ok: r.ok, text: r.message + (r.test ? " (тест: баланс пополнен на 1000)" : "") });
+    setPaying(null);
+    await loadReqs();
+    if (r.ok) await loadPurchases();
+  }
+
+  async function loadPurchases() {
+    const u = await getCurrentUser();
+    if (!u) return;
+    const { data: purchasesData } = await supabase
+      .from("ad_slot_purchases")
+      .select(
+        "id, created_at, ad_slots(title, category, slot_number, duration, all_regions, ad_slot_regions(regions(name)))"
+      )
+      .eq("owner_user_id", u.id)
+      .order("created_at", { ascending: false });
+    setPurchases((purchasesData as unknown as Purchase[]) ?? []);
+  }
 
   useEffect(() => {
     (async () => {
@@ -67,12 +124,14 @@ export default function PartnerCabinetPage() {
         .eq("status", "approved")
         .maybeSingle();
 
-      if (!sponsor) {
+      // Кабинет открыт и тем, у кого есть заявка (одобрили — сразу видно «Оплатить»).
+      const mineReqs = await loadReqs();
+      if (!sponsor && mineReqs.length === 0) {
         setLoading(false);
         return;
       }
       setApproved(true);
-      setCompanyName(sponsor.name);
+      setCompanyName(sponsor?.name ?? "");
 
       const { data: purchasesData } = await supabase
         .from("ad_slot_purchases")
@@ -87,7 +146,7 @@ export default function PartnerCabinetPage() {
         .from("documents")
         .select("id, title, content")
         .eq("is_active", true)
-        .in("audience", ["all", "partner"])
+        .eq("audience", "partner")
         .order("sort_order", { ascending: true });
       setDocs((docsData as DocRow[]) ?? []);
 
@@ -127,7 +186,7 @@ export default function PartnerCabinetPage() {
     await supabase.from("partner_creative_uploads").insert({
       owner_user_id: u.id,
       file_url: publicUrlData.publicUrl,
-      note: creativeNote || null,
+      note: [purchases.find((x) => x.id === placeId)?.ad_slots?.title, creativeNote].filter(Boolean).join(" — ") || null,
     });
     setCreativeFile(null);
     setCreativeNote("");
@@ -171,13 +230,55 @@ export default function PartnerCabinetPage() {
         </h1>
         <p className="text-gold text-sm mb-6">{companyName}</p>
 
+        {reqs.filter((r) => r.status === "approved").map((r) => {
+          const left = r.expires_at ? new Date(r.expires_at).getTime() - now : 0;
+          const expired = !!r.expires_at && left <= 0;
+          return (
+            <div key={r.id} className="rounded-2xl border border-gold bg-gold/10 p-4 mb-4">
+              <p className="text-gold text-xs tracking-widest mb-1">ЗАЯВКА ОДОБРЕНА</p>
+              <p className="text-offwhite font-semibold">{r.title}</p>
+              {expired ? (
+                <p className="text-danger text-sm mt-2">Время на оплату вышло. Напишите в поддержку — мы продлим.</p>
+              ) : (
+                <>
+                  <p className="text-muted text-xs mt-2">Оплатите в течение 24 часов, иначе бронь снимется</p>
+                  <p className="text-gold text-3xl font-semibold tabular-nums my-1">{r.expires_at ? fmtLeft(left) : "24:00:00"}</p>
+                  <button
+                    onClick={() => payNow(r.id)}
+                    disabled={paying === r.id}
+                    className="w-full bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold py-3 rounded-full text-sm disabled:opacity-50 mt-2"
+                  >
+                    {paying === r.id ? "Оплата..." : `Оплатить ${Math.round(Number(r.price ?? 0))} ${cur}`}
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })}
+        {payMsg && <p className={`text-sm mb-4 ${payMsg.ok ? "text-success" : "text-danger"}`}>{payMsg.text}</p>}
+
+        {reqs.filter((r) => r.status !== "approved" && r.status !== "paid").length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-gold mb-2">Мои заявки</h2>
+            {reqs.filter((r) => r.status !== "approved" && r.status !== "paid").map((r) => (
+              <div key={r.id} className="bg-bgSurface border border-muted rounded-xl p-3 mb-2">
+                <p className="text-offwhite text-sm">{r.title}</p>
+                <p className="text-xs text-muted">
+                  {r.status === "new" && "⏳ На рассмотрении"}
+                  {r.status === "paying" && "Идёт оплата…"}
+                  {r.status === "rejected" && `✖ Отклонено${r.note ? `: ${r.note}` : ""}`}
+                  {(r.status === "contacted" || r.status === "closed") && "Обрабатывается менеджером"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
         <a
           href="/ad-space"
-          className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mb-8 text-center"
+          className="block border border-gold text-gold rounded-xl p-3 mb-8 text-center text-sm font-semibold"
         >
-          <span className="text-white font-semibold text-sm">
-            🎬 Схема мест — выбрать и оплатить
-          </span>
+          + Заказать ещё место
         </a>
 
         <h2 className="text-lg font-semibold text-gold mb-3">
@@ -222,11 +323,34 @@ export default function PartnerCabinetPage() {
         <h2 className="text-lg font-semibold text-gold mb-3">
           Прислать макет
         </h2>
-        <p className="text-muted text-xs mb-3">
-          Требования: баннеры — 1200×600 px, PNG или JPG, до 5 МБ. Видео для
-          журнала — вертикальное 9:16, до 30 сек, MP4. Мы вставим материал
-          вручную после проверки.
-        </p>
+        {purchases.length > 0 && (
+          <select
+            value={placeId}
+            onChange={(e) => setPlaceId(e.target.value)}
+            className="w-full bg-bgSurface border border-muted rounded-lg px-3 py-2 text-sm mb-3 text-offwhite"
+          >
+            <option value="">Выберите, для какого места макет</option>
+            {purchases.map((pu) => (
+              <option key={pu.id} value={pu.id}>
+                {(pu.ad_slots ? CATEGORY_LABELS[pu.ad_slots.category] ?? pu.ad_slots.category : "—")} · {pu.ad_slots?.title}
+              </option>
+            ))}
+          </select>
+        )}
+        {(() => {
+          const pu = purchases.find((x) => x.id === placeId);
+          const h = adHintFor(pu?.ad_slots?.category);
+          if (!pu) return <p className="text-muted text-xs mb-3">Выберите место выше — покажем точные требования к макету именно для него.</p>;
+          if (!h) return <p className="text-muted text-xs mb-3">Для этого места размер уточнит менеджер. Прикрепите файл и опишите пожелания.</p>;
+          return (
+            <div className="bg-bgSurface border border-gold/40 rounded-xl p-3 mb-3 text-xs">
+              <p className="text-gold font-semibold mb-1">{h.title}</p>
+              <p className="text-offwhite mb-1">📐 {h.size}</p>
+              <p className="text-muted mb-1">📍 {h.where}</p>
+              <p className="text-muted">💡 {h.tips}</p>
+            </div>
+          );
+        })()}
         <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-8">
           <label className="block w-full text-center bg-bgPrimary border border-muted text-offwhite text-xs py-2 rounded-lg mb-2 cursor-pointer">
             {creativeFile ? creativeFile.name : "Выбрать файл"}

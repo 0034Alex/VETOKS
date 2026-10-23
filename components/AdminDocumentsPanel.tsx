@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
 
-const AUD: Record<string, string> = { all: "все", participants: "участницы", partner: "партнёры" };
+const AUD: Record<string, string> = { all: "все", participants: "участницы", partner: "кабинет партнёра" };
 
 // CRM → «Документы»: правка текста с историей версий.
 export default function AdminDocumentsPanel() {
@@ -73,7 +73,7 @@ export default function AdminDocumentsPanel() {
         <select value={audience} onChange={(e) => setAudience(e.target.value)} className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3">
           <option value="all">Все пользователи</option>
           <option value="participants">Только участницы</option>
-          <option value="partner">Только партнёры</option>
+          <option value="partner">Кабинет партнёра (показывать партнёрам)</option>
         </select>
         <button onClick={create} disabled={!title.trim() || !content.trim()} className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40">
           Добавить документ

@@ -12,6 +12,7 @@ import ScrollGuard from "@/components/ScrollGuard";
 import ErrorReporter from "@/components/ErrorReporter";
 import PresenceBeat from "@/components/PresenceBeat";
 import BirthPopup from "@/components/BirthPopup";
+import BroadcastPopup from "@/components/BroadcastPopup";
 
 export const metadata: Metadata = {
   title: "VETOKS",
@@ -59,6 +60,7 @@ export default function RootLayout({
         <ErrorReporter />
         <PresenceBeat />
         <BirthPopup />
+        <BroadcastPopup />
       </LangProvider>
       </body>
     </html>

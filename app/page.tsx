@@ -12,6 +12,7 @@ import { AdWatch, trackAdClick, withUtm } from "@/lib/track";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { apiPost } from "@/lib/authClient";
 import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
@@ -37,6 +38,15 @@ type Participant = {
   region_id: string | null;
   age_category: string;
 };
+
+function annLeft(endIso: string, now: number) {
+  const t = Math.max(0, Math.floor((new Date(endIso).getTime() - now) / 1000));
+  const d = Math.floor(t / 86400);
+  const h = String(Math.floor((t % 86400) / 3600)).padStart(2, "0");
+  const m = String(Math.floor((t % 3600) / 60)).padStart(2, "0");
+  const sec = String(t % 60).padStart(2, "0");
+  return `${d > 0 ? d + " д " : ""}${h}:${m}:${sec}`;
+}
 
 function useSundayCountdown() {
   const [inWindow, setInWindow] = useState(false);
@@ -655,7 +665,7 @@ export default function Home() {
       setChecked(true);
 
       const cm = await loadScoped(
-        ["strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text"],
+        ["strip_enabled", "strip_text"],
         (await getMyCountry()).countryId
       );
       setHomeCfg(cm);
@@ -771,6 +781,17 @@ export default function Home() {
   }, [router]);
 
   const { inWindow, timeLeft } = useSundayCountdown();
+  const [anns, setAnns] = useState<{ id: string; title: string; body: string | null; ends_at: string; show_timer: boolean }[]>([]);
+  const [annNow, setAnnNow] = useState(Date.now());
+  useEffect(() => {
+    if (!checked) return;
+    apiPost("/api/announcements/active").then((r) => setAnns(r?.ok ? r.items ?? [] : []));
+  }, [checked]);
+  useEffect(() => {
+    if (!anns.some((a) => a.show_timer)) return;
+    const t = setInterval(() => setAnnNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [anns]);
   const prevOrderRef = useState<string[]>([])[0];
   const [risingIds, setRisingIds] = useState<Set<string>>(new Set());
 
@@ -960,16 +981,13 @@ export default function Home() {
         <CategorySwitch />
         </div>
 
-        {homeCfg.howitworks_enabled === "true" && (
-          <div className="mx-6 mb-4">
-            <Link
-              href="/how-it-works"
-              className="flex items-center justify-center w-full border border-gold/50 text-offwhite rounded-full py-2.5 font-semibold text-sm"
-            >
-              {homeCfg.howitworks_text?.trim() || "Как это работает"}
-            </Link>
+        {anns.map((a) => (
+          <div key={a.id} className="mx-6 mb-4 bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 text-center">
+            <p className="text-white font-semibold text-sm">{a.title}</p>
+            {a.body && <p className="text-white/90 text-xs mt-1 whitespace-pre-wrap">{a.body}</p>}
+            {a.show_timer && <p className="text-white font-semibold text-sm mt-2 tabular-nums">⏳ {annLeft(a.ends_at, annNow)}</p>}
           </div>
-        )}
+        ))}
 
         {inWindow && homeCfg.strip_enabled === "true" && (
           <div className="mx-6 mb-4 bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 text-center animate-pulse">

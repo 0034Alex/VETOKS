@@ -17,6 +17,7 @@ import AdminAdStatsPanel from "@/components/AdminAdStatsPanel";
 import AdminDocumentsPanel from "@/components/AdminDocumentsPanel";
 import { makeCardImage } from "@/lib/cardFrame";
 import AdminHomeSettingsPanel from "@/components/AdminHomeSettingsPanel";
+import AdminBroadcastPanel from "@/components/AdminBroadcastPanel";
 import AdminClanPanel from "@/components/AdminClanPanel";
 import AdminReferralsPanel from "@/components/AdminReferralsPanel";
 import AdminBadgesPanel from "@/components/AdminBadgesPanel";
@@ -85,6 +86,7 @@ type Tab =
   | "reports"
   | "ad-stats"
   | "home-settings"
+  | "broadcast"
   | "clan"
   | "referrals"
   | "badges"
@@ -127,6 +129,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "official", label: "Официальный аккаунт" },
   { key: "ad-stats", label: "Статистика рекламы" },
   { key: "home-settings", label: "Главная" },
+  { key: "broadcast", label: "Рассылка" },
   { key: "clan", label: "Чат кланов" },
   { key: "referrals", label: "Рефералы" },
   { key: "badges", label: "Галочки и статусы" },
@@ -151,7 +154,7 @@ const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: 
   { key: "today", ic: "🏠", label: "Сегодня", desc: "Что требует действия прямо сейчас", tabs: ["dashboard", "support"] },
   { key: "people", ic: "👥", label: "Люди", desc: "Все, кто есть в приложении", tabs: ["users", "participants", "applications", "badges", "black-marks"] },
   { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["stages", "rating-admin", "goal", "tasks", "cards"] },
-  { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "banners"] },
+  { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "broadcast", "banners"] },
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["content-mod", "reports", "clan"] },
   { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["app-prices", "referrals"] },
   { key: "ads", ic: "📣", label: "Реклама и партнёры", desc: "Всё, что приносит доход от партнёров", tabs: ["partners", "partner-logos", "ad-space", "ad-prices", "ad-stats", "magazine-ads", "branding"] },
@@ -424,6 +427,7 @@ export default function AdminPage() {
         {tab === "official" && <AdminOfficialPanel />}
         {tab === "ad-stats" && <AdminAdStatsPanel />}
         {tab === "home-settings" && <AdminHomeSettingsPanel />}
+        {tab === "broadcast" && <AdminBroadcastPanel />}
         {tab === "clan" && <AdminClanPanel />}
         {tab === "referrals" && <AdminReferralsPanel />}
         {tab === "badges" && <AdminBadgesPanel />}

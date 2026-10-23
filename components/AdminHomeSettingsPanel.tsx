@@ -6,11 +6,11 @@ import { getCrmCountry, crmCur } from "@/lib/crmCountry";
 import { loadScoped, scopedKey } from "@/lib/scopedSettings";
 import { apiPost } from "@/lib/authClient";
 
-const KEYS = ["publishing_enabled", "strip_enabled", "strip_text", "howitworks_enabled", "howitworks_text", "fanzone_enabled", "fanzone_min_amount", "media_season_id", "survey_question"];
+const KEYS = ["publishing_enabled", "strip_enabled", "strip_text", "fanzone_enabled", "fanzone_min_amount", "media_season_id", "survey_question"];
 
 type SeasonOpt = { id: string; title: string };
 
-// CRM → «Главная»: красная полоса и кнопка «Как это работает».
+// CRM → «Главная»: красная полоса, объявления, приём публикаций и др.
 export default function AdminHomeSettingsPanel() {
   const [v, setV] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -67,16 +67,7 @@ export default function AdminHomeSettingsPanel() {
         <p className="text-muted text-xs mt-1">Вместо {"{time}"} подставится обратный отсчёт. Пусто — стандартный текст.</p>
       </div>
 
-      <div className="bg-bgSurface border border-muted rounded-xl p-4">
-        <p className="text-offwhite font-semibold text-sm mb-2">Кнопка под баннером «Как это работает»</p>
-        <Toggle k="howitworks_enabled" label="Показывать на главной" />
-        <input
-          value={v.howitworks_text ?? ""}
-          onChange={(e) => set("howitworks_text", e.target.value)}
-          placeholder="Как это работает"
-          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
-        />
-      </div>
+      <AnnouncementsBlock />
 
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
         <p className="text-offwhite font-semibold text-sm mb-2">📤 Приём публикаций (фото и видео)</p>
@@ -167,6 +158,116 @@ export default function AdminHomeSettingsPanel() {
       <button onClick={save} className="bg-gold text-bgPrimary font-semibold py-2.5 rounded-full text-sm">
         {saved ? "Сохранено ✓" : "Сохранить"}
       </button>
+    </div>
+  );
+}
+
+
+type Ann = { id: string; title: string; body: string | null; starts_at: string; ends_at: string; audience: string[]; show_timer: boolean; is_active: boolean };
+
+function localInput(d: Date) {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// Любое объявление на главной: название, текст, когда показывать и кому.
+function AnnouncementsBlock() {
+  const [items, setItems] = useState<Ann[]>([]);
+  const [needSql, setNeedSql] = useState(false);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [starts, setStarts] = useState(localInput(new Date()));
+  const [ends, setEnds] = useState(localInput(new Date(Date.now() + 24 * 3600 * 1000)));
+  const [aud, setAud] = useState<string[]>(["teen", "main", "adult"]);
+  const [timer, setTimer] = useState(true);
+  const [msg, setMsg] = useState("");
+
+  async function load() {
+    const r = await apiPost("/api/admin/announcements", { action: "list" });
+    if (r?.ok) {
+      setItems(r.items ?? []);
+      setNeedSql(false);
+    } else if (r?.error === "need_sql") setNeedSql(true);
+  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  function quick(h: number) {
+    const st = new Date(starts);
+    setEnds(localInput(new Date((isNaN(st.getTime()) ? Date.now() : st.getTime()) + h * 3600 * 1000)));
+  }
+
+  async function create() {
+    const r = await apiPost("/api/admin/announcements", {
+      action: "create",
+      title,
+      body,
+      starts_at: new Date(starts).toISOString(),
+      ends_at: new Date(ends).toISOString(),
+      audience: aud,
+      show_timer: timer,
+    });
+    if (r?.ok) {
+      setTitle("");
+      setBody("");
+      setMsg("Объявление добавлено.");
+      load();
+    } else setMsg(r?.error === "bad_dates" ? "Конец должен быть позже начала." : r?.error === "no_title" ? "Напишите название." : "Не получилось. Проверьте, что SQL для объявлений выполнен.");
+  }
+
+  const act = async (body: object) => {
+    await apiPost("/api/admin/announcements", body);
+    load();
+  };
+  const toggleAud = (k: string) => setAud((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k]));
+  const fmt = (s: string) => new Date(s).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const now = Date.now();
+
+  return (
+    <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
+      <p className="text-offwhite font-semibold text-sm mb-2">📢 Объявления на главной</p>
+      <p className="text-muted text-xs mb-3">Яркий блок на главной: любое название и текст, на час, день или дольше, для выбранных категорий.</p>
+      {needSql && <p className="text-danger text-xs mb-2">Нужно выполнить SQL для объявлений (он у вас в чате).</p>}
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Название, напр. «🔥 Голосование до воскресенья»" className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2" />
+      <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={2} placeholder="Текст (необязательно)" className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2" />
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <label className="text-muted text-xs">Показать с<input type="datetime-local" value={starts} onChange={(e) => setStarts(e.target.value)} className="w-full bg-bgPrimary border border-muted rounded-lg px-2 py-2 text-sm text-offwhite mt-1" /></label>
+        <label className="text-muted text-xs">Показать до<input type="datetime-local" value={ends} onChange={(e) => setEnds(e.target.value)} className="w-full bg-bgPrimary border border-muted rounded-lg px-2 py-2 text-sm text-offwhite mt-1" /></label>
+      </div>
+      <div className="flex flex-wrap gap-2 mb-2">
+        {([[1, "1 час"], [24, "1 день"], [72, "3 дня"], [168, "неделя"]] as const).map(([h, l]) => (
+          <button key={h} onClick={() => quick(h)} className="text-xs px-3 py-1 rounded-full border border-muted text-offwhite">{l}</button>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-3 mb-2">
+        {([["teen", "TEEN"], ["main", "MISS"], ["adult", "LADY"]] as const).map(([k, l]) => (
+          <label key={k} className="flex items-center gap-1 text-offwhite text-sm"><input type="checkbox" checked={aud.includes(k)} onChange={() => toggleAud(k)} /> {l}</label>
+        ))}
+      </div>
+      <label className="flex items-center gap-2 text-offwhite text-sm mb-3"><input type="checkbox" checked={timer} onChange={(e) => setTimer(e.target.checked)} /> Показывать обратный отсчёт до конца</label>
+      <button onClick={create} disabled={!title.trim()} className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40">Добавить объявление</button>
+      {msg && <p className="text-gold text-xs mt-2">{msg}</p>}
+
+      {items.length > 0 && (
+        <div className="mt-4 flex flex-col gap-2">
+          {items.map((a) => {
+            const live = a.is_active && new Date(a.starts_at).getTime() <= now && new Date(a.ends_at).getTime() > now;
+            const over = new Date(a.ends_at).getTime() <= now;
+            return (
+              <div key={a.id} className="border border-muted rounded-lg p-3">
+                <p className="text-offwhite text-sm font-semibold">{a.title}</p>
+                <p className="text-muted text-xs">{fmt(a.starts_at)} — {fmt(a.ends_at)} · {a.audience.map((x) => ({ teen: "TEEN", main: "MISS", adult: "LADY" } as Record<string, string>)[x]).join(", ")}</p>
+                <p className={`text-xs mt-1 ${live ? "text-success" : "text-muted"}`}>{live ? "● Сейчас показывается" : over ? "Завершено" : a.is_active ? "Ожидает начала" : "Выключено"}</p>
+                <div className="flex gap-2 mt-2">
+                  {!over && <button onClick={() => act({ action: "toggle", id: a.id, active: !a.is_active })} className="text-xs px-3 py-1 rounded-full border border-gold text-gold">{a.is_active ? "Выключить" : "Включить"}</button>}
+                  <button onClick={() => act({ action: "delete", id: a.id })} className="text-xs px-3 py-1 rounded-full border border-danger text-danger">Удалить</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

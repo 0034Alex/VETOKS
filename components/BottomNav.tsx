@@ -198,7 +198,8 @@ export default function BottomNav() {
         bottom: 0,
         left: 0,
         right: 0,
-        zIndex: 50,
+        zIndex: 90,
+        background: "#161618",
         paddingBottom: "max(0px, calc(env(safe-area-inset-bottom) - 16px))",
       }}
     >
