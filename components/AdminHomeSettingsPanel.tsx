@@ -163,7 +163,7 @@ export default function AdminHomeSettingsPanel() {
 }
 
 
-type Ann = { id: string; title: string; body: string | null; starts_at: string; ends_at: string; audience: string[]; show_timer: boolean; is_active: boolean };
+type Ann = { country_id?: string | null; all_regions?: boolean | null; region_ids?: string[] | null; id: string; title: string; body: string | null; starts_at: string; ends_at: string; audience: string[]; show_timer: boolean; is_active: boolean };
 
 function localInput(d: Date) {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -181,11 +181,25 @@ function AnnouncementsBlock() {
   const [aud, setAud] = useState<string[]>(["teen", "main", "adult"]);
   const [timer, setTimer] = useState(true);
   const [msg, setMsg] = useState("");
+  const [regions, setRegions] = useState<{ id: string; name: string }[]>([]);
+  const [allRegions, setAllRegions] = useState(true);
+  const [regionIds, setRegionIds] = useState<string[]>([]);
+  const cc = getCrmCountry() || null;
+
+  useEffect(() => {
+    (async () => {
+      let rq = supabase.from("regions").select("id, name").order("name");
+      if (cc) rq = rq.eq("country_id", cc);
+      const { data } = await rq;
+      setRegions((data as { id: string; name: string }[]) ?? []);
+    })();
+  }, [cc]);
 
   async function load() {
     const r = await apiPost("/api/admin/announcements", { action: "list" });
     if (r?.ok) {
-      setItems(r.items ?? []);
+      // Видим объявления выбранной в CRM страны и общие.
+      setItems(((r.items ?? []) as Ann[]).filter((a) => !a.country_id || !cc || String(a.country_id) === String(cc)));
       setNeedSql(false);
     } else if (r?.error === "need_sql") setNeedSql(true);
   }
@@ -207,6 +221,9 @@ function AnnouncementsBlock() {
       ends_at: new Date(ends).toISOString(),
       audience: aud,
       show_timer: timer,
+      country_id: cc,
+      all_regions: allRegions,
+      region_ids: regionIds,
     });
     if (r?.ok) {
       setTitle("");
@@ -245,6 +262,15 @@ function AnnouncementsBlock() {
           <label key={k} className="flex items-center gap-1 text-offwhite text-sm"><input type="checkbox" checked={aud.includes(k)} onChange={() => toggleAud(k)} /> {l}</label>
         ))}
       </div>
+      <p className="text-muted text-xs mb-1">Где показывать (страна — та, что выбрана вверху CRM):</p>
+      <label className="flex items-center gap-2 text-offwhite text-sm mb-1"><input type="checkbox" checked={allRegions} onChange={(e) => setAllRegions(e.target.checked)} /> Вся страна</label>
+      {!allRegions && (
+        <div className="flex flex-wrap gap-2 mb-2 max-h-32 overflow-y-auto">
+          {regions.map((rg) => (
+            <button key={rg.id} type="button" onClick={() => setRegionIds((p) => (p.includes(rg.id) ? p.filter((x) => x !== rg.id) : [...p, rg.id]))} className={`text-[11px] px-2 py-1 rounded-full border ${regionIds.includes(rg.id) ? "border-gold text-gold bg-gold/10" : "border-muted text-muted"}`}>{rg.name}</button>
+          ))}
+        </div>
+      )}
       <label className="flex items-center gap-2 text-offwhite text-sm mb-3"><input type="checkbox" checked={timer} onChange={(e) => setTimer(e.target.checked)} /> Показывать обратный отсчёт до конца</label>
       <button onClick={create} disabled={!title.trim()} className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40">Добавить объявление</button>
       {msg && <p className="text-gold text-xs mt-2">{msg}</p>}
@@ -257,7 +283,7 @@ function AnnouncementsBlock() {
             return (
               <div key={a.id} className="border border-muted rounded-lg p-3">
                 <p className="text-offwhite text-sm font-semibold">{a.title}</p>
-                <p className="text-muted text-xs">{fmt(a.starts_at)} — {fmt(a.ends_at)} · {a.audience.map((x) => ({ teen: "TEEN", main: "MISS", adult: "LADY" } as Record<string, string>)[x]).join(", ")}</p>
+                <p className="text-muted text-xs">{fmt(a.starts_at)} — {fmt(a.ends_at)} · {a.audience.map((x) => ({ teen: "TEEN", main: "MISS", adult: "LADY" } as Record<string, string>)[x]).join(", ")} · {a.all_regions === false ? `регионы: ${(a.region_ids ?? []).map((id) => regions.find((x) => x.id === id)?.name ?? "").filter(Boolean).join(", ") || "—"}` : "вся страна"}</p>
                 <p className={`text-xs mt-1 ${live ? "text-success" : "text-muted"}`}>{live ? "● Сейчас показывается" : over ? "Завершено" : a.is_active ? "Ожидает начала" : "Выключено"}</p>
                 <div className="flex gap-2 mt-2">
                   {!over && <button onClick={() => act({ action: "toggle", id: a.id, active: !a.is_active })} className="text-xs px-3 py-1 rounded-full border border-gold text-gold">{a.is_active ? "Выключить" : "Включить"}</button>}

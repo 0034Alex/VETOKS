@@ -2384,6 +2384,11 @@ type AdSlotRequestRow = {
   image_url?: string | null;
   decision_note?: string | null;
   price?: number | null;
+  edit_kind?: string | null;
+  pending_edit?: { name?: string; link_url?: string | null; ad_text?: string | null; image_url?: string | null } | null;
+  live_until?: string | null;
+  live_table?: string | null;
+  first_decided_at?: string | null;
 };
 
 type AdMode = "tiers" | "capacity" | "seats";
@@ -2531,7 +2536,7 @@ function AdSpaceTab() {
     setLoading(true);
     const { data } = await supabase
       .from("ad_slot_requests")
-      .select("id, slot_id, name, phone, message, status, created_at, user_id, email, link_url, ad_text, image_url, decision_note, price, ad_slots(title, category, slot_number)")
+      .select("id, slot_id, name, phone, message, status, created_at, user_id, email, link_url, ad_text, image_url, decision_note, price, edit_kind, pending_edit, live_until, live_table, first_decided_at, ad_slots(title, category, slot_number)")
       .order("created_at", { ascending: false });
     const mapped = (data as any[] ?? []).map((r) => {
       const slotInfo = Array.isArray(r.ad_slots) ? r.ad_slots[0] : r.ad_slots;
@@ -2687,6 +2692,12 @@ function AdSpaceTab() {
   async function decideRequest(id: string, action: "approve" | "reject") {
     const r = await apiPost("/api/admin/ad-requests", { action, id, note: reqNotes[id] ?? "" });
     if (!r?.ok) alert(r?.error === "slot_full" ? "Это место уже занято." : "Не получилось. Попробуйте ещё раз.");
+    await loadRequests();
+  }
+
+  async function reviewEdit(id: string, action: "approve_edit" | "reject_edit" | "extend") {
+    const r = await apiPost("/api/admin/ad-requests", { action, id, note: reqNotes[id] ?? "" });
+    if (!r?.ok) alert("Не получилось. Попробуйте ещё раз.");
     await loadRequests();
   }
 
@@ -3011,6 +3022,7 @@ function AdSpaceTab() {
                                 ? "Все регионы"
                                 : (s.region_names ?? []).join(", ") || "регион не выбран"}
                             </p>
+                            <div className="mb-2"><AdAudience table="ad_slots" id={s.id} /></div>
 
                             {sellingSlotId === s.id && (
                               <div className="mb-2 flex gap-2 items-center">
@@ -3104,6 +3116,12 @@ function AdSpaceTab() {
           )}
           {requests.map((r) => (
             <div key={r.id} className="bg-bgSurface border border-muted rounded-xl p-4">
+              {r.edit_kind === "edit_prepay" && (
+                <p className="inline-block bg-gold/20 text-gold text-[10px] font-semibold px-2 py-1 rounded-full mb-2">✏️ ПРАВКА ДО ОПЛАТЫ — повторная проверка</p>
+              )}
+              {r.edit_kind === "edit_live" && r.pending_edit && (
+                <p className="inline-block bg-danger/20 text-danger text-[10px] font-semibold px-2 py-1 rounded-full mb-2">✏️ РЕДАКТИРОВАНИЕ ОПУБЛИКОВАННОЙ РЕКЛАМЫ</p>
+              )}
               <p className="text-gold text-xs font-semibold mb-1">
                 {AD_CATEGORIES.find((c) => c.key === r.slot_category)?.label ?? "—"}
                 {r.slot_number != null && ` · место ${r.slot_number}`}
@@ -3136,10 +3154,42 @@ function AdSpaceTab() {
                   </div>
                   <p className="text-muted text-[11px]">После «Одобрить» человек получит уведомление с ценой и оплатит с баланса.</p>
                 </div>
+              ) : r.user_id && r.status === "paid" && r.pending_edit ? (
+                <div className="flex flex-col gap-2 border border-danger/50 rounded-lg p-3">
+                  <p className="text-danger text-xs font-semibold">Новая версия (сейчас в эфире старая — выше)</p>
+                  <p className="text-offwhite text-xs">Название: {r.pending_edit.name}</p>
+                  {r.pending_edit.link_url && <p className="text-gold text-xs break-all">{r.pending_edit.link_url}</p>}
+                  {r.pending_edit.ad_text && <p className="text-offwhite text-xs whitespace-pre-wrap">{r.pending_edit.ad_text}</p>}
+                  {r.pending_edit.image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={r.pending_edit.image_url} alt="" className="max-h-40 rounded-lg border border-muted" />
+                  )}
+                  <input
+                    value={reqNotes[r.id] ?? ""}
+                    onChange={(e) => setReqNotes((p) => ({ ...p, [r.id]: e.target.value }))}
+                    placeholder="Причина (если отклоняете)"
+                    className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-xs"
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => reviewEdit(r.id, "approve_edit")} className="bg-success text-bgPrimary px-4 py-1.5 rounded-full text-xs font-semibold">✅ Одобрить правку</button>
+                    <button onClick={() => reviewEdit(r.id, "reject_edit")} className="border border-danger text-danger px-4 py-1.5 rounded-full text-xs">Отклонить правку</button>
+                  </div>
+                </div>
               ) : r.user_id ? (
+                <div>
+                  {r.status === "approved" && (
+                    <button onClick={() => reviewEdit(r.id, "extend")} className="text-[11px] px-3 py-1 rounded-full border border-muted text-offwhite mb-2">Продлить срок оплаты на 24 ч</button>
+                  )}
+                  {r.status === "paid" && r.live_until && (
+                    <p className="text-success text-[11px] mb-1">● В эфире до {new Date(r.live_until).toLocaleDateString("ru-RU")}</p>
+                  )}
+                  {r.status === "paid" && !r.live_table && (
+                    <p className="text-danger text-[11px] mb-1">Оплачено, но автоматически не опубликовано (жюри или нет картинки) — поставьте вручную.</p>
+                  )}
                 <p className="text-xs text-gold">
                   {r.status === "approved" ? `✅ Одобрена · ждём оплату${r.price ? ` (${Math.round(Number(r.price))})` : ""}` : r.status === "paying" ? "Идёт оплата" : r.status === "paid" ? "💳 Оплачена" : r.status === "rejected" ? `✖ Отклонена${r.decision_note ? `: ${r.decision_note}` : ""}` : r.status}
                 </p>
+                </div>
               ) : (
                 <select
                   value={r.status}

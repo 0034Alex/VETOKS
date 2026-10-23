@@ -2,7 +2,7 @@ import { apiPost } from "@/lib/authClient";
 
 // Оплата рекламной заявки в один клик. Если денег не хватает и в CRM включено
 // тестовое пополнение — пополняем +1000 и повторяем оплату (как с голосами).
-export async function payAdRequest(requestId: string): Promise<{ ok: boolean; message: string; test?: boolean }> {
+export async function payAdRequest(requestId: string): Promise<{ ok: boolean; message: string; test?: boolean; published?: boolean }> {
   let r = await apiPost("/api/ad/pay", { requestId });
   let usedTest = false;
   if (!r?.ok && r?.error === "not_enough") {
@@ -19,7 +19,10 @@ export async function payAdRequest(requestId: string): Promise<{ ok: boolean; me
     return {
       ok: true,
       test: usedTest,
-      message: "Оплачено! Место закреплено за вами. Теперь загрузите материалы в разделе «Прислать макет».",
+      published: !!r.published,
+      message: r.published
+        ? `Оплачено! Реклама запущена${r.until ? ` и будет в эфире до ${new Date(r.until).toLocaleDateString("ru-RU")}` : ""}. Править материал можно в Кабинете партнёра.`
+        : "Оплачено! Место закреплено за вами. Материал для этого места менеджер поставит вручную.",
     };
   }
   const m: Record<string, string> = {

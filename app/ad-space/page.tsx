@@ -11,6 +11,7 @@ import PageHeader from "@/components/PageHeader";
 import { apiPost } from "@/lib/authClient";
 import { cleanImage } from "@/lib/imageClean";
 import { payAdRequest } from "@/lib/adPayClient";
+import { adHintFor } from "@/lib/adHints";
 
 type Slot = {
   id: string;
@@ -206,6 +207,15 @@ export default function AdSpacePage() {
       setFormErr("Укажите телефон или почту для связи.");
       return;
     }
+    const isJury = String(selected.category).replace(/_gf$/, "") === "jury";
+    if (!isJury && !file) {
+      setFormErr("Загрузите картинку — она пойдёт в рекламу после одобрения и оплаты.");
+      return;
+    }
+    if (!isJury && !linkUrl.trim()) {
+      setFormErr("Укажите ссылку, куда вести клиентов.");
+      return;
+    }
     setSending(true);
     setFormErr("");
     try {
@@ -235,6 +245,8 @@ export default function AdSpacePage() {
           image_big: "Картинка слишком большая — не больше 3 МБ.",
           bad_image: "Файл должен быть картинкой.",
           empty_contact: "Укажите телефон или почту для связи.",
+          need_image: "Загрузите картинку для рекламы.",
+          need_link: "Укажите ссылку, куда вести клиентов.",
         };
         setFormErr(m[r?.error] ?? "Не получилось отправить. Попробуйте ещё раз.");
       }
@@ -505,7 +517,7 @@ export default function AdSpacePage() {
                 <input
                   value={linkUrl}
                   onChange={(e) => setLinkUrl(e.target.value)}
-                  placeholder="Ссылка, куда вести клиентов"
+                  placeholder="Ссылка, куда вести клиентов *"
                   className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
                 />
                 <textarea
@@ -515,8 +527,19 @@ export default function AdSpacePage() {
                   placeholder="Текст рекламы"
                   className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
                 />
+                {(() => {
+                  const h = adHintFor(selected.category);
+                  return h ? (
+                    <div className="bg-bgPrimary border border-gold/40 rounded-lg p-3 text-[11px]">
+                      <p className="text-gold font-semibold mb-1">Какой материал нужен</p>
+                      <p className="text-offwhite mb-1">📐 {h.size}</p>
+                      <p className="text-muted mb-1">📍 {h.where}</p>
+                      <p className="text-muted">💡 {h.tips}</p>
+                    </div>
+                  ) : null;
+                })()}
                 <label className="text-muted text-xs">
-                  Картинка или логотип (до 3 МБ)
+                  Картинка или логотип * (до 3 МБ)
                   <input
                     type="file"
                     accept="image/*"

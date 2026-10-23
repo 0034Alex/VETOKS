@@ -64,6 +64,10 @@ export async function POST(req: Request) {
     if (ue) return bad("upload_failed", 500);
     imageUrl = supabaseAdmin.storage.from("partner-creatives").getPublicUrl(path).data.publicUrl;
   }
+  // Весь материал подаётся сразу в заявке: картинка и ссылка нужны всем местам, кроме жюри.
+  const isJury = String((slot as any).category).replace(/_gf$/, "") === "jury";
+  if (!isJury && !imageUrl) return bad("need_image");
+  if (!isJury && !link) return bad("need_link");
 
   const { error } = await supabaseAdmin.from("ad_slot_requests").insert({
     slot_id: slotId,

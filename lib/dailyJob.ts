@@ -1,3 +1,4 @@
+import { expireAds } from "@/lib/adPublish";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { addDays, kyivDate, kyivDayStartUtc, kyivWeekStart } from "@/lib/kyiv";
 import { notify } from "@/lib/shopServer";
@@ -191,6 +192,11 @@ async function notifyRankChanges(participants: P[], totals: Record<string, numbe
 }
 
 export async function runDailyJob() {
+  try {
+    await expireAds();
+  } catch {
+    /* реклама выключится при следующем запуске */
+  }
   const today = kyivDate();
   const dayFrom = kyivDayStartUtc(addDays(today, -1)).toISOString();
   const dayTo = kyivDayStartUtc(today).toISOString();

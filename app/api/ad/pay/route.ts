@@ -4,6 +4,7 @@ import { bad, notify, pay, requireUser } from "@/lib/shopServer";
 import { rateLimit } from "@/lib/rateLimit";
 import { countryOfUser } from "@/lib/countryServer";
 import { isSeatCat, slotFree } from "@/lib/adServer";
+import { publishAd } from "@/lib/adPublish";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +19,8 @@ export async function POST(req: Request) {
   if (!id) return bad("bad_request");
 
   // 24 часа на оплату с момента одобрения (продлить можно повторным одобрением в CRM).
-  const { data: chk } = await supabaseAdmin.from("ad_slot_requests").select("status, decided_at").eq("id", id).eq("user_id", uid).maybeSingle();
-  if (chk?.status === "approved" && chk.decided_at && Date.now() - new Date(chk.decided_at as string).getTime() > 24 * 3600 * 1000) {
+  const { data: chk } = await supabaseAdmin.from("ad_slot_requests").select("status, decided_at, first_decided_at").eq("id", id).eq("user_id", uid).maybeSingle();
+  if (chk?.status === "approved" && (chk.first_decided_at ?? chk.decided_at) && Date.now() - new Date(((chk as any).first_decided_at ?? chk.decided_at) as string).getTime() > 24 * 3600 * 1000) {
     return bad("expired", 409);
   }
 
@@ -92,5 +93,12 @@ export async function POST(req: Request) {
     await supabaseAdmin.from("sponsors").update({ amount: total }).eq("id", sponsorId);
   }
   await notify(uid, `✅ Оплата получена. Ваше рекламное место «${slot.title}» закреплено. Материалы можно загрузить в «Кабинете партнёра».`, "/partner-cabinet", "other");
-  return NextResponse.json({ ok: true, balance: (res as any).balance });
+  // Реклама встаёт на место автоматически (жюри и заявки без картинки — вручную).
+  let pub: { ok: boolean; manual?: boolean; until?: string } = { ok: false };
+  try {
+    pub = await publishAd(id);
+  } catch {
+    pub = { ok: false, manual: true };
+  }
+  return NextResponse.json({ ok: true, balance: (res as any).balance, published: pub.ok && !pub.manual, until: pub.until ?? null });
 }

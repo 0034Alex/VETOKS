@@ -11,8 +11,8 @@ const OPTS: [string, string][] = [
   ["adult", "LADY"],
 ];
 
-// CRM: для кого показывать рекламу. Нажали на категорию — сохранилось сразу.
-export default function AdAudience({ table, id }: { table: "promo_banners" | "magazine_ads" | "partner_logos"; id: string }) {
+// CRM: для кого показывать рекламу (у места — для кого оно и опубликованная из него реклама). Нажали на категорию — сохранилось сразу.
+export default function AdAudience({ table, id }: { table: "promo_banners" | "magazine_ads" | "partner_logos" | "ad_slots"; id: string }) {
   const [val, setVal] = useState<string[] | null>(null);
   const teenOpen = useTeenOpen();
 

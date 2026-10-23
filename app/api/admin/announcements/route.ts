@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   if (b.action === "list") {
     const { data, error } = await supabaseAdmin
       .from("announcements")
-      .select("id, title, body, starts_at, ends_at, audience, show_timer, is_active")
+      .select("id, title, body, starts_at, ends_at, audience, show_timer, is_active, country_id, all_regions, region_ids")
       .order("created_at", { ascending: false })
       .limit(50);
     if (error) return NextResponse.json({ ok: false, error: "need_sql" }, { status: 500 });
@@ -35,6 +35,9 @@ export async function POST(req: Request) {
       ends_at: ends.toISOString(),
       audience: aud.length ? aud : ["teen", "main", "adult"],
       show_timer: b.show_timer === true,
+      country_id: b.country_id ? String(b.country_id) : null,
+      all_regions: b.all_regions !== false,
+      region_ids: b.all_regions === false && Array.isArray(b.region_ids) ? b.region_ids.map(String).slice(0, 200) : [],
     });
     if (error) return NextResponse.json({ ok: false, error: "need_sql" }, { status: 500 });
     await logAction(uid, "announcement_create", null, { title });
