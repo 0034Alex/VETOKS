@@ -1514,5 +1514,7 @@
  "Цветок": "Flower",
  "Квітка": "Flower",
  "Туркменистан": "Turkmenistan",
- "Туркменістан": "Turkmenistan"
+ "Туркменістан": "Turkmenistan",
+ "Подтвердите, что вы не робот.": "Confirm that you are not a robot.",
+ "⛔ Батьки відкликали згоду. Платні функції призупинено.": "⛔ Your parents withdrew consent. Paid features are suspended."
 }

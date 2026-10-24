@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { rateLimit } from "@/lib/rateLimit";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { findUserForReset } from "@/lib/resetServer";
+import { tx, pickBotLang } from "@/lib/botText";
 
 export const dynamic = "force-dynamic";
 
@@ -34,12 +35,17 @@ export async function POST(req: NextRequest) {
     // Старые неиспользованные коды гасим: действует только последний.
     await supabaseAdmin.from("password_reset_codes").update({ used: true }).eq("user_id", user.id).eq("used", false);
     await supabaseAdmin.from("password_reset_codes").insert({ user_id: user.id, code, expires_at: expiresAt });
+    let resetLang = pickBotLang(null, null);
+    try {
+      const { data: lu } = await supabaseAdmin.from("users").select("language").eq("id", user.id).maybeSingle();
+      resetLang = pickBotLang((lu as any)?.language ?? null, null);
+    } catch {}
     await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: Number(user.telegram_id),
-        text: `Код для сброса пароля VETOKS: ${code}\n\nДействует 10 минут. Никому его не сообщайте. Если вы не запрашивали сброс — просто игнорируйте это сообщение.`,
+        text: tx(resetLang, `Код для сброса пароля VETOKS: ${code}\n\nДействует 10 минут. Никому его не сообщайте. Если вы не запрашивали сброс — просто игнорируйте это сообщение.`),
       }),
     }).catch(() => null);
   }

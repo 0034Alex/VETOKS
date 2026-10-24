@@ -5,6 +5,7 @@ import { normalizePhone } from "@/lib/phone";
 import { qualifyReferral } from "@/lib/referral";
 import { logSecurity } from "@/lib/security";
 import { lockCheck, lockClear, lockFail, waitText } from "@/lib/rateLimit";
+import { tx, txMarkup, pickBotLang, type BotLang } from "@/lib/botText";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,11 +14,23 @@ const supabaseAdmin = createClient(
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 
+// Язык чата: из профиля (users.language), иначе из Telegram, по умолчанию украинский.
+const chatLang = new Map<string, BotLang>();
+async function setChatLang(chatId: string | number, from?: any) {
+  let prof: string | null = null;
+  try {
+    const { data } = await supabaseAdmin.from("users").select("language").eq("telegram_id", String(chatId)).limit(1).maybeSingle();
+    prof = (data as any)?.language ?? null;
+  } catch {}
+  chatLang.set(String(chatId), pickBotLang(prof, from?.language_code));
+}
+
 async function sendMessage(chatId: string | number, text: string, extra?: object) {
+  const lang = chatLang.get(String(chatId)) ?? "uk";
   await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, ...(extra ?? {}) }),
+    body: JSON.stringify({ chat_id: chatId, text: tx(lang, text), ...(txMarkup(lang, extra) ?? {}) }),
   });
 }
 
@@ -333,6 +346,8 @@ export async function POST(req: Request) {
 
   const body = await req.json();
   const cb = body?.callback_query;
+  if (cb?.message?.chat?.id) await setChatLang(cb.message.chat.id, cb.from);
+  else if (body?.message?.chat?.id) await setChatLang(body.message.chat.id, body.message.from);
   if (cb?.data && cb?.message?.chat?.id && /^pc_yes_[a-f0-9]{32}$/.test(String(cb.data))) {
     await handleParentYes(String(cb.message.chat.id), String(cb.data).slice(7), cb.from);
     return NextResponse.json({ ok: true });
