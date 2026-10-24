@@ -10,6 +10,7 @@ import { resolvePlace } from "@/lib/places";
 import { countryOfUser, settingsForCountry } from "@/lib/countryServer";
 import { rateLimit } from "@/lib/rateLimit";
 import { logSecurity } from "@/lib/security";
+import { setPostTheme } from "@/lib/mediaTheme";
 
 export const dynamic = "force-dynamic";
 
@@ -137,6 +138,7 @@ export async function POST(req: Request) {
     .select("id")
     .maybeSingle();
   if (error || !row) return bad("insert_failed", 500);
+  await setPostTheme(row.id as string, part?.id ?? null);
 
   if (held) {
     // Отдельным запросом: если колонки ещё нет, публикация всё равно создана.

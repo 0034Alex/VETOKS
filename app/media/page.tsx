@@ -12,8 +12,7 @@ import BottomNav from "@/components/BottomNav";
 import ReportButton from "@/components/ReportButton";
 import ShareButton from "@/components/ShareButton";
 import { getMyCountry } from "@/lib/myCountry";
-import { useViewCategory, inView } from "@/lib/viewCategory";
-import { loadScoped } from "@/lib/scopedSettings";
+import { useViewCategory } from "@/lib/viewCategory";
 import {
   IconHeart,
   IconComment,
@@ -41,12 +40,23 @@ type Comment = {
 
 type FeedTab = "region" | "following" | "country";
 
-// Порядок «случайный», но стабильный: у каждого ролика свой случайный ключ, выданный один раз.
-// Иначе лента перемешивалась при каждом нажатии (лайк, подписка) и прыгала.
-const RKEY: Record<string, number> = {};
-function shuffle<T extends { id: string }>(arr: T[]): T[] {
-  return [...arr].sort((a, b) => (RKEY[a.id] ??= Math.random()) - (RKEY[b.id] ??= Math.random()));
+const PAGE_CATS = ["teen", "main", "adult"];
+
+// Номер устройства для гостей (чтобы «просмотренное» не повторялось и без входа).
+function deviceId(): string {
+  try {
+    let d = localStorage.getItem("vt_device");
+    if (!d) {
+      d = (crypto.randomUUID?.() ?? `${Date.now()}${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9_-]/g, "");
+      localStorage.setItem("vt_device", d);
+    }
+    return d;
+  } catch {
+    return "";
+  }
 }
+
+type Ev = { i?: boolean; q?: boolean; c?: boolean };
 
 export default function MediaPage() {
   const [allPosts, setAllPosts] = useState<Post[]>([]);
@@ -76,117 +86,156 @@ export default function MediaPage() {
     });
   }
 
+  const [noContent, setNoContent] = useState(false);
+  const [curIdx, setCurIdx] = useState(0);
+  const loadingMore = useRef(false);
+  const exhausted = useRef(false);
+  const pageNo = useRef(0);
+  const allRef = useRef<Post[]>([]);
+  const events = useRef<Record<string, Ev>>({});
+  const watched = useRef<Record<string, number>>({});
+  const visible = useRef<string | null>(null);
+
+  useEffect(() => { allRef.current = allPosts; }, [allPosts]);
+
+  // Следующая порция с сервера: без повторов, с честным стартом новых роликов.
+  async function fetchPack(tab: FeedTab, reset: boolean) {
+    if (loadingMore.current) return;
+    if (!reset && exhausted.current) return;
+    loadingMore.current = true;
+    try {
+      const mc = await getMyCountry();
+      const cats = PAGE_CATS.filter((c) => vc.view === "all" || vc.view === c);
+      const exclude = reset ? [] : allRef.current.slice(-300).map((x) => x.id);
+      const r = await apiPost("/api/media/feed", {
+        tab,
+        cats,
+        exclude,
+        device: deviceId(),
+        countryId: mc.countryId,
+        page: reset ? 0 : pageNo.current,
+      });
+      const got: Post[] = (r?.posts as Post[]) ?? [];
+      pageNo.current = reset ? 1 : pageNo.current + 1;
+      setLikeCounts((prev) => ({ ...prev, ...(r?.likes ?? {}) }));
+      setCommentCounts((prev) => ({ ...prev, ...(r?.comments ?? {}) }));
+      setLikedIds((prev) => new Set([...prev, ...((r?.liked as string[]) ?? [])]));
+      setFollowedIds((prev) => new Set([...prev, ...((r?.followed as string[]) ?? [])]));
+      if (!got.length) {
+        exhausted.current = tab === "following";
+        if (reset && tab !== "following" && r?.ok) setNoContent(true);
+      } else {
+        setNoContent(false);
+      }
+      setAllPosts((prev) => {
+        const base = reset ? [] : prev;
+        const have = new Set(base.map((x) => x.id));
+        return [...base, ...got.filter((x) => !have.has(x.id))];
+      });
+    } finally {
+      loadingMore.current = false;
+      setLoading(false);
+    }
+  }
+
+  // Текущий человек (один раз).
   useEffect(() => {
     (async () => {
-      // «Медиа» показывает только текущее шоу: сезон, выбранный в CRM,
-      // а если не выбран — самый свежий. Старые ролики остаются на
-      // страницах участниц.
-      const mcM = await getMyCountry();
-      const setRow = { value: (await loadScoped(["media_season_id"], mcM.countryId)).media_season_id };
-      let seasonId = (setRow?.value as string) || "";
-      if (seasonId && mcM.countryId) {
-        // Выбранный в CRM сезон должен быть из моей страны.
-        const { data: chosen } = await supabase.from("seasons").select("country_id").eq("id", seasonId).maybeSingle();
-        if (chosen && chosen.country_id && chosen.country_id !== mcM.countryId) seasonId = "";
-      }
-      if (!seasonId) {
-        let lq = supabase.from("seasons").select("id").order("created_at", { ascending: false }).limit(1);
-        if (mcM.countryId) lq = lq.eq("country_id", mcM.countryId);
-        const { data: last } = await lq.maybeSingle();
-        seasonId = (last?.id as string) || "";
-      }
-
-      const { data } = await supabase
-        .from("content_posts")
-        .select(
-          "id, video_url, caption, participant_id, participants(display_name, photo_url, region_id, season_id, user_id, age_category)"
-        )
-        .eq("visibility", "all")
-        .not("video_url", "is", null)
-        .not("participant_id", "is", null)
-        .order("submitted_at", { ascending: false });
-      const mc = await getMyCountry();
-      const mine = new Set(mc.regionIds);
-      const all0 = (data as unknown as Post[]) ?? [];
-      const all = mc.countryId ? all0.filter((p) => !!p.participants?.region_id && mine.has(p.participants.region_id)) : all0;
-      setAllPosts(seasonId ? all.filter((p) => p.participants?.season_id === seasonId) : all);
-
-      const { data: likesData } = await supabase.from("media_likes").select("post_id, user_id");
-      const counts: Record<string, number> = {};
-      (likesData ?? []).forEach((l: { post_id: string }) => {
-        counts[l.post_id] = (counts[l.post_id] ?? 0) + 1;
-      });
-      setLikeCounts(counts);
-
-      const { data: commentsData } = await supabase.from("media_comments").select("post_id");
-      const cCounts: Record<string, number> = {};
-      (commentsData ?? []).forEach((c: { post_id: string }) => {
-        cCounts[c.post_id] = (cCounts[c.post_id] ?? 0) + 1;
-      });
-      setCommentCounts(cCounts);
-
       const u = await getCurrentUser();
-      if (u) {
-        setMe(u);
-        const mine = new Set(
-          (likesData ?? [])
-            .filter((l: { user_id: string }) => l.user_id === u.id)
-            .map((l: { post_id: string }) => l.post_id)
-        );
-        setLikedIds(mine);
-
-        const { data: followsData } = await supabase
-          .from("participant_follows")
-          .select("participant_id")
-          .eq("user_id", u.id);
-        setFollowedIds(
-          new Set((followsData ?? []).map((f: { participant_id: string }) => f.participant_id))
-        );
-      }
-
+      if (u) setMe(u);
       const stored = localStorage.getItem("vetoks_voted_ids");
       if (stored) setVotedIds(JSON.parse(stored));
-
-      setLoading(false);
     })();
   }, []);
 
+  // Лента заново при смене вкладки или просматриваемой категории.
+  useEffect(() => {
+    if (!vc.ready) return;
+    exhausted.current = false;
+    pageNo.current = 0;
+    loadingMore.current = false;
+    fetchPack(feedTab, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedTab, vc.ready, vc.view]);
+
+  // Показы и просмотры отправляем пачкой раз в 20 секунд и при выходе со страницы.
+  function flushEvents() {
+    const list = (Object.entries(events.current) as [string, Ev][]).map(([p, e]) => ({ p, ...e }));
+    if (!list.length) return;
+    events.current = {};
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        fetch("/api/media/events", {
+          method: "POST",
+          keepalive: true,
+          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ device: deviceId(), events: list.slice(0, 40) }),
+        }).catch(() => {});
+      } catch {}
+    })();
+  }
+
+  useEffect(() => {
+    const t = setInterval(flushEvents, 20000);
+    const hide = () => { if (document.visibilityState === "hidden") flushEvents(); };
+    document.addEventListener("visibilitychange", hide);
+    window.addEventListener("pagehide", flushEvents);
+    // раз в секунду копим время просмотра видимого ролика
+    const tick = setInterval(() => {
+      const pid = visible.current;
+      if (!pid || document.visibilityState !== "visible") return;
+      const v = videoRefs.current[pid];
+      if (!v || v.paused) return;
+      watched.current[pid] = (watched.current[pid] ?? 0) + 1000;
+      const w = watched.current[pid];
+      const ev = (events.current[pid] ??= {});
+      if (w >= 1000) ev.i = true;
+      if (w >= 10000) ev.q = true;
+      if (v.duration && isFinite(v.duration) && w >= Math.min(v.duration, 60) * 900) ev.c = true;
+    }, 1000);
+    return () => {
+      clearInterval(t);
+      clearInterval(tick);
+      document.removeEventListener("visibilitychange", hide);
+      window.removeEventListener("pagehide", flushEvents);
+      flushEvents();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const posts = (() => {
-    let list = allPosts.filter((p) => inView(vc.view, p.participants?.age_category));
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      return list.filter((p) => p.participants?.display_name?.toLowerCase().includes(q));
-    }
-    if (feedTab === "region" && me?.region_id) {
-      // сначала ролики из моего региона, потом остальные из страны
-      const near = list.filter((p) => p.participants?.region_id === me.region_id);
-      const far = list.filter((p) => p.participants?.region_id !== me.region_id);
-      list = [...shuffle(near), ...shuffle(far)];
-    } else if (feedTab === "following") {
-      list = list.filter((p) => followedIds.has(p.participant_id));
-    } else {
-      list = shuffle(list);
-    }
-    return list;
+    if (!searchQuery.trim()) return allPosts;
+    const q = searchQuery.trim().toLowerCase();
+    return allPosts.filter((p) => p.participants?.display_name?.toLowerCase().includes(q));
   })();
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          const video = entry.target as HTMLVideoElement;
+          const pid = (entry.target as HTMLElement).dataset.card || "";
+          const video = videoRefs.current[pid];
           if (entry.isIntersecting) {
-            video.play().catch(() => {});
+            video?.play().catch(() => {});
+            visible.current = pid;
+            const ci = allRef.current.findIndex((x) => x.id === pid);
+            if (ci >= 0) setCurIdx(ci);
+            // дошли до последних трёх — просим следующую порцию
+            const idx = allRef.current.findIndex((x) => x.id === pid);
+            if (idx >= 0 && idx >= allRef.current.length - 3) fetchPack(feedTab, false);
           } else {
-            video.pause();
+            video?.pause();
+            if (visible.current === pid) visible.current = null;
           }
         });
       },
       { threshold: 0.6 }
     );
-    Object.values(videoRefs.current).forEach((v) => v && observer.observe(v));
+    document.querySelectorAll("[data-card]").forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [posts]);
+  }, [posts, feedTab, curIdx]);
 
   async function toggleLike(postId: string) {
     if (!me) return;
@@ -259,7 +308,7 @@ export default function MediaPage() {
     );
   }
 
-  if (allPosts.length === 0) {
+  if (noContent && feedTab !== "following") {
     return <MediaShowcase />;
   }
 
@@ -345,18 +394,25 @@ export default function MediaPage() {
         {posts.map((p) => (
           <div
             key={p.id}
+            data-card={p.id}
             className="h-screen h-[100dvh] w-full snap-start relative flex items-center justify-center"
           >
+            {Math.abs(allPosts.indexOf(p) - curIdx) > 2 ? (
+              <div className="w-full h-full bg-black" />
+            ) : (
             <video
               ref={(el) => {
                 videoRefs.current[p.id] = el;
               }}
               src={p.video_url}
+              data-pid={p.id}
+              preload="metadata"
               loop
               muted={!soundOn}
               playsInline
               className="w-full h-full object-cover"
             />
+            )}
 
             <button
               onClick={toggleSound}

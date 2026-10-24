@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { setPostTheme } from "@/lib/mediaTheme";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { countryOfUser, settingsForCountry } from "@/lib/countryServer";
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
     return bad("too_long");
   }
 
-  const { error } = await supabaseAdmin.from("content_posts").insert({
+  const { data: ins, error } = await supabaseAdmin.from("content_posts").insert({
     participant_id: up.participant_id,
     user_id: uid,
     platform: "vetoks",
@@ -50,8 +51,9 @@ export async function POST(req: Request) {
     duration_sec: length > 0 ? Math.round(length) : null,
     caption,
     is_verified: true,
-  });
+  }).select("id").maybeSingle();
   if (error) return bad("insert_failed", 500);
+  if (ins?.id) await setPostTheme(ins.id as string, up.participant_id as string);
 
   await supabaseAdmin.from("video_uploads").update({ used: true }).eq("video_id", videoId);
   return NextResponse.json({ ok: true, participantId: up.participant_id });

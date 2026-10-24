@@ -18,6 +18,7 @@ import AdminDocumentsPanel from "@/components/AdminDocumentsPanel";
 import { makeCardImage } from "@/lib/cardFrame";
 import AdminHomeSettingsPanel from "@/components/AdminHomeSettingsPanel";
 import AdminBroadcastPanel from "@/components/AdminBroadcastPanel";
+import AdminMediaFeedPanel from "@/components/AdminMediaFeedPanel";
 import AdminClanPanel from "@/components/AdminClanPanel";
 import AdminReferralsPanel from "@/components/AdminReferralsPanel";
 import AdminBadgesPanel from "@/components/AdminBadgesPanel";
@@ -87,6 +88,7 @@ type Tab =
   | "ad-stats"
   | "home-settings"
   | "broadcast"
+  | "mediafeed"
   | "clan"
   | "referrals"
   | "badges"
@@ -130,6 +132,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "ad-stats", label: "Статистика рекламы" },
   { key: "home-settings", label: "Главная" },
   { key: "broadcast", label: "Рассылка" },
+  { key: "mediafeed", label: "Лента" },
   { key: "clan", label: "Чат кланов" },
   { key: "referrals", label: "Рефералы" },
   { key: "badges", label: "Галочки и статусы" },
@@ -141,7 +144,7 @@ const TABS: { key: Tab; label: string }[] = [
 // Каждая галочка в «Персонал» открывает свой набор разделов.
 // Владелец (super_admin) видит всё независимо от галочек.
 const PERMISSION_TABS: Record<string, Tab[]> = {
-  moderation: ["applications", "participants", "posters", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports", "content-mod", "official", "home-settings", "clan", "referrals", "badges", "translations"],
+  moderation: ["applications", "participants", "posters", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports", "content-mod", "official", "home-settings", "clan", "referrals", "badges", "translations", "mediafeed"],
   finance: ["dashboard", "goal", "referrals"],
   partners: ["partners", "ad-stats", "partner-logos", "banners", "magazine-ads", "ad-space", "ad-prices", "social", "branding"],
   staff: ["staff", "users"],
@@ -154,7 +157,7 @@ const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: 
   { key: "today", ic: "🏠", label: "Сегодня", desc: "Что требует действия прямо сейчас", tabs: ["dashboard", "support"] },
   { key: "people", ic: "👥", label: "Люди", desc: "Все, кто есть в приложении", tabs: ["users", "participants", "applications", "badges", "black-marks"] },
   { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["stages", "rating-admin", "goal", "tasks", "cards"] },
-  { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "broadcast", "banners"] },
+  { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "broadcast", "mediafeed", "banners"] },
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["content-mod", "reports", "clan"] },
   { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["app-prices", "referrals"] },
   { key: "ads", ic: "📣", label: "Реклама и партнёры", desc: "Всё, что приносит доход от партнёров", tabs: ["partners", "partner-logos", "ad-space", "ad-prices", "ad-stats", "magazine-ads", "branding"] },
@@ -428,6 +431,7 @@ export default function AdminPage() {
         {tab === "ad-stats" && <AdminAdStatsPanel />}
         {tab === "home-settings" && <AdminHomeSettingsPanel />}
         {tab === "broadcast" && <AdminBroadcastPanel />}
+        {tab === "mediafeed" && <AdminMediaFeedPanel />}
         {tab === "clan" && <AdminClanPanel />}
         {tab === "referrals" && <AdminReferralsPanel />}
         {tab === "badges" && <AdminBadgesPanel />}

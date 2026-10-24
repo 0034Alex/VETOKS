@@ -194,6 +194,10 @@ async function notifyRankChanges(participants: P[], totals: Record<string, numbe
 export async function runDailyJob() {
   try {
     await expireAds();
+    // История «что смотрел» живёт 14 дней. Лайки, комментарии и донаты лежат в других таблицах и не трогаются.
+    try {
+      await supabaseAdmin.from("media_seen").delete().lt("seen_at", new Date(Date.now() - 14 * 86400000).toISOString());
+    } catch {}
   } catch {
     /* реклама выключится при следующем запуске */
   }
