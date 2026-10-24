@@ -135,7 +135,7 @@ export default function AutoTranslate() {
         texts.set(n, ent);
       }
       let want = ent.orig;
-      if (lang !== "ru" && dict) {
+      if (dict) {
         const r = tr(ent.orig, dict);
         if (r != null) want = r;
       }
@@ -168,7 +168,7 @@ export default function AutoTranslate() {
         let ent = rec[a];
         if (!ent || cur !== ent.out) { ent = { orig: cur, out: cur }; rec[a] = ent; }
         let want = ent.orig;
-        if (lang !== "ru" && dict) {
+        if (dict) {
           const r = tr(ent.orig, dict);
           if (r != null) want = r;
         }
@@ -211,10 +211,10 @@ export default function AutoTranslate() {
     };
 
     const start = async () => {
-      if (lang !== "ru") {
+      {
         if (!cache[lang]) {
           try {
-            const r = await fetch(`/i18n/${lang}.json`);
+            const r = await fetch(`/i18n/${lang}.json?v=${Math.floor(Date.now() / 600000)}`, { cache: "no-cache" });
             if (!r.ok) throw new Error("no dict");
             cache[lang] = buildDict(await r.json());
           } catch { cache[lang] = { exact: new Map(), patterns: [] }; }
