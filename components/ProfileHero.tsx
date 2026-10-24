@@ -474,10 +474,17 @@ export function Drawer({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[60] bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] bg-black/60" onClick={onClose} style={{ touchAction: "none" }}>
       <div
-        className="absolute top-0 right-0 bottom-0 w-[88%] max-w-sm bg-bgSurface border-l border-muted/50 overflow-y-auto px-4 pb-10"
-        style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
+        className="absolute top-0 right-0 w-[88%] max-w-sm bg-bgSurface border-l border-muted/50 overflow-y-auto overscroll-contain px-4"
+        style={{
+          bottom: 0,
+          height: "100%",
+          paddingTop: "calc(env(safe-area-inset-top) + 16px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom) + 40px)",
+          WebkitOverflowScrolling: "touch",
+          touchAction: "pan-y",
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
