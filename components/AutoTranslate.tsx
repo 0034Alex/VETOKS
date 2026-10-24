@@ -50,6 +50,18 @@ function tr(text: string, d: Dict): string | null {
   for (const p of d.patterns) {
     if (p.re.test(core)) return lead + core.replace(p.re, p.tpl) + trail;
   }
+  // составные тексты: «Киев, Украина», «Поцелуй ×3», «Харьков · 12» — переводим по частям
+  const parts = core.split(/(\s*[,·•—|/]\s*|\s*[×x]\s*(?=\d))/);
+  if (parts.length > 1) {
+    let any = false;
+    const out = parts.map((x, i) => {
+      if (i % 2 === 1 || !/[А-Яа-яЁёІіЇїЄєҐґ]/.test(x)) return x;
+      const h = d.exact.get(x.trim());
+      if (h != null) { any = true; return h; }
+      return x;
+    });
+    if (any) return lead + out.join("") + trail;
+  }
   return null;
 }
 
