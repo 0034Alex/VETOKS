@@ -34,6 +34,7 @@ export default function PublicUserPage() {
   const router = useRouter();
   const id = params.id as string;
   const [d, setD] = useState<Data | null>(null);
+  const [chs, setChs] = useState<any[]>([]);
   const [missing, setMissing] = useState(false);
   const [toast, setToast] = useState("");
   const [sheet, setSheet] = useState<"followers" | "following" | null>(null);
@@ -52,6 +53,7 @@ export default function PublicUserPage() {
         router.replace("/profile");
         return;
       }
+      apiPost("/api/channels", { action: "profile_list", userId: id }).then((x: any) => x?.ok && setChs(x.channels));
       const r = await apiPost("/api/profile/public", { userId: id });
       if (!r?.ok) {
         setMissing(true);
@@ -102,6 +104,7 @@ export default function PublicUserPage() {
           verified={d.verified}
           presenceUserId={id}
           socials={d.socials}
+          channels={chs}
           stats={[
             { value: d.posts, label: "Публикации" },
             { value: followers, label: "Подписчики", onClick: () => setSheet("followers") },
