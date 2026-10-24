@@ -316,7 +316,6 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
-            <p className="text-muted text-xs mt-2">{t("settings.langNote")}</p>
           </div>
         </div>
       </div>

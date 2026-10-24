@@ -50,6 +50,12 @@ function tr(text: string, d: Dict): string | null {
   for (const p of d.patterns) {
     if (p.re.test(core)) return lead + core.replace(p.re, p.tpl) + trail;
   }
+  // текст с хвостовой пунктуацией: «Подарков получено:» → ищем без «:»
+  const tm = core.match(/^([\s\S]*?)([\s:.,;!?…]+)$/);
+  if (tm && tm[1]) {
+    const h2 = d.exact.get(tm[1]);
+    if (h2 != null) return lead + h2 + tm[2] + trail;
+  }
   // составные тексты: «Киев, Украина», «Поцелуй ×3», «Харьков · 12» — переводим по частям
   const parts = core.split(/(\s*[,·•—|/]\s*|\s*[×x]\s*(?=\d))/);
   if (parts.length > 1) {
