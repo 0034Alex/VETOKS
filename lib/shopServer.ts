@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { trServer } from "@/lib/serverI18n";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { userIdFromBearer } from "@/lib/authServer";
 import { logSecurity } from "@/lib/security";
@@ -36,7 +37,7 @@ export async function notify(userId: string, message: string, link?: string, typ
     if (!token) return;
     const { data: u } = await supabaseAdmin
       .from("users")
-      .select("telegram_id, notify_tg")
+      .select("telegram_id, notify_tg, language")
       .eq("id", userId)
       .maybeSingle();
     if (!u?.telegram_id) return;
@@ -45,7 +46,7 @@ export async function notify(userId: string, message: string, link?: string, typ
     await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: u.telegram_id, text: message }),
+      body: JSON.stringify({ chat_id: u.telegram_id, text: trServer((u as any).language, message) }),
     });
   } catch {
     /* уведомление в приложении уже сохранено */

@@ -48,7 +48,15 @@ function tr(text: string, d: Dict): string | null {
   const hit = d.exact.get(core);
   if (hit != null) return lead + hit + trail;
   for (const p of d.patterns) {
-    if (p.re.test(core)) return lead + core.replace(p.re, p.tpl) + trail;
+    const pm = core.match(p.re);
+    if (pm) {
+      const out2 = p.tpl.replace(/\$(\d+)/g, (_x, i) => {
+        const v = pm[Number(i)] ?? "";
+        const h = d.exact.get(v.trim());
+        return h != null ? h : v;
+      });
+      return lead + out2 + trail;
+    }
   }
   // текст с хвостовой пунктуацией: «Подарков получено:» → ищем без «:»
   const tm = core.match(/^([\s\S]*?)([\s:.,;!?…]+)$/);
