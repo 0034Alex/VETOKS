@@ -300,10 +300,10 @@ export default function ProfileHero({
                   href={`/channels/${c.id}`}
                   aria-label={c.name}
                   title={c.name}
-                  className="relative w-[46px] h-[46px] rounded-full bg-bgSurface border border-gold/70 flex items-center justify-center overflow-hidden"
+                  className="relative w-[46px] h-[46px] rounded-2xl bg-gold/15 border-2 border-gold flex items-center justify-center mr-1.5"
                 >
-                  <img src="/icon-192.png" alt="" className="w-7 h-7 rounded-full" />
-                  {c.kind === "closed" && <span className="absolute -bottom-0.5 -right-0.5 text-[11px]">🔒</span>}
+                  <img src="/icon-192.png" alt="" className="w-7 h-7 rounded-lg" />
+                  {c.kind === "closed" && <span className="absolute -bottom-1 -right-1 text-[11px]">🔒</span>}
                 </a>
               ))}
               {socials.map((u) => (

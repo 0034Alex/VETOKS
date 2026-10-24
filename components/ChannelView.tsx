@@ -42,6 +42,11 @@ export default function ChannelView({ keyStr }: { keyStr: string }) {
   const [cmPost, setCmPost] = useState<Post | null>(null);
   const [repTarget, setRepTarget] = useState<{ postId?: string; commentId?: string; channel?: boolean } | null>(null);
   const [menuPost, setMenuPost] = useState<string | null>(null);
+  const bottom = useRef<HTMLDivElement>(null);
+  const scrolled = useRef(false);
+  useEffect(() => {
+    if (posts.length && !scrolled.current) { scrolled.current = true; setTimeout(() => bottom.current?.scrollIntoView(), 150); }
+  }, [posts]);
 
   const loadPosts = useCallback(async (id: string, before?: string) => {
     const r = await apiPost("/api/channels", { action: "posts", id, before });
@@ -142,15 +147,14 @@ export default function ChannelView({ keyStr }: { keyStr: string }) {
         </div>
         {msg && <p className="mt-3 text-sm text-goldSoft">{msg}</p>}
 
-        {isOwner && !ch.frozen && <Composer chId={ch.id} onDone={() => loadPosts(ch.id)} onErr={fail} />}
-
         {!canView ? (
           <p className="text-muted text-center mt-10 text-sm">Посты этого канала видят только подписчики.</p>
         ) : posts.length === 0 ? (
           <p className="text-muted text-center mt-10 text-sm">Пока нет постов.</p>
         ) : (
           <div className="flex flex-col gap-4 mt-6">
-            {posts.map((p) => (
+            {more && <button onClick={() => loadPosts(ch.id, posts.filter((x) => !x.pinned).reduce((a, x) => (new Date(x.at) < new Date(a) ? x.at : a), new Date().toISOString()))} className="text-gold text-sm py-2">Показать ещё</button>}
+            {[...(posts.find((x) => x.pinned) ? [posts.find((x) => x.pinned)!] : []), ...posts.filter((x) => !x.pinned).slice().reverse()].map((p) => (
               <PostCard key={p.id} p={p} isOwner={isOwner} uid={uid} menuOpen={menuPost === p.id} setMenu={(o) => setMenuPost(o ? p.id : null)}
                 onReact={async (emoji) => {
                   const e = p.mine === emoji ? "" : emoji;
@@ -183,11 +187,11 @@ export default function ChannelView({ keyStr }: { keyStr: string }) {
                 }}
               />
             ))}
-            {more && <button onClick={() => loadPosts(ch.id, posts[posts.length - 1]?.at)} className="text-gold text-sm py-2">Показать ещё</button>}
           </div>
         )}
+        {isOwner && !ch.frozen && <Composer chId={ch.id} onDone={() => { loadPosts(ch.id); setTimeout(() => bottom.current?.scrollIntoView({ behavior: "smooth" }), 500); }} onErr={fail} />}
+        <div ref={bottom} />
       </div>
-
       {panel && <PeoplePanel ch={ch} kind={panel} onClose={() => { setPanel(""); load(); }} onErr={fail} />}
       {cmPost && <Comments post={cmPost} chId={ch.id} isOwner={isOwner} uid={uid} me={me} onClose={() => { setCmPost(null); loadPosts(ch.id); }} onSubscribed={load} onReport={(id) => setRepTarget({ postId: cmPost.id, commentId: id })} onErr={fail} />}
       {repTarget && <ReportSheet target={repTarget} chId={ch.id} onClose={(sent) => { setRepTarget(null); if (sent) flash("Жалоба отправлена."); }} />}
