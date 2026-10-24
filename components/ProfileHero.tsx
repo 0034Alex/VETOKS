@@ -291,7 +291,7 @@ export default function ProfileHero({
       </div>
 
       {(socials.length > 0 || channels.length > 0 || (!actions && !hideShare)) && (
-        <div className="flex items-center gap-2.5 px-5 pt-4">
+        <div className="flex flex-col gap-3 px-5 pt-4">
           {(socials.length > 0 || channels.length > 0) && (
             <div className="flex flex-wrap gap-2.5">
               {channels.map((c) => (
@@ -324,9 +324,7 @@ export default function ProfileHero({
             <button
               type="button"
               onClick={onShare}
-              className={`rounded-full border border-muted/60 bg-bgSurface text-offwhite text-sm py-3 px-5 ${
-                socials.length === 0 && channels.length === 0 ? "flex-1" : "ml-auto"
-              }`}
+              className="w-full rounded-full border border-muted/60 bg-bgSurface text-offwhite text-sm py-3"
             >
               Поделиться
             </button>
