@@ -82,6 +82,7 @@ export default function ParticipantProfilePage() {
   const [voteModalOpen, setVoteModalOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [pChannels, setPChannels] = useState<any[]>([]);
   const [balance, setBalance] = useState(0);
   const [boostCount, setBoostCount] = useState(0);
   const [cards, setCards] = useState<CollectibleCard[]>([]);
@@ -141,6 +142,7 @@ export default function ParticipantProfilePage() {
       const { data: vb } = await supabase.from("users").select("verified_badge").eq("id", (p as Participant).user_id).maybeSingle();
       const { data: stRow } = await supabase.from("participants").select("contest, stage_key, crown").eq("id", id).maybeSingle();
       const titles = await loadTitleBadges(id);
+      apiPost("/api/channels", { action: "profile_list", userId: (p as Participant).user_id }).then((r: any) => r?.ok && setPChannels(r.channels));
       setOwner({
         verified: !!(vb as any)?.verified_badge,
         regionName: (Array.isArray((ou as any)?.regions) ? (ou as any).regions[0]?.name : (ou as any)?.regions?.name) ?? null,
@@ -457,6 +459,7 @@ export default function ParticipantProfilePage() {
           ]}
           bio={owner?.bio || participant.bio || ""}
           socials={owner?.socials ?? []}
+          channels={pChannels}
           stats={[
             { value: videoPosts.length + photoPosts.length, label: "Публикации" },
             { value: followerCount, label: "Подписчики", onClick: () => setFollowSheet("followers") },

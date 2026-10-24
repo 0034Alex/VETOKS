@@ -31,10 +31,11 @@ function ago(iso: string) {
 
 export default function ChatsPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"chats" | "requests">("chats");
+  const [tab, setTab] = useState<"chats" | "requests" | "channels">("chats");
   const [inbox, setInbox] = useState<Row[]>([]);
   const [requests, setRequests] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chans, setChans] = useState<any[]>([]);
   const [, setIsParticipant] = useState(false);
 
   async function load() {
@@ -43,6 +44,8 @@ export default function ChatsPage() {
       setInbox(r.inbox);
       setRequests(r.requests);
     }
+    const c = await apiPost("/api/channels", { action: "mine" });
+    if (c?.ok) setChans(c.channels);
     setLoading(false);
   }
 
@@ -63,13 +66,13 @@ export default function ChatsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const list = tab === "chats" ? inbox : requests;
+  const list = tab === "requests" ? requests : tab === "chats" ? inbox : [];
 
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
       <div className="max-w-3xl mx-auto">
-        <div className="px-6 mb-4 flex items-baseline gap-5">
+        <div className="px-6 mb-4 flex items-baseline gap-4 overflow-x-auto whitespace-nowrap">
           <button
             onClick={() => setTab("chats")}
             className={`text-2xl font-semibold relative ${tab === "chats" ? "text-offwhite" : "text-muted"}`}
@@ -89,6 +92,13 @@ export default function ChatsPage() {
             )}
             {tab === "requests" && <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 rounded bg-gold" />}
           </button>
+          <button
+            onClick={() => setTab("channels")}
+            className={`text-2xl font-semibold relative ${tab === "channels" ? "text-offwhite" : "text-muted"}`}
+          >
+            Каналы
+            {tab === "channels" && <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 rounded bg-gold" />}
+          </button>
         </div>
 
         {tab === "requests" && (
@@ -99,10 +109,31 @@ export default function ChatsPage() {
 
 
         {loading && <LoadingScreen inline />}
-        {!loading && list.length === 0 && (
+        {!loading && tab !== "channels" && list.length === 0 && (
           <p className="text-muted text-center px-6">
             {tab === "chats" ? "Пока нет переписок. Откройте профиль участницы и нажмите «Написать»." : "Новых запросов нет."}
           </p>
+        )}
+
+        {tab === "channels" && (
+          <div className="px-6 flex flex-col gap-2">
+            <Link href="/channels/new" className="rounded-xl border border-dashed border-gold text-gold text-sm text-center py-3">+ Создать канал</Link>
+            {chans.length === 0 && !loading && <p className="text-muted text-center text-sm mt-3">Вы пока не подписаны ни на один канал.</p>}
+            {chans.map((c) => (
+              <Link key={c.id} href={`/channels/${c.id}`} className="bg-bgSurface border border-muted rounded-xl p-4 flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center text-white flex items-center justify-center font-semibold flex-shrink-0" style={c.photo ? { backgroundImage: `url(${c.photo})` } : undefined}>
+                  {!c.photo && (c.name || "?").slice(0, 1).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-center">
+                    <span className="text-offwhite text-sm font-semibold truncate">{c.kind === "closed" ? "🔒 " : ""}{c.name}</span>
+                    <span className="text-muted text-xs flex-shrink-0 ml-2">{c.mine ? "ваш" : ago(c.lastAt)}</span>
+                  </div>
+                  <p className="text-sm truncate text-muted">{c.last || `${c.subs} подписчиков`}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
         )}
 
         <div className="px-6 flex flex-col gap-2">

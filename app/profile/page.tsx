@@ -70,6 +70,7 @@ export default function ProfilePage() {
   const [statusRaw, setStatusRaw] = useState<{ contest?: string; stage_key?: string; crown?: string | null } | null>(null);
   const [titleBadges, setTitleBadges] = useState<TitleBadge[]>([]);
   const [socials, setSocials] = useState<string[]>([]);
+  const [myChannels, setMyChannels] = useState<any[]>([]);
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
   const [ownPosts, setOwnPosts] = useState(0);
@@ -246,6 +247,7 @@ export default function ProfilePage() {
       setOwnPosts(pc ?? 0);
       if (!participant) setFollowers(fl3 ?? 0);
       setSocials(parseLinks((row as any)?.social_links));
+      apiPost("/api/channels", { action: "profile_list", userId: user.id }).then((r: any) => r?.ok && setMyChannels(r.channels));
       setNick(((row as any)?.nick as string | null) ?? null);
       const { data: vb } = await supabase.from("users").select("verified_badge").eq("id", user.id).maybeSingle();
       setBadgeOn(!!(vb as any)?.verified_badge);
@@ -346,6 +348,7 @@ export default function ProfilePage() {
           city={user?.regions?.name ?? null}
           bio={bio}
           socials={socials}
+          channels={myChannels}
           stats={
             participant
               ? [

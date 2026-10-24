@@ -105,6 +105,7 @@ type Props = {
   bio?: string | null;
   handle?: string | null;
   socials: string[];
+  channels?: { id: string; name: string; kind: string; photo: string | null }[];
   stats: HeroStat[];
   onShare: () => void;
   hideShare?: boolean;
@@ -153,6 +154,7 @@ export default function ProfileHero({
   bio,
   handle,
   socials,
+  channels = [],
   stats,
   onShare,
   hideShare = false,
@@ -288,10 +290,22 @@ export default function ProfileHero({
         </div>
       </div>
 
-      {(socials.length > 0 || (!actions && !hideShare)) && (
+      {(socials.length > 0 || channels.length > 0 || (!actions && !hideShare)) && (
         <div className="flex items-center gap-2.5 px-5 pt-4">
-          {socials.length > 0 && (
+          {(socials.length > 0 || channels.length > 0) && (
             <div className="flex flex-wrap gap-2.5">
+              {channels.map((c) => (
+                <a
+                  key={c.id}
+                  href={`/channels/${c.id}`}
+                  aria-label={c.name}
+                  title={c.name}
+                  className="relative w-[46px] h-[46px] rounded-full bg-bgSurface border border-gold/70 flex items-center justify-center overflow-hidden"
+                >
+                  <img src="/icon-192.png" alt="" className="w-7 h-7 rounded-full" />
+                  {c.kind === "closed" && <span className="absolute -bottom-0.5 -right-0.5 text-[11px]">🔒</span>}
+                </a>
+              ))}
               {socials.map((u) => (
                 <a
                   key={u}
@@ -311,7 +325,7 @@ export default function ProfileHero({
               type="button"
               onClick={onShare}
               className={`rounded-full border border-muted/60 bg-bgSurface text-offwhite text-sm py-3 px-5 ${
-                socials.length === 0 ? "flex-1" : "ml-auto"
+                socials.length === 0 && channels.length === 0 ? "flex-1" : "ml-auto"
               }`}
             >
               Поделиться

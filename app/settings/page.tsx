@@ -204,6 +204,14 @@ export default function SettingsPage() {
                   <input type="checkbox" checked={prefs[k] !== false} onChange={() => toggle(k)} />
                 </label>
               ))}
+              <label className="flex items-center justify-between gap-3 text-offwhite text-sm">
+                <span>Новые посты в каналах — в приложении</span>
+                <input type="checkbox" checked={prefs.ch_app !== false} onChange={() => toggle("ch_app")} />
+              </label>
+              <label className="flex items-center justify-between gap-3 text-offwhite text-sm">
+                <span>Новые посты в каналах — в Telegram-боте</span>
+                <input type="checkbox" checked={prefs.ch_tg === true} onChange={() => { const next = { ...prefs, ch_tg: prefs.ch_tg !== true }; setPrefs(next); supabase.from("users").update({ notify_tg: next }).eq("id", userId); }} />
+              </label>
             </div>
           </div>
 
