@@ -1,5 +1,6 @@
 "use client";
 
+import { useCardsEnabled } from "@/lib/useCardsEnabled";
 import { cleanImage } from "@/lib/imageClean";
 import LoadingScreen from "@/components/LoadingScreen";
 import { apiPost } from "@/lib/authClient";
@@ -13,6 +14,7 @@ import PageHeader from "@/components/PageHeader";
 type Region = { id: string; name: string };
 
 export default function EditProfilePage() {
+  const cardsOn = useCardsEnabled();
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [isParticipant, setIsParticipant] = useState(false);
@@ -296,10 +298,12 @@ export default function EditProfilePage() {
                   <span>📖 Моя страница в журнале</span>
                   <span>→</span>
                 </a>
-                <a href="/my-cards" className="p-4 flex items-center justify-between text-offwhite text-sm">
-                  <span>🃏 Мои карточки</span>
-                  <span>→</span>
-                </a>
+                {cardsOn && (
+                  <a href="/my-cards" className="p-4 flex items-center justify-between text-offwhite text-sm">
+                    <span>🃏 Мои карточки</span>
+                    <span>→</span>
+                  </a>
+                )}
               </div>
             </div>
           )}

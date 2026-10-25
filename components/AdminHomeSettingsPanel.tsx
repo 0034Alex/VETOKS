@@ -6,7 +6,7 @@ import { getCrmCountry, crmCur } from "@/lib/crmCountry";
 import { loadScoped, scopedKey } from "@/lib/scopedSettings";
 import { apiPost } from "@/lib/authClient";
 
-const KEYS = ["publishing_enabled", "strip_enabled", "strip_text", "fanzone_enabled", "fanzone_min_amount", "media_season_id", "survey_question"];
+const KEYS = ["publishing_enabled", "strip_enabled", "strip_text", "fanzone_enabled", "fanzone_min_amount", "cards_enabled", "media_season_id", "survey_question"];
 
 type SeasonOpt = { id: string; title: string };
 
@@ -82,6 +82,18 @@ export default function AdminHomeSettingsPanel() {
         <p className="text-muted text-xs">
           Выключено — человек как обычно добавляет фото или видео и жмёт «Опубликовать», но ничего не выходит в ленту: материал сохраняется в черновики, и ему пишется «Публикации откроются после начала сезона». Включите, когда сезон начнётся.
         </p>
+      </div>
+
+      <div className="bg-bgSurface border border-muted rounded-xl p-4">
+        <p className="text-offwhite font-semibold text-sm mb-2">🃏 Коллекционные карточки</p>
+        <label className="flex items-center gap-2 text-offwhite text-sm">
+          <input
+            type="checkbox"
+            checked={v.cards_enabled !== "false"}
+            onChange={(e) => set("cards_enabled", e.target.checked ? "true" : "false")}
+          />
+          Карточки включены (если выключить — раздел в «Подарках», «Мои карточки», блок на странице участницы и упоминания в настройках исчезнут)
+        </label>
       </div>
 
       <div className="bg-bgSurface border border-muted rounded-xl p-4">

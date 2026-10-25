@@ -1,5 +1,6 @@
 "use client";
 
+import { useCardsEnabled } from "@/lib/useCardsEnabled";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -26,6 +27,7 @@ const PRIVACY: { key: string; label: string; hint?: string }[] = [
 ];
 
 export default function SettingsPage() {
+  const cardsOn = useCardsEnabled();
   const router = useRouter();
   const { t, lang, setLang } = useT();
   const langsAllowed = useCountryLangs();
@@ -200,7 +202,7 @@ export default function SettingsPage() {
             <div className="flex flex-col gap-2">
               {TOGGLES.map((k) => (
                 <label key={k} className="flex items-center justify-between gap-3 text-offwhite text-sm">
-                  <span>{t("settings.n." + k)}</span>
+                  <span>{k === "gifts" && !cardsOn ? t("settings.n.giftsNoCards") : t("settings.n." + k)}</span>
                   <input type="checkbox" checked={prefs[k] !== false} onChange={() => toggle(k)} />
                 </label>
               ))}

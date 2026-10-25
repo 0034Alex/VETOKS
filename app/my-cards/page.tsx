@@ -1,5 +1,6 @@
 "use client";
 
+import { useCardsEnabled } from "@/lib/useCardsEnabled";
 import { cleanImage } from "@/lib/imageClean";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
@@ -34,6 +35,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function MyCardsPage() {
+  const cardsOn = useCardsEnabled();
   const router = useRouter();
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -126,6 +128,8 @@ export default function MyCardsPage() {
     await load();
     setUploadingStage(null);
   }
+
+  if (!cardsOn) return <main className="min-h-screen pb-24"><PageHeader /><p className="text-muted text-center px-6 mt-10">Раздел недоступен.</p><BottomNav /></main>;
 
   if (loading) {
     return (

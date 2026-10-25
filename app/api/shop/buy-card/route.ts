@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { countryOfUser, currencyOfUser } from "@/lib/countryServer";
+import { countryOfUser, currencyOfUser, settingsForCountry } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { blockOtherCountry, bad, notify, fanEvent, participantOwner, pay, requireUser } from "@/lib/shopServer";
 import { getAppPrice } from "@/lib/pricing";
@@ -22,6 +22,10 @@ export async function POST(req: Request) {
   const rl = await rateLimit(req, "shop/buy-card", 20, 60, uid);
   if (rl) return rl;
 
+  {
+    const st = await settingsForCountry(["cards_enabled"], await countryOfUser(uid));
+    if (st.cards_enabled === "false") return bad("cards_off", 403);
+  }
   const body = await req.json().catch(() => ({}));
   const cardId = String(body.cardId || "");
   if (!cardId) return bad("bad_request");

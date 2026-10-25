@@ -1,5 +1,6 @@
 "use client";
 
+import { useCardsEnabled } from "@/lib/useCardsEnabled";
 import { loadTeenOpen } from "@/lib/teenFlag";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState, Suspense } from "react";
@@ -115,6 +116,7 @@ function ShopContent() {
     (searchParams.get("section") as "gifts" | "votes" | "cards") ?? "gifts"
   );
   const [currencySymbol, setCurrencySymbol] = useState("₴");
+  const cardsOn = useCardsEnabled();
 
   useEffect(() => {
     (async () => {
@@ -285,7 +287,7 @@ function ShopContent() {
         >
           🗳️ Голоса
         </button>
-        <button
+        {cardsOn && <button
           onClick={() => setSection("cards")}
           className={`px-4 py-2 rounded-full text-sm font-medium ${
             section === "cards"
@@ -294,10 +296,10 @@ function ShopContent() {
           }`}
         >
           🃏 Карточки
-        </button>
+        </button>}
       </div>
 
-      {section === "cards" ? (
+      {section === "cards" && cardsOn ? (
         <CardsSection />
       ) : section === "votes" ? (
         <VotesSection />

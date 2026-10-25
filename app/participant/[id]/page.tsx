@@ -1,5 +1,6 @@
 "use client";
 
+import { useCardsEnabled } from "@/lib/useCardsEnabled";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -81,6 +82,7 @@ export default function ParticipantProfilePage() {
   const [, setHasVoted] = useState(false);
   const [voteModalOpen, setVoteModalOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
+  const cardsOn = useCardsEnabled();
   const [userId, setUserId] = useState<string | null>(null);
   const [pChannels, setPChannels] = useState<any[]>([]);
   const [balance, setBalance] = useState(0);
@@ -605,7 +607,7 @@ export default function ParticipantProfilePage() {
             </div>
           )}
 
-          {cards.length > 0 && (
+          {cardsOn && cards.length > 0 && (
             <div className="mb-4">
               <p className="text-offwhite text-sm font-semibold mb-2">
                 🃏 Коллекционные карточки
