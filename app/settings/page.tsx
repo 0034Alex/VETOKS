@@ -32,6 +32,10 @@ export default function SettingsPage() {
   const { t, lang, setLang } = useT();
   const langsAllowed = useCountryLangs();
   const [loading, setLoading] = useState(true);
+  const [delOpen, setDelOpen] = useState(false);
+  const [delSure, setDelSure] = useState(false);
+  const [delBusy, setDelBusy] = useState(false);
+  const [delErr, setDelErr] = useState("");
   const [userId, setUserId] = useState("");
   const [verified, setVerified] = useState(false);
   const [tgLinked, setTgLinked] = useState(false);
@@ -157,6 +161,21 @@ export default function SettingsPage() {
     }
     await saveLinks([...links, v]);
     setLinkInput("");
+  }
+
+  async function deleteAccount() {
+    if (!delSure || delBusy) return;
+    setDelBusy(true);
+    setDelErr("");
+    const r = await apiPost("/api/account/delete", { confirm: true });
+    if (r?.ok) {
+      try { await supabase.auth.signOut(); } catch {}
+      try { localStorage.clear(); sessionStorage.clear(); } catch {}
+      window.location.href = "/login";
+      return;
+    }
+    setDelErr(r?.error === "staff" ? t("settings.del.staff") : t("settings.del.fail"));
+    setDelBusy(false);
   }
 
   if (loading) return <LoadingScreen />;
@@ -327,8 +346,35 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
+          <div className="bg-bgSurface border border-danger/40 rounded-xl p-4">
+            <p className="text-muted text-xs mb-3">{t("settings.del.hint")}</p>
+            <button onClick={() => { setDelSure(false); setDelErr(""); setDelOpen(true); }} className="text-danger text-sm font-semibold underline">
+              {t("settings.del.btn")}
+            </button>
+          </div>
         </div>
       </div>
+      {delOpen && (
+        <div className="fixed inset-0 z-[300] bg-black/70 flex items-center justify-center px-5" onClick={() => !delBusy && setDelOpen(false)}>
+          <div className="w-full max-w-sm bg-bgSurface border border-danger/50 rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+            <p className="text-danger font-semibold text-base mb-2">{t("settings.del.title")}</p>
+            <p className="text-offwhite text-sm mb-4">{t("settings.del.body")}</p>
+            <label className="flex items-start gap-2 text-offwhite text-sm mb-4">
+              <input type="checkbox" className="mt-1" checked={delSure} onChange={(e) => setDelSure(e.target.checked)} />
+              <span>{t("settings.del.sure")}</span>
+            </label>
+            {delErr && <p className="text-danger text-xs mb-3">{delErr}</p>}
+            <div className="flex gap-2">
+              <button disabled={delBusy} onClick={() => setDelOpen(false)} className="flex-1 border border-muted text-offwhite rounded-full py-2.5 text-sm">
+                {t("settings.del.cancel")}
+              </button>
+              <button disabled={!delSure || delBusy} onClick={deleteAccount} className="flex-1 bg-danger text-white font-semibold rounded-full py-2.5 text-sm disabled:opacity-40">
+                {delBusy ? t("settings.del.busy") : t("settings.del.go")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <BottomNav />
     </main>
   );

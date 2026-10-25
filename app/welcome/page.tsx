@@ -133,9 +133,6 @@ export default function WelcomePage() {
         {buttonText}
       </Link>
 
-      <Link href="/" className="text-muted text-xs underline mt-6">
-        Пропустить и перейти в приложение
-      </Link>
     </main>
   );
 }
