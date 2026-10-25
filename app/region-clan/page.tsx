@@ -32,6 +32,7 @@ export default function RegionClanPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState("");
+  const [loadErr, setLoadErr] = useState("");
   const [reported, setReported] = useState<Set<string>>(new Set());
   const [reportFor, setReportFor] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -41,6 +42,9 @@ export default function RegionClanPage() {
     if (r?.ok) {
       setMessages(((r.messages ?? []) as any[]).map((m) => ({ ...m, users: { first_name: m.name } })) as unknown as Message[]);
       setMemberCount(r.memberCount ?? 0);
+      setLoadErr("");
+    } else {
+      setLoadErr(String(r?.detail || r?.error || "нет ответа"));
     }
   }
 
@@ -197,6 +201,7 @@ export default function RegionClanPage() {
         </div>
 
         {err && <p className="px-6 mt-3 text-danger text-xs">{err}</p>}
+        {loadErr && <p data-notranslate="1" className="px-6 mt-3 text-muted text-[10px]">Ошибка загрузки: {loadErr}</p>}
         {vc.view !== vc.mine && (
           <p className="px-6 mt-2 text-muted text-xs text-center">Чужая категория: читать можно, писать — только в своей.</p>
         )}

@@ -22,12 +22,12 @@ export async function POST(req: Request) {
 
   let q = supabaseAdmin
     .from("region_clan_messages")
-    .select("id, user_id, body, created_at, edited_at")
+    .select("*")
     .eq("region_id", u.region_id)
     .eq("is_hidden", false);
   if (view !== "all") q = q.eq("age_category", view);
   const { data: msgs, error } = await q.order("created_at", { ascending: false }).limit(200);
-  if (error) return bad("failed", 500);
+  if (error) return NextResponse.json({ ok: false, error: "db", detail: error.message }, { status: 500 });
   const list = (msgs ?? []).slice().reverse();
 
   const ids = Array.from(new Set(list.map((m: any) => m.user_id as string)));
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    messages: list.map((m: any) => ({ id: m.id, user_id: m.user_id, body: m.body, created_at: m.created_at, edited_at: m.edited_at, name: names[m.user_id] || null })),
+    messages: list.map((m: any) => ({ id: m.id, user_id: m.user_id, body: m.body, created_at: m.created_at, edited_at: m.edited_at ?? null, name: names[m.user_id] || null })),
     memberCount: count ?? 0,
   });
 }
