@@ -34,7 +34,11 @@ const securityHeaders = [
 const nextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Клан: не кэшируем страницу в браузере (после «назад» приходил пустой экран)
+      { source: "/region-clan", headers: [{ key: "Cache-Control", value: "no-store, must-revalidate" }] },
+    ];
   },
 };
 

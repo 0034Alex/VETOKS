@@ -77,6 +77,11 @@ export default function ScrollGuard() {
       wa?.onEvent?.("activated", onTg);
       wa?.onEvent?.("viewportChanged", onTg);
     } catch {}
+    // Страница вернулась из «быстрой памяти» браузера (кнопка «назад») — могла прийти пустой
+    const onPageShow = (e: any) => {
+      if (e?.persisted && location.pathname.startsWith("/region-clan")) location.reload();
+    };
+    window.addEventListener("pageshow", onPageShow);
     const onShow = () => {
       tgSetup();
       nudge();
@@ -94,6 +99,7 @@ export default function ScrollGuard() {
         wa?.offEvent?.("viewportChanged", onTg);
       } catch {}
       window.removeEventListener("pageshow", onShow);
+      window.removeEventListener("pageshow", onPageShow);
       window.removeEventListener("focus", onShow);
       document.removeEventListener("visibilitychange", onVis);
       document.removeEventListener("touchstart", unlock);
