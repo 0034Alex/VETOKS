@@ -77,7 +77,11 @@ export default function RegionClanPage() {
   }, [me?.region_id, vc.view]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length === 0) return;
+    const t = setTimeout(() => {
+      try { window.scrollTo(0, document.body.scrollHeight); } catch {}
+    }, 50);
+    return () => clearTimeout(t);
   }, [messages.length]);
 
   const ERRORS: Record<string, string> = {

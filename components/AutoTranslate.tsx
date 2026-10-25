@@ -212,11 +212,11 @@ export default function AutoTranslate() {
         } else if (node.nodeType === 1) {
           const el = node as Element;
           if (SKIP_TAGS.has(el.tagName) || el.hasAttribute("data-notranslate")) {
-            // пропускаем всё поддерево
-            let next: Node | null = el.nextSibling;
-            let p: Node | null = el;
-            while (!next && p && p !== root) { p = p.parentNode; next = p ? p.nextSibling : null; }
-            node = next && root.contains(next) ? next : null;
+            // пропускаем всё поддерево: встаём на его последний узел и идём дальше
+            let last: Node = el;
+            while (last.lastChild) last = last.lastChild;
+            w.currentNode = last;
+            node = w.nextNode();
             continue;
           }
           doAttrs(el);
