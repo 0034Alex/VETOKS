@@ -30,9 +30,20 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
     let cancelled = false;
+    // Страховка: если проверка входа зависла — один раз перезагружаем страницу
+    const guard = setTimeout(() => {
+      if (cancelled) return;
+      try {
+        if (sessionStorage.getItem("vt_gate_reload")) return;
+        sessionStorage.setItem("vt_gate_reload", "1");
+        window.location.reload();
+      } catch {}
+    }, 5000);
     (async () => {
       const { data } = await supabase.auth.getSession();
       if (cancelled) return;
+      clearTimeout(guard);
+      try { sessionStorage.removeItem("vt_gate_reload"); } catch {}
       if (!data.session) {
         router.replace("/login");
       } else {
@@ -41,6 +52,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     })();
     return () => {
       cancelled = true;
+      clearTimeout(guard);
     };
   }, [pathname, isPublic, router]);
 
