@@ -45,6 +45,7 @@ export default function RootLayout({
   return (
     <html lang="uk">
       <body className="bg-bgPrimary">
+        <script dangerouslySetInnerHTML={{ __html: '(function(){var L=[];function add(x){try{L.push(String(x).slice(0,200))}catch(e){}}\nwindow.addEventListener("error",function(e){add("err: "+(e.message||"")+" "+((e.target&&(e.target.src||e.target.href))||""))},true);\nwindow.addEventListener("unhandledrejection",function(e){add("rej: "+(e.reason&&(e.reason.message||e.reason)))});\ndocument.addEventListener("securitypolicyviolation",function(e){add("csp: "+e.violatedDirective+" "+e.blockedURI)});\nsetTimeout(function(){try{var t=(document.body.innerText||"").trim().length;if(t>15)return;\nvar d=document.createElement("div");d.setAttribute("data-notranslate","1");\nd.style.cssText="position:fixed;left:0;right:0;top:0;z-index:99999;background:#fff;color:#000;font:12px monospace;padding:12px;white-space:pre-wrap";\nd.textContent="VETOKS диагностика (пустая страница)\\n"+location.pathname+"\\nstate="+document.readyState+" text="+t+" html="+document.body.innerHTML.length+"\\n"+L.join("\\n");\ndocument.body.appendChild(d)}catch(e){}},5000)})();' }} />
         <LangProvider>
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
