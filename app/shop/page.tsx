@@ -316,20 +316,15 @@ function ShopContent() {
         )}
       </div>
 
-      <div className="px-6 mb-4 bg-bgSurface border border-gold/40 rounded-xl p-4 flex items-center justify-between">
-        <div>
-          <p className="text-muted text-xs">Ваш баланс</p>
-          <p className="text-gold text-xl font-semibold">{Math.round(balance)} {currencySymbol}</p>
-        </div>
+      <p className="px-6 mb-4 text-muted text-xs">
+        Баланс: <span className="text-gold font-semibold">{Math.round(balance)} {currencySymbol}</span>
         {topupOn && (
-          <button
-            onClick={testTopUp}
-            className="bg-bgPrimary border border-muted text-offwhite text-xs px-3 py-2 rounded-full"
-          >
-            Пополнить (тест +1000{currencySymbol})
-          </button>
+          <>
+            {" · "}
+            <button onClick={testTopUp} className="text-offwhite underline">Пополнить (тест +1000{currencySymbol})</button>
+          </>
         )}
-      </div>
+      </p>
 
       {!participantId && (
         <div className="px-6 mb-4">
@@ -909,26 +904,18 @@ function VotesSection() {
         <p className="text-muted text-xs mb-3">
           {topupOn ? "Тестовый режим — реальные деньги пока не подключены. " : ""}1 голос = {pricePerVote} {currencySymbol}.
         </p>
-        <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-3 flex items-center justify-between">
-          <div>
-            <p className="text-muted text-xs">Ваш баланс</p>
-            <p className="text-gold text-xl font-semibold">
-              {loading ? "..." : `${Math.round(walletBalance)} ${currencySymbol}`}
-            </p>
-          </div>
+        <p className="text-muted text-xs mb-1">
+          Баланс: <span className="text-gold font-semibold">{loading ? "..." : `${Math.round(walletBalance)} ${currencySymbol}`}</span>
           {topupOn && (
-            <button
-              onClick={testTopUp}
-              className="bg-bgPrimary border border-muted text-offwhite text-xs px-3 py-2 rounded-full"
-            >
-              Пополнить (тест +1000{currencySymbol})
-            </button>
+            <>
+              {" · "}
+              <button onClick={testTopUp} className="text-offwhite underline">Пополнить (тест +1000{currencySymbol})</button>
+            </>
           )}
-        </div>
-        <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
-          <p className="text-muted text-xs">Ваши купленные голоса</p>
-          <p className="text-gold text-xl font-semibold">{loading ? "..." : balance}</p>
-        </div>
+        </p>
+        <p className="text-muted text-xs">
+          Куплено голосов: <span className="text-gold font-semibold">{loading ? "..." : balance}</span>
+        </p>
         {message && <p className="text-gold text-sm text-center mt-3">{message}</p>}
       </div>
 

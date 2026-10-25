@@ -1659,5 +1659,7 @@
  "Топ-25 за 24 часа": "Top 25 in the last 24 hours",
  "Бесплатные голоса за последние 24 часа. Таблица обновляется каждую минуту.": "Free votes in the last 24 hours. The table updates every minute.",
  "Обновлено в {}": "Updated at {}",
- "Топ-25 за 24 часа · {}": "Top 25 in the last 24 hours · {}"
+ "Топ-25 за 24 часа · {}": "Top 25 in the last 24 hours · {}",
+ "Баланс:": "Balance:",
+ "Куплено голосов:": "Votes purchased:"
 }
