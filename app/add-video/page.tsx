@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 import { cleanImage } from "@/lib/imageClean";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -31,6 +32,7 @@ const VIS: { v: Vis; t: string; d: string }[] = [
 ];
 
 function Inner() {
+  const { t } = useT();
   const router = useRouter();
   const sp = useSearchParams();
   const [mode, setMode] = useState<"edit" | "drafts">(sp.get("drafts") ? "drafts" : "edit");
@@ -379,7 +381,7 @@ function Inner() {
         <textarea
           value={caption}
           onChange={(e) => setCaption(e.target.value.slice(0, 500))}
-          placeholder="Добавьте описание…"
+          placeholder={t("post.captionPh")}
           rows={4}
           className="w-full bg-transparent text-offwhite outline-none resize-none text-base"
         />

@@ -2,49 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { sendClientError } from "@/lib/errorReport";
+import FunError from "@/components/FunError";
 
-// Если страница упала — показываем причину текстом (её можно сфотографировать) и даём выйти из зависшей сессии.
-export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+// Если страница упала — весёлая заглушка с одной кнопкой «Перезагрузить»; причину отправляем разработчику.
+export default function ErrorPage({ error }: { error: Error & { digest?: string } }) {
   const [info, setInfo] = useState("");
 
   useEffect(() => {
+    const msg = String(error?.message);
     // Устаревшие файлы после обновления — один раз перезагружаем страницу.
-    if (/ChunkLoadError|Loading chunk|Failed to fetch dynamically imported/i.test(String(error?.message))) {
+    if (/ChunkLoadError|Loading chunk|Failed to fetch dynamically imported/i.test(msg)) {
       try {
         if (!sessionStorage.getItem("vt_chunk_reload")) {
           sessionStorage.setItem("vt_chunk_reload", "1");
           window.location.reload();
         }
       } catch {}
+    } else {
+      sendClientError(`Страница упала: ${msg}`, { stack: error?.stack, where: window.location.pathname });
     }
-    if (!/ChunkLoadError|Loading chunk|Failed to fetch dynamically imported/i.test(String(error?.message))) {
-      sendClientError(`Страница упала: ${error?.message ?? ""}`, { stack: error?.stack, where: window.location.pathname });
-    }
-    setInfo(`${error?.name ?? "Error"}: ${error?.message ?? ""}\n${window.location.pathname}`);
+    setInfo(`${window.location.pathname} · ${error?.name ?? "Error"}: ${msg}`.slice(0, 160));
   }, [error]);
 
-  async function clearAndLogin() {
-    try {
-      localStorage.clear();
-      sessionStorage.clear();
-      if ("caches" in window) (await caches.keys()).forEach((k) => caches.delete(k));
-      const regs = await navigator.serviceWorker?.getRegistrations?.();
-      regs?.forEach((r) => r.unregister());
-    } catch {}
-    window.location.href = "/login";
-  }
-
-  return (
-    <main className="min-h-screen flex flex-col items-center justify-center text-center px-6 gap-4 bg-bgPrimary text-offwhite">
-      <h1 className="text-xl font-semibold">Что-то пошло не так</h1>
-      <p className="text-muted text-sm">Попробуйте ещё раз. Если не помогает, нажмите «Выйти и войти заново».</p>
-      <button onClick={reset} className="bg-gold text-bgPrimary font-semibold rounded-full px-6 py-2.5">
-        Повторить
-      </button>
-      <button onClick={clearAndLogin} className="border border-gold text-gold rounded-full px-6 py-2.5">
-        Выйти и войти заново
-      </button>
-      {info && <pre className="text-muted text-[11px] whitespace-pre-wrap break-words max-w-full mt-2">{info}</pre>}
-    </main>
-  );
+  return <FunError info={info} />;
 }

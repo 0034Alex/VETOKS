@@ -168,6 +168,7 @@ export default function RegionClanPage() {
             return (
               <div
                 key={m.id}
+                data-notranslate="1"
                 className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
                   isMine
                     ? "self-end bg-gold text-bgPrimary"
