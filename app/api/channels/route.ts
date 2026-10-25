@@ -53,6 +53,10 @@ export async function POST(req: Request) {
     if (name.length < 2) return bad("bad_name");
     if (!slugOk(slug)) return bad("bad_slug");
     if (hasBadWords(name + " " + descr)) return bad("bad_words", 400, { message: BAD_WORDS_MESSAGE });
+    if (kind !== "hidden") {
+      const { count: kc } = await supabaseAdmin.from("channels").select("id", { count: "exact", head: true }).eq("owner_id", uid).eq("kind", kind);
+      if ((kc ?? 0) >= 1) return bad("kind_limit", 409);
+    }
     if (fl.isNew) {
       const { count } = await supabaseAdmin.from("channels").select("id", { count: "exact", head: true }).eq("owner_id", uid);
       if ((count ?? 0) >= 1) return bad("new_account_limit", 429);
@@ -84,7 +88,13 @@ export async function POST(req: Request) {
     const patch: any = {};
     if (typeof b.name === "string") { const n = b.name.trim().slice(0, 60); if (n.length < 2) return bad("bad_name"); patch.name = n; }
     if (typeof b.descr === "string") patch.descr = b.descr.trim().slice(0, 500);
-    if (["open", "closed", "hidden"].includes(b.kind)) patch.kind = b.kind;
+    if (["open", "closed", "hidden"].includes(b.kind)) {
+      if (b.kind !== ch.kind && b.kind !== "hidden") {
+        const { count: kc } = await supabaseAdmin.from("channels").select("id", { count: "exact", head: true }).eq("owner_id", uid).eq("kind", b.kind).neq("id", ch.id);
+        if ((kc ?? 0) >= 1) return bad("kind_limit", 409);
+      }
+      patch.kind = b.kind;
+    }
     if (hasBadWords(`${patch.name ?? ""} ${patch.descr ?? ""}`)) return bad("bad_words", 400, { message: BAD_WORDS_MESSAGE });
     if (b.photo && b.photo !== ch.photo_url) {
       if (!(await ownFile(String(b.photo), uid, "participant-photos")) || !(await verifyStoredFile(String(b.photo), "image"))) return bad("bad_file");

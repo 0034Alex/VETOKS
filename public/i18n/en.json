@@ -1648,5 +1648,8 @@
  "Новая заявка в канал «{}»": "New request to join “{}”",
  "Вашу заявку в канал «{}» приняли": "Your request to join “{}” was accepted",
  "Вас приглашают в канал «{}»": "You are invited to channel “{}”",
- "Жалоба в вашем канале «{}»": "A report in your channel “{}”"
+ "Жалоба в вашем канале «{}»": "A report in your channel “{}”",
+ "У вас уже есть канал такого вида. Можно один открытый и один закрытый, скрытых — сколько угодно.": "You already have a channel of this kind. You can have one open and one closed channel; hidden ones are unlimited.",
+ "🔒 Закрытый · подать заявку": "🔒 Closed · request to join",
+ "Открытый · подписаться": "Open · subscribe"
 }

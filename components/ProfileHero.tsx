@@ -169,6 +169,7 @@ export default function ProfileHero({
   actions,
 }: Props) {
   const [badgesOpen, setBadgesOpen] = useState(false);
+  const [chanOpen, setChanOpen] = useState(false);
   const VerifiedMark = (
     <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden className="flex-none">
               <path
@@ -294,18 +295,17 @@ export default function ProfileHero({
         <div className="flex flex-col gap-3 px-5 pt-4">
           {(socials.length > 0 || channels.length > 0) && (
             <div className="flex flex-wrap gap-2.5">
-              {channels.map((c) => (
-                <a
-                  key={c.id}
-                  href={`/channels/${c.id}`}
-                  aria-label={c.name}
-                  title={c.name}
-                  className="relative w-[46px] h-[46px] rounded-2xl bg-gold/15 border-2 border-gold flex items-center justify-center mr-1.5"
+              {channels.length > 0 && (
+                <button
+                  type="button"
+                  aria-label="Каналы"
+                  onClick={() => (channels.length === 1 ? (window.location.href = `/channels/${channels[0].id}`) : setChanOpen(true))}
+                  className="relative w-[46px] h-[46px] rounded-2xl bg-gold/15 border-2 border-gold flex items-center justify-center mr-2"
                 >
                   <img src="/icon-192.png" alt="" className="w-7 h-7 rounded-lg" />
-                  {c.kind === "closed" && <span className="absolute -bottom-1 -right-1 text-[11px]">🔒</span>}
-                </a>
-              ))}
+                  {channels.length > 1 && <span className="absolute -top-1 -right-1 bg-gold text-black text-[10px] font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center">{channels.length}</span>}
+                </button>
+              )}
               {socials.map((u) => (
                 <a
                   key={u}
@@ -329,6 +329,28 @@ export default function ProfileHero({
               Поделиться
             </button>
           )}
+        </div>
+      )}
+
+      {chanOpen && (
+        <div className="fixed inset-0 z-[300] bg-black/65 flex items-end justify-center" onClick={() => setChanOpen(false)}>
+          <div className="w-full max-w-md bg-bgSurface rounded-t-2xl p-5" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-offwhite font-semibold">Каналы</p>
+              <button onClick={() => setChanOpen(false)} className="text-muted text-xl leading-none">×</button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {channels.map((c) => (
+                <a key={c.id} href={`/channels/${c.id}`} className="flex items-center gap-3 border border-muted rounded-xl p-3">
+                  <span className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center flex-shrink-0 text-white flex items-center justify-center font-semibold" style={c.photo ? { backgroundImage: `url(${c.photo})` } : undefined}>{!c.photo && c.name.slice(0, 1).toUpperCase()}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-offwhite text-sm font-semibold truncate">{c.name}</span>
+                    <span className="block text-muted text-xs">{c.kind === "closed" ? "🔒 Закрытый · подать заявку" : "Открытый · подписаться"}</span>
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
