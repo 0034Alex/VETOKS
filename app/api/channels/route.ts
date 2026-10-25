@@ -14,6 +14,7 @@ export const maxDuration = 60;
 const ok = (o: object = {}) => NextResponse.json({ ok: true, ...o });
 const REASONS = ["spam", "nudity", "violence", "hate", "scam", "fake", "minor", "illegal", "selfharm", "ip", "other"];
 const AUDIO_MAX = 5 * 1024 * 1024;
+const EDIT_MS = 6 * 3600_000;
 
 async function ownFile(url: string, uid: string, bucket: string): Promise<boolean> {
   const p = parseStorageUrl(url);
@@ -315,11 +316,12 @@ export async function POST(req: Request) {
   }
 
   if (action === "post_edit" || action === "post_delete") {
-    const { data: p } = await supabaseAdmin.from("channel_posts").select("id, channel_id, photo_url, audio_url, video_id").eq("id", String(b.postId)).maybeSingle();
+    const { data: p } = await supabaseAdmin.from("channel_posts").select("id, channel_id, photo_url, audio_url, video_id, created_at").eq("id", String(b.postId)).maybeSingle();
     if (!p) return bad("not_found", 404);
     const ch = await getChannel(p.channel_id as string);
     if (!ch || ch.owner_id !== uid) return bad("not_found", 404);
     if (action === "post_edit") {
+      if (Date.now() - new Date(p.created_at as string).getTime() > EDIT_MS) return bad("edit_expired", 403);
       const body = String(b.body ?? "").trim().slice(0, 4000);
       if (hasBadWords(body)) return bad("bad_words", 400, { message: BAD_WORDS_MESSAGE });
       if (!body && !p.photo_url && !p.audio_url && !p.video_id) return bad("empty");
@@ -427,6 +429,7 @@ export async function POST(req: Request) {
       const mineC = commentRow.user_id === uid;
       if (action === "comment_edit") {
         if (!mineC) return bad("not_yours", 403);
+        if (Date.now() - new Date(commentRow.created_at).getTime() > EDIT_MS) return bad("edit_expired", 403);
         const text = String(b.body ?? "").trim().slice(0, 1000);
         if (!text) return bad("empty");
         if (LINK_RE.test(text)) return bad("no_links", 400);

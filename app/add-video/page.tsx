@@ -425,7 +425,7 @@ function Inner() {
 
       <div className="px-4 mt-5 flex gap-2.5">
         <button onClick={saveDraft} disabled={busy} className="px-5 py-3 rounded-full border border-muted text-offwhite font-semibold disabled:opacity-50">
-          Черновик
+          В черновики
         </button>
         <button onClick={publish} disabled={!ready || busy} className="flex-1 bg-gold text-bgPrimary font-semibold py-3 rounded-full disabled:opacity-50">
           {busy ? "Публикуем…" : uploading ? "Загружаем файлы…" : "Опубликовать"}

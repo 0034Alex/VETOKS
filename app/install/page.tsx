@@ -38,6 +38,23 @@ export default function InstallPage() {
     setDeferredPrompt(null);
   }
 
+  const [copiedLink, setCopiedLink] = useState(false);
+  function openSafari() {
+    const url = window.location.origin + "/install";
+    const wa = (window as any).Telegram?.WebApp;
+    if (wa?.openLink) {
+      wa.openLink(url);
+      return;
+    }
+    window.location.href = "x-safari-" + url;
+    setTimeout(async () => {
+      if (document.visibilityState === "visible") {
+        try { await navigator.clipboard?.writeText(url); } catch {}
+        setCopiedLink(true);
+      }
+    }, 1500);
+  }
+
   function openOutside() {
     const url = window.location.origin + "/install";
     const wa = (window as any).Telegram?.WebApp;
@@ -67,38 +84,45 @@ export default function InstallPage() {
           )}
 
           <div className="bg-bgSurface border border-gold/40 rounded-xl p-5 mb-4">
-            {env === "telegram" && (
+            {(env === "ios-safari" || env === "ios-other" || (env === "telegram" && /iPad|iPhone|iPod/.test(typeof navigator !== "undefined" ? navigator.userAgent : ""))) && (
+              <>
+                <p className="text-offwhite font-semibold text-lg mb-4">Установка на iPhone</p>
+                {env !== "ios-safari" && (
+                  <>
+                    <button onClick={openSafari} className="w-full bg-gold text-bgPrimary font-semibold py-3.5 rounded-2xl text-base">
+                      🌐 Открыть в Safari
+                    </button>
+                    <p className="text-muted text-xs mt-2 mb-4">
+                      Если вы сейчас в Telegram — сначала откройте сайт в Safari, иначе кнопка «Поделиться» не сработает.
+                    </p>
+                    {copiedLink && <p className="text-goldSoft text-xs mb-4">Ссылка скопирована — вставьте её в адресную строку Safari.</p>}
+                  </>
+                )}
+                <div className="flex flex-col divide-y divide-muted/30">
+                  <div className="flex items-center gap-3 py-4">
+                    <span className="w-8 h-8 rounded-full bg-gold text-bgPrimary font-bold flex items-center justify-center flex-shrink-0">1</span>
+                    <p className="text-offwhite text-sm flex-1">Нажмите на значок «Поделиться» внизу экрана Safari</p>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 3v12M8 7l4-4 4 4M5 12v8h14v-8" /></svg>
+                  </div>
+                  <div className="flex items-center gap-3 py-4">
+                    <span className="w-8 h-8 rounded-full bg-gold text-bgPrimary font-bold flex items-center justify-center flex-shrink-0">2</span>
+                    <p className="text-offwhite text-sm flex-1">Выберите «На экран «Домой»» в появившемся списке</p>
+                  </div>
+                  <div className="flex items-center gap-3 py-4">
+                    <span className="w-8 h-8 rounded-full bg-gold text-bgPrimary font-bold flex items-center justify-center flex-shrink-0">3</span>
+                    <p className="text-offwhite text-sm flex-1">Нажмите «Добавить» — готово!</p>
+                  </div>
+                </div>
+                <p className="text-muted text-xs mt-3">Это ограничение самого Apple — сайты не могут открыть это меню автоматически.</p>
+              </>
+            )}
+
+            {env === "telegram" && !/iPad|iPhone|iPod/.test(typeof navigator !== "undefined" ? navigator.userAgent : "") && (
               <>
                 <p className="text-offwhite font-semibold mb-2">Вы открыли VETOKS внутри Telegram</p>
                 <p className="text-muted text-sm mb-3">Установить приложение можно только из обычного браузера — откройте сайт там.</p>
                 <button onClick={openOutside} className="w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full text-sm">
                   Открыть в браузере
-                </button>
-              </>
-            )}
-
-            {env === "ios-safari" && (
-              <>
-                <p className="text-offwhite font-semibold mb-3">🍎 iPhone — Safari</p>
-                <Steps items={[
-                  "Нажмите «Поделиться» (квадрат со стрелкой вверх) внизу экрана",
-                  "Пролистайте вниз и выберите «На экран «Домой»»",
-                  "Нажмите «Добавить» в правом верхнем углу",
-                ]} />
-              </>
-            )}
-
-            {env === "ios-other" && (
-              <>
-                <p className="text-offwhite font-semibold mb-3">🍎 iPhone</p>
-                <p className="text-muted text-sm mb-3">
-                  На iPhone приложение устанавливается только из Safari. Скопируйте адрес сайта и откройте его в Safari, затем нажмите «Поделиться» → «На экран «Домой»».
-                </p>
-                <button
-                  onClick={() => navigator.clipboard?.writeText(window.location.origin)}
-                  className="w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full text-sm"
-                >
-                  Скопировать адрес сайта
                 </button>
               </>
             )}

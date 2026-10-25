@@ -20,9 +20,10 @@ const ERR: Record<string, string> = {
   frozen: "Канал заморожен модерацией.", no_links: "В комментариях ссылки запрещены.", bad_words: "В тексте есть недопустимые слова.",
   nsfw: "Фото не прошло проверку.", too_long: "Видео длиннее 60 секунд.", audio_too_big: "Голосовое больше 5 МБ.", posts_limit: "Достигнут лимит постов на сутки.",
   rate_limited: "Слишком часто. Подождите немного.", new_account_limit: "Лимит для нового аккаунта. Попробуйте позже.", need_subscribe: "Писать могут только подписчики.",
-  bad_file: "Не удалось принять файл.", empty: "Пустое сообщение.",
+  bad_file: "Не удалось принять файл.", edit_expired: "Изменять можно только в течение 6 часов после публикации.", empty: "Пустое сообщение.",
 };
 const when = (iso: string) => new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const editable = (iso: string) => Date.now() - new Date(iso).getTime() < 6 * 3600_000;
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 
 export default function ChannelView({ keyStr }: { keyStr: string }) {
@@ -236,6 +237,7 @@ function PostCard(props: { p: Post; isOwner: boolean; uid: string; menuOpen: boo
       <div className="px-4 py-3 flex items-center justify-between text-xs text-muted">
         <span>{when(p.at)}{p.edited ? " · изменено" : ""} · 👁 {p.views}</span>
         <div className="flex items-center gap-3">
+          {isOwner && <button onClick={props.onPin} className={p.pinned ? "text-gold" : "text-muted"} aria-label="Закрепить">📌 {p.pinned ? "Закреплён" : "Закрепить"}</button>}
           <button onClick={props.onComments} className="text-offwhite">💬 {p.comments}</button>
           <div className="relative">
             <button onClick={() => props.setMenu(!props.menuOpen)} aria-label="Меню" className="px-1 text-base">⋯</button>
@@ -244,7 +246,7 @@ function PostCard(props: { p: Post; isOwner: boolean; uid: string; menuOpen: boo
                 {isOwner ? (
                   <>
                     <button className="w-full text-left px-3 py-2" onClick={props.onPin}>{p.pinned ? "Открепить" : "Закрепить"}</button>
-                    <button className="w-full text-left px-3 py-2" onClick={props.onEdit}>Изменить текст</button>
+                    {editable(p.at) && <button className="w-full text-left px-3 py-2" onClick={props.onEdit}>Изменить текст</button>}
                     <button className="w-full text-left px-3 py-2 text-danger" onClick={props.onDelete}>Удалить</button>
                   </>
                 ) : (
@@ -363,7 +365,6 @@ function Composer({ chId, onDone, onErr }: { chId: string; onDone: () => void; o
         <input ref={vf} type="file" accept="video/*" hidden onChange={pickVideo} />
         <button disabled={!has || busy || pct !== null || rec} onClick={publish} className="ml-auto rounded-full bg-gold text-black font-semibold px-5 py-1.5 text-sm disabled:opacity-40">{busy ? "…" : "Опубликовать"}</button>
       </div>
-      <p className="text-[11px] text-muted mt-2">Видео — до 60 секунд, голосовое — до 3 минут.</p>
     </div>
   );
 }
@@ -417,7 +418,7 @@ function Comments({ post, chId, isOwner, uid, me, onClose, onSubscribed, onRepor
             <div className="flex items-center gap-2 text-xs text-muted"><span className="text-offwhite font-semibold">{c.name}</span>{when(c.at)}{c.edited ? " · изм." : ""}</div>
             <p className="text-offwhite break-words whitespace-pre-line">{c.body}</p>
             <div className="flex gap-3 text-[11px] text-muted mt-0.5">
-              {c.userId === uid && <button onClick={() => { setEdit(c.id); setText(c.body); }}>Изменить</button>}
+              {c.userId === uid && editable(c.at) && <button onClick={() => { setEdit(c.id); setText(c.body); }}>Изменить</button>}
               {(c.userId === uid || isOwner) && <button onClick={async () => { await apiPost("/api/channels", { action: "comment_delete", commentId: c.id }); load(); }}>Удалить</button>}
               {c.userId !== uid && <button onClick={() => onReport(c.id)}>Пожаловаться</button>}
             </div>
@@ -426,7 +427,7 @@ function Comments({ post, chId, isOwner, uid, me, onClose, onSubscribed, onRepor
       </div>
       {canWrite ? (
         <div className="flex gap-2 items-end">
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} maxLength={1000} placeholder="Комментарий (без ссылок)" className="flex-1 bg-black/30 border border-muted rounded-xl px-3 py-2 text-sm text-offwhite outline-none resize-none" />
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} maxLength={1000} placeholder="Комментарий" className="flex-1 bg-black/30 border border-muted rounded-xl px-3 py-2 text-sm text-offwhite outline-none resize-none" />
           <button onClick={send} disabled={!text.trim()} className="rounded-full bg-gold text-black font-semibold px-4 py-2 text-sm disabled:opacity-40">{edit ? "Сохранить" : "Отправить"}</button>
         </div>
       ) : (

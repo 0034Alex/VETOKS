@@ -101,11 +101,6 @@ export default function InvitesPage() {
                     Поделиться
                   </button>
                 </div>
-                {tgLink && (
-                  <button onClick={() => copy("web")} className="mt-3 text-muted text-xs underline">
-                    {copied === "web" ? "Ссылка скопирована ✓" : "Ссылка для сайта (не Telegram)"}
-                  </button>
-                )}
                 <p className="text-muted text-[11px] mt-3">
                   Друг считается приглашённым, когда зарегистрируется по вашей ссылке и подтвердит номер в Telegram.
                   {d.rewardReferrer > 0 ? ` За каждого вы получите ${Math.round(d.rewardReferrer)} ${cur}.` : ""}
