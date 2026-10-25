@@ -370,7 +370,7 @@ function Composer({ chId, onDone, onErr }: { chId: string; onDone: () => void; o
 
 function Sheet({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: string }) {
   return (
-    <div className="fixed inset-0 z-[80] bg-black/65 flex items-end justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[300] bg-black/65 flex items-end justify-center" onClick={onClose}>
       <div className="w-full max-w-md bg-bgSurface rounded-t-2xl p-5 max-h-[85vh] flex flex-col" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <p className="text-offwhite font-semibold">{title}</p>
