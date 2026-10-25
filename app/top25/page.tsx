@@ -3,10 +3,9 @@
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import { apiPost } from "@/lib/authClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
-import { msToNextUpdate } from "@/lib/kyiv";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory } from "@/lib/viewCategory";
 import { viewInfo, rankCat } from "@/lib/viewCategory";
@@ -20,32 +19,10 @@ type Row = {
   photo_url: string | null;
 };
 
-function useCountdownToUpdate() {
-  const [timeLeft, setTimeLeft] = useState("");
-
-  useEffect(() => {
-    function update() {
-      const diff = msToNextUpdate();
-      const h = Math.floor(diff / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setTimeLeft(
-        `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
-      );
-    }
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return timeLeft;
-}
-
 export default function Top25Page() {
   const [rows, setRows] = useState<Row[]>([]);
   const [date, setDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const timeLeft = useCountdownToUpdate();
   const vc = useViewCategory();
   const rc = rankCat(vc.view, vc.mine);
 
@@ -53,50 +30,20 @@ export default function Top25Page() {
     if (!vc.ready) return;
     (async () => {
       setLoading(true);
-      // Таблицу Топ-25 раз в сутки в 00:01 составляет сервер по
-      // бесплатным голосам за прошедшие сутки.
       const mc = await getMyCountry();
-      let lq = supabase
-        .from("top25_daily")
-        .select("snapshot_date")
-        .order("snapshot_date", { ascending: false })
-        .limit(1);
-      if (mc.countryId) lq = lq.eq("country_id", mc.countryId);
-      const { data: latest } = await lq.maybeSingle();
-
-      if (!latest?.snapshot_date) {
-        setRows([]);
-        setLoading(false);
-        return;
+      const r = await apiPost("/api/top25", { cat: rc, countryId: mc.countryId });
+      if (r?.ok) {
+        setRows(r.rows as Row[]);
+        setDate(r.updatedAt);
       }
-      setDate(latest.snapshot_date);
-
-      let tq = supabase
-        .from("top25_daily")
-        .select("rank, participant_id, votes")
-        .eq("snapshot_date", latest.snapshot_date)
-        .eq("age_category", rc)
-        .order("rank");
-      if (mc.countryId) tq = tq.eq("country_id", mc.countryId);
-      const { data: top } = await tq;
-      const list = (top ?? []) as { rank: number; participant_id: string; votes: number }[];
-
-      const ids = list.map((r) => r.participant_id);
-      const { data: ps } = ids.length
-        ? await supabase.from("participants").select("id, display_name, photo_url").in("id", ids)
-        : { data: [] as any[] };
-      const map: Record<string, { display_name: string; photo_url: string | null }> = {};
-      (ps ?? []).forEach((p: any) => (map[p.id] = p));
-
-      setRows(
-        list.map((r) => ({
-          ...r,
-          display_name: map[r.participant_id]?.display_name ?? "—",
-          photo_url: map[r.participant_id]?.photo_url ?? null,
-        }))
-      );
       setLoading(false);
     })();
+    const timer = setInterval(async () => {
+      const mc = await getMyCountry();
+      const r = await apiPost("/api/top25", { cat: rc, countryId: mc.countryId });
+      if (r?.ok) { setRows(r.rows as Row[]); setDate(r.updatedAt); }
+    }, 60000);
+    return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vc.ready, rc]);
 
@@ -106,14 +53,11 @@ export default function Top25Page() {
       <CategoryStrip />
 
       <div className="px-6 mb-6 text-center">
-        <h1 className="text-2xl font-semibold text-gold mb-2">Топ-25 за сутки · {viewInfo(rc).label}</h1>
-        <p className="text-muted text-sm">
-          Обновление рейтинга через{" "}
-          <span className="text-gold font-mono">{timeLeft}</span>
-        </p>
+        <h1 className="text-2xl font-semibold text-gold mb-2">Топ-25 за 24 часа · {viewInfo(rc).label}</h1>
+        <p className="text-muted text-sm">Бесплатные голоса за последние 24 часа. Таблица обновляется каждую минуту.</p>
         {date && (
           <p className="text-muted text-xs mt-1">
-            Итоги за {date.split("-").reverse().join(".")}
+            Обновлено в {new Date(date).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
           </p>
         )}
       </div>
@@ -121,9 +65,7 @@ export default function Top25Page() {
       {loading && <LoadingScreen inline />}
       {!loading && rows.length === 0 && (
         <p className="text-muted text-center px-6">
-          {date
-            ? `В категории ${viewInfo(rc).label} за прошедшие сутки пока никто не набрал голосов. Как только появятся — участницы окажутся здесь.`
-            : "Итоги ещё не подведены. Топ-25 обновляется каждую ночь в 00:01."}
+          В категории {viewInfo(rc).label} за последние 24 часа пока никто не набрал голосов. Проголосуйте за любимую участницу — и она появится здесь.
         </p>
       )}
 

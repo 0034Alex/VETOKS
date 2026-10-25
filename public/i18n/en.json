@@ -1655,5 +1655,9 @@
  "У вас уже есть такой канал.": "You already have such a channel.",
  "Удалить канал": "Delete channel",
  "Удалить канал вместе со всеми постами и комментариями? Это нельзя отменить.": "Delete the channel with all posts and comments? This cannot be undone.",
- "Не удалось удалить канал.": "Could not delete the channel."
+ "Не удалось удалить канал.": "Could not delete the channel.",
+ "Топ-25 за 24 часа": "Top 25 in the last 24 hours",
+ "Бесплатные голоса за последние 24 часа. Таблица обновляется каждую минуту.": "Free votes in the last 24 hours. The table updates every minute.",
+ "Обновлено в {}": "Updated at {}",
+ "Топ-25 за 24 часа · {}": "Top 25 in the last 24 hours · {}"
 }
