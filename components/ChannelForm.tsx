@@ -38,6 +38,24 @@ export default function ChannelForm({ editId }: { editId?: string }) {
   const [err, setErr] = useState("");
   const [slugState, setSlugState] = useState<"" | "ok" | "bad">("");
   const [loading, setLoading] = useState(!!editId);
+  const [taken, setTaken] = useState<string[]>([]);
+  useEffect(() => {
+    (async () => {
+      const r = await apiPost("/api/channels", { action: "mine" });
+      if (!r?.ok) return;
+      const t = (r.channels as any[]).filter((c) => c.mine && c.id !== editId && c.kind !== "hidden").map((c) => c.kind as string);
+      setTaken(t);
+      if (!editId) setKind((k) => (t.includes(k) ? (["open", "closed", "hidden"].find((x) => !t.includes(x)) as string) : k));
+    })();
+  }, [editId]);
+  async function removeChannel() {
+    if (!editId || !window.confirm("Удалить канал вместе со всеми постами и комментариями? Это нельзя отменить.")) return;
+    setBusy(true);
+    const r = await apiPost("/api/channels", { action: "delete_channel", id: editId });
+    setBusy(false);
+    if (r?.ok) router.replace("/chats");
+    else setErr("Не удалось удалить канал.");
+  }
   const file = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -112,10 +130,10 @@ export default function ChannelForm({ editId }: { editId?: string }) {
       <textarea className={input} rows={3} maxLength={500} placeholder="Описание канала" value={descr} onChange={(e) => setDescr(e.target.value)} />
       <div className="flex flex-col gap-2">
         {KINDS.map((x) => (
-          <label key={x.k} className={`border rounded-xl p-3 cursor-pointer ${kind === x.k ? "border-gold bg-bgSurface" : "border-muted"}`}>
-            <input type="radio" className="mr-2" checked={kind === x.k} onChange={() => setKind(x.k)} />
+          <label key={x.k} className={`border rounded-xl p-3 ${taken.includes(x.k) ? "opacity-40 cursor-not-allowed" : "cursor-pointer"} ${kind === x.k ? "border-gold bg-bgSurface" : "border-muted"}`}>
+            <input type="radio" className="mr-2" disabled={taken.includes(x.k)} checked={kind === x.k} onChange={() => setKind(x.k)} />
             <span className="text-offwhite text-sm font-semibold">{x.t}</span>
-            <p className="text-muted text-xs mt-1">{x.d}</p>
+            <p className="text-muted text-xs mt-1">{taken.includes(x.k) ? "У вас уже есть такой канал." : x.d}</p>
           </label>
         ))}
       </div>
@@ -123,6 +141,9 @@ export default function ChannelForm({ editId }: { editId?: string }) {
       <button disabled={busy || upl || name.trim().length < 2 || (!editId && slugState !== "ok")} onClick={save} className="rounded-full bg-gold text-black font-semibold py-3 disabled:opacity-40">
         {busy ? "Сохраняем…" : editId ? "Сохранить" : "Создать канал"}
       </button>
+      {editId && (
+        <button disabled={busy} onClick={removeChannel} className="rounded-full border border-danger text-danger py-3 text-sm">Удалить канал</button>
+      )}
     </div>
   );
 }

@@ -1651,5 +1651,9 @@
  "Жалоба в вашем канале «{}»": "A report in your channel “{}”",
  "У вас уже есть канал такого вида. Можно один открытый и один закрытый, скрытых — сколько угодно.": "You already have a channel of this kind. You can have one open and one closed channel; hidden ones are unlimited.",
  "🔒 Закрытый · подать заявку": "🔒 Closed · request to join",
- "Открытый · подписаться": "Open · subscribe"
+ "Открытый · подписаться": "Open · subscribe",
+ "У вас уже есть такой канал.": "You already have such a channel.",
+ "Удалить канал": "Delete channel",
+ "Удалить канал вместе со всеми постами и комментариями? Это нельзя отменить.": "Delete the channel with all posts and comments? This cannot be undone.",
+ "Не удалось удалить канал.": "Could not delete the channel."
 }
