@@ -901,9 +901,7 @@ function VotesSection() {
     <div>
       <div className="px-6 mb-4">
         <h1 className="text-2xl font-semibold text-offwhite mb-1">Голоса</h1>
-        <p className="text-muted text-xs mb-3">
-          {topupOn ? "Тестовый режим — реальные деньги пока не подключены. " : ""}1 голос = {pricePerVote} {currencySymbol}.
-        </p>
+        {topupOn && <p className="text-muted text-xs mb-3">Тестовый режим — реальные деньги пока не подключены.</p>}
         <p className="text-muted text-xs mb-1">
           Баланс: <span className="text-gold font-semibold">{loading ? "..." : `${Math.round(walletBalance)} ${currencySymbol}`}</span>
           {topupOn && (
