@@ -36,23 +36,12 @@ export default function RegionClanPage() {
   const [reportFor, setReportFor] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  async function load(regionId: string, cat: string = vc.view) {
-    let mq = supabase
-      .from("region_clan_messages")
-      .select("id, user_id, body, created_at, edited_at, users(first_name)")
-      .eq("region_id", regionId)
-      .eq("is_hidden", false);
-    if (cat !== "all") mq = mq.eq("age_category", cat);
-    const { data } = await mq.order("created_at", { ascending: true }).limit(200);
-    setMessages((data as unknown as Message[]) ?? []);
-
-    let cq = supabase
-      .from("users")
-      .select("id", { count: "exact", head: true })
-      .eq("region_id", regionId);
-    if (cat !== "all") cq = cq.eq("age_category", cat);
-    const { count } = await cq;
-    setMemberCount(count ?? 0);
+  async function load(_regionId: string, cat: string = vc.view) {
+    const r = await apiPost("/api/clan/list", { cat });
+    if (r?.ok) {
+      setMessages(((r.messages ?? []) as any[]).map((m) => ({ ...m, users: { first_name: m.name } })) as unknown as Message[]);
+      setMemberCount(r.memberCount ?? 0);
+    }
   }
 
   useEffect(() => {
