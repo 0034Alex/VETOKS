@@ -48,7 +48,7 @@ export default function ChatPage() {
   const [giftOpen, setGiftOpen] = useState(false);
   const [gifts, setGifts] = useState<{ id: string; name: string; price: number }[]>([]);
   const [balance, setBalance] = useState(0);
-  const [cur, setCur] = useState("₴");
+  const [cur, setCur] = useState("\uE000");
   const [giftMsg, setGiftMsg] = useState("");
   const [giftBusy, setGiftBusy] = useState("");
   const [giftSel, setGiftSel] = useState("");

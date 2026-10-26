@@ -15,7 +15,7 @@ export default function GoalDonorsPage() {
   const router = useRouter();
   const [donors, setDonors] = useState<Donor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currencySymbol, setCurrencySymbol] = useState("₴");
+  const [currencySymbol, setCurrencySymbol] = useState("\uE000");
 
   useEffect(() => {
     (async () => {

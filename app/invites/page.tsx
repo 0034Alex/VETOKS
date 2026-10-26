@@ -22,7 +22,7 @@ const ERR: Record<string, string> = {
 export default function InvitesPage() {
   const router = useRouter();
   const [d, setD] = useState<any>(null);
-  const [cur, setCur] = useState("₴");
+  const [cur, setCur] = useState("\uE000");
   const [copied, setCopied] = useState<"" | "tg" | "web">("");
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");

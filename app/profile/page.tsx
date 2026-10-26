@@ -59,7 +59,8 @@ export default function ProfilePage() {
   const [goalEnabled, setGoalEnabled] = useState(true);
   const [showPrivate, setShowPrivate] = useState(false);
   const [tasksDone, setTasksDone] = useState(0);
-  const [currencySymbol, setCurrencySymbol] = useState("₴");
+  const [currencySymbol, setCurrencySymbol] = useState("\uE000");
+  const [crowns, setCrowns] = useState(0);
   const TOTAL_TASKS = 3;
   const [loading, setLoading] = useState(true);
   const [phoneDone, setPhoneDone] = useState(false);
@@ -209,10 +210,11 @@ export default function ProfilePage() {
 
       const { data: wallet } = await supabase
         .from("wallets")
-        .select("id, balance")
+        .select("id, balance, withdrawable_balance")
         .eq("user_id", u.id)
         .maybeSingle();
       setBalance(wallet ? Number(wallet.balance) : 0);
+      setCrowns(wallet ? Number((wallet as any).withdrawable_balance ?? 0) : 0);
 
       setLoading(false);
     })();
@@ -477,7 +479,7 @@ export default function ProfilePage() {
               <div>
                 <p className="text-muted text-xs">{t("profile.balance")}</p>
                 <p className="text-gold text-xl font-semibold">
-                  {Math.round(balance)} {currencySymbol}
+                  {Math.round(balance)} {currencySymbol} · 👑 {Math.round(crowns * 100) / 100}
                 </p>
               </div>
               <span className="text-gold text-xs">Пополнить · Вывод →</span>

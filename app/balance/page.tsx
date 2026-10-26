@@ -10,12 +10,15 @@ import { apiPost } from "@/lib/authClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import { getCurrencySymbol } from "@/lib/currency";
+import TopUpSheet from "@/components/TopUpSheet";
+import ExchangeSheet from "@/components/ExchangeSheet";
+import CoinIcon from "@/components/CoinIcon";
 
 // Текст окна «Вывод». Когда будет готова политика — вписать сюда номер пункта и раздела.
 const WITHDRAW_INFO =
-  "Вывод средств доступен после окончания сезона — в порядке, который описан в правилах конкурса и политике платформы (раздел и пункт будут указаны здесь).";
+  "Вывод Корон доступен после окончания сезона — в порядке, который описан в правилах конкурса и политике платформы (раздел и пункт будут указаны здесь).";
 
-type Tx = { id: string; type: string; amount: number; created_at: string };
+type Tx = { id: string; type: string; amount: number; created_at: string; metadata?: { cur?: string } | null };
 
 const TYPE_LABELS: Record<string, string> = {
   topup: "Пополнение",
@@ -28,6 +31,7 @@ const TYPE_LABELS: Record<string, string> = {
   referral_reward: "Награда за приглашение",
   referral_commission: "Процент от покупок друга",
   advertiser_bonus: "Бонус за приведённого рекламодателя",
+  exchange: "Обмен Корон на монеты",
 };
 
 export default function BalancePage() {
@@ -35,11 +39,40 @@ export default function BalancePage() {
   const [loading, setLoading] = useState(true);
   const [isParticipant, setIsParticipant] = useState(false);
   const [money, setMoney] = useState(0);
+  const [crowns, setCrowns] = useState(0);
+  const [coinsPerCrown, setCoinsPerCrown] = useState(1);
+  const [exchangeOn, setExchangeOn] = useState(true);
+  const [topOpen, setTopOpen] = useState(false);
+  const [exOpen, setExOpen] = useState(false);
   const [votes, setVotes] = useState(0);
   const [freeLeft, setFreeLeft] = useState(0);
   const [items, setItems] = useState<Tx[]>([]);
-  const [symbol, setSymbol] = useState("₴");
+  const [symbol, setSymbol] = useState("\uE000");
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+
+  async function reload() {
+    const info = await apiPost("/api/wallet/info");
+    if (info?.ok) {
+      setMoney(Number(info.coins));
+      setCrowns(Number(info.crowns));
+      setCoinsPerCrown(Number(info.coinsPerCrown) || 1);
+      setExchangeOn(info.exchangeOn !== false);
+    }
+    const u = await getCurrentUser();
+    if (!u) return;
+    const { data: wallet } = await supabase.from("wallets").select("id").eq("user_id", u.id).maybeSingle();
+    if (wallet) {
+      const { data } = await supabase
+        .from("wallet_transactions")
+        .select("id, type, amount, created_at, metadata")
+        .eq("wallet_id", wallet.id)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      setItems((data as Tx[]) ?? []);
+    }
+    const { data: cr } = await supabase.from("vote_credits").select("balance").eq("user_id", u.id).maybeSingle();
+    setVotes(cr?.balance ?? 0);
+  }
 
   useEffect(() => {
     (async () => {
@@ -59,17 +92,7 @@ export default function BalancePage() {
       const info = await apiPost("/api/shop/vote-info");
       if (info?.ok) setFreeLeft(Number(info.free_left) || 0);
 
-      const { data: wallet } = await supabase.from("wallets").select("id, balance").eq("user_id", u.id).maybeSingle();
-      if (wallet) {
-        setMoney(Number(wallet.balance));
-        const { data } = await supabase
-          .from("wallet_transactions")
-          .select("id, type, amount, created_at")
-          .eq("wallet_id", wallet.id)
-          .order("created_at", { ascending: false })
-          .limit(100);
-        setItems((data as Tx[]) ?? []);
-      }
+      await reload();
       setLoading(false);
     })();
   }, [router]);
@@ -84,35 +107,40 @@ export default function BalancePage() {
       ) : (
         <>
           <div className="px-6 flex flex-col gap-3">
-            {isParticipant ? (
-              <div className="bg-bgSurface border border-gold/40 rounded-2xl p-5">
-                <p className="text-muted text-xs">Ваш баланс</p>
-                <p className="text-gold text-3xl font-semibold mt-1">
-                  {Math.round(money)} {symbol}
-                </p>
-              </div>
-            ) : (
-              <div className="bg-bgSurface border border-gold/40 rounded-2xl p-5">
-                <p className="text-muted text-xs">Ваши голоса</p>
-                <p className="text-gold text-3xl font-semibold mt-1">{votes}</p>
-                {freeLeft > 0 && <p className="text-muted text-xs mt-2">Бесплатных голосов осталось: {freeLeft}</p>}
-              </div>
-            )}
+            <div className="bg-bgSurface border border-gold/40 rounded-2xl p-5">
+              <p className="text-muted text-xs">Монеты</p>
+              <p className="text-gold text-3xl font-semibold mt-1 flex items-center gap-2">
+                <CoinIcon size={30} />
+                {Math.round(money)}
+              </p>
+            </div>
+
+            <div className="bg-bgSurface border border-muted/50 rounded-2xl p-5">
+              <p className="text-muted text-xs">Ваши голоса</p>
+              <p className="text-offwhite text-xl font-semibold mt-1">{votes}</p>
+              {freeLeft > 0 && <p className="text-muted text-xs mt-2">Бесплатных голосов осталось: {freeLeft}</p>}
+            </div>
 
             {isParticipant && (
-              <div className="bg-bgSurface border border-muted/50 rounded-2xl p-5">
-                <p className="text-muted text-xs">Купленные голоса</p>
-                <p className="text-offwhite text-xl font-semibold mt-1">{votes}</p>
+              <div className="bg-bgSurface border border-gold/40 rounded-2xl p-5">
+                <p className="text-muted text-xs">Короны (на вывод)</p>
+                <p className="text-gold text-3xl font-semibold mt-1">👑 {Math.round(crowns * 100) / 100}</p>
+                {exchangeOn && crowns > 0 && (
+                  <button type="button" onClick={() => setExOpen(true)} className="text-offwhite text-xs underline mt-2">
+                    Обменять на монеты
+                  </button>
+                )}
               </div>
             )}
 
             <div className="flex gap-3">
-              <Link
-                href="/shop?section=votes"
-                className="flex-1 h-12 rounded-xl bg-gold text-bgPrimary font-semibold text-sm flex items-center justify-center"
+              <button
+                type="button"
+                onClick={() => setTopOpen(true)}
+                className="flex-1 h-12 rounded-xl bg-gold text-bgPrimary font-semibold text-sm"
               >
                 Пополнить
-              </Link>
+              </button>
               {isParticipant && (
                 <button
                   type="button"
@@ -137,12 +165,10 @@ export default function BalancePage() {
                   <p className="text-offwhite text-sm">{TYPE_LABELS[t.type] ?? t.type}</p>
                   <p className="text-muted text-xs mt-0.5">{new Date(t.created_at).toLocaleString("ru-RU")}</p>
                 </div>
-                {isParticipant && (
-                  <span className={`text-sm font-semibold ${Number(t.amount) >= 0 ? "text-success" : "text-danger"}`}>
-                    {Number(t.amount) >= 0 ? "+" : ""}
-                    {Math.round(t.amount)} {symbol}
-                  </span>
-                )}
+                <span className={`text-sm font-semibold ${Number(t.amount) >= 0 ? "text-success" : "text-danger"}`}>
+                  {Number(t.amount) >= 0 ? "+" : ""}
+                  {Math.round(Number(t.amount) * 100) / 100} {t.metadata?.cur === "crown" ? "👑" : symbol}
+                </span>
               </div>
             ))}
           </div>
@@ -169,6 +195,8 @@ export default function BalancePage() {
         </div>
       )}
 
+      <TopUpSheet open={topOpen} onClose={() => setTopOpen(false)} onDone={() => reload()} />
+      <ExchangeSheet open={exOpen} onClose={() => setExOpen(false)} crowns={crowns} coinsPerCrown={coinsPerCrown} onDone={() => reload()} />
       <BottomNav />
     </main>
   );

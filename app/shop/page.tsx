@@ -12,6 +12,7 @@ import PageHeader from "@/components/PageHeader";
 import FanZoneStrip from "@/components/FanZoneStrip";
 import { applyGiftOverrides, getAppPrices, getCurrencySymbol, getUsdRate } from "@/lib/currency";
 import { apiPost } from "@/lib/authClient";
+import TopUpSheet from "@/components/TopUpSheet";
 import { getMyCountry } from "@/lib/myCountry";
 
 type Gift = {
@@ -115,7 +116,7 @@ function ShopContent() {
   const [section, setSection] = useState<"gifts" | "votes" | "cards">(
     (searchParams.get("section") as "gifts" | "votes" | "cards") ?? "gifts"
   );
-  const [currencySymbol, setCurrencySymbol] = useState("₴");
+  const [currencySymbol, setCurrencySymbol] = useState("\uE000");
   const cardsOn = useCardsEnabled();
 
   useEffect(() => {
@@ -208,6 +209,7 @@ function ShopContent() {
   }, [participantId]);
 
   const topupOn = useTopupEnabled();
+  const [topOpen, setTopOpen] = useState(false);
 
   async function testTopUp() {
     const r = await apiPost("/api/shop/test-topup");
@@ -309,11 +311,6 @@ function ShopContent() {
         <h1 className="text-2xl font-semibold text-offwhite mb-1">
           Подарки{participantName ? ` — ${participantName}` : ""}
         </h1>
-        {topupOn && (
-          <p className="text-muted text-xs">
-            Тестовый режим — реальные деньги пока не подключены
-          </p>
-        )}
       </div>
 
       <p className="px-6 mb-4 text-muted text-xs">
@@ -321,10 +318,11 @@ function ShopContent() {
         {topupOn && (
           <>
             {" · "}
-            <button onClick={testTopUp} className="text-offwhite underline">Пополнить (тест +1000{currencySymbol})</button>
+            <button onClick={() => setTopOpen(true)} className="text-offwhite underline">Пополнить</button>
           </>
         )}
       </p>
+      <TopUpSheet open={topOpen} onClose={() => setTopOpen(false)} onDone={(b) => setBalance(b)} />
 
       {!participantId && (
         <div className="px-6 mb-4">
@@ -591,7 +589,7 @@ function CardsSection() {
   >([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [currencySymbol, setCurrencySymbol] = useState("₴");
+  const [currencySymbol, setCurrencySymbol] = useState("\uE000");
   const [cardPrice, setCardPrice] = useState(120);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [buying, setBuying] = useState(false);
@@ -828,7 +826,7 @@ function VotesSection() {
   const [loading, setLoading] = useState(true);
   const [buyingAmount, setBuyingAmount] = useState<number | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [currencySymbol, setCurrencySymbol] = useState("₴");
+  const [currencySymbol, setCurrencySymbol] = useState("\uE000");
   const [pricePerVote, setPricePerVote] = useState(DEFAULT_PRICE_PER_VOTE);
   const [message, setMessage] = useState("");
 
@@ -869,6 +867,7 @@ function VotesSection() {
   }, []);
 
   const topupOn = useTopupEnabled();
+  const [topOpen, setTopOpen] = useState(false);
 
   async function testTopUp() {
     const r = await apiPost("/api/shop/test-topup");
@@ -901,16 +900,16 @@ function VotesSection() {
     <div>
       <div className="px-6 mb-4">
         <h1 className="text-2xl font-semibold text-offwhite mb-1">Голоса</h1>
-        {topupOn && <p className="text-muted text-xs mb-3">Тестовый режим — реальные деньги пока не подключены.</p>}
-        <p className="text-muted text-xs mb-1">
+                <p className="text-muted text-xs mb-1">
           Баланс: <span className="text-gold font-semibold">{loading ? "..." : `${Math.round(walletBalance)} ${currencySymbol}`}</span>
           {topupOn && (
             <>
               {" · "}
-              <button onClick={testTopUp} className="text-offwhite underline">Пополнить (тест +1000{currencySymbol})</button>
+              <button onClick={() => setTopOpen(true)} className="text-offwhite underline">Пополнить</button>
             </>
           )}
         </p>
+        <TopUpSheet open={topOpen} onClose={() => setTopOpen(false)} onDone={(b) => setWalletBalance(b)} />
         <p className="text-muted text-xs">
           Куплено голосов: <span className="text-gold font-semibold">{loading ? "..." : balance}</span>
         </p>

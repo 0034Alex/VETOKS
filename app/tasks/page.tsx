@@ -43,7 +43,7 @@ export default function TasksPage() {
   const [customTasks, setCustomTasks] = useState<CustomTask[]>([]);
   const [completions, setCompletions] = useState<Record<string, string>>({});
   const [submittingTaskId, setSubmittingTaskId] = useState<string | null>(null);
-  const [currencySymbol, setCurrencySymbol] = useState("₴");
+  const [currencySymbol, setCurrencySymbol] = useState("\uE000");
 
   useEffect(() => {
     (async () => {
@@ -72,7 +72,7 @@ export default function TasksPage() {
 
       let { data: wallet } = await supabase
         .from("wallets")
-        .select("id, balance")
+        .select("id, balance, withdrawable_balance")
         .eq("user_id", u.id)
         .maybeSingle();
 
@@ -83,7 +83,7 @@ export default function TasksPage() {
 
       if (wallet) {
         setWalletId(wallet.id);
-        setBalance(Number(wallet.balance));
+        setBalance(Number((wallet as any).withdrawable_balance ?? 0));
 
         const { data: existingReward } = await supabase
           .from("wallet_transactions")
@@ -185,9 +185,9 @@ export default function TasksPage() {
           </h1>
           <div className="bg-bgSurface border border-gold/40 rounded-xl p-5 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-muted text-xs mb-1">Ваш баланс</p>
+              <p className="text-muted text-xs mb-1">Ваши Короны</p>
               <p className="text-gold text-2xl font-semibold truncate">
-                {Math.round(balance)} {currencySymbol}
+                👑 {Math.round(balance * 100) / 100}
               </p>
             </div>
             <span className="text-3xl flex-shrink-0">🏆</span>
@@ -208,7 +208,7 @@ export default function TasksPage() {
                 Добавьте фото и описание о себе в анкете
               </p>
               <p className="text-gold text-xs mt-1">
-                +{PROFILE_TASK_REWARD} {currencySymbol}
+                +{PROFILE_TASK_REWARD} 👑
               </p>
             </div>
             {profileTaskDone ? (
@@ -238,7 +238,7 @@ export default function TasksPage() {
                   <p data-tr className="text-offwhite font-semibold text-sm">{task.title}</p>
                   <p data-tr className="text-muted text-xs">{task.description}</p>
                   <p className="text-gold text-xs mt-1">
-                    +{Math.round(task.reward)} {currencySymbol}
+                    +{Math.round(task.reward)} 👑
                     {task.deadline && (
                       <span className="text-muted">
                         {" "}

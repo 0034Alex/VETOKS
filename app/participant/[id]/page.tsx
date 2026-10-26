@@ -92,7 +92,7 @@ export default function ParticipantProfilePage() {
   const [goalTarget, setGoalTarget] = useState(5000);
   const [goalCollected, setGoalCollected] = useState(0);
   const [goalEnabled, setGoalEnabled] = useState(true);
-  const [currencySymbol, setCurrencySymbol] = useState("₴");
+  const [currencySymbol, setCurrencySymbol] = useState("\uE000");
   const [cardPrice, setCardPrice] = useState(DEFAULT_CARD_PRICE);
   const [boostPrice, setBoostPrice] = useState(DEFAULT_BOOST_PRICE);
   const [goalDonors, setGoalDonors] = useState<

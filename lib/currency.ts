@@ -45,7 +45,14 @@ async function ensureRateAndSymbol() {
 }
 
 /** Символ текущей валюты (₴ для Украины). */
+// Внутри приложения всё считается в монетах VETOKS (знак — золотая монета с короной, см. globals.css).
+export const COIN = "\uE000";
 export async function getCurrencySymbol(): Promise<string> {
+  return COIN;
+}
+
+/** Настоящая валюта страны (₴) — для оплаты рекламы и пополнения. */
+export async function getRealCurrencySymbol(): Promise<string> {
   await ensureRateAndSymbol();
   return cachedSymbol as string;
 }

@@ -25,12 +25,10 @@ export async function sameCountry(a: string, b: string): Promise<boolean> {
   return ca === cb;
 }
 
-// Символ валюты страны человека (₴ для Украины) — для уведомлений и сообщений бота.
-export async function currencyOfUser(uid: string): Promise<string> {
-  const cid = await countryOfUser(uid);
-  if (!cid) return "₴";
-  const { data } = await supabaseAdmin.from("countries").select("currency_symbol").eq("id", cid).maybeSingle();
-  return ((data as any)?.currency_symbol as string) || "₴";
+// Название денег в уведомлениях и сообщениях бота: внутри приложения всё в монетах
+// (знак монеты в Telegram не рисуется, поэтому пишем словом).
+export async function currencyOfUser(_uid: string): Promise<string> {
+  return "монет";
 }
 
 // Настройки платформы по странам: сначала "<ключ>:<id страны>", потом общее "<ключ>".

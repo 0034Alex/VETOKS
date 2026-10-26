@@ -33,7 +33,7 @@ export default function HistoryPage() {
   const router = useRouter();
   const [items, setItems] = useState<Tx[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currencySymbol, setCurrencySymbol] = useState("₴");
+  const [currencySymbol, setCurrencySymbol] = useState("\uE000");
 
   useEffect(() => {
     (async () => {
@@ -54,7 +54,7 @@ export default function HistoryPage() {
       if (wallet) {
         const { data } = await supabase
           .from("wallet_transactions")
-          .select("id, type, amount, created_at")
+          .select("id, type, amount, created_at, metadata")
           .eq("wallet_id", wallet.id)
           .order("created_at", { ascending: false })
           .limit(100);
@@ -97,7 +97,7 @@ export default function HistoryPage() {
               }`}
             >
               {Number(t.amount) >= 0 ? "+" : ""}
-              {Math.round(t.amount)} {currencySymbol}
+              {Math.round(Number(t.amount) * 100) / 100} {(t as any).metadata?.cur === "crown" ? "👑" : currencySymbol}
             </span>
           </div>
         ))}

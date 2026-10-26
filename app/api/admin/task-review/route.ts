@@ -24,7 +24,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: (data as any)?.error ?? "failed" }, { status: 400 });
     }
     const d = data as any;
-    await notify(d.user_id, `✅ Задание «${d.title}» одобрено — начислено ${Math.round(Number(d.reward))} ${await currencyOfUser(d.user_id)}`, "/tasks", "tasks");
+    await notify(d.user_id, `✅ Задание «${d.title}» одобрено — начислено ${Math.round(Number(d.reward))} Корон`, "/tasks", "tasks");
     return NextResponse.json({ ok: true });
   }
 
