@@ -50,6 +50,17 @@ export default function BalancePage() {
   const [symbol, setSymbol] = useState("\uE000");
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
+  // Ссылки из меню профиля: /balance?open=topup | exchange | withdraw
+  useEffect(() => {
+    if (loading) return;
+    try {
+      const o = new URLSearchParams(window.location.search).get("open");
+      if (o === "topup") setTopOpen(true);
+      else if (o === "exchange") setExOpen(true);
+      else if (o === "withdraw") setWithdrawOpen(true);
+    } catch {}
+  }, [loading]);
+
   async function reload() {
     const info = await apiPost("/api/wallet/info");
     if (info?.ok) {

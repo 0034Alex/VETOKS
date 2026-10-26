@@ -515,7 +515,7 @@ export function Drawer({
           bottom: 0,
           height: "100%",
           paddingTop: "calc(env(safe-area-inset-top) + 16px)",
-          paddingBottom: "calc(env(safe-area-inset-bottom) + 40px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom) + 130px)",
           WebkitOverflowScrolling: "touch",
           touchAction: "pan-y",
         }}

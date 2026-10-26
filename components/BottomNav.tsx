@@ -192,6 +192,8 @@ export default function BottomNav() {
   const flat = `M0,0 L${w},0 L${w},${E} L0,${E} Z`;
 
   return (
+    <>
+    <div aria-hidden="true" style={{ height: "calc(env(safe-area-inset-bottom) + 2rem)" }} />
     <nav
       style={{
         position: "fixed",
@@ -261,5 +263,6 @@ export default function BottomNav() {
         </div>
       </div>
     </nav>
+    </>
   );
 }

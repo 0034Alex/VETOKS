@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import SocialLinksBar from "@/components/SocialLinksBar";
 import FollowsSheet from "@/components/FollowsSheet";
+import CoinIcon from "@/components/CoinIcon";
 import ProfileHero, { TopBtn, Drawer, IconBell, IconMenu, IconSend, shareLink, KpiCrown, KpiHeart, KpiGift } from "@/components/ProfileHero";
 import ProfileTabs from "@/components/ProfileTabs";
 import { parseLinks } from "@/lib/socialLinks";
@@ -61,6 +62,7 @@ export default function ProfilePage() {
   const [tasksDone, setTasksDone] = useState(0);
   const [currencySymbol, setCurrencySymbol] = useState("\uE000");
   const [crowns, setCrowns] = useState(0);
+  const [votes, setVotes] = useState(0);
   const TOTAL_TASKS = 3;
   const [loading, setLoading] = useState(true);
   const [phoneDone, setPhoneDone] = useState(false);
@@ -215,6 +217,8 @@ export default function ProfilePage() {
         .maybeSingle();
       setBalance(wallet ? Number(wallet.balance) : 0);
       setCrowns(wallet ? Number((wallet as any).withdrawable_balance ?? 0) : 0);
+      const { data: vc } = await supabase.from("vote_credits").select("balance").eq("user_id", u.id).maybeSingle();
+      setVotes(Number(vc?.balance ?? 0));
 
       setLoading(false);
     })();
@@ -473,34 +477,59 @@ export default function ProfilePage() {
         </div>
       )}
 
-        {participant && (
-          <Link href="/balance" className="block bg-bgPrimary border border-gold/40 rounded-xl p-4 mt-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-muted text-xs">{t("profile.balance")}</p>
-                <p className="text-gold text-xl font-semibold">
-                  {Math.round(balance)} {currencySymbol} · 👑 {Math.round(crowns * 100) / 100}
-                </p>
+        {participant ? (
+          <div className="bg-bgPrimary border border-gold/40 rounded-2xl p-4 mt-3">
+            <p className="text-muted text-[11px] tracking-wide mb-2">{t("profile.balance").toUpperCase()}</p>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-bgSurface border border-gold/30 rounded-xl p-2.5 min-w-0">
+                <p className="text-muted text-[11px]">Монеты</p>
+                <p className="text-gold text-lg font-bold flex items-center gap-1 mt-1"><CoinIcon size={16} />{Math.round(balance)}</p>
               </div>
-              <span className="text-gold text-xs">Пополнить · Вывод →</span>
+              <div className="bg-bgSurface border border-muted/50 rounded-xl p-2.5 min-w-0">
+                <p className="text-muted text-[11px]">Голоса</p>
+                <p className="text-offwhite text-lg font-bold mt-1">{votes}</p>
+              </div>
+              <div className="bg-bgSurface border border-gold/30 rounded-xl p-2.5 min-w-0">
+                <p className="text-muted text-[11px]">Короны</p>
+                <p className="text-gold text-lg font-bold mt-1 truncate">👑 {Math.round(crowns * 100) / 100}</p>
+              </div>
             </div>
-          </Link>
-        )}
-
-        {participant && goalText && goalEnabled && (
-          <a href="/goal-donors" className="block bg-bgPrimary border border-gold/40 rounded-xl p-4 mt-3">
-            <p className="text-offwhite text-sm font-semibold mb-1">🎯 Цель недели</p>
-            <p className="text-muted text-xs mb-3">{goalText}</p>
-            <div className="w-full bg-black/30 rounded-full h-2 mb-1">
-              <div className="bg-gold rounded-full h-2" style={{ width: `${goalPct}%` }} />
+            <div className="grid grid-cols-3 gap-2 mt-3">
+              <a href="/balance?open=topup" className="bg-gold text-bgPrimary rounded-xl py-2.5 text-xs font-bold text-center">Пополнить</a>
+              <a href="/balance?open=exchange" className="border border-gold/50 text-offwhite rounded-xl py-2.5 text-xs font-semibold text-center">Обменять</a>
+              <a href="/balance?open=withdraw" className="border border-gold/50 text-offwhite rounded-xl py-2.5 text-xs font-semibold text-center">Вывод</a>
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-muted text-xs">
-                Собрано {Math.round(goalCollected)} / {goalTarget} {currencySymbol}
-              </p>
-              <span className="text-gold text-xs">Кто донатил ▾</span>
+            {goalText && goalEnabled && (
+              <a href="/goal-donors" className="block border-t border-muted/40 mt-3 pt-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-offwhite text-xs font-semibold">🎯 Цель недели · {goalText}</p>
+                  <span className="text-muted text-xs">{Math.round(goalPct)}%</span>
+                </div>
+                <div className="w-full bg-black/30 rounded-full h-2 mt-2 mb-1">
+                  <div className="bg-gold rounded-full h-2" style={{ width: `${goalPct}%` }} />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-muted text-xs">
+                    Собрано {Math.round(goalCollected)} / {goalTarget}
+                  </p>
+                  <span className="text-gold text-xs">Кто донатил ▾</span>
+                </div>
+              </a>
+            )}
+          </div>
+        ) : (
+          <div className="bg-bgPrimary border border-gold/40 rounded-2xl p-4 mt-3">
+            <div className="flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-muted text-[11px] tracking-wide">МОНЕТЫ</p>
+                <p className="text-gold text-2xl font-bold flex items-center gap-2 mt-1"><CoinIcon size={26} />{Math.round(balance)}</p>
+              </div>
+              <a href="/balance?open=topup" className="bg-gold text-bgPrimary rounded-xl px-4 py-2.5 text-xs font-bold whitespace-nowrap">Пополнить</a>
             </div>
-          </a>
+            <a href="/balance" className="inline-flex items-center gap-1.5 bg-bgSurface border border-muted/50 rounded-full px-3 py-1 text-xs text-offwhite mt-3">
+              🗳 Голоса <b>{votes}</b>
+            </a>
+          </div>
         )}
 
         {participant && (
@@ -534,7 +563,6 @@ export default function ProfilePage() {
           {participant && <Row href="/black-marks" label={t("profile.blackMarks")} />}
           <Row href="/edit-profile" label={t("profile.edit")} />
           {(participant || isPartner) && <Row href="/documents" label={t("profile.docs")} />}
-          {!participant && <Row href="/balance" label={t("profile.balance")} />}
           <Row href="/settings" label={t("profile.settings")} />
           <Row href="/support" label={t("profile.support")} />
         </div>
