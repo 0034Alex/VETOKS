@@ -29,7 +29,7 @@ export default function AdminCoinsPanel() {
   const s = coinSettingsFrom({ ...v, coin_packs: JSON.stringify(packs) });
 
   async function save() {
-    const out = { ...v, coin_packs: JSON.stringify(packs) };
+    const out: Record<string, string> = { ...v, coin_packs: JSON.stringify(packs) };
     await supabase
       .from("platform_settings")
       .upsert(COIN_KEYS.map((k) => ({ key: scopedKey(k, getCrmCountry() || null), value: out[k] ?? "" })));
