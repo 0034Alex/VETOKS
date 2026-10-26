@@ -481,17 +481,17 @@ export default function ProfilePage() {
           <div className="bg-bgPrimary border border-gold/40 rounded-2xl p-4 mt-3">
             <p className="text-muted text-[11px] tracking-wide mb-2">{t("profile.balance").toUpperCase()}</p>
             <div className="grid grid-cols-3 gap-2">
-              <div className="bg-bgSurface border border-gold/30 rounded-xl p-2.5 min-w-0">
+              <div className="vb-tile bg-bgSurface border border-gold/30 rounded-xl p-2.5 min-w-0">
                 <p className="text-muted text-[11px]">Монеты</p>
-                <p className="text-gold text-lg font-bold flex items-center gap-1 mt-1"><CoinIcon size={16} />{Math.round(balance)}</p>
+                <p className="vb-num text-gold font-bold flex items-center gap-1 mt-1"><CoinIcon size={16} />{Math.round(balance).toLocaleString("ru-RU")}</p>
               </div>
-              <div className="bg-bgSurface border border-muted/50 rounded-xl p-2.5 min-w-0">
+              <div className="vb-tile bg-bgSurface border border-muted/50 rounded-xl p-2.5 min-w-0">
                 <p className="text-muted text-[11px]">Голоса</p>
-                <p className="text-offwhite text-lg font-bold mt-1">{votes}</p>
+                <p className="vb-num text-offwhite font-bold mt-1">{votes.toLocaleString("ru-RU")}</p>
               </div>
-              <div className="bg-bgSurface border border-gold/30 rounded-xl p-2.5 min-w-0">
+              <div className="vb-tile bg-bgSurface border border-gold/30 rounded-xl p-2.5 min-w-0">
                 <p className="text-muted text-[11px]">Короны</p>
-                <p className="text-gold text-lg font-bold mt-1 truncate">👑 {Math.round(crowns * 100) / 100}</p>
+                <p className="vb-num text-gold font-bold mt-1 flex items-center gap-1"><span>👑</span>{(Math.round(crowns * 100) / 100).toLocaleString("ru-RU")}</p>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2 mt-3">
@@ -522,7 +522,7 @@ export default function ProfilePage() {
             <div className="flex items-end justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-muted text-[11px] tracking-wide">МОНЕТЫ</p>
-                <p className="text-gold text-2xl font-bold flex items-center gap-2 mt-1"><CoinIcon size={26} />{Math.round(balance)}</p>
+                <p className="text-gold text-2xl font-bold flex items-center gap-2 mt-1 whitespace-nowrap"><CoinIcon size={26} />{Math.round(balance).toLocaleString("ru-RU")}</p>
               </div>
               <a href="/balance?open=topup" className="bg-gold text-bgPrimary rounded-xl px-4 py-2.5 text-xs font-bold whitespace-nowrap">Пополнить</a>
             </div>

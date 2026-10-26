@@ -55,3 +55,15 @@ p, h1, h2, h3 {
 .fixed.inset-0.overflow-y-auto {
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
+
+/* Цифры баланса в плитках меню: в одну строку, размер подстраивается под ширину плитки */
+.vb-tile { container-type: inline-size; }
+.vb-num {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  line-height: 1.2;
+}
+@supports (font-size: 1cqw) {
+  .vb-num { font-size: clamp(11px, 17cqw, 19px); }
+}

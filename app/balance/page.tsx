@@ -187,7 +187,7 @@ export default function BalancePage() {
       )}
 
       {withdrawOpen && (
-        <div className="fixed inset-0 z-[70] bg-black/65 flex items-end justify-center" onClick={() => setWithdrawOpen(false)}>
+        <div className="fixed inset-0 z-[300] bg-black/65 flex items-end justify-center" onClick={() => setWithdrawOpen(false)}>
           <div
             className="w-full max-w-md bg-bgSurface rounded-t-2xl p-6"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)" }}
