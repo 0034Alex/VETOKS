@@ -428,13 +428,13 @@ export default function AdminPage() {
   return (
     <main className="min-h-screen bg-bgPrimary text-offwhite">
       <div
-        className="flex items-center gap-3 px-4 py-4 border-b border-muted"
+        className="flex items-center gap-2 px-4 py-4 border-b border-muted min-w-0"
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}
       >
         <button onClick={() => setMenuOpen(true)} className="md:hidden text-2xl text-gold leading-none" aria-label="Открыть меню">
           ☰
         </button>
-        <h1 className="md:hidden text-xl font-semibold text-gold">CRM</h1>
+        <h1 className="md:hidden text-lg font-semibold text-gold whitespace-nowrap">CRM</h1>
         <span className="text-xs border border-gold/60 text-gold rounded-full px-2.5 py-1 whitespace-nowrap" title={me?.email ?? ""}>
           {roleLabel}
         </span>
@@ -464,11 +464,11 @@ export default function AdminPage() {
 
       <div className="md:flex md:gap-6 md:px-6 md:py-6">
         <aside className="hidden md:block w-60 flex-none self-start sticky top-4 bg-bgSurface border border-muted rounded-[18px] p-3.5">
-          <div className="text-gold font-extrabold tracking-[0.18em] text-[15px] px-2 pt-1 pb-3">VETOKS · CRM</div>
+          <div className="text-gold font-extrabold tracking-[0.1em] text-sm px-2 pt-1 pb-3 whitespace-nowrap">VETOKS · CRM</div>
           {menu}
         </aside>
         <div className="flex-1 min-w-0 px-4 md:px-0 py-6 pb-20">
-          <div className="bg-bgSurface border border-muted rounded-[18px] p-4 md:p-5">
+          <div className="bg-bgSurface border border-muted rounded-[18px] p-4 md:p-5 overflow-x-auto max-w-full">
           {curGroup && (
             <div className="mb-4">
               <h2 className="text-xl font-bold text-offwhite">{curGroup.ic} {curGroup.label}</h2>
@@ -3726,7 +3726,7 @@ function MagazineAdsTab() {
 
 // ---------------------------------------------------------------------
 // СТРАНЫ И РЕГИОНЫ — включение/отключение страны целиком (вместе со всеми
-// её регионами) и курс доллара к гривне для конвертации цен.
+// её регионами).
 // ---------------------------------------------------------------------
 
 type CountryRow = {
@@ -3742,9 +3742,6 @@ type CountryRow = {
 function CountriesTab() {
   const [countries, setCountries] = useState<CountryRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [usdRate, setUsdRate] = useState("");
-  const [rateSaving, setRateSaving] = useState(false);
-  const [rateSaved, setRateSaved] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -3770,8 +3767,6 @@ function CountriesTab() {
       }))
     );
 
-    const rateMap = await loadScoped(["usd_to_uah_rate"], getCrmCountry() || null);
-    setUsdRate(rateMap.usd_to_uah_rate ?? "");
 
     setLoading(false);
   }
@@ -3790,16 +3785,6 @@ function CountriesTab() {
         row.id === c.id ? { ...row, enabled: !row.enabled } : row
       )
     );
-  }
-
-  async function saveRate() {
-    setRateSaving(true);
-    await supabase
-      .from("platform_settings")
-      .upsert({ key: scopedKey("usd_to_uah_rate", getCrmCountry() || null), value: usdRate });
-    setRateSaving(false);
-    setRateSaved(true);
-    setTimeout(() => setRateSaved(false), 2000);
   }
 
   if (loading) return <p className="text-muted">Загрузка...</p>;
@@ -3844,36 +3829,6 @@ function CountriesTab() {
           У выключенной страны её регионы не предлагаются при регистрации
           и в списках по регионам.
         </p>
-      </div>
-
-      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
-        <p className="text-offwhite text-sm font-semibold mb-2">
-          Курс доллара к гривне
-        </p>
-        <p className="text-muted text-xs mb-3">
-          Используется для пересчёта цен, заданных в долларах, в гривны
-          для показа пользователям из Украины.
-        </p>
-        <div className="flex items-center gap-2">
-          <input
-            value={usdRate}
-            onChange={(e) => setUsdRate(e.target.value)}
-            placeholder="напр. 41.5"
-            className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
-          />
-          <button
-            onClick={saveRate}
-            disabled={rateSaving}
-            className="bg-gold text-bgPrimary font-semibold px-5 py-2 rounded-full text-sm disabled:opacity-50"
-          >
-            Сохранить
-          </button>
-        </div>
-        {rateSaved && (
-          <span className="text-success text-sm mt-2 inline-block">
-            Сохранено!
-          </span>
-        )}
       </div>
     </div>
   );

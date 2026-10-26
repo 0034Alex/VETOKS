@@ -40,6 +40,7 @@ export default function AdminPricesPanel() {
   const cc = getCrmCountry() || null;
   const [sym, setSym] = useState("₴");
   const [rate, setRate] = useState(41);
+  const [rateStr, setRateStr] = useState("41");
   const [rows, setRows] = useState<PriceRow[]>(PRICE_DEFAULTS);
   const [gifts, setGifts] = useState<GiftRow[]>([]);
   const [freeVotes, setFreeVotes] = useState("3");
@@ -59,6 +60,7 @@ export default function AdminPricesPanel() {
     const m = await loadScoped(["usd_to_uah_rate", "free_votes_total", "test_topup_enabled", "user_gift_share_percent"], getCrmCountry() || null);
     const r = Number(m.usd_to_uah_rate);
     setRate(Number.isFinite(r) && r > 0 ? r : 41);
+    setRateStr(String(Number.isFinite(r) && r > 0 ? r : 41));
     setFreeVotes(m.free_votes_total ?? "3");
     setUserShare(m.user_gift_share_percent ?? "");
     setTopupOn(m.test_topup_enabled !== "false");
@@ -188,10 +190,29 @@ export default function AdminPricesPanel() {
           ? "Вы правите цены ТОЛЬКО выбранной страны (другие страны не затрагиваются). Если для позиции ничего не сохранено, действует общая цена. "
           : "Это общие цены — они действуют в странах, где не заданы свои. Чтобы задать цены одной страны, выберите её вверху CRM. "}
         Цена задаётся в долларах и показывается в местной валюте по курсу {rate} {sym} за
-        $1 (курс меняется на вкладке «Страны и регионы»). «Доля участницы» —
+        $1 (курс задаётся ниже, в самом верху этой страницы). «Доля участницы» —
         сколько процентов от цены получает участница, которой подарили /
         купили. Остальное остаётся платформе.
       </p>
+
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
+        <p className="text-offwhite text-sm font-semibold mb-1">Курс доллара к местной валюте</p>
+        <p className="text-muted text-xs mb-3">Нужен только для пересчёта цен ниже, заданных в долларах. Свой у каждой страны.</p>
+        <div className="flex items-center gap-2">
+          <input value={rateStr} onChange={(e) => setRateStr(e.target.value)} placeholder="напр. 41.5" className={inputCls} />
+          <button
+            className={btnCls}
+            onClick={async () => {
+              await saveSetting("usd_to_uah_rate", rateStr);
+              const r = Number(rateStr);
+              if (Number.isFinite(r) && r > 0) setRate(r);
+            }}
+          >
+            Сохранить
+          </button>
+          {savedKey === "usd_to_uah_rate" && <span className="text-success text-sm">Сохранено!</span>}
+        </div>
+      </div>
 
       <h3 className="text-offwhite font-semibold mb-2">Основное</h3>
       <div className="flex flex-col gap-3 mb-8">
