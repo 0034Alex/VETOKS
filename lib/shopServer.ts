@@ -76,6 +76,12 @@ export async function pay(
     const { ambassadorBonus } = await import("@/lib/ambassador");
     finalShare = Math.min(100, share + (await ambassadorBonus(participantId)));
   }
+  // Доля участнице считается в Коронах: курс «монета → Корона» из CRM.
+  let rate = 1;
+  if (participantId && finalShare > 0) {
+    const { coinSettingsOfUser } = await import("@/lib/coinsServer");
+    rate = (await coinSettingsOfUser(userId)).crownPerCoin;
+  }
   const { data, error } = await supabaseAdmin.rpc("vt_pay", {
     p_user: userId,
     p_amount: amount,
@@ -83,6 +89,7 @@ export async function pay(
     p_participant: participantId,
     p_share: finalShare,
     p_meta: meta,
+    p_rate: rate,
   });
   if (error || !data) return { ok: false, error: "pay_failed", detail: error?.message };
   if ((data as any).ok) {

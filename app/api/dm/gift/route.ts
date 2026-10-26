@@ -115,7 +115,9 @@ export async function POST(req: Request) {
     if (!res.ok) return bad(res.error, res.error === "not_enough" ? 402 : 500, { balance: res.balance });
     txId = res.tx_id;
     balance = res.balance;
-    earning = Math.round((total * share) / 100 * 100) / 100;
+    const { coinSettingsOfUser } = await import("@/lib/coinsServer");
+    const crownRate = (await coinSettingsOfUser(uid)).crownPerCoin;
+    earning = Math.round((total * share) / 100 * crownRate * 100) / 100;
     if (earning > 0) {
       const { error } = await supabaseAdmin.rpc("vt_credit", {
         p_user: to,

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, isStaff, CurrentUser } from "@/lib/currentUser";
 import AdminPricesPanel from "@/components/AdminPricesPanel";
+import AdminCoinsPanel from "@/components/AdminCoinsPanel";
 import AdminRatingPanel from "@/components/AdminRatingPanel";
 import AdminBlackMarksPanel from "@/components/AdminBlackMarksPanel";
 import { apiPost } from "@/lib/authClient";
@@ -84,6 +85,7 @@ type Tab =
   | "black-marks"
   | "countries"
   | "app-prices"
+  | "coins"
   | "rating-admin"
   | "reports"
   | "ad-stats"
@@ -127,6 +129,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "black-marks", label: "Чёрная метка" },
   { key: "countries", label: "Страны и регионы" },
   { key: "app-prices", label: "Цены (в долларах)" },
+  { key: "coins", label: "Монеты и Короны" },
   { key: "rating-admin", label: "Рейтинг и титулы" },
   { key: "reports", label: "Жалобы" },
   { key: "content-mod", label: "Проверка контента" },
@@ -162,7 +165,7 @@ const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: 
   { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["stages", "rating-admin", "goal", "tasks", "cards"] },
   { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "broadcast", "mediafeed", "channels", "banners"] },
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["content-mod", "reports", "clan"] },
-  { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["app-prices", "referrals"] },
+  { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["coins", "app-prices", "referrals"] },
   { key: "ads", ic: "📣", label: "Реклама и партнёры", desc: "Всё, что приносит доход от партнёров", tabs: ["partners", "partner-logos", "ad-space", "ad-prices", "ad-stats", "magazine-ads", "branding"] },
   { key: "set", ic: "⚙️", label: "Настройки", desc: "Страны, языки, доступы", tabs: ["countries", "translations", "social", "documents", "staff", "action-log", "security"] },
 ];
@@ -444,6 +447,7 @@ export default function AdminPage() {
         {tab === "security" && <AdminSecurityPanel />}
         {tab === "countries" && <CountriesTab />}
         {tab === "app-prices" && <AdminPricesPanel />}
+        {tab === "coins" && <AdminCoinsPanel />}
         {tab === "documents" && <AdminDocumentsPanel />}
         {tab === "posters" && <AdminPostersPanel />}
         {tab === "calendar" && <CalendarTab />}

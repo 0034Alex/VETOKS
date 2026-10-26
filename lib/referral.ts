@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { notify } from "@/lib/shopServer";
-import { countryOfUser, sameCountry, currencyOfUser } from "@/lib/countryServer";
+import { countryOfUser, sameCountry } from "@/lib/countryServer";
 import { familyRootId } from "@/lib/familyServer";
 
 export const REF_KEYS = ["referral_enabled", "referral_reward_referrer", "referral_reward_invited", "referral_daily_limit", "referral_max_rewarded", "referral_percent", "referral_percent_days"];
@@ -47,17 +47,15 @@ export async function qualifyReferral(userId: string) {
     const r = data as any;
     if (!r?.ok) return;
     const paid = Number(r.reward_referrer);
-    const sym = await currencyOfUser(r.referrer_id);
-    const symInv = await currencyOfUser(userId);
     await notify(
       r.referrer_id,
       paid > 0
-        ? `🎉 Ваш друг подтвердил номер — вам начислено ${Math.round(paid)} ${sym}`
+        ? `🎉 Ваш друг подтвердил номер — вам начислено ${Math.round(paid)} монет`
         : "🎉 Ваш друг подтвердил номер — приглашение засчитано",
       "/invites"
     );
     if (Number(r.reward_invited) > 0) {
-      await notify(userId, `🎁 Бонус за приглашение: ${Math.round(Number(r.reward_invited))} ${symInv}`, "/history");
+      await notify(userId, `🎁 Бонус за приглашение: ${Math.round(Number(r.reward_invited))} монет`, "/history");
     }
   } catch {
     /* награда не должна ломать подтверждение номера */
