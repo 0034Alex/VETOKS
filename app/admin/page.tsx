@@ -170,6 +170,52 @@ const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: 
   { key: "set", ic: "⚙️", label: "Настройки", desc: "Страны, языки, доступы", tabs: ["countries", "translations", "social", "documents", "staff", "action-log", "security"] },
 ];
 
+// Короткие подсказки под пунктами меню: что внутри.
+const TAB_DESC: Partial<Record<Tab, string>> = {
+  dashboard: "Цифры и что ждёт решения",
+  support: "Обращения людей",
+  users: "Все пользователи",
+  participants: "Участницы конкурса",
+  applications: "Новые анкеты на проверку",
+  badges: "Значки и награды",
+  "black-marks": "Нарушения правил",
+  stages: "Этапы и сезон",
+  "rating-admin": "Рейтинг и голоса",
+  goal: "Цель недели",
+  tasks: "Задания и проверка",
+  cards: "Карточки участниц",
+  calendar: "Календарь событий",
+  media: "Материалы для медиа",
+  official: "Официальные посты",
+  posters: "Афиши",
+  "media-demo-upload": "Демо-ролики",
+  "home-settings": "Главная страница",
+  broadcast: "Рассылки",
+  mediafeed: "Лента медиа",
+  channels: "Каналы",
+  banners: "Баннеры",
+  "content-mod": "Проверка контента",
+  reports: "Жалобы на ролики",
+  clan: "Чаты кланов",
+  coins: "Курсы, пакеты, бонусы",
+  "app-prices": "Цены в приложении",
+  referrals: "Рефералы и комиссии",
+  partners: "Партнёры и связь",
+  "partner-logos": "Логотипы партнёров",
+  "ad-space": "Рекламные места",
+  "ad-prices": "Цены рекламы",
+  "ad-stats": "Статистика рекламы",
+  "magazine-ads": "Реклама в журнале",
+  branding: "Брендирование",
+  countries: "Страны и валюты",
+  translations: "Переводы",
+  social: "Соцсети",
+  documents: "Документы и правила",
+  staff: "Сотрудники и права",
+  "action-log": "Кто что менял",
+  security: "Безопасность",
+};
+
 const ROLE_LABELS: Record<string, string> = {
   super_admin: "Владелец",
   moderator: "Модератор",
@@ -218,7 +264,7 @@ function CrmCountrySwitch({ allowedIds }: { allowedIds: string[] | null }) {
     });
   }, [allowedIds]);
   if (allowedIds && list.length <= 1) {
-    return <span className="ml-auto text-xs text-gold border border-gold/60 rounded-lg px-2 py-1.5">{list[0]?.name ?? "—"}</span>;
+    return <span className="text-sm text-gold border border-gold/60 rounded-lg px-3 py-1.5">{list[0]?.name ?? "—"}</span>;
   }
   return (
     <select
@@ -228,7 +274,7 @@ function CrmCountrySwitch({ allowedIds }: { allowedIds: string[] | null }) {
         setVal(e.target.value);
         window.location.reload();
       }}
-      className="ml-auto bg-bgPrimary border border-gold/60 text-gold rounded-lg px-2 py-1.5 text-xs max-w-[45%]"
+      className="bg-bgPrimary border border-gold text-gold font-semibold rounded-lg px-3 py-1.5 text-sm min-w-0 max-w-[60vw]"
       aria-label="Страна CRM"
     >
       {!allowedIds && <option value="">🌐 Общие (все страны)</option>}
@@ -244,12 +290,13 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
   const [group, setGroup] = useState<string>("today");
+  const [openGroup, setOpenGroup] = useState<string | null>("today");
   const [checking, setChecking] = useState(true);
   const [allowed, setAllowed] = useState(false);
   const [me, setMe] = useState<CurrentUser | null>(null);
   function go(t: Tab) {
     const g = CRM_GROUPS.find((x) => x.tabs.includes(t));
-    if (g) setGroup(g.key);
+    if (g) { setGroup(g.key); setOpenGroup(g.key); }
     setTab(t);
     setMenuOpen(false);
   }
@@ -273,6 +320,7 @@ export default function AdminPage() {
         const firstGroup = CRM_GROUPS.find((g) => g.tabs.some((t) => acc[t]));
         if (firstGroup) {
           setGroup(firstGroup.key);
+          setOpenGroup(firstGroup.key);
           setTab(firstGroup.tabs.find((t) => acc[t])!);
         }
       }
@@ -323,23 +371,55 @@ export default function AdminPage() {
   const menu = (
     <nav className="flex flex-col gap-1">
       {visibleGroups.map((g) => {
-        const allRead = g.tabs.filter((t) => access[t]).every((t) => access[t] === "r");
+        const open = openGroup === g.key;
+        const items = g.tabs.filter((t) => access[t]);
+        const allRead = items.every((t) => access[t] === "r");
         return (
-          <button
-            key={g.key}
-            onClick={() => {
-              setGroup(g.key);
-              setTab(g.tabs.find((t) => access[t])!);
-              setMenuOpen(false);
-            }}
-            className={`flex items-center gap-3 text-left px-3 py-2.5 rounded-[11px] text-sm ${
-              g.key === curGroup?.key ? "bg-[#1F1938] text-offwhite shadow-[inset_3px_0_0_#E8D48A]" : "text-offwhite hover:bg-[#1F1938]"
-            }`}
-          >
-            <span className="w-6 text-center text-base">{g.ic}</span>
-            <span className="flex-1">{g.label}</span>
-            {allRead && <span className="text-muted text-xs">👁</span>}
-          </button>
+          <div key={g.key}>
+            <button
+              onClick={() => {
+                if (open) {
+                  setOpenGroup(null);
+                } else {
+                  setOpenGroup(g.key);
+                  if (g.key !== curGroup?.key) {
+                    setGroup(g.key);
+                    setTab(items[0]);
+                  }
+                }
+              }}
+              className={`w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-[11px] text-sm ${
+                g.key === curGroup?.key ? "bg-[#1F1938] text-offwhite" : "text-offwhite hover:bg-[#1F1938]"
+              }`}
+            >
+              <span className="w-6 text-center text-base">{g.ic}</span>
+              <span className="flex-1 font-semibold">{g.label}</span>
+              {allRead && <span className="text-muted text-xs">👁</span>}
+              <span className={`text-muted text-xs transition-transform ${open ? "rotate-90" : ""}`}>›</span>
+            </button>
+            {open && (
+              <div className="ml-5 mt-1 mb-1 pl-3 border-l border-muted/50 flex flex-col gap-0.5">
+                {items.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => {
+                      setGroup(g.key);
+                      setTab(t);
+                      setMenuOpen(false);
+                    }}
+                    className={`text-left px-3 py-2 rounded-[9px] ${
+                      tab === t ? "bg-gold/15 shadow-[inset_3px_0_0_#E8D48A]" : "hover:bg-[#1F1938]"
+                    }`}
+                  >
+                    <div className={`text-[13px] ${tab === t ? "text-gold font-semibold" : "text-offwhite"}`}>
+                      {TABS.find((x) => x.key === t)?.label}
+                    </div>
+                    {TAB_DESC[t] && <div className="text-[11px] text-muted leading-tight">{TAB_DESC[t]}</div>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         );
       })}
     </nav>
@@ -358,7 +438,10 @@ export default function AdminPage() {
         <span className="text-xs border border-gold/60 text-gold rounded-full px-2.5 py-1 whitespace-nowrap" title={me?.email ?? ""}>
           {roleLabel}
         </span>
-        <CrmCountrySwitch allowedIds={me?.role === "super_admin" ? null : Array.isArray(me?.staff_countries) ? (me!.staff_countries as string[]) : null} />
+        <div className="ml-auto flex items-center gap-2 min-w-0">
+          <span className="hidden sm:inline text-xs text-muted whitespace-nowrap">🌍 Страна CRM:</span>
+          <CrmCountrySwitch allowedIds={me?.role === "super_admin" ? null : Array.isArray(me?.staff_countries) ? (me!.staff_countries as string[]) : null} />
+        </div>
       </div>
 
       {menuOpen && (
@@ -389,20 +472,10 @@ export default function AdminPage() {
           {curGroup && (
             <div className="mb-4">
               <h2 className="text-xl font-bold text-offwhite">{curGroup.ic} {curGroup.label}</h2>
-              <p className="text-muted text-sm mb-3">{curGroup.desc}</p>
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {curGroup.tabs.filter((t) => access[t]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setTab(t)}
-                    className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm border ${
-                      tab === t ? "bg-gold text-[#1B1530] border-gold font-semibold" : "bg-[#1F1938] border-muted/60 text-offwhite"
-                    }`}
-                  >
-                    {TABS.find((x) => x.key === t)?.label}
-                  </button>
-                ))}
-              </div>
+              <p className="text-muted text-sm">
+                {TABS.find((x) => x.key === tab)?.label}
+                {TAB_DESC[tab] ? ` — ${TAB_DESC[tab]}` : ""}
+              </p>
             </div>
           )}
           {readOnly && (

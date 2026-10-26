@@ -9,7 +9,7 @@ type Stats = Record<string, number>;
 const PERIODS: [string, string][] = [
   ["today", "Сегодня"],
   ["7d", "7 дней"],
-  ["30d", "30 дней"],
+  ["30d", "Месяц"],
   ["all", "Всё время"],
 ];
 
