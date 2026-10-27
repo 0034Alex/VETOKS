@@ -25,7 +25,16 @@ export async function POST() {
       crown: p.crown,
       region: Array.isArray(p.regions) ? p.regions[0]?.name : p.regions?.name,
     }));
-    out.push({ key: s.key, title: s.title, contest: s.contest ?? s.key, status: s.status, winners });
+    const { data: aw } = await supabaseAdmin
+      .from("show_awards")
+      .select("id, season, nomination, participant_id, participants(display_name, photo_url)")
+      .eq("show_key", s.key)
+      .order("created_at", { ascending: true });
+    const awards = ((aw as any[]) ?? []).map((r) => {
+      const p = Array.isArray(r.participants) ? r.participants[0] : r.participants;
+      return { id: r.participant_id, season: r.season, nomination: r.nomination, name: p?.display_name ?? "", photo: p?.photo_url ?? null };
+    });
+    out.push({ key: s.key, title: s.title, contest: s.contest ?? s.key, status: s.status, winners, awards });
   }
   return NextResponse.json({ ok: true, shows: out });
 }

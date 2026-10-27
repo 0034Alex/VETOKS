@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
-import { bunnyDeleteVideo, bunnyGetVideo, bunnyPlayUrl } from "@/lib/bunny";
+import { bunnyCfg, bunnyDeleteVideo, bunnyGetVideo, bunnyPlayUrl } from "@/lib/bunny";
 import { verifyStoredFile } from "@/lib/fileCheck";
 import { checkImageNsfw } from "@/lib/nsfw";
 import { countryOfUser, settingsForCountry } from "@/lib/countryServer";
@@ -143,9 +143,29 @@ export async function POST(req: Request) {
       }
       if (!(await verifyStoredFile(url, kind === "video" ? "video" : "image"))) return bad("bad_file");
     }
-    if (kind === "photo") {
-      const r = await checkImageNsfw(url);
-      if (r?.flag) return bad("held");
+    // 18+: фото проверяем сразу, у видео проверяем кадр-превью (если Bunny уже его сделал).
+    {
+      let probe: string | null = kind === "photo" ? url : null;
+      if (kind === "video" && videoId) {
+        const c = bunnyCfg();
+        if (c) {
+          const th = `https://${c.cdn}/${videoId}/thumbnail.jpg`;
+          try {
+            const h = await fetch(th, { method: "HEAD" });
+            if (h.ok) probe = th;
+          } catch {}
+        }
+      }
+      if (probe) {
+        const r = await checkImageNsfw(probe);
+        if (r?.flag) {
+          if (videoId) {
+            await bunnyDeleteVideo(videoId);
+            await supabaseAdmin.from("video_uploads").update({ used: true }).eq("video_id", videoId);
+          }
+          return bad("held");
+        }
+      }
     }
     const exp = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
     const { data: row, error } = await supabaseAdmin
@@ -155,6 +175,31 @@ export async function POST(req: Request) {
       .maybeSingle();
     if (error || !row) return bad("insert_failed", 500);
     if (videoId) await supabaseAdmin.from("video_uploads").update({ used: true }).eq("video_id", videoId);
+    // Уведомления: если за последние 6 часов у автора не было других историй.
+    try {
+      const since = new Date(Date.now() - 6 * 3600 * 1000).toISOString();
+      const { count: recent } = await supabaseAdmin.from("stories").select("id", { count: "exact", head: true }).eq("user_id", me).gt("created_at", since);
+      if ((recent ?? 0) <= 1) {
+        const rec = new Set<string>();
+        if (visibility === "friends") {
+          const { data: fr } = await supabaseAdmin.from("story_friends").select("friend_id").eq("owner_id", me).limit(300);
+          (fr ?? []).forEach((r: any) => rec.add(r.friend_id));
+        } else {
+          const { data: uf } = await supabaseAdmin.from("user_follows").select("follower_id").eq("followed_id", me).limit(300);
+          (uf ?? []).forEach((r: any) => rec.add(r.follower_id));
+          const { data: part } = await supabaseAdmin.from("participants").select("id").eq("user_id", me).maybeSingle();
+          if (part) {
+            const { data: pf } = await supabaseAdmin.from("participant_follows").select("user_id").eq("participant_id", part.id).limit(300);
+            (pf ?? []).forEach((r: any) => rec.add(r.user_id));
+          }
+        }
+        rec.delete(me);
+        const au = await authors([me]);
+        const who = au[me]?.name || "Новая история";
+        const rows = Array.from(rec).slice(0, 300).map((uid2) => ({ user_id: uid2, message: `${who}: новая история`, link: "/" }));
+        if (rows.length) await supabaseAdmin.from("notifications").insert(rows);
+      }
+    } catch {}
     if (b.draftId) await supabaseAdmin.from("post_drafts").delete().eq("id", String(b.draftId)).eq("user_id", me);
     return NextResponse.json({ ok: true, id: row.id });
   }

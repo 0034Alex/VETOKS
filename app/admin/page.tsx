@@ -9,6 +9,7 @@ import { getCurrentUser, isStaff, CurrentUser } from "@/lib/currentUser";
 import AdminPricesPanel from "@/components/AdminPricesPanel";
 import AdminCoinsPanel from "@/components/AdminCoinsPanel";
 import AdminShowsPanel from "@/components/AdminShowsPanel";
+import AdminAwardsPanel from "@/components/AdminAwardsPanel";
 import AdminRatingPanel from "@/components/AdminRatingPanel";
 import AdminBlackMarksPanel from "@/components/AdminBlackMarksPanel";
 import { apiPost } from "@/lib/authClient";
@@ -88,6 +89,7 @@ type Tab =
   | "app-prices"
   | "coins"
   | "shows"
+  | "awards"
   | "rating-admin"
   | "reports"
   | "ad-stats"
@@ -133,6 +135,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "app-prices", label: "Цены (в долларах)" },
   { key: "coins", label: "Монеты и Короны" },
   { key: "shows", label: "Шоу" },
+  { key: "awards", label: "Номинации и победители" },
   { key: "rating-admin", label: "Рейтинг и титулы" },
   { key: "reports", label: "Жалобы" },
   { key: "content-mod", label: "Проверка контента" },
@@ -165,7 +168,7 @@ type Level = "r" | "w";
 const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: Tab[] }[] = [
   { key: "today", ic: "🏠", label: "Сегодня", desc: "Что требует действия прямо сейчас", tabs: ["dashboard", "support"] },
   { key: "people", ic: "👥", label: "Люди", desc: "Все, кто есть в приложении", tabs: ["users", "participants", "applications", "badges", "black-marks"] },
-  { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["shows", "stages", "rating-admin", "goal", "tasks", "cards"] },
+  { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["shows", "awards", "stages", "rating-admin", "goal", "tasks", "cards"] },
   { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "broadcast", "mediafeed", "channels", "banners"] },
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["content-mod", "reports", "clan"] },
   { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["coins", "app-prices", "referrals"] },
@@ -202,6 +205,7 @@ const TAB_DESC: Partial<Record<Tab, string>> = {
   clan: "Чаты кланов",
   coins: "Курсы, пакеты, бонусы",
   shows: "Какое шоу идёт, даты и цвета",
+  awards: "Победители для зала славы",
   "app-prices": "Цены в приложении",
   referrals: "Рефералы и комиссии",
   partners: "Партнёры и связь",
@@ -229,7 +233,7 @@ const ROLE_LABELS: Record<string, string> = {
 // Что человеку можно: по каждой вкладке «только смотреть» или «смотреть и менять».
 // Владелец — всё. Новые права хранятся по группам, старые (галочки) — как раньше.
 // Вкладки только для владельца, даже если у сотрудника есть вся группа.
-const OWNER_ONLY: Tab[] = ["shows"];
+const OWNER_ONLY: Tab[] = ["shows", "awards"];
 
 function computeAccess(user: CurrentUser): Partial<Record<Tab, Level>> {
   const out: Partial<Record<Tab, Level>> = {};
@@ -529,6 +533,7 @@ export default function AdminPage() {
         {tab === "app-prices" && <AdminPricesPanel />}
         {tab === "coins" && <AdminCoinsPanel />}
         {tab === "shows" && <AdminShowsPanel />}
+        {tab === "awards" && <AdminAwardsPanel />}
         {tab === "documents" && <AdminDocumentsPanel />}
         {tab === "posters" && <AdminPostersPanel />}
         {tab === "calendar" && <CalendarTab />}

@@ -6,12 +6,22 @@ import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 
 type Winner = { id: string; name: string; photo: string | null; crown: string; region?: string };
-type ShowHall = { key: string; title: string; contest: string; status: string; winners: Winner[] };
+type Award = { id: string; season: string; nomination: string; name: string; photo: string | null };
+type ShowHall = { key: string; title: string; contest: string; status: string; winners: Winner[]; awards?: Award[] };
 
 const CROWN_TITLE: Record<string, Record<string, string>> = {
   miss: { season: "Мисс VETOKS", region: "Мисс региона" },
   talent: { season: "Талант VETOKS", region: "Талант региона" },
 };
+
+function groupAwards(awards?: Award[]): [string, Award[]][] {
+  const m = new Map<string, Award[]>();
+  (awards ?? []).forEach((a) => {
+    const k = `${a.season} · ${a.nomination}`;
+    m.set(k, [...(m.get(k) ?? []), a]);
+  });
+  return Array.from(m.entries());
+}
 
 function titleOf(contest: string, crown: string) {
   return CROWN_TITLE[contest]?.[crown] ?? (crown === "season" ? "Победительница сезона" : "Победительница региона");
@@ -61,7 +71,25 @@ export default function HallOfFamePage() {
                 </button>
                 {isOpen && (
                   <div className="px-4 pb-4 border-t border-muted/40">
-                    {groups.length === 0 && <p className="text-muted text-sm pt-3">Победительницы появятся после гранд-финала.</p>}
+                    {groups.length === 0 && !(s.awards?.length) && <p className="text-muted text-sm pt-3">Победительницы появятся после гранд-финала.</p>}
+                    {groupAwards(s.awards).map(([k, list]) => (
+                      <div key={k} className="pt-3">
+                        <p className="text-gold text-xs tracking-widest mb-2">{k.toUpperCase()}</p>
+                        <div className="flex flex-col gap-2">
+                          {list.map((w, i) => (
+                            <Link key={w.id + i} href={`/participant/${w.id}`} className="flex items-center gap-3 bg-bgPrimary border border-muted/50 rounded-lg px-3 py-2">
+                              {w.photo ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={w.photo} alt={w.name} className="w-10 h-10 rounded-full object-cover" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-black/40" />
+                              )}
+                              <span className="flex-1 text-offwhite text-sm">{w.name}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                     {groups.map((g) => (
                       <div key={g.crown} className="pt-3">
                         <p className="text-gold text-xs tracking-widest mb-2">{titleOf(s.contest, g.crown).toUpperCase()}</p>
