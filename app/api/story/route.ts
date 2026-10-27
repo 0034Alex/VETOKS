@@ -15,6 +15,46 @@ const MAX_ACTIVE = 10;
 const MAX_SEC = 30;
 const VIS = ["all", "followers", "friends"];
 
+// Кадр-превью видео из Bunny (если Bunny уже его сделал).
+async function videoThumb(videoId: string): Promise<string | null> {
+  const c = bunnyCfg();
+  if (!c) return null;
+  const th = `https://${c.cdn}/${videoId}/thumbnail.jpg`;
+  try {
+    const h = await fetch(th, { method: "HEAD" });
+    return h.ok ? th : null;
+  } catch {
+    return null;
+  }
+}
+
+// Ленивая проверка видео на 18+: пока Bunny не сделал превью, история ждёт («checking»).
+// Проверяем при обращениях к ленте, отдельный планировщик не нужен.
+async function checkPending() {
+  const { data } = await supabaseAdmin
+    .from("stories")
+    .select("id, video_id, created_at")
+    .eq("status", "checking")
+    .order("created_at", { ascending: true })
+    .limit(5);
+  for (const r of (data as any[]) ?? []) {
+    const age = Date.now() - new Date(r.created_at).getTime();
+    const th = r.video_id ? await videoThumb(String(r.video_id)) : null;
+    if (th) {
+      const res = await checkImageNsfw(th);
+      if (res?.flag) {
+        await bunnyDeleteVideo(String(r.video_id));
+        await supabaseAdmin.from("stories").delete().eq("id", r.id);
+        continue;
+      }
+      await supabaseAdmin.from("stories").update({ status: "ok" }).eq("id", r.id);
+    } else if (age > 10 * 60 * 1000) {
+      // превью так и не появилось: не держим историю вечно
+      await supabaseAdmin.from("stories").update({ status: "ok" }).eq("id", r.id);
+    }
+  }
+}
+
 async function authors(ids: string[]) {
   const out: Record<string, { name: string; photo: string | null; participantId: string | null }> = {};
   if (!ids.length) return out;
@@ -38,6 +78,9 @@ export async function POST(req: Request) {
   const now = new Date().toISOString();
 
   if (action === "feed") {
+    try {
+      await checkPending();
+    } catch {}
     // на кого я подписан
     const ids = new Set<string>();
     const { data: uf } = await supabaseAdmin.from("user_follows").select("followed_id").eq("follower_id", me).limit(500);
@@ -57,6 +100,7 @@ export async function POST(req: Request) {
         .select("id, user_id, kind, url, visibility, created_at, expires_at")
         .in("user_id", list)
         .eq("hidden", false)
+        .eq("status", "ok")
         .gt("expires_at", now)
         .order("created_at", { ascending: true })
         .limit(500);
@@ -144,18 +188,14 @@ export async function POST(req: Request) {
       }
       if (!(await verifyStoredFile(url, kind === "video" ? "video" : "image"))) return bad("bad_file");
     }
-    // 18+: фото проверяем сразу, у видео проверяем кадр-превью (если Bunny уже его сделал).
+    // 18+: фото проверяем сразу. У видео проверяем кадр-превью; если Bunny его ещё не сделал,
+    // история ждёт проверки (status = checking) и появится после неё.
+    let status = "ok";
     {
       let probe: string | null = kind === "photo" ? url : null;
       if (kind === "video" && videoId) {
-        const c = bunnyCfg();
-        if (c) {
-          const th = `https://${c.cdn}/${videoId}/thumbnail.jpg`;
-          try {
-            const h = await fetch(th, { method: "HEAD" });
-            if (h.ok) probe = th;
-          } catch {}
-        }
+        probe = await videoThumb(videoId);
+        if (!probe) status = "checking";
       }
       if (probe) {
         const r = await checkImageNsfw(probe);
@@ -171,7 +211,7 @@ export async function POST(req: Request) {
     const exp = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
     const { data: row, error } = await supabaseAdmin
       .from("stories")
-      .insert({ user_id: me, kind, url, video_id: videoId, duration_sec: dur, visibility, expires_at: exp })
+      .insert({ user_id: me, kind, url, video_id: videoId, duration_sec: dur, visibility, expires_at: exp, status })
       .select("id")
       .maybeSingle();
     if (error || !row) return bad("insert_failed", 500);
