@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { applyTheme } from "@/lib/showTheme";
-import { publishShow } from "@/lib/useShow";
+import { publishShow, publishRecruit } from "@/lib/useShow";
 
 const K_THEME = "vt_show_theme";
 const K_THEME_PV = "vt_show_theme_pv";
@@ -61,6 +61,7 @@ export default function ShowTheme() {
         applyTheme(theme);
         const preview = !!r.preview;
         publishShow(r.show ? { id: r.show.id, key: r.show.key, title: r.show.title, contest: r.show.contest, preview, banner: r.show.banner ?? {}, endsAt: r.show.endsAt ?? null } : null);
+        publishRecruit(!preview && r.recruiting ? { id: r.recruiting.id, key: r.recruiting.key, title: r.recruiting.title, contest: r.recruiting.contest, banner: r.recruiting.banner ?? {}, startsAt: r.recruiting.startsAt ?? null } : null);
         ls(preview ? K_THEME_PV : K_THEME, JSON.stringify(theme ?? {}));
         setPv(preview ? r.show?.title ?? "шоу" : null);
         if (!preview && (token || previewId)) {

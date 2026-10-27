@@ -43,3 +43,23 @@ export function useShow(): { show: ActiveShow; ready: boolean } {
   }, []);
   return { show: current, ready: loaded };
 }
+
+// Шоу, на которое сейчас идёт набор анкет (приходит вместе с активным шоу).
+export type Recruit = { id: string; key: string; title: string; contest: string; banner: ShowBanner; startsAt?: string | null } | null;
+let recruit: Recruit = null;
+const REVT = "vetoks-recruit";
+export function publishRecruit(r: Recruit) {
+  recruit = r;
+  try {
+    window.dispatchEvent(new Event(REVT));
+  } catch {}
+}
+export function useRecruit(): Recruit {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const h = () => tick((n) => n + 1);
+    window.addEventListener(REVT, h);
+    return () => window.removeEventListener(REVT, h);
+  }, []);
+  return recruit;
+}

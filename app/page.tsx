@@ -24,6 +24,7 @@ import { formatCompact } from "@/lib/formatCompact";
 import PartnersShowcase from "@/components/PartnersShowcase";
 import LoadingScreen from "@/components/LoadingScreen";
 import EntryPopup from "@/components/EntryPopup";
+import RecruitBanner from "@/components/RecruitBanner";
 import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { loadScoped } from "@/lib/scopedSettings";
 
@@ -873,6 +874,7 @@ function MissHome() {
 
       <div className="max-w-5xl mx-auto">
         <CategoryStrip />
+        <RecruitBanner />
         <TeenConsentBanner />
         <div className="px-6 mb-4 flex gap-2">
           <button

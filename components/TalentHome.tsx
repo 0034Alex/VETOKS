@@ -11,6 +11,7 @@ import ShowBanner from "@/components/ShowBanner";
 import BattleCard from "@/components/BattleCard";
 import TopCards from "@/components/TopCards";
 import ShowPoll from "@/components/ShowPoll";
+import RecruitBanner from "@/components/RecruitBanner";
 import { apiPost } from "@/lib/authClient";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory, rankCat } from "@/lib/viewCategory";
@@ -60,6 +61,8 @@ export default function TalentHome({ show }: { show: NonNullable<ActiveShow> }) 
         <div className="mb-5">
           <ShowBanner show={show} />
         </div>
+
+        <RecruitBanner />
 
         <div className="mb-5">
           <PromoBannerCarousel />
