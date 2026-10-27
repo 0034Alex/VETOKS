@@ -52,7 +52,7 @@ export default function ShowBanner({ show }: { show: NonNullable<ActiveShow> }) 
       )}
 
       {bn.apply !== false && (
-        <Link href="/apply" className="mt-3 text-center bg-gold text-bgPrimary rounded-full py-3 font-semibold text-sm">
+        <Link href="/apply" className="vt-glow mt-3 text-center bg-gold text-bgPrimary rounded-full py-3 font-semibold text-sm">
           Подать анкету
         </Link>
       )}

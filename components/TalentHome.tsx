@@ -69,7 +69,7 @@ export default function TalentHome({ show }: { show: NonNullable<ActiveShow> }) 
 
         {/* Топ-25 */}
         <div className="px-6 mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-offwhite">Топ-25 за 24 часа</h2>
+          <h2 className="text-lg font-semibold text-offwhite">Топ-25</h2>
           <Link href="/top25" className="text-gold text-sm">
             Весь ›
           </Link>
@@ -93,6 +93,14 @@ export default function TalentHome({ show }: { show: NonNullable<ActiveShow> }) 
             </Link>
           ))}
         </div>
+
+        {show.banner?.apply !== false && (
+          <div className="px-6 mt-8">
+            <Link href="/apply" className="vt-glow block text-center bg-bgSurface text-gold border border-gold/40 rounded-full py-3.5 font-semibold text-sm">
+              Подать анкету
+            </Link>
+          </div>
+        )}
       </div>
       <BottomNav />
     </main>

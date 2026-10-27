@@ -66,7 +66,8 @@ export default function BattleCard({ contest }: { contest: string }) {
     else setMsg("Не получилось, попробуйте ещё раз.");
   }
 
-  if (!loaded || !round) return null;
+  if (!loaded) return null;
+  if (!round) return <BattleEmpty />;
   const total = round.votes.a + round.votes.b;
   const pa = total ? Math.round((round.votes.a / total) * 100) : 50;
 
@@ -128,3 +129,50 @@ export default function BattleCard({ contest }: { contest: string }) {
     </section>
   );
 }
+
+// Заглушка: в регионе пока нет двух участниц с видео — показываем, как будет выглядеть блок.
+function BattleEmpty() {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const SLOT = 30 * 60 * 1000;
+  const left = (Math.floor(now / SLOT) + 1) * SLOT - now;
+  const Stub = ({ n }: { n: string }) => (
+    <div className="flex-1 min-w-0">
+      <div className="relative aspect-[9/14] rounded-xl overflow-hidden bg-bgSurface border border-gold/20 flex flex-col items-center justify-center text-muted gap-2">
+        <span className="text-4xl">▶</span>
+        <span className="text-xs">Видео {n}</span>
+      </div>
+      <div className="text-muted text-sm font-semibold truncate mt-2">Участница {n}</div>
+      <div className="flex gap-2 mt-1">
+        <button disabled className="flex-1 rounded-lg py-2 text-sm border border-muted/40 text-muted opacity-60">❤ Лайк</button>
+        <button disabled className="flex-1 rounded-lg py-2 text-sm font-semibold bg-gold/40 text-bgPrimary opacity-60">🗳 Голос</button>
+      </div>
+    </div>
+  );
+  return (
+    <section className="px-6 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-semibold text-offwhite">⚔ Битва региона</h2>
+        <span className="text-xs text-gold border border-gold/40 rounded-full px-2.5 py-1">Новая пара через {fmt(left)}</span>
+      </div>
+      <div className="flex gap-3">
+        <Stub n="1" />
+        <div className="flex flex-col items-center justify-center text-gold font-bold">VS</div>
+        <Stub n="2" />
+      </div>
+      <div className="mt-3 h-2 rounded-full overflow-hidden bg-bgSurface flex">
+        <div className="bg-gold/40" style={{ width: "50%" }} />
+        <div className="bg-sec2/40" style={{ width: "50%" }} />
+      </div>
+      <div className="flex justify-between text-xs text-muted mt-1">
+        <span>0</span>
+        <span>0</span>
+      </div>
+      <p className="text-xs text-muted text-center mt-3">Битва пока пуста. Она начнётся, когда в вашем регионе будет минимум две участницы с видео.</p>
+    </section>
+  );
+}
+

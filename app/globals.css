@@ -77,3 +77,21 @@ p, h1, h2, h3 {
 @supports (font-size: 1cqw) {
   .vb-num { font-size: clamp(11px, 17cqw, 19px); }
 }
+
+/* Кнопка с бегущей подсветкой по контуру */
+@property --vt-ang { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+@keyframes vt-spin { to { --vt-ang: 360deg; } }
+.vt-glow { position: relative; }
+.vt-glow::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  padding: 3px;
+  background: conic-gradient(from var(--vt-ang), rgb(var(--c-gold) / 0.15) 0%, rgb(var(--c-gold) / 0.15) 60%, rgb(var(--c-goldSoft)) 85%, #fff 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: vt-spin 2.6s linear infinite;
+  pointer-events: none;
+}
