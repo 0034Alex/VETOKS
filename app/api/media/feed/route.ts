@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { userIdFromBearer } from "@/lib/authServer";
 import { rateLimit } from "@/lib/rateLimit";
 import { countryOfRegion } from "@/lib/countryServer";
+import { cleanContest } from "@/lib/contest";
 import { pickPack, fallbackIds } from "@/lib/mediaFeed";
 
 export const dynamic = "force-dynamic";
@@ -39,10 +40,11 @@ export async function POST(req: Request) {
   const tab = b.tab === "following" || b.tab === "country" ? b.tab : "region";
   const cats = Array.isArray(b.cats) ? b.cats.map(String).slice(0, 3) : [];
   const exclude = Array.isArray(b.exclude) ? b.exclude.filter((x: any) => typeof x === "string" && UUID.test(x)).slice(0, 300) : [];
+  const contest = cleanContest(b.contest);
   const page = Math.max(0, Math.min(200, Number(b.page) || 0));
 
-  let { ids, followedPart } = await pickPack({ countryId, viewer, userId: uid, regionId, cats, tab, exclude, page });
-  if (!ids.length && tab !== "following") ids = await fallbackIds(countryId, cats, exclude);
+  let { ids, followedPart } = await pickPack({ countryId, viewer, userId: uid, regionId, cats, tab, exclude, page, contest });
+  if (!ids.length && tab !== "following") ids = await fallbackIds(countryId, cats, exclude, 10, contest);
   if (!ids.length) return NextResponse.json({ ok: true, posts: [], likes: {}, comments: {}, liked: [], followed: [...followedPart] });
 
   const [{ data: posts }, { data: counts }, likedRes] = await Promise.all([

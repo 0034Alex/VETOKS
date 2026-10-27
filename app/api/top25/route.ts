@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { userIdFromBearer } from "@/lib/authServer";
 import { rateLimit } from "@/lib/rateLimit";
+import { cleanContest, inContest } from "@/lib/contest";
 import { countryOfRegion, regionIdsOfCountry } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
   const rl = await rateLimit(req, "top25", 60, 60);
   if (rl) return rl;
   const b = await req.json().catch(() => ({}));
+  const contest = cleanContest(b.contest);
   const cat = ["teen", "main", "adult"].includes(b.cat) ? (b.cat as string) : "main";
 
   let countryId: string | null = null;
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
   }
   if (!countryId) return NextResponse.json({ ok: true, rows: [], updatedAt: new Date().toISOString() });
 
-  const key = `${countryId}:${cat}`;
+  const key = `${countryId}:${cat}:${contest}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < 60_000) return NextResponse.json({ ok: true, rows: hit.rows, updatedAt: new Date(hit.at).toISOString() });
 
@@ -49,11 +51,11 @@ export async function POST(req: Request) {
   if (!regionIds.length) return NextResponse.json({ ok: true, rows: [], updatedAt: new Date().toISOString() });
   const { data: ps } = await supabaseAdmin
     .from("participants")
-    .select("id, display_name, photo_url, age_category")
+    .select("id, display_name, photo_url, age_category, contest")
     .eq("is_eliminated", false)
     .in("region_id", regionIds)
     .limit(20000);
-  const list = ((ps ?? []) as any[]).filter((p) => (p.age_category || "main") === cat);
+  const list = ((ps ?? []) as any[]).filter((p) => (p.age_category || "main") === cat && inContest(p.contest, contest));
   const day = await rpcMap("vt_free_votes_between", { p_from: new Date(Date.now() - 86400_000).toISOString(), p_to: new Date().toISOString() });
   const totals = await rpcMap("vt_vote_totals", {});
   const rows: Row[] = list

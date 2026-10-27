@@ -16,6 +16,8 @@ import { getVoteTotals } from "@/lib/voteTotals";
 import { apiPost } from "@/lib/authClient";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory } from "@/lib/viewCategory";
+import { useShow } from "@/lib/useShow";
+import { applyContest, cleanContest } from "@/lib/contest";
 import { viewInfo } from "@/lib/viewCategory";
 import { CategoryStrip } from "@/components/CategorySwitch";
 
@@ -33,6 +35,8 @@ type Filter = "all" | "top" | "new";
 
 export default function ParticipantsPage() {
   const vc = useViewCategory();
+  const { show: curShow } = useShow();
+  const contest = cleanContest(curShow?.contest);
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [scope, setScope] = useState<"region" | "country">("region");
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -59,6 +63,7 @@ export default function ParticipantsPage() {
       .from("participants")
       .select("id, display_name, bio, photo_url, created_at, season_id, region_id")
       .eq("is_eliminated", false);
+    pq = applyContest(pq, contest);
     if (vc.view !== "all") pq = pq.eq("age_category", vc.view);
     if (mc.countryId) pq = pq.in("region_id", mc.regionIds);
     const { data: participantsData } = await pq;
@@ -173,7 +178,7 @@ export default function ParticipantsPage() {
   useEffect(() => {
     if (vc.ready) loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vc.ready, vc.view]);
+  }, [vc.ready, vc.view, contest]);
 
   // Поиск людей по нику (по начальным буквам).
   useEffect(() => {

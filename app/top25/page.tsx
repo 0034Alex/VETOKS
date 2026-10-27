@@ -6,6 +6,8 @@ import Link from "next/link";
 import { apiPost } from "@/lib/authClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import { useShow } from "@/lib/useShow";
+import { cleanContest } from "@/lib/contest";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory } from "@/lib/viewCategory";
 import { viewInfo, rankCat } from "@/lib/viewCategory";
@@ -25,13 +27,15 @@ export default function Top25Page() {
   const [loading, setLoading] = useState(true);
   const vc = useViewCategory();
   const rc = rankCat(vc.view, vc.mine);
+  const { show: curShow } = useShow();
+  const contest = cleanContest(curShow?.contest);
 
   useEffect(() => {
     if (!vc.ready) return;
     (async () => {
       setLoading(true);
       const mc = await getMyCountry();
-      const r = await apiPost("/api/top25", { cat: rc, countryId: mc.countryId });
+      const r = await apiPost("/api/top25", { cat: rc, countryId: mc.countryId, contest });
       if (r?.ok) {
         setRows(r.rows as Row[]);
         setDate(r.updatedAt);
@@ -40,12 +44,12 @@ export default function Top25Page() {
     })();
     const timer = setInterval(async () => {
       const mc = await getMyCountry();
-      const r = await apiPost("/api/top25", { cat: rc, countryId: mc.countryId });
+      const r = await apiPost("/api/top25", { cat: rc, countryId: mc.countryId, contest });
       if (r?.ok) { setRows(r.rows as Row[]); setDate(r.updatedAt); }
     }, 60000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vc.ready, rc]);
+  }, [vc.ready, rc, contest]);
 
   return (
     <main className="min-h-screen pb-28">

@@ -8,6 +8,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import PromoBannerCarousel from "@/components/PromoBannerCarousel";
 import StoryStrip from "@/components/StoryStrip";
 import ShowBanner from "@/components/ShowBanner";
+import BattleCard from "@/components/BattleCard";
 import { apiPost } from "@/lib/authClient";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory, rankCat } from "@/lib/viewCategory";
@@ -36,7 +37,7 @@ export default function TalentHome({ show }: { show: NonNullable<ActiveShow> }) 
     if (!vc.ready) return;
     (async () => {
       const mc = await getMyCountry();
-      const r = await apiPost("/api/top25", { cat: rc, countryId: mc.countryId });
+      const r = await apiPost("/api/top25", { cat: rc, countryId: mc.countryId, contest: show.contest });
       if (r?.ok) setRows(r.rows as Row[]);
       setLoading(false);
     })();
@@ -63,6 +64,8 @@ export default function TalentHome({ show }: { show: NonNullable<ActiveShow> }) 
         </div>
 
         <StoryStrip />
+
+        <BattleCard contest={show.contest} />
 
         {/* Топ-25 */}
         <div className="px-6 mb-3 flex items-center justify-between">

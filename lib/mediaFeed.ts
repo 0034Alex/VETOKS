@@ -2,6 +2,7 @@
 // Принципы: честный старт (меньше показов — раньше), вес по вовлечению с затуханием,
 // без повторов (media_seen), не больше 2 роликов одной участницы в порции, лента не пустеет.
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { inContest } from "@/lib/contest";
 import { regionIdsOfCountry, settingsForCountry } from "@/lib/countryServer";
 
 export const CATS = ["teen", "main", "adult"] as const;
@@ -9,7 +10,7 @@ const POOL_TTL_MS = 3 * 60 * 1000; // пул пересобираем не ча�
 const CACHE_MS = 60 * 1000; // в памяти сервера держим 1 минуту
 const AVG_VIDEOS_PER_SESSION = 20;
 
-type Row = { post_id: string; participant_id: string | null; region_id: string | null; theme_id: string | null; score: number; bucket: string; age_category: string };
+type Row = { contest?: string; post_id: string; participant_id: string | null; region_id: string | null; theme_id: string | null; score: number; bucket: string; age_category: string };
 const cache = new Map<string, { at: number; gen: number; rows: Row[] }>();
 // Сколько раз ролик выдан с момента сборки пула: чтобы за 3 минуты один и тот же «самый непоказанный» не получил лишних сотен показов.
 const served = new Map<string, number>();
@@ -215,6 +216,14 @@ async function loadRows(countryId: string): Promise<Row[]> {
       if (!data || data.length < 1000) break;
     }
   }
+  // шоу, к которому относится участница: у всех, кроме Miss, оно проставлено явно
+  const other = new Map<string, string>();
+  for (let from = 0; from < 20000; from += 1000) {
+    const { data } = await supabaseAdmin.from("participants").select("id, contest").not("contest", "is", null).neq("contest", "miss").range(from, from + 999);
+    (data ?? []).forEach((x: any) => other.set(x.id, x.contest));
+    if (!data || data.length < 1000) break;
+  }
+  rows.forEach((r) => { r.contest = (r.participant_id && other.get(r.participant_id)) || "miss"; });
   cache.set(countryId, { at: Date.now(), gen, rows });
   served.clear();
   return rows;
@@ -230,11 +239,13 @@ export type PackIn = {
   tab: "region" | "country" | "following";
   exclude: string[];
   page: number;
+  contest?: string;
   limit?: number;
 };
 
 export async function pickPack(a: PackIn): Promise<{ ids: string[]; followedPart: Set<string> }> {
   const limit = a.limit ?? 10;
+  const contest = a.contest ?? "miss";
   const cats = a.cats.filter((c) => (CATS as readonly string[]).includes(c));
   const catSet = new Set(cats.length ? cats : ["main", "adult"]);
 
@@ -255,7 +266,7 @@ export async function pickPack(a: PackIn): Promise<{ ids: string[]; followedPart
     if (!followed.size) return { ids: [], followedPart: followed };
     const { data } = await supabaseAdmin
       .from("content_posts")
-      .select("id, participants!inner(age_category)")
+      .select("id, participants!inner(age_category, contest)")
       .in("participant_id", [...followed].slice(0, 300))
       .eq("visibility", "all")
       .not("video_url", "is", null)
@@ -263,13 +274,13 @@ export async function pickPack(a: PackIn): Promise<{ ids: string[]; followedPart
       .order("submitted_at", { ascending: false })
       .range(a.page * limit, a.page * limit + limit - 1);
     const ids = ((data ?? []) as any[])
-      .filter((r) => { const pt = Array.isArray(r.participants) ? r.participants[0] : r.participants; return catSet.has(pt?.age_category || "main"); })
+      .filter((r) => { const pt = Array.isArray(r.participants) ? r.participants[0] : r.participants; return catSet.has(pt?.age_category || "main") && inContest(pt?.contest, contest); })
       .map((r) => r.id as string);
     return { ids, followedPart: followed };
   }
 
   await ensurePool(a.countryId);
-  const rows = (await loadRows(a.countryId)).filter((r) => catSet.has(r.age_category) && r.participant_id !== myPart);
+  const rows = (await loadRows(a.countryId)).filter((r) => catSet.has(r.age_category) && r.participant_id !== myPart && inContest(r.contest, contest));
 
   // что человек уже видел
   const seen = new Set<string>(a.exclude);
@@ -329,12 +340,12 @@ export async function pickPack(a: PackIn): Promise<{ ids: string[]; followedPart
 }
 
 // Запасной вариант, если пул ещё не собран: свежие ролики страны.
-export async function fallbackIds(countryId: string, cats: string[], exclude: string[], limit = 10): Promise<string[]> {
+export async function fallbackIds(countryId: string, cats: string[], exclude: string[], limit = 10, contest = "miss"): Promise<string[]> {
   const regionIds = await regionIdsOfCountry(countryId);
   if (!regionIds.length) return [];
   const { data } = await supabaseAdmin
     .from("content_posts")
-    .select("id, participants!inner(age_category, region_id)")
+    .select("id, participants!inner(age_category, region_id, contest)")
     .eq("visibility", "all")
     .not("video_url", "is", null)
     .not("participant_id", "is", null)
@@ -346,7 +357,7 @@ export async function fallbackIds(countryId: string, cats: string[], exclude: st
   const ex = new Set(exclude);
   return shuffle(
     ((data ?? []) as any[])
-      .filter((r) => { const pt = Array.isArray(r.participants) ? r.participants[0] : r.participants; return catSet.has(pt?.age_category || "main") && !ex.has(r.id); })
+      .filter((r) => { const pt = Array.isArray(r.participants) ? r.participants[0] : r.participants; return catSet.has(pt?.age_category || "main") && !ex.has(r.id) && inContest(pt?.contest, contest); })
       .map((r) => r.id as string)
   ).slice(0, limit);
 }

@@ -7,6 +7,8 @@ import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 import { formatCompact } from "@/lib/formatCompact";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory, rankCat } from "@/lib/viewCategory";
+import { useShow } from "@/lib/useShow";
+import { applyContest, cleanContest } from "@/lib/contest";
 
 type Ranking = {
   title_key: string;
@@ -25,6 +27,8 @@ type Participant = { id: string; display_name: string; photo_url: string | null 
 
 export default function RatingView() {
   const vc = useViewCategory();
+  const { show: curShow } = useShow();
+  const contest = cleanContest(curShow?.contest);
   const rc = rankCat(vc.view, vc.mine);
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [scope, setScope] = useState<"region" | "country">("region");
@@ -93,6 +97,7 @@ export default function RatingView() {
       .select("id, display_name, photo_url")
       .eq("is_editors_choice", true)
       .eq("age_category", rc);
+    eq2 = applyContest(eq2, contest);
     if (mc.countryId) eq2 = eq2.in("region_id", mc.regionIds);
     const { data: editorsData } = await eq2.limit(1).maybeSingle();
     setEditorsChoice((editorsData as Participant) ?? null);
@@ -110,7 +115,7 @@ export default function RatingView() {
   useEffect(() => {
     if (me !== null && vc.ready) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [me, scope, vc.ready, rc]);
+  }, [me, scope, vc.ready, rc, contest]);
 
   return (
     <div>

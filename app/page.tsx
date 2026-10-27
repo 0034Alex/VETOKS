@@ -1,6 +1,7 @@
 "use client";
 
 import { useShow } from "@/lib/useShow";
+import { applyContest, cleanContest } from "@/lib/contest";
 import TalentHome from "@/components/TalentHome";
 import { useT } from "@/lib/i18n";
 import StagePoll from "@/components/StagePoll";
@@ -135,6 +136,7 @@ type MagazinePage =
 
 function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRegionId: string | null }) {
   const vcM = useViewCategory();
+  const contestM = cleanContest(useShow().show?.contest);
   const [pages, setPages] = useState<MagazinePage[]>([]);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
@@ -188,6 +190,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
           "id, display_name, photo_url, region_id, magazine_answers(q1_question, q1_answer, q2_question, q2_answer, q3_question, q3_answer)"
         )
         .eq("is_eliminated", false);
+      mq = applyContest(mq, contestM);
       if (vcM.view !== "all") mq = mq.eq("age_category", vcM.view);
       if (mc.countryId) mq = mq.in("region_id", mc.regionIds);
       const { data: participantsData } = await mq;
@@ -284,7 +287,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope, userRegionId, vcM.view, vcM.ready]);
+  }, [scope, userRegionId, vcM.view, vcM.ready, contestM]);
 
   async function toggleFollow(participantId: string) {
     if (!userId) return;
@@ -641,6 +644,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
 
 function MissHome() {
   const { t } = useT();
+  const contestH = cleanContest(useShow().show?.contest);
   const router = useRouter();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [isParticipant, setIsParticipant] = useState(false);
@@ -726,6 +730,7 @@ function MissHome() {
         .select("id, display_name, photo_url, season_id, region_id, age_category")
         .eq("is_eliminated", false);
       if (mc2.countryId) hq = hq.in("region_id", mc2.regionIds);
+      hq = applyContest(hq, contestH);
       const { data: participantsData } = await hq;
 
       const counts = await getVoteTotals();
@@ -780,7 +785,7 @@ function MissHome() {
         .select("id", { count: "exact", head: true });
       setContentCount(postsCount ?? 0);
     })();
-  }, [router]);
+  }, [router, contestH]);
 
   const { inWindow, timeLeft } = useSundayCountdown();
   const [anns, setAnns] = useState<{ id: string; title: string; body: string | null; ends_at: string; show_timer: boolean }[]>([]);

@@ -14,6 +14,7 @@ import ShareButton from "@/components/ShareButton";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory } from "@/lib/viewCategory";
 import { useShow } from "@/lib/useShow";
+import { applyContest, cleanContest } from "@/lib/contest";
 import {
   IconHeart,
   IconComment,
@@ -117,6 +118,7 @@ export default function MediaPage() {
         device: deviceId(),
         countryId: mc.countryId,
         page: reset ? 0 : pageNo.current,
+        contest: cleanContest(curShow?.contest),
       });
       const got: Post[] = (r?.posts as Post[]) ?? [];
       pageNo.current = reset ? 1 : pageNo.current + 1;
@@ -159,7 +161,7 @@ export default function MediaPage() {
     loadingMore.current = false;
     if (feedTab !== "live") fetchPack(feedTab, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedTab, vc.ready, vc.view]);
+  }, [feedTab, vc.ready, vc.view, curShow?.contest]);
 
   // Показы и просмотры отправляем пачкой раз в 20 секунд и при выходе со страницы.
   function flushEvents() {

@@ -2,6 +2,10 @@
 export const CONTESTS: Record<string, { icon: string; name: string }> = {
   miss: { icon: "👑", name: "Miss" },
   talent: { icon: "🎭", name: "Talent" },
+  brands: { icon: "🛍️", name: "Brands" },
+  voice: { icon: "🎤", name: "Voice" },
+  fame: { icon: "⭐", name: "Fame" },
+  hunt: { icon: "🏃", name: "Hunt" },
 };
 
 export const STAGE_OPTIONS = [

@@ -15,6 +15,7 @@ import { apiPost } from "@/lib/authClient";
 import TopUpSheet from "@/components/TopUpSheet";
 import { getMyCountry } from "@/lib/myCountry";
 import { useShow } from "@/lib/useShow";
+import { applyContest, cleanContest } from "@/lib/contest";
 
 type Gift = {
   id: string;
@@ -159,6 +160,7 @@ function ShopContent() {
           .select("id, display_name, user_id, photo_url, season_id, region_id, regions(name)")
           .eq("is_eliminated", false);
         if (mcs.countryId) sq = sq.in("region_id", mcs.regionIds);
+        sq = applyContest(sq, cleanContest(curShow?.contest));
         {
           const me0 = await getCurrentUser();
           const stored = (() => { try { return localStorage.getItem("vetoks_view_cat"); } catch { return null; } })();
@@ -219,7 +221,7 @@ function ShopContent() {
       });
       setRecentParticipants(recents.slice(0, 10));
     })();
-  }, [participantId]);
+  }, [participantId, curShow?.contest]);
 
   const topupOn = useTopupEnabled();
   const [topOpen, setTopOpen] = useState(false);
