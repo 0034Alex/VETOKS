@@ -11,7 +11,7 @@ import PageHeader from "@/components/PageHeader";
 import { useShow } from "@/lib/useShow";
 import { cleanContest } from "@/lib/contest";
 
-type Material = { id: string; type: string; file_url: string; title: string | null; show_key?: string | null };
+type Material = { id: string; type: string; file_url: string; title: string | null; show_key?: string | null; cat?: string | null };
 
 // Сохранить в галерею: на телефоне открываем меню «Поделиться» с пунктом «Сохранить»,
 // где нет такого меню — обычное скачивание.
@@ -48,6 +48,7 @@ export default function MediaMaterialsPage() {
   const { show: curShow } = useShow();
   const contest = cleanContest(curShow?.contest);
   const [msg, setMsg] = useState("");
+  const [myCat, setMyCat] = useState("main");
 
   useEffect(() => {
     (async () => {
@@ -58,17 +59,18 @@ export default function MediaMaterialsPage() {
       }
       const { data: p } = await supabase
         .from("participants")
-        .select("id")
+        .select("id, age_category")
         .eq("user_id", u.id)
         .maybeSingle();
       setIsParticipant(!!p);
+      setMyCat(((p as any)?.age_category as string) || "main");
 
       if (p) {
         const mc = await getMyCountry();
         const { data } = await orCountry(
           supabase
             .from("media_materials")
-            .select("id, type, file_url, title, show_key")
+            .select("id, type, file_url, title, show_key, cat")
             .order("created_at", { ascending: false }),
           mc.countryId
         );
@@ -93,7 +95,7 @@ export default function MediaMaterialsPage() {
     );
   }
 
-  const mine = materials.filter((m) => (m.show_key ?? "miss") === contest);
+  const mine = materials.filter((m) => (m.show_key ?? "miss") === contest && (!m.cat || m.cat === myCat));
   const photos = mine.filter((m) => m.type === "photo");
   const videos = mine.filter((m) => m.type === "video");
 

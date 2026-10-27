@@ -3402,7 +3402,7 @@ function SocialLinksTab() {
 // МАТЕРИАЛЫ ДЛЯ УЧАСТНИЦ
 // ---------------------------------------------------------------------
 
-type MaterialRow = { id: string; type: string; file_url: string; title: string | null; show_key?: string | null };
+type MaterialRow = { id: string; type: string; file_url: string; title: string | null; show_key?: string | null; cat?: string | null };
 
 function MediaMaterialsTab() {
   const [rows, setRows] = useState<MaterialRow[]>([]);
@@ -3412,13 +3412,14 @@ function MediaMaterialsTab() {
   const [title, setTitle] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [showKey, setShowKey] = useState("miss");
+  const [matCat, setMatCat] = useState("");
   const [progress, setProgress] = useState("");
 
   async function load() {
     setLoading(true);
     const { data } = await orCrm(supabase
       .from("media_materials")
-      .select("id, type, file_url, title, show_key")
+      .select("id, type, file_url, title, show_key, cat")
       .order("created_at", { ascending: false }));
     setRows((data as MaterialRow[]) ?? []);
     setLoading(false);
@@ -3449,6 +3450,7 @@ function MediaMaterialsTab() {
         file_url: publicUrlData.publicUrl,
         title: files.length === 1 && title ? title : auto,
         show_key: showKey,
+        cat: matCat || null,
       });
       if (e2) alert(`Не сохранилось ${f.name}: ${e2.message}`);
       else done++;
@@ -3482,6 +3484,16 @@ function MediaMaterialsTab() {
           {Object.entries(CONTESTS).map(([k, c]) => (
             <option key={k} value={k}>Для шоу: {c.icon} {c.name}</option>
           ))}
+        </select>
+        <select
+          value={matCat}
+          onChange={(e) => setMatCat(e.target.value)}
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        >
+          <option value="">Категория: все участницы</option>
+          <option value="main">Только MISS 18–29</option>
+          <option value="adult">Только LADY 30+</option>
+          <option value="teen">Только TEEN 15–17</option>
         </select>
         <select
           value={type}
@@ -3527,7 +3539,7 @@ function MediaMaterialsTab() {
             ) : (
               <video src={m.file_url} className="w-full aspect-square object-cover" muted />
             )}
-            <p className="text-[10px] text-muted px-2 pt-1 truncate">{CONTESTS[m.show_key ?? "miss"]?.name ?? m.show_key} · {m.title ?? ""}</p>
+            <p className="text-[10px] text-muted px-2 pt-1 truncate">{CONTESTS[m.show_key ?? "miss"]?.name ?? m.show_key} · {m.cat ? ({ main: "MISS", adult: "LADY", teen: "TEEN" } as Record<string, string>)[m.cat] : "все"} · {m.title ?? ""}</p>
             <button
               onClick={() => remove(m.id)}
               className="w-full text-danger text-xs py-1"
