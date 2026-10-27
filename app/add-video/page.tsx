@@ -9,6 +9,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { apiPost } from "@/lib/authClient";
 import { bunnyUpload, videoDuration } from "@/lib/bunnyUpload";
 import BottomNav from "@/components/BottomNav";
+import StoryComposer, { type StoryDraft } from "@/components/StoryComposer";
+import { useShow } from "@/lib/useShow";
 
 const MAX_ITEMS = 10;
 type Vis = "all" | "followers" | "me";
@@ -35,7 +37,8 @@ function Inner() {
   const { t } = useT();
   const router = useRouter();
   const sp = useSearchParams();
-  const [mode, setMode] = useState<"edit" | "drafts">(sp.get("drafts") ? "drafts" : "edit");
+  const [mode, setMode] = useState<"edit" | "drafts" | "story">(sp.get("drafts") ? "drafts" : sp.get("story") ? "story" : "edit");
+  const [storyDraft, setStoryDraft] = useState<StoryDraft>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [caption, setCaption] = useState("");
   const [vis, setVis] = useState<Vis>("all");
@@ -222,6 +225,11 @@ function Inner() {
     const r = await apiPost("/api/post/drafts", { action: "get", id });
     if (!r?.ok) return;
     const d = r.draft;
+    if (d.settings?.story) {
+      setStoryDraft({ id: d.id, media: (d.media as any[]) ?? [], vis: d.settings.vis || "all" });
+      setMode("story");
+      return;
+    }
     setDraftId(d.id);
     setCaption(d.caption ?? "");
     setVis((d.visibility as Vis) || "all");
@@ -251,6 +259,27 @@ function Inner() {
 
   const visLabel = VIS.find((x) => x.v === vis)?.t ?? "Все";
 
+  // ---------- История ----------
+  if (mode === "story") {
+    return (
+      <main className="min-h-screen pb-28">
+        <Top title="Публикация" onBack={() => router.back()} />
+        <Tabs mode="story" count={drafts?.length ?? 0} set={setMode} />
+        <StoryComposer
+          key={storyDraft?.id ?? "new"}
+          isPart={isPart}
+          draft={storyDraft}
+          onDraftSaved={() => {
+            setStoryDraft(null);
+            loadDrafts();
+            setMode("drafts");
+          }}
+        />
+        <BottomNav />
+      </main>
+    );
+  }
+
   // ---------- Черновики ----------
   if (mode === "drafts") {
     return (
@@ -279,7 +308,7 @@ function Inner() {
                       )}
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-offwhite text-sm truncate">{d.caption || "Без описания"}</span>
+                      <span className="block text-offwhite text-sm truncate">{d.settings?.story ? "История" : d.caption || "Без описания"}</span>
                       <span className="block text-muted text-xs">
                         {(d.media as any[])?.length ?? 0} шт. · {new Date(d.updated_at).toLocaleDateString("ru-RU")}
                       </span>
@@ -480,11 +509,18 @@ function Top({ title, onBack, right }: { title: string; onBack: () => void; righ
   );
 }
 
-function Tabs({ mode, count, set }: { mode: "edit" | "drafts"; count: number; set: (m: "edit" | "drafts") => void }) {
+function Tabs({ mode, count, set }: { mode: "edit" | "drafts" | "story"; count: number; set: (m: "edit" | "drafts" | "story") => void }) {
+  const { show } = useShow();
+  const stories = show?.contest === "talent" || mode === "story";
   const cls = (on: boolean) =>
     `flex-1 text-center rounded-full py-2 text-sm font-semibold transition-colors ${on ? "bg-gold text-bgPrimary" : "text-muted"}`;
   return (
     <div className="mx-4 mb-4 flex bg-bgSurface rounded-full p-1">
+      {stories && (
+        <button onClick={() => set("story")} className={cls(mode === "story")}>
+          История
+        </button>
+      )}
       <button onClick={() => set("edit")} className={cls(mode === "edit")}>
         Новая
       </button>

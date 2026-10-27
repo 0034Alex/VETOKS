@@ -6,15 +6,13 @@ import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import LoadingScreen from "@/components/LoadingScreen";
 import PromoBannerCarousel from "@/components/PromoBannerCarousel";
-import { supabase } from "@/lib/supabaseClient";
+import StoryStrip from "@/components/StoryStrip";
 import { apiPost } from "@/lib/authClient";
-import { getCurrentUser } from "@/lib/currentUser";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory, rankCat } from "@/lib/viewCategory";
 import type { ActiveShow } from "@/lib/useShow";
 
 type Row = { rank: number; participant_id: string; votes: number; display_name: string; photo_url: string | null };
-type Fol = { id: string; name: string; photo: string | null };
 
 function Avatar({ photo, name, cls }: { photo: string | null; name: string; cls: string }) {
   return photo ? (
@@ -31,7 +29,6 @@ export default function TalentHome({ show }: { show: NonNullable<ActiveShow> }) 
   const vc = useViewCategory();
   const rc = rankCat(vc.view, vc.mine);
   const [rows, setRows] = useState<Row[]>([]);
-  const [folls, setFolls] = useState<Fol[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,24 +40,6 @@ export default function TalentHome({ show }: { show: NonNullable<ActiveShow> }) 
       setLoading(false);
     })();
   }, [vc.ready, rc]);
-
-  useEffect(() => {
-    (async () => {
-      const u = await getCurrentUser();
-      if (!u) return;
-      const { data } = await supabase
-        .from("participant_follows")
-        .select("participant_id, participants(display_name, photo_url)")
-        .eq("user_id", u.id)
-        .limit(30);
-      setFolls(
-        ((data as any[]) ?? []).map((f) => {
-          const p = Array.isArray(f.participants) ? f.participants[0] : f.participants;
-          return { id: f.participant_id, name: p?.display_name ?? "", photo: p?.photo_url ?? null };
-        })
-      );
-    })();
-  }, []);
 
   return (
     <main className="min-h-screen pb-28 bg-bgPrimary">
@@ -92,27 +71,7 @@ export default function TalentHome({ show }: { show: NonNullable<ActiveShow> }) 
           />
         </div>
 
-        {/* Истории: только те, на кого вы подписаны */}
-        <div className="px-6 mb-5">
-          <p className="text-offwhite text-sm font-semibold mb-2">Истории</p>
-          <div className="flex gap-3 overflow-x-auto pb-1">
-            <div className="flex-none w-16 text-center">
-              <div className="w-16 h-16 rounded-full border border-dashed border-gold/70 flex items-center justify-center text-gold text-2xl">+</div>
-              <p className="text-[10px] text-muted mt-1">Ваша</p>
-            </div>
-            {folls.map((f) => (
-              <Link key={f.id} href={`/participant/${f.id}`} className="flex-none w-16 text-center">
-                <div className="w-16 h-16 rounded-full p-[2px]" style={{ background: "linear-gradient(135deg, rgb(var(--c-sec)), rgb(var(--c-gold)))" }}>
-                  <div className="w-full h-full rounded-full overflow-hidden border-2 border-bgPrimary">
-                    <Avatar photo={f.photo} name={f.name} cls="w-full h-full" />
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted mt-1 truncate">{f.name}</p>
-              </Link>
-            ))}
-            {folls.length === 0 && <p className="text-muted text-xs self-center">Подпишитесь на участниц, и их истории появятся здесь.</p>}
-          </div>
-        </div>
+        <StoryStrip />
 
         {/* Топ-25 */}
         <div className="px-6 mb-3 flex items-center justify-between">
