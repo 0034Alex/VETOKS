@@ -328,7 +328,8 @@ export default function ProfilePage() {
   }
 
 
-  const menuBadge = user && !user.phone_verified && !phoneDone ? 1 : 0;
+  const needBirth = !!user && !user.birth_date;
+  const menuBadge = (user && !user.phone_verified && !phoneDone ? 1 : 0) + (needBirth ? 1 : 0);
   const initialsName = user?.first_name || nick || "";
   const st = participant ? statusFor(statusRaw?.contest, statusRaw?.stage_key, statusRaw?.crown, user?.regions?.name ?? null) : null;
   const goalPct = Math.min(100, goalTarget ? (goalCollected / goalTarget) * 100 : 0);
@@ -473,6 +474,22 @@ export default function ProfilePage() {
             className="bg-gold text-bgPrimary font-semibold px-5 py-2 rounded-full text-sm"
           >
             {t("profile.verifyBtn")}
+          </button>
+        </div>
+      )}
+
+      {needBirth && (
+        <div className="rounded-xl p-4 mt-3 border border-gold bg-gradient-to-r from-[#7C3AED]/30 to-[#EC4899]/30">
+          <p className="text-offwhite font-semibold text-sm mb-1">Укажите дату рождения</p>
+          <p className="text-muted text-xs mb-3">По дате мы определим вашу возрастную категорию. Указать можно один раз.</p>
+          <button
+            onClick={() => {
+              setMenuOpen(false);
+              window.dispatchEvent(new Event("vetoks:ask-birth"));
+            }}
+            className="bg-gold text-bgPrimary font-semibold px-5 py-2 rounded-full text-sm"
+          >
+            Указать
           </button>
         </div>
       )}

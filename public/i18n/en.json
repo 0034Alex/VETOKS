@@ -1720,5 +1720,7 @@
  "Короны (на вывод)": "Crowns (for payout)",
  "Монеты": "Coins",
  "Ваши Короны": "Your Crowns",
- "Загрузка…": "Loading…"
+ "Загрузка…": "Loading…",
+ "По дате мы определим вашу возрастную категорию. Указать можно один раз.": "We use it to set your age category. You can enter it only once.",
+ "Указать": "Enter"
 }

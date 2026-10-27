@@ -23,22 +23,10 @@ export default function BirthPopup() {
   const hidden = HIDE_ON.some((p) => pathname.startsWith(p));
 
   useEffect(() => {
-    if (hidden) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        if (sessionStorage.getItem(SKIP_KEY) === "1") return;
-      } catch {}
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) return;
-      const u = await getCurrentUser();
-      if (cancelled || !u || u.birth_date) return;
-      setOpen(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [hidden, pathname]);
+    const h = () => setOpen(true);
+    window.addEventListener("vetoks:ask-birth", h);
+    return () => window.removeEventListener("vetoks:ask-birth", h);
+  }, []);
 
   async function save() {
     if (!birth || busy) return;
