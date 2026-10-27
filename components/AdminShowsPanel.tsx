@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
+import { supabase } from "@/lib/supabaseClient";
 import { THEME_KEYS, THEME_PRESETS, type ShowTheme } from "@/lib/showTheme";
 
 type Show = {
@@ -15,6 +16,7 @@ type Show = {
   starts_at: string | null;
   ends_at: string | null;
   preview_token?: string | null;
+  banner?: { image?: string; title?: string; subtitle?: string; stage_label?: string; countdown_to?: string | null; apply?: boolean };
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -31,7 +33,7 @@ function toLocal(v: string | null) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-const empty = (): Show => ({ key: "", title: "", contest: "", status: "draft", theme: {}, apply_open_at: null, starts_at: null, ends_at: null });
+const empty = (): Show => ({ key: "", title: "", contest: "", status: "draft", theme: {}, apply_open_at: null, starts_at: null, ends_at: null, banner: {} });
 
 export default function AdminShowsPanel() {
   const [items, setItems] = useState<Show[]>([]);
@@ -74,6 +76,14 @@ export default function AdminShowsPanel() {
     const r = await apiPost("/api/admin/shows", { action: "delete", id });
     if (!r?.ok) return flash(r?.message || "Не получилось удалить.");
     load();
+  }
+
+  async function uploadBanner(file: File, set: (url: string) => void) {
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `show-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("stage-banners").upload(path, file);
+    if (error) return flash("Ошибка загрузки: " + error.message);
+    set(supabase.storage.from("stage-banners").getPublicUrl(path).data.publicUrl);
   }
 
   function previewMe(id: string) {
@@ -167,6 +177,43 @@ export default function AdminShowsPanel() {
               <span className="inline-block text-xs rounded-full px-4 py-1.5 ml-2 text-white" style={{ background: `linear-gradient(90deg, ${col("sec", "#7C3AED")}, ${col("sec2", "#EC4899")})` }}>Баннер</span>
             </div>
           </div>
+        </div>
+
+        <div>
+          <p className="text-xs text-muted mb-2">Главный баннер на главной странице шоу</p>
+          {(() => {
+            const bn = s.banner ?? {};
+            const setB = (p: Partial<NonNullable<Show["banner"]>>) => onChange({ ...s, banner: { ...bn, ...p } });
+            return (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-28 h-16 rounded-lg overflow-hidden bg-bgPrimary border border-muted flex-none">
+                    {bn.image && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={bn.image} alt="" className="w-full h-full object-cover" />
+                    )}
+                  </div>
+                  <label className="border border-gold text-gold text-xs rounded-full px-4 py-2 cursor-pointer">
+                    Загрузить картинку
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) uploadBanner(f, (u) => setB({ image: u })); }} />
+                  </label>
+                  {bn.image && (
+                    <button onClick={() => setB({ image: "" })} className="text-muted text-xs">убрать</button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="text-xs text-muted">Заголовок<input className={inp} value={bn.title ?? ""} onChange={(e) => setB({ title: e.target.value })} placeholder="Шоу талантов" /></label>
+                  <label className="text-xs text-muted">Подпись<input className={inp} value={bn.subtitle ?? ""} onChange={(e) => setB({ subtitle: e.target.value })} placeholder="Сцена. Голос. Победа." /></label>
+                  <label className="text-xs text-muted">Этап (надпись)<input className={inp} value={bn.stage_label ?? ""} onChange={(e) => setB({ stage_label: e.target.value })} placeholder="Этап 1 · Отбор" /></label>
+                  <label className="text-xs text-muted">Конец этапа (обратный отсчёт)<input type="datetime-local" className={inp} value={toLocal(bn.countdown_to ?? null)} onChange={(e) => setB({ countdown_to: e.target.value ? new Date(e.target.value).toISOString() : null })} /></label>
+                </div>
+                <label className="text-xs text-muted flex items-center gap-2">
+                  <input type="checkbox" checked={bn.apply !== false} onChange={(e) => setB({ apply: e.target.checked })} />
+                  Показывать кнопку «Подать анкету»
+                </label>
+              </div>
+            );
+          })()}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

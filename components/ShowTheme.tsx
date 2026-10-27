@@ -60,7 +60,7 @@ export default function ShowTheme() {
         const theme = r.show?.theme ?? null;
         applyTheme(theme);
         const preview = !!r.preview;
-        publishShow(r.show ? { id: r.show.id, key: r.show.key, title: r.show.title, contest: r.show.contest, preview } : null);
+        publishShow(r.show ? { id: r.show.id, key: r.show.key, title: r.show.title, contest: r.show.contest, preview, banner: r.show.banner ?? {}, endsAt: r.show.endsAt ?? null } : null);
         ls(preview ? K_THEME_PV : K_THEME, JSON.stringify(theme ?? {}));
         setPv(preview ? r.show?.title ?? "шоу" : null);
         if (!preview && (token || previewId)) {

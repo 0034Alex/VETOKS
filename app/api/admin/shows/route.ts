@@ -35,7 +35,17 @@ export async function POST(req: Request) {
       const v = b.theme?.[k];
       if (typeof v === "string" && HEX.test(v)) theme[k] = v;
     }
+    const bn = b.banner && typeof b.banner === "object" ? b.banner : {};
+    const banner = {
+      image: typeof bn.image === "string" ? bn.image.slice(0, 500) : "",
+      title: String(bn.title ?? "").slice(0, 80),
+      subtitle: String(bn.subtitle ?? "").slice(0, 140),
+      stage_label: String(bn.stage_label ?? "").slice(0, 60),
+      countdown_to: iso(bn.countdown_to),
+      apply: bn.apply !== false,
+    };
     const row: Record<string, any> = {
+      banner,
       title,
       contest: String(b.contest ?? "").trim().toLowerCase().slice(0, 30) || key || undefined,
       status,

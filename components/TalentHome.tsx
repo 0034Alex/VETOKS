@@ -7,6 +7,7 @@ import Logo from "@/components/Logo";
 import LoadingScreen from "@/components/LoadingScreen";
 import PromoBannerCarousel from "@/components/PromoBannerCarousel";
 import StoryStrip from "@/components/StoryStrip";
+import ShowBanner from "@/components/ShowBanner";
 import { apiPost } from "@/lib/authClient";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory, rankCat } from "@/lib/viewCategory";
@@ -52,23 +53,13 @@ export default function TalentHome({ show }: { show: NonNullable<ActiveShow> }) 
           </Link>
         </div>
 
-        {/* Баннер */}
+        {/* Главный баннер шоу */}
         <div className="mb-5">
-          <PromoBannerCarousel
-            fallback={
-              <div
-                className="mx-6 rounded-2xl p-5 border border-gold/30"
-                style={{
-                  background:
-                    "radial-gradient(120% 90% at 85% 0%, rgb(var(--c-sec) / 0.5), transparent 60%), linear-gradient(160deg, rgb(var(--c-surface)), rgb(var(--c-bg)))",
-                }}
-              >
-                <p className="text-goldSoft text-xs tracking-widest mb-1">СЕЗОН 1</p>
-                <p className="text-offwhite text-2xl font-bold leading-tight">{show.title}</p>
-                <p className="text-muted text-xs mt-1">Сцена. Голос. Победа.</p>
-              </div>
-            }
-          />
+          <ShowBanner show={show} />
+        </div>
+
+        <div className="mb-5">
+          <PromoBannerCarousel />
         </div>
 
         <StoryStrip />

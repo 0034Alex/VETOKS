@@ -11,13 +11,14 @@ type ShowRow = {
   contest: string | null;
   status: string;
   theme: any;
+  banner: any;
   apply_open_at: string | null;
   starts_at: string | null;
   ends_at: string | null;
   preview_token: string | null;
 };
 
-const pub = (s: ShowRow) => ({ id: s.id, key: s.key, title: s.title, contest: s.contest ?? s.key, theme: s.theme ?? {} });
+const pub = (s: ShowRow) => ({ id: s.id, key: s.key, title: s.title, contest: s.contest ?? s.key, theme: s.theme ?? {}, banner: s.banner ?? {}, endsAt: s.ends_at });
 
 // Какое шоу сейчас показывать. Само переключается по датам из CRM:
 // «запланировано» + наступил старт → идёт; «идёт» + прошёл конец → закончено.
