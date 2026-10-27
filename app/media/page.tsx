@@ -13,6 +13,7 @@ import ReportButton from "@/components/ReportButton";
 import ShareButton from "@/components/ShareButton";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory } from "@/lib/viewCategory";
+import { useShow } from "@/lib/useShow";
 import {
   IconHeart,
   IconComment,
@@ -38,7 +39,7 @@ type Comment = {
   users: { first_name: string } | null;
 };
 
-type FeedTab = "region" | "following" | "country";
+type FeedTab = "region" | "following" | "country" | "live";
 
 const PAGE_CATS = ["teen", "main", "adult"];
 
@@ -73,6 +74,8 @@ export default function MediaPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState("");
   const [feedTab, setFeedTab] = useState<FeedTab>("region");
+  const { show: curShow } = useShow();
+  const liveOn = curShow?.contest === "talent";
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
@@ -154,7 +157,7 @@ export default function MediaPage() {
     exhausted.current = false;
     pageNo.current = 0;
     loadingMore.current = false;
-    fetchPack(feedTab, true);
+    if (feedTab !== "live") fetchPack(feedTab, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feedTab, vc.ready, vc.view]);
 
@@ -308,7 +311,7 @@ export default function MediaPage() {
     );
   }
 
-  if (noContent && feedTab !== "following") {
+  if (noContent && feedTab !== "following" && feedTab !== "live") {
     return <MediaShowcase />;
   }
 
@@ -361,6 +364,18 @@ export default function MediaPage() {
               >
                 Вся страна
               </button>
+              {liveOn && (
+                <button
+                  onClick={() => {
+                    setFeedTab("live");
+                    setSearchOpen(false);
+                    setSearchQuery("");
+                  }}
+                  className={`text-sm whitespace-nowrap flex items-center gap-1 ${feedTab === "live" ? "text-white font-semibold" : "text-white/60"}`}
+                >
+                  <span className="inline-block w-2 h-2 rounded-full bg-danger animate-pulse" /> Эфир
+                </button>
+              )}
             </div>
             <button onClick={() => setSearchOpen((v) => !v)} className="flex-shrink-0 ml-2">
               <IconSearchWhite />
@@ -378,6 +393,16 @@ export default function MediaPage() {
             </div>
           )}
         </div>
+
+        {feedTab === "live" && (
+          <div className="fixed inset-0 z-20 bg-black flex items-center justify-center px-8 text-center">
+            <div>
+              <p className="text-4xl mb-3">🔴</p>
+              <p className="text-white font-semibold mb-1">Прямых эфиров сейчас нет</p>
+              <p className="text-muted text-sm">Когда участница выйдет в эфир, он появится здесь с отметкой LIVE.</p>
+            </div>
+          </div>
+        )}
 
         {posts.length === 0 && (
           <div className="h-screen h-[100dvh] w-full flex items-center justify-center px-8 text-center">

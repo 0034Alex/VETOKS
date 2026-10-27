@@ -82,10 +82,11 @@ export default function ShowTheme() {
         <span>Предпросмотр: {pv}</span>
         <button
           onClick={() => {
+            const fromCrm = !!ls(K_ID);
             ls(K_TOKEN, null);
             ls(K_ID, null);
             ls(K_THEME_PV, null);
-            window.location.href = window.location.pathname;
+            window.location.href = fromCrm ? "/admin" : "/";
           }}
           className="underline"
         >

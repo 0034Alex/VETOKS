@@ -16,8 +16,10 @@ type Banner = {
 
 export default function PromoBannerCarousel({
   placement = "main",
+  fallback,
 }: {
   placement?: string;
+  fallback?: React.ReactNode;
 }) {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [enabled, setEnabled] = useState(true);
@@ -126,7 +128,7 @@ export default function PromoBannerCarousel({
     setActive((prev) => (dx < 0 ? (prev + 1) % banners.length : (prev - 1 + banners.length) % banners.length));
   }
 
-  if (!enabled || banners.length === 0) return null;
+  if (!enabled || banners.length === 0) return fallback ? <>{fallback}</> : null;
 
   return (
     <div style={{ padding: "0 24px", marginBottom: 16 }}>

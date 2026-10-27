@@ -14,6 +14,7 @@ import { applyGiftOverrides, getAppPrices, getCurrencySymbol, getUsdRate } from 
 import { apiPost } from "@/lib/authClient";
 import TopUpSheet from "@/components/TopUpSheet";
 import { getMyCountry } from "@/lib/myCountry";
+import { useShow } from "@/lib/useShow";
 
 type Gift = {
   id: string;
@@ -23,6 +24,7 @@ type Gift = {
   category: string;
   participant_share_percent: number;
   chat_only?: boolean;
+  show_key?: string | null;
 };
 
 function useTopupEnabled() {
@@ -59,6 +61,15 @@ function matchesSearch(name: string, query: string): boolean {
 }
 
 const GIFT_EMOJI: Record<string, string> = {
+  Овации: "👏",
+  Микрофон: "🎤",
+  Ноты: "🎵",
+  Гитара: "🎸",
+  Прожектор: "🔦",
+  Занавес: "🎭",
+  Рояль: "🎹",
+  "Звезда сцены": "🌟",
+  "Гран-при": "🏆",
   Роза: "🌹",
   Сердце: "💗",
   Искра: "✨",
@@ -91,6 +102,8 @@ function ShopContent() {
   const participantName = searchParams.get("name");
 
   const [gifts, setGifts] = useState<Gift[]>([]);
+  const { show: curShow } = useShow();
+  const showKey = curShow?.key ?? "miss";
   const [category, setCategory] = useState("light");
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [selectedParticipant, setSelectedParticipant] = useState(
@@ -125,7 +138,7 @@ function ShopContent() {
 
       const { data: giftsData } = await supabase
         .from("gift_catalog")
-        .select("id, name, price, usd_price, category, participant_share_percent, chat_only, is_active");
+        .select("id, name, price, usd_price, category, participant_share_percent, chat_only, is_active, show_key");
       // Цена подарка задаётся в CRM в долларах; пересчитываем по курсу.
       const rate = await getUsdRate();
       const withCountry = (await applyGiftOverrides((giftsData as any[]) ?? [])).filter((g: any) => g.is_active);
@@ -260,7 +273,7 @@ function ShopContent() {
     });
   }
 
-  const filteredGifts = gifts.filter((g) => g.category === category);
+  const filteredGifts = gifts.filter((g) => g.category === category && (g.show_key ?? "miss") === showKey);
 
   return (
     <main className="min-h-screen pb-28">
