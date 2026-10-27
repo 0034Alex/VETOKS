@@ -26,18 +26,18 @@ export async function POST(req: Request) {
 
   if (b.action === "save") {
     const title = String(b.title ?? "").trim().slice(0, 80);
-    const key = String(b.key ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 30);
-    if (!title || !key) return NextResponse.json({ ok: false, message: "Нужны название и ключ (латиницей)." });
+    let key = String(b.key ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 30);
+    if (!key && !b.id) key = "show-" + randomBytes(3).toString("hex");
+    if (!title) return NextResponse.json({ ok: false, message: "Укажите название шоу." });
     const status = STATUSES.includes(b.status) ? b.status : "draft";
     const theme: Record<string, string> = {};
     for (const k of ["gold", "goldSoft", "sec", "sec2", "bg", "surface"]) {
       const v = b.theme?.[k];
       if (typeof v === "string" && HEX.test(v)) theme[k] = v;
     }
-    const row = {
-      key,
+    const row: Record<string, any> = {
       title,
-      contest: String(b.contest ?? key).trim().toLowerCase().slice(0, 30) || key,
+      contest: String(b.contest ?? "").trim().toLowerCase().slice(0, 30) || key || undefined,
       status,
       theme,
       apply_open_at: iso(b.apply_open_at),
@@ -45,6 +45,7 @@ export async function POST(req: Request) {
       ends_at: iso(b.ends_at),
     };
     if (status === "scheduled" && !row.starts_at) return NextResponse.json({ ok: false, message: "Для статуса «Запланировано» укажите дату старта." });
+    if (key) row.key = key;
     if (b.id) {
       const { error } = await supabaseAdmin.from("shows").update(row).eq("id", b.id);
       if (error) return NextResponse.json({ ok: false, message: error.message });

@@ -107,16 +107,6 @@ export default function AdminShowsPanel() {
             <input className={inp} value={s.title} onChange={(e) => onChange({ ...s, title: e.target.value })} placeholder="Шоу талантов" />
           </label>
           <label className="text-xs text-muted">
-            Ключ (латиницей, не меняется потом)
-            <input
-              className={inp}
-              value={s.key}
-              disabled={!isNew}
-              onChange={(e) => onChange({ ...s, key: e.target.value, contest: s.contest || e.target.value })}
-              placeholder="talent"
-            />
-          </label>
-          <label className="text-xs text-muted">
             Статус
             <select className={inp} value={s.status} onChange={(e) => onChange({ ...s, status: e.target.value })}>
               {Object.entries(STATUS_LABEL).map(([k, v]) => (

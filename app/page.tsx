@@ -1,5 +1,7 @@
 "use client";
 
+import { useShow } from "@/lib/useShow";
+import TalentHome from "@/components/TalentHome";
 import { useT } from "@/lib/i18n";
 import StagePoll from "@/components/StagePoll";
 import CategorySwitch, { CategoryStrip } from "@/components/CategorySwitch";
@@ -637,7 +639,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
   );
 }
 
-export default function Home() {
+function MissHome() {
   const { t } = useT();
   const router = useRouter();
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -1140,4 +1142,10 @@ export default function Home() {
       <BottomNav />
     </main>
   );
+}
+
+export default function Home() {
+  const { show } = useShow();
+  if (show?.contest === "talent") return <TalentHome show={show} />;
+  return <MissHome />;
 }
