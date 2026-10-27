@@ -1,5 +1,6 @@
 "use client";
 
+import { CONTESTS } from "@/lib/status";
 import AdAudience from "@/components/AdAudience";
 import AdminStaffInvites from "@/components/AdminStaffInvites";
 import { useEffect, useState } from "react";
@@ -3401,7 +3402,7 @@ function SocialLinksTab() {
 // МАТЕРИАЛЫ ДЛЯ УЧАСТНИЦ
 // ---------------------------------------------------------------------
 
-type MaterialRow = { id: string; type: string; file_url: string; title: string | null };
+type MaterialRow = { id: string; type: string; file_url: string; title: string | null; show_key?: string | null };
 
 function MediaMaterialsTab() {
   const [rows, setRows] = useState<MaterialRow[]>([]);
@@ -3409,13 +3410,15 @@ function MediaMaterialsTab() {
   const [uploading, setUploading] = useState(false);
   const [type, setType] = useState("photo");
   const [title, setTitle] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [showKey, setShowKey] = useState("miss");
+  const [progress, setProgress] = useState("");
 
   async function load() {
     setLoading(true);
     const { data } = await orCrm(supabase
       .from("media_materials")
-      .select("id, type, file_url, title")
+      .select("id, type, file_url, title, show_key")
       .order("created_at", { ascending: false }));
     setRows((data as MaterialRow[]) ?? []);
     setLoading(false);
@@ -3426,25 +3429,33 @@ function MediaMaterialsTab() {
   }, []);
 
   async function upload() {
-    if (!file) return;
+    if (!files.length) return;
     setUploading(true);
-    const fileExt = file.name.split(".").pop();
-    const filePath = `${Date.now()}.${fileExt}`;
-    const { error } = await supabase.storage.from("media-materials").upload(filePath, file);
-    if (error) {
-      alert(`Ошибка загрузки: ${error.message}`);
-      setUploading(false);
-      return;
+    let done = 0;
+    for (const f of files) {
+      setProgress(`Загрузка ${done + 1} из ${files.length}`);
+      const fileExt = f.name.split(".").pop();
+      const filePath = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${fileExt}`;
+      const { error } = await supabase.storage.from("media-materials").upload(filePath, f);
+      if (error) {
+        alert(`Ошибка загрузки ${f.name}: ${error.message}`);
+        continue;
+      }
+      const { data: publicUrlData } = supabase.storage.from("media-materials").getPublicUrl(filePath);
+      const auto = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
+      const { error: e2 } = await supabase.from("media_materials").insert({
+        country_id: crmId(),
+        type,
+        file_url: publicUrlData.publicUrl,
+        title: files.length === 1 && title ? title : auto,
+        show_key: showKey,
+      });
+      if (e2) alert(`Не сохранилось ${f.name}: ${e2.message}`);
+      else done++;
     }
-    const { data: publicUrlData } = supabase.storage.from("media-materials").getPublicUrl(filePath);
-    await supabase.from("media_materials").insert({
-      country_id: crmId(),
-      type,
-      file_url: publicUrlData.publicUrl,
-      title: title || null,
-    });
     setTitle("");
-    setFile(null);
+    setFiles([]);
+    setProgress("");
     await load();
     setUploading(false);
   }
@@ -3464,6 +3475,15 @@ function MediaMaterialsTab() {
 
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
         <select
+          value={showKey}
+          onChange={(e) => setShowKey(e.target.value)}
+          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
+        >
+          {Object.entries(CONTESTS).map(([k, c]) => (
+            <option key={k} value={k}>Для шоу: {c.icon} {c.name}</option>
+          ))}
+        </select>
+        <select
           value={type}
           onChange={(e) => setType(e.target.value)}
           className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
@@ -3474,24 +3494,25 @@ function MediaMaterialsTab() {
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Название (необязательно)"
+          placeholder="Название (необязательно; при нескольких файлах берётся имя файла)"
           className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-2"
         />
         <label className="block w-full text-center bg-bgPrimary border border-muted text-offwhite text-xs py-2 rounded-lg mb-2 cursor-pointer">
-          {file ? file.name : "Выбрать файл"}
+          {files.length ? (files.length === 1 ? files[0].name : `Выбрано файлов: ${files.length}`) : "Выбрать файлы (можно сразу много)"}
           <input
             type="file"
+            multiple
             accept={type === "photo" ? "image/*" : "video/*"}
             className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
           />
         </label>
         <button
           onClick={upload}
-          disabled={uploading || !file}
+          disabled={uploading || !files.length}
           className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40"
         >
-          {uploading ? "Загрузка..." : "Загрузить"}
+          {uploading ? progress || "Загрузка..." : "Загрузить"}
         </button>
       </div>
 
@@ -3506,6 +3527,7 @@ function MediaMaterialsTab() {
             ) : (
               <video src={m.file_url} className="w-full aspect-square object-cover" muted />
             )}
+            <p className="text-[10px] text-muted px-2 pt-1 truncate">{CONTESTS[m.show_key ?? "miss"]?.name ?? m.show_key} · {m.title ?? ""}</p>
             <button
               onClick={() => remove(m.id)}
               className="w-full text-danger text-xs py-1"
