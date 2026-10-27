@@ -21,9 +21,10 @@ export async function POST(req: Request) {
       .limit(500);
     const by = new Map<string, { story_id: string; count: number; reasons: Record<string, number>; last: string }>();
     for (const r of (reps as any[]) ?? []) {
-      const g = by.get(r.story_id) ?? { story_id: r.story_id, count: 0, reasons: {}, last: r.created_at };
+      const g = by.get(r.story_id) ?? { story_id: r.story_id, count: 0, reasons: {} as Record<string, number>, last: r.created_at };
+      const rk = String(r.reason);
       g.count += 1;
-      g.reasons[r.reason] = (g.reasons[r.reason] ?? 0) + 1;
+      g.reasons[rk] = (g.reasons[rk] ?? 0) + 1;
       by.set(r.story_id, g);
     }
     const ids = Array.from(by.keys());
