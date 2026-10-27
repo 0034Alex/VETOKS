@@ -56,6 +56,7 @@ export async function POST(req: Request) {
         .from("stories")
         .select("id, user_id, kind, url, visibility, created_at, expires_at")
         .in("user_id", list)
+        .eq("hidden", false)
         .gt("expires_at", now)
         .order("created_at", { ascending: true })
         .limit(500);
@@ -209,6 +210,18 @@ export async function POST(req: Request) {
     if (!s) return bad("not_found", 404);
     await supabaseAdmin.from("stories").delete().eq("id", s.id);
     if (s.video_id) await bunnyDeleteVideo(String(s.video_id));
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "report") {
+    const id = String(b.id || "");
+    const reason = ["adult", "abuse", "spam", "other"].includes(b.reason) ? b.reason : "other";
+    const { data: s } = await supabaseAdmin.from("stories").select("id, user_id").eq("id", id).maybeSingle();
+    if (!s || s.user_id === me) return bad("not_found", 404);
+    await supabaseAdmin.from("story_reports").upsert({ story_id: id, reporter_id: me, reason, status: "open" }, { onConflict: "story_id,reporter_id" });
+    const { count } = await supabaseAdmin.from("story_reports").select("reporter_id", { count: "exact", head: true }).eq("story_id", id).eq("status", "open");
+    // 3 разные жалобы: скрываем историю, пока модератор не решит
+    if ((count ?? 0) >= 3) await supabaseAdmin.from("stories").update({ hidden: true }).eq("id", id);
     return NextResponse.json({ ok: true });
   }
 

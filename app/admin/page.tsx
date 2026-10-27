@@ -10,6 +10,7 @@ import AdminPricesPanel from "@/components/AdminPricesPanel";
 import AdminCoinsPanel from "@/components/AdminCoinsPanel";
 import AdminShowsPanel from "@/components/AdminShowsPanel";
 import AdminAwardsPanel from "@/components/AdminAwardsPanel";
+import AdminStoryReportsPanel from "@/components/AdminStoryReportsPanel";
 import AdminRatingPanel from "@/components/AdminRatingPanel";
 import AdminBlackMarksPanel from "@/components/AdminBlackMarksPanel";
 import { apiPost } from "@/lib/authClient";
@@ -90,6 +91,7 @@ type Tab =
   | "coins"
   | "shows"
   | "awards"
+  | "story-reports"
   | "rating-admin"
   | "reports"
   | "ad-stats"
@@ -136,6 +138,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "coins", label: "Монеты и Короны" },
   { key: "shows", label: "Шоу" },
   { key: "awards", label: "Номинации и победители" },
+  { key: "story-reports", label: "Жалобы на истории" },
   { key: "rating-admin", label: "Рейтинг и титулы" },
   { key: "reports", label: "Жалобы" },
   { key: "content-mod", label: "Проверка контента" },
@@ -170,7 +173,7 @@ const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: 
   { key: "people", ic: "👥", label: "Люди", desc: "Все, кто есть в приложении", tabs: ["users", "participants", "applications", "badges", "black-marks"] },
   { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["shows", "awards", "stages", "rating-admin", "goal", "tasks", "cards"] },
   { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "broadcast", "mediafeed", "channels", "banners"] },
-  { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["content-mod", "reports", "clan"] },
+  { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["content-mod", "reports", "story-reports", "clan"] },
   { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["coins", "app-prices", "referrals"] },
   { key: "ads", ic: "📣", label: "Реклама и партнёры", desc: "Всё, что приносит доход от партнёров", tabs: ["partners", "partner-logos", "ad-space", "ad-prices", "ad-stats", "magazine-ads", "branding"] },
   { key: "set", ic: "⚙️", label: "Настройки", desc: "Страны, языки, доступы", tabs: ["countries", "translations", "social", "documents", "staff", "action-log", "security"] },
@@ -206,6 +209,7 @@ const TAB_DESC: Partial<Record<Tab, string>> = {
   coins: "Курсы, пакеты, бонусы",
   shows: "Какое шоу идёт, даты и цвета",
   awards: "Победители для зала славы",
+  "story-reports": "Жалобы на истории",
   "app-prices": "Цены в приложении",
   referrals: "Рефералы и комиссии",
   partners: "Партнёры и связь",
@@ -534,6 +538,7 @@ export default function AdminPage() {
         {tab === "coins" && <AdminCoinsPanel />}
         {tab === "shows" && <AdminShowsPanel />}
         {tab === "awards" && <AdminAwardsPanel />}
+        {tab === "story-reports" && <AdminStoryReportsPanel />}
         {tab === "documents" && <AdminDocumentsPanel />}
         {tab === "posters" && <AdminPostersPanel />}
         {tab === "calendar" && <CalendarTab />}

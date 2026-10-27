@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { addDays, kyivDate, kyivDayStartUtc, kyivWeekStart } from "@/lib/kyiv";
 import { notify } from "@/lib/shopServer";
 import { pickText } from "@/lib/pushText";
+import { cleanupStories } from "@/lib/storyCleanup";
 
 // Ежедневный пересчёт (запускается в 00:01 по Киеву):
 //  1) штраф за чёрные метки прошедшей недели (раз в неделю),
@@ -197,6 +198,9 @@ export async function runDailyJob() {
     // История «что смотрел» живёт 14 дней. Лайки, комментарии и донаты лежат в других таблицах и не трогаются.
     try {
       await supabaseAdmin.from("media_seen").delete().lt("seen_at", new Date(Date.now() - 14 * 86400000).toISOString());
+    } catch {}
+    try {
+      await cleanupStories();
     } catch {}
   } catch {
     /* реклама выключится при следующем запуске */

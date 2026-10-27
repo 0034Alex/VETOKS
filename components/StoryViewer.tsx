@@ -23,6 +23,7 @@ export default function StoryViewer({ groups, start, onClose, onChanged }: { gro
   const [prog, setProg] = useState(0);
   const [paused, setPaused] = useState(false);
   const [viewers, setViewers] = useState<{ name: string; photo: string | null }[] | null>(null);
+  const [rep, setRep] = useState<"off" | "pick" | "done">("off");
   const [list, setList] = useState(groups);
   const vref = useRef<HTMLVideoElement>(null);
   const g = list[gi];
@@ -47,13 +48,14 @@ export default function StoryViewer({ groups, start, onClose, onChanged }: { gro
   useEffect(() => {
     setProg(0);
     setViewers(null);
+    setRep("off");
     if (s && !g.own) apiPost("/api/story", { action: "view", id: s.id });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gi, si]);
 
   // таймер для фото
   useEffect(() => {
-    if (!s || s.kind !== "photo" || paused || viewers) return;
+    if (!s || s.kind !== "photo" || paused || viewers || rep === "pick") return;
     const t0 = Date.now() - prog * PHOTO_MS;
     const id = setInterval(() => {
       const p = (Date.now() - t0) / PHOTO_MS;
@@ -64,14 +66,14 @@ export default function StoryViewer({ groups, start, onClose, onChanged }: { gro
     }, 60);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gi, si, paused, viewers]);
+  }, [gi, si, paused, viewers, rep]);
 
   useEffect(() => {
     const v = vref.current;
     if (!v) return;
-    if (paused || viewers) v.pause();
+    if (paused || viewers || rep === "pick") v.pause();
     else v.play().catch(() => {});
-  }, [paused, viewers, gi, si]);
+  }, [paused, viewers, rep, gi, si]);
 
   async function remove() {
     if (!s) return;
@@ -81,6 +83,12 @@ export default function StoryViewer({ groups, start, onClose, onChanged }: { gro
     if (!left.length) return onClose();
     setList((l) => l.map((x, i) => (i === gi ? { ...x, stories: left } : x)));
     setSi(Math.min(si, left.length - 1));
+  }
+
+  async function report(reason: string) {
+    if (!s) return;
+    await apiPost("/api/story", { action: "report", id: s.id, reason });
+    setRep("done");
   }
 
   async function showViewers() {
@@ -160,6 +168,37 @@ export default function StoryViewer({ groups, start, onClose, onChanged }: { gro
             <button onClick={remove} className="text-danger text-sm">
               Удалить
             </button>
+          </div>
+        )}
+
+        {!g.own && (
+          <div className="absolute bottom-0 right-0 px-5 pt-6" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
+            <button onClick={() => setRep("pick")} className="text-white/70 text-xs">
+              ⚑ Пожаловаться
+            </button>
+          </div>
+        )}
+
+        {rep !== "off" && (
+          <div className="absolute inset-0 z-10 bg-black/80 flex items-end" onClick={() => setRep("off")}>
+            <div className="w-full bg-bgSurface rounded-t-3xl p-4" onClick={(e) => e.stopPropagation()} style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }}>
+              {rep === "done" ? (
+                <>
+                  <p className="text-offwhite font-semibold mb-1">Спасибо</p>
+                  <p className="text-muted text-sm mb-3">Мы проверим историю.</p>
+                  <button onClick={() => setRep("off")} className="bg-gold text-bgPrimary font-semibold rounded-full px-6 py-2 text-sm">Закрыть</button>
+                </>
+              ) : (
+                <>
+                  <p className="text-offwhite font-semibold mb-2">Что не так?</p>
+                  {[["adult", "Откровенное 18+"], ["abuse", "Оскорбления"], ["spam", "Спам или реклама"], ["other", "Другое"]].map(([k, t]) => (
+                    <button key={k} onClick={() => report(k)} className="w-full text-left text-offwhite text-sm py-3 border-b border-muted/20">
+                      {t}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
           </div>
         )}
 
