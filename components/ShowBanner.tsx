@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { ActiveShow } from "@/lib/useShow";
+import { applyOpen, type ActiveShow } from "@/lib/useShow";
 
 function left(to: number, now: number) {
   const s = Math.max(0, Math.floor((to - now) / 1000));
@@ -51,7 +51,7 @@ export default function ShowBanner({ show }: { show: NonNullable<ActiveShow> }) 
         </div>
       )}
 
-      {bn.apply !== false && (
+      {applyOpen(bn) && (
         <Link href="/apply" className="vt-glow mt-3 text-center bg-gold text-bgPrimary rounded-full py-3 font-semibold text-sm">
           Подать анкету
         </Link>

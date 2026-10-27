@@ -14,7 +14,7 @@ import ShowPoll from "@/components/ShowPoll";
 import { apiPost } from "@/lib/authClient";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory, rankCat } from "@/lib/viewCategory";
-import type { ActiveShow } from "@/lib/useShow";
+import { applyOpen, type ActiveShow } from "@/lib/useShow";
 
 type Row = { rank: number; participant_id: string; votes: number; display_name: string; photo_url: string | null };
 
@@ -80,7 +80,7 @@ export default function TalentHome({ show }: { show: NonNullable<ActiveShow> }) 
 
         <ShowPoll showId={show.id} />
 
-        {show.banner?.apply !== false && (
+        {applyOpen(show.banner) && (
           <div className="px-6 mt-8">
             <Link href="/apply" className="vt-glow block text-center bg-bgSurface text-gold border border-gold/40 rounded-full py-3.5 font-semibold text-sm">
               Подать анкету

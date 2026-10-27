@@ -145,7 +145,7 @@ function BattleEmpty() {
         <span className="text-4xl">▶</span>
         <span className="text-xs">Видео {n}</span>
       </div>
-      <div className="text-muted text-sm font-semibold truncate mt-2">Участница {n}</div>
+      <div className="text-muted text-sm font-semibold truncate mt-2">Артист {n}</div>
       <div className="flex gap-2 mt-1">
         <button disabled className="flex-1 rounded-lg py-2 text-sm border border-muted/40 text-muted opacity-60">❤ Лайк</button>
         <button disabled className="flex-1 rounded-lg py-2 text-sm font-semibold bg-gold/40 text-bgPrimary opacity-60">🗳 Голос</button>
@@ -171,7 +171,7 @@ function BattleEmpty() {
         <span>0</span>
         <span>0</span>
       </div>
-      <p className="text-xs text-muted text-center mt-3">Битва пока пуста. Она начнётся, когда в вашем регионе будет минимум две участницы с видео.</p>
+      <p className="text-xs text-muted text-center mt-3">Битва пока пуста. Она начнётся, когда в вашем регионе будет минимум два артиста с видео.</p>
     </section>
   );
 }

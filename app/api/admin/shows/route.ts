@@ -43,6 +43,7 @@ export async function POST(req: Request) {
       stage_label: String(bn.stage_label ?? "").slice(0, 60),
       poll_question: String(bn.poll_question ?? "").slice(0, 200),
       countdown_to: iso(bn.countdown_to),
+      apply_until: iso(bn.apply_until),
       apply: bn.apply !== false,
     };
     const row: Record<string, any> = {

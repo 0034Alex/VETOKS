@@ -16,7 +16,7 @@ type Show = {
   starts_at: string | null;
   ends_at: string | null;
   preview_token?: string | null;
-  banner?: { image?: string; title?: string; subtitle?: string; stage_label?: string; countdown_to?: string | null; apply?: boolean; poll_question?: string };
+  banner?: { image?: string; title?: string; subtitle?: string; stage_label?: string; countdown_to?: string | null; apply?: boolean; apply_until?: string | null; poll_question?: string };
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -205,6 +205,7 @@ export default function AdminShowsPanel() {
                   <label className="text-xs text-muted">Заголовок<input className={inp} value={bn.title ?? ""} onChange={(e) => setB({ title: e.target.value })} placeholder="Шоу талантов" /></label>
                   <label className="text-xs text-muted">Подпись<input className={inp} value={bn.subtitle ?? ""} onChange={(e) => setB({ subtitle: e.target.value })} placeholder="Сцена. Голос. Победа." /></label>
                   <label className="text-xs text-muted">Этап (надпись)<input className={inp} value={bn.stage_label ?? ""} onChange={(e) => setB({ stage_label: e.target.value })} placeholder="Этап 1 · Отбор" /></label>
+                  <label className="text-xs text-muted sm:col-span-2">Приём анкет до (после этого срока кнопка «Подать анкету» исчезает с баннера и главной)<input type="datetime-local" className={inp} value={toLocal(bn.apply_until ?? null)} onChange={(e) => setB({ apply_until: e.target.value ? new Date(e.target.value).toISOString() : null })} /></label>
                   <label className="text-xs text-muted sm:col-span-2">Вопрос опроса на главной (смена вопроса запускает новый опрос)<input className={inp} value={bn.poll_question ?? ""} onChange={(e) => setB({ poll_question: e.target.value })} placeholder="Кто лучше всех выступил на этой неделе?" maxLength={200} /></label>
                   <label className="text-xs text-muted">Конец этапа (обратный отсчёт)<input type="datetime-local" className={inp} value={toLocal(bn.countdown_to ?? null)} onChange={(e) => setB({ countdown_to: e.target.value ? new Date(e.target.value).toISOString() : null })} /></label>
                 </div>
