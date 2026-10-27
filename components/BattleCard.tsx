@@ -171,7 +171,6 @@ function BattleEmpty() {
         <span>0</span>
         <span>0</span>
       </div>
-      <p className="text-xs text-muted text-center mt-3">Битва пока пуста. Она начнётся, когда в вашем регионе будет минимум два артиста с видео.</p>
     </section>
   );
 }

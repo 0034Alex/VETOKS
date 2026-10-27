@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   }
   if (!countryId) return NextResponse.json({ ok: true, rows: [], updatedAt: new Date().toISOString() });
 
-  const key = `${countryId}:${cat}:${contest}`;
+  const key = contest === "miss" ? `${countryId}:${cat}:${contest}` : `${countryId}:all:${contest}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < 60_000) return NextResponse.json({ ok: true, rows: hit.rows, updatedAt: new Date(hit.at).toISOString() });
 
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     .eq("is_eliminated", false)
     .in("region_id", regionIds)
     .limit(20000);
-  const list = ((ps ?? []) as any[]).filter((p) => (p.age_category || "main") === cat && inContest(p.contest, contest));
+  const list = ((ps ?? []) as any[]).filter((p) => (contest !== "miss" || (p.age_category || "main") === cat) && inContest(p.contest, contest));
   const day = await rpcMap("vt_free_votes_between", { p_from: new Date(Date.now() - 86400_000).toISOString(), p_to: new Date().toISOString() });
   const totals = await rpcMap("vt_vote_totals", {});
   const rows: Row[] = list

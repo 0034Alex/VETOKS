@@ -117,6 +117,8 @@ export default function RatingView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, scope, vc.ready, rc, contest]);
 
+  if (contest !== "miss") return <p className="text-muted text-center px-6 py-10 text-sm">Рейтинг появится, когда шоу наберёт ход.</p>;
+
   return (
     <div>
       <div>

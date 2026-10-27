@@ -4,6 +4,10 @@
 
 /* Тема шоу: цвета берутся отсюда, а активное шоу подменяет их (components/ShowTheme.tsx). По умолчанию — Miss. */
 :root {
+  --c-nav: var(--c-gold);
+  --c-navSoft: var(--c-goldSoft);
+  --vn-cb1: #3a2a55;
+  --vn-cb2: #1b1030;
   --c-bg: 11 11 13;
   --c-surface: 22 22 24;
   --c-gold: 201 162 39;

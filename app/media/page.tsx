@@ -109,7 +109,7 @@ export default function MediaPage() {
     loadingMore.current = true;
     try {
       const mc = await getMyCountry();
-      const cats = PAGE_CATS.filter((c) => vc.view === "all" || vc.view === c);
+      const cats = PAGE_CATS.filter((c) => cleanContest(curShow?.contest) !== "miss" || vc.view === "all" || vc.view === c);
       const exclude = reset ? [] : allRef.current.slice(-300).map((x) => x.id);
       const r = await apiPost("/api/media/feed", {
         tab,

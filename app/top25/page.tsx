@@ -54,7 +54,7 @@ export default function Top25Page() {
   return (
     <main className="min-h-screen pb-28">
       <PageHeader />
-      <CategoryStrip />
+      {contest === "miss" && <CategoryStrip />}
 
       <div className="px-6 mb-6 text-center">
         <h1 className="text-2xl font-semibold text-gold mb-2">Топ-25 за 24 часа · {viewInfo(rc).label}</h1>

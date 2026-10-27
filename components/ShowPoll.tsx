@@ -74,7 +74,6 @@ export default function ShowPoll({ showId }: { showId: string }) {
         {demo && (
           <>
             <input disabled placeholder="Начните вводить имя артиста" className="w-full bg-bgPrimary border border-muted/40 rounded-lg px-3 py-2.5 text-sm opacity-60" />
-            <p className="text-xs text-muted mt-3">Пример. Вопрос задаётся в CRM → «Шоу», голос бесплатный, результаты видны после ответа.</p>
           </>
         )}
 

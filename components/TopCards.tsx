@@ -74,7 +74,6 @@ export default function TopCards({ rows }: { rows: TopRow[] }) {
           </div>
         ))}
       </div>
-      {demo && <p className="text-xs text-muted text-center mt-2">Пример: так будет выглядеть Топ-5, когда появятся голоса.</p>}
       {msg && <p className="text-xs text-muted text-center mt-2">{msg}</p>}
     </div>
   );

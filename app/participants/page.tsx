@@ -64,7 +64,7 @@ export default function ParticipantsPage() {
       .select("id, display_name, bio, photo_url, created_at, season_id, region_id")
       .eq("is_eliminated", false);
     pq = applyContest(pq, contest);
-    if (vc.view !== "all") pq = pq.eq("age_category", vc.view);
+    if (contest === "miss" && vc.view !== "all") pq = pq.eq("age_category", vc.view);
     if (mc.countryId) pq = pq.in("region_id", mc.regionIds);
     const { data: participantsData } = await pq;
 
@@ -228,7 +228,7 @@ export default function ParticipantsPage() {
         <PageHeader />
         <PromoBannerCarousel />
 
-        <CategoryStrip />
+        {contest === "miss" && <CategoryStrip />}
         <div className="px-6 mb-4">
           <div className="flex items-baseline justify-between">
             {(["people", "rating"] as const).map((k) => (
@@ -242,7 +242,7 @@ export default function ParticipantsPage() {
                   tab === k ? "text-offwhite" : "text-muted"
                 }`}
               >
-                {k === "people" ? "Участницы" : "Рейтинг"}
+                {k === "people" ? (contest === "miss" ? "Участницы" : "Артисты") : "Рейтинг"}
                 {tab === k && (
                   <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 rounded bg-gold" />
                 )}
@@ -250,7 +250,7 @@ export default function ParticipantsPage() {
             ))}
           </div>
           {tab === "people" && (
-            <p className="text-muted text-sm">{viewInfo(vc.view).label} · {filtered.length} анкет</p>
+            <p className="text-muted text-sm">{contest === "miss" ? `${viewInfo(vc.view).label} · ` : ""}{filtered.length} анкет</p>
           )}
         </div>
 

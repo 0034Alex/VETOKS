@@ -52,4 +52,13 @@ export function applyTheme(theme: ShowTheme | null | undefined) {
     if (v) root.style.setProperty(VARS[k], v);
     else root.style.removeProperty(VARS[k]);
   });
+  // нижнее меню: в Miss золотое, в других шоу — второй цвет шоу (у Talent синий)
+  const nav = theme?.sec2 ? rgb(String(theme.sec2)) : null;
+  const sec = theme?.sec ? rgb(String(theme.sec)) : null;
+  const bg = theme?.bg ? rgb(String(theme.bg)) : null;
+  const set = (name: string, v: string | null) => (v ? root.style.setProperty(name, v) : root.style.removeProperty(name));
+  set("--c-nav", nav);
+  set("--c-navSoft", nav);
+  set("--vn-cb1", sec ? `rgb(${sec})` : null);
+  set("--vn-cb2", bg ? `rgb(${bg})` : null);
 }
