@@ -41,6 +41,7 @@ export async function POST(req: Request) {
       title: String(bn.title ?? "").slice(0, 80),
       subtitle: String(bn.subtitle ?? "").slice(0, 140),
       stage_label: String(bn.stage_label ?? "").slice(0, 60),
+      poll_question: String(bn.poll_question ?? "").slice(0, 200),
       countdown_to: iso(bn.countdown_to),
       apply: bn.apply !== false,
     };

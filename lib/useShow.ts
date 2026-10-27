@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 // Какое шоу сейчас активно (его сообщает components/ShowTheme.tsx после запроса к серверу).
-export type ShowBanner = { image?: string; title?: string; subtitle?: string; stage_label?: string; countdown_to?: string | null; apply?: boolean };
+export type ShowBanner = { image?: string; title?: string; subtitle?: string; stage_label?: string; countdown_to?: string | null; apply?: boolean; poll_question?: string };
 export type ActiveShow = { id: string; key: string; title: string; contest: string; preview: boolean; banner?: ShowBanner; endsAt?: string | null } | null;
 const EVT = "vetoks-show";
 let current: ActiveShow = null;

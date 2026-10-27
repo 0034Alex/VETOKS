@@ -9,6 +9,8 @@ import PromoBannerCarousel from "@/components/PromoBannerCarousel";
 import StoryStrip from "@/components/StoryStrip";
 import ShowBanner from "@/components/ShowBanner";
 import BattleCard from "@/components/BattleCard";
+import TopCards from "@/components/TopCards";
+import ShowPoll from "@/components/ShowPoll";
 import { apiPost } from "@/lib/authClient";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory, rankCat } from "@/lib/viewCategory";
@@ -74,25 +76,9 @@ export default function TalentHome({ show }: { show: NonNullable<ActiveShow> }) 
             Весь ›
           </Link>
         </div>
-        {loading && <LoadingScreen inline />}
-        {!loading && rows.length === 0 && <p className="text-muted text-center px-6 mb-6 text-sm">Пока никто не набрал голосов.</p>}
-        <div className="flex flex-col gap-2 px-6">
-          {rows.slice(0, 10).map((r) => (
-            <Link
-              key={r.participant_id}
-              href={`/participant/${r.participant_id}`}
-              className={`flex items-center gap-3 bg-bgSurface rounded-lg px-4 py-3 border ${r.rank === 1 ? "border-gold" : "border-muted/50"}`}
-            >
-              <span className="text-gold font-semibold w-6">{r.rank}</span>
-              <Avatar photo={r.photo_url} name={r.display_name} cls="w-9 h-9 rounded-full" />
-              <span className="text-offwhite flex-1 truncate">
-                {r.rank === 1 ? "👑 " : ""}
-                {r.display_name}
-              </span>
-              <span className="text-gold text-sm font-semibold">{r.votes}</span>
-            </Link>
-          ))}
-        </div>
+        {loading ? <LoadingScreen inline /> : <TopCards rows={rows} />}
+
+        <ShowPoll showId={show.id} />
 
         {show.banner?.apply !== false && (
           <div className="px-6 mt-8">

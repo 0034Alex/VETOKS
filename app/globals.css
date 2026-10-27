@@ -95,3 +95,5 @@ p, h1, h2, h3 {
   animation: vt-spin 2.6s linear infinite;
   pointer-events: none;
 }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
