@@ -89,7 +89,7 @@ export default function ShareSheet({ open, onClose, postId }: { open: boolean; o
               {list.map((r) => (
                 <button key={r.id} onClick={() => sendTo(r)} className="flex flex-col items-center min-w-0">
                   <span
-                    className="relative w-14 h-14 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center flex items-center justify-center text-white font-semibold"
+                    className="relative w-14 h-14 rounded-full bg-gradient-to-br from-sec to-sec2 bg-cover bg-center flex items-center justify-center text-white font-semibold"
                     style={r.photoUrl ? { backgroundImage: `url(${r.photoUrl})` } : undefined}
                   >
                     {!r.photoUrl && r.name.slice(0, 1).toUpperCase()}

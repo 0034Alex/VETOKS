@@ -121,7 +121,7 @@ export default function ChatsPage() {
             {chans.length === 0 && !loading && <p className="text-muted text-center text-sm mt-3">Вы пока не подписаны ни на один канал.</p>}
             {chans.map((c) => (
               <Link key={c.id} href={`/channels/${c.id}`} className="bg-bgSurface border border-muted rounded-xl p-4 flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center text-white flex items-center justify-center font-semibold flex-shrink-0" style={c.photo ? { backgroundImage: `url(${c.photo})` } : undefined}>
+                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-sec to-sec2 bg-cover bg-center text-white flex items-center justify-center font-semibold flex-shrink-0" style={c.photo ? { backgroundImage: `url(${c.photo})` } : undefined}>
                   {!c.photo && (c.name || "?").slice(0, 1).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -144,7 +144,7 @@ export default function ChatsPage() {
               className="bg-bgSurface border border-muted rounded-xl p-4 flex items-center gap-3"
             >
               <div
-                className="w-11 h-11 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center text-white flex items-center justify-center font-semibold flex-shrink-0"
+                className="w-11 h-11 rounded-full bg-gradient-to-br from-sec to-sec2 bg-cover bg-center text-white flex items-center justify-center font-semibold flex-shrink-0"
                 style={c.photo ? { backgroundImage: `url(${c.photo})` } : undefined}
               >
                 {!c.photo && (c.name || "?").slice(0, 1).toUpperCase()}

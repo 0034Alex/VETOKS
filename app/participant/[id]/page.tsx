@@ -496,14 +496,14 @@ export default function ParticipantProfilePage() {
         ) : (
           <div className="px-5 pt-6">
             <div
-              className="rounded-3xl border border-[#C9A227]/30 p-3 flex flex-col gap-3"
+              className="rounded-3xl border border-gold/30 p-3 flex flex-col gap-3"
               style={{ background: "linear-gradient(160deg,rgba(124,58,237,.14),rgba(22,22,24,.9))" }}
             >
               <button
                 type="button"
                 onClick={() => setVoteModalOpen(true)}
                 disabled={!userId}
-                className="w-full h-[52px] rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40"
+                className="w-full h-[52px] rounded-2xl bg-gradient-to-r from-sec to-sec2 text-white font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40"
               >
                 ♥ Проголосовать
               </button>
@@ -662,7 +662,7 @@ export default function ParticipantProfilePage() {
             <button
               onClick={buyBoost}
               disabled={boostsLeft <= 0 || busy || !userId}
-              className="w-full bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold py-2 rounded-full text-sm disabled:opacity-40"
+              className="w-full bg-gradient-to-r from-sec to-sec2 text-white font-semibold py-2 rounded-full text-sm disabled:opacity-40"
             >
               {boostsLeft <= 0 ? "Лимит исчерпан" : "Продвинуть"}
             </button>

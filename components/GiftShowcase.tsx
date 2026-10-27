@@ -20,7 +20,7 @@ export default function GiftShowcase({ userId, className = "" }: { userId?: stri
     <>
       <button
         onClick={() => setOpen(true)}
-        className={`w-full flex items-center gap-3 bg-bgSurface border border-[#C9A227]/40 rounded-2xl px-4 py-3 text-left ${className}`}
+        className={`w-full flex items-center gap-3 bg-bgSurface border border-gold/40 rounded-2xl px-4 py-3 text-left ${className}`}
       >
         <span className="flex">
           {d.items.slice(0, 4).map((g, i) => (

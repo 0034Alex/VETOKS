@@ -91,12 +91,12 @@ const CSS = `
 .vn-ind i{display:block;width:68px;height:48px;border-radius:18px;background:radial-gradient(80% 90% at 50% 20%,rgba(201,162,39,.30),rgba(201,162,39,.08));border:1px solid rgba(201,162,39,.35);box-shadow:0 0 18px rgba(201,162,39,.25)}
 .vn-wrap{position:relative;width:100%;max-width:48rem;margin:0 auto;height:74px}
 .vn-btn{position:relative;flex:1;min-width:0;height:74px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:11px 0 9px;color:#8A8A8E}
-.vn-btn.on{color:#E8D48A}
+.vn-btn.on{color:rgb(var(--c-goldSoft))}
 .vn-btn svg{width:26px;height:26px;overflow:visible;transition:transform .3s}
 .vn-btn.on svg{transform:translateY(-1px)}
 .vn-btn span{font-size:10px;line-height:1;max-height:0;opacity:0;overflow:hidden;transition:max-height .3s,opacity .3s;text-align:center}
 .vn-btn.on span{max-height:12px;opacity:1}
-.vn-cb{font-style:normal;position:absolute;left:50%;bottom:22px;width:52px;height:52px;margin-left:-26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#E8D48A;background:radial-gradient(70% 70% at 50% 30%,#3a2a55,#1b1030);box-shadow:inset 0 0 0 1.8px #C9A227,0 0 14px rgba(201,162,39,.35);transition:bottom .4s cubic-bezier(.3,1.3,.5,1),width .35s,height .35s,margin-left .35s,background .35s,box-shadow .35s}
+.vn-cb{font-style:normal;position:absolute;left:50%;bottom:22px;width:52px;height:52px;margin-left:-26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:rgb(var(--c-goldSoft));background:radial-gradient(70% 70% at 50% 30%,#3a2a55,#1b1030);box-shadow:inset 0 0 0 1.8px rgb(var(--c-gold)),0 0 14px rgba(201,162,39,.35);transition:bottom .4s cubic-bezier(.3,1.3,.5,1),width .35s,height .35s,margin-left .35s,background .35s,box-shadow .35s}
 .vn-cb svg{width:28px;height:28px}
 .vn-btn.vn-c span.vn-clab{position:absolute;left:0;right:0;bottom:24px}
 .vn-btn.vn-c.on .vn-cb{bottom:30px;width:40px;height:40px;margin-left:-20px;background:transparent;box-shadow:none}
@@ -119,7 +119,7 @@ const CSS = `
 .vn-btn.go .head{animation:vnnod .7s ease-in-out}
 .vn-btn.go .wave{animation:vnwave .7s ease-in-out}
 @keyframes vnhop{0%{transform:translateY(0)}40%{transform:translateY(-4px) scale(1.06)}100%{transform:translateY(0)}}
-@keyframes vnlit{0%{fill:transparent}30%{fill:#E8D48A}100%{fill:transparent}}
+@keyframes vnlit{0%{fill:transparent}30%{fill:rgb(var(--c-goldSoft))}100%{fill:transparent}}
 @keyframes vnpop{0%{transform:scale(1)}45%{transform:scale(1.35) translateY(-2px)}100%{transform:scale(1)}}
 @keyframes vnslide{0%{transform:translateX(-5px);opacity:.3}60%{transform:translateX(2px);opacity:1}100%{transform:translateX(0)}}
 @keyframes vnring{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.35);opacity:0}}

@@ -3,14 +3,14 @@ export function IconHome({ active }: { active?: boolean }) {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <path
         d="M3 10.5L12 3l9 7.5"
-        stroke={active ? "#C9A227" : "#8A8A8E"}
+        stroke={active ? "rgb(var(--c-gold))" : "#8A8A8E"}
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
         d="M5 9.5V20a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V9.5"
-        stroke={active ? "#C9A227" : "#8A8A8E"}
+        stroke={active ? "rgb(var(--c-gold))" : "#8A8A8E"}
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -20,7 +20,7 @@ export function IconHome({ active }: { active?: boolean }) {
 }
 
 export function IconUsers({ active }: { active?: boolean }) {
-  const c = active ? "#C9A227" : "#8A8A8E";
+  const c = active ? "rgb(var(--c-gold))" : "#8A8A8E";
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <circle cx="9" cy="8" r="3" stroke={c} strokeWidth="1.8" />
@@ -42,7 +42,7 @@ export function IconUsers({ active }: { active?: boolean }) {
 }
 
 export function IconPlay({ active }: { active?: boolean }) {
-  const c = active ? "#C9A227" : "#8A8A8E";
+  const c = active ? "rgb(var(--c-gold))" : "#8A8A8E";
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.8" />
@@ -52,7 +52,7 @@ export function IconPlay({ active }: { active?: boolean }) {
 }
 
 export function IconStar({ active }: { active?: boolean }) {
-  const c = active ? "#C9A227" : "#8A8A8E";
+  const c = active ? "rgb(var(--c-gold))" : "#8A8A8E";
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <path
@@ -60,14 +60,14 @@ export function IconStar({ active }: { active?: boolean }) {
         stroke={c}
         strokeWidth="1.6"
         strokeLinejoin="round"
-        fill={active ? "#C9A227" : "none"}
+        fill={active ? "rgb(var(--c-gold))" : "none"}
       />
     </svg>
   );
 }
 
 export function IconChart({ active }: { active?: boolean }) {
-  const c = active ? "#C9A227" : "#8A8A8E";
+  const c = active ? "rgb(var(--c-gold))" : "#8A8A8E";
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <path d="M4 20V10" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
@@ -79,7 +79,7 @@ export function IconChart({ active }: { active?: boolean }) {
 }
 
 export function IconGift({ active }: { active?: boolean }) {
-  const c = active ? "#C9A227" : "#8A8A8E";
+  const c = active ? "rgb(var(--c-gold))" : "#8A8A8E";
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <rect x="4" y="9" width="16" height="11" rx="1" stroke={c} strokeWidth="1.8" />
@@ -102,7 +102,7 @@ export function IconGift({ active }: { active?: boolean }) {
 }
 
 export function IconProfile({ active }: { active?: boolean }) {
-  const c = active ? "#C9A227" : "#8A8A8E";
+  const c = active ? "rgb(var(--c-gold))" : "#8A8A8E";
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="8" r="4" stroke={c} strokeWidth="1.8" />

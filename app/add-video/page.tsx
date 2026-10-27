@@ -509,7 +509,7 @@ function Toggle({ label, on, set, last }: { label: string; on: boolean; set: (v:
 function Row({ icon, label, value, active, onClick, last }: { icon: React.ReactNode; label: string; value: string; active?: boolean; onClick: () => void; last?: boolean }) {
   return (
     <button onClick={onClick} className={`w-full flex items-center gap-3 py-3.5 text-left ${last ? "" : "border-b border-muted/20"}`}>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8D48A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="flex-none">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgb(var(--c-goldSoft))" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="flex-none">
         {icon}
       </svg>
       <span className="flex-1 text-offwhite text-base">{label}</span>
@@ -622,7 +622,7 @@ function PeopleSheet({ people, onChange, onClose }: { people: Person[]; onChange
           className="w-full flex items-center gap-3 py-2.5 border-b border-muted/20 text-left disabled:opacity-40"
         >
           <span
-            className="w-9 h-9 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center flex-none"
+            className="w-9 h-9 rounded-full bg-gradient-to-br from-sec to-sec2 bg-cover bg-center flex-none"
             style={r.photoUrl ? { backgroundImage: `url(${r.photoUrl})` } : undefined}
           />
           <span className="min-w-0">

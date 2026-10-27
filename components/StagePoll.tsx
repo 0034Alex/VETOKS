@@ -74,7 +74,7 @@ function Tease() {
       <div className="flex gap-3 overflow-hidden blur-[7px] opacity-70 pointer-events-none select-none">
         {hues.map((h, i) => (
           <div key={i} className="shrink-0 w-[76px] flex flex-col items-center gap-1">
-            <span className="rounded-full p-[3px]" style={{ background: "linear-gradient(135deg,#E8D48A,#C9A227)" }}>
+            <span className="rounded-full p-[3px]" style={{ background: "linear-gradient(135deg,rgb(var(--c-goldSoft)),rgb(var(--c-gold)))" }}>
               <span
                 className="flex items-center justify-center rounded-full border-[3px] border-bgPrimary text-white font-bold text-xl"
                 style={{ width: 66, height: 66, background: `hsl(${h},55%,38%)` }}
@@ -176,7 +176,7 @@ export default function StagePoll() {
   return (
     <div className="px-6 mb-8">
       <style>{`@keyframes spPop{from{opacity:0;transform:translateY(10px) scale(.88)}to{opacity:1;transform:none}}`}</style>
-      <div className="bg-gradient-to-br from-[#7C3AED]/20 to-[#EC4899]/20 border border-gold/30 rounded-2xl p-5">
+      <div className="bg-gradient-to-br from-sec/20 to-sec2/20 border border-gold/30 rounded-2xl p-5">
         <p className="text-gold text-xs tracking-widest mb-2">ОПРОС</p>
         <h3 className="text-offwhite font-semibold text-lg mb-4">{question}</h3>
 
@@ -211,8 +211,8 @@ export default function StagePoll() {
                     className="rounded-full p-[3px]"
                     style={{
                       background: r.mine
-                        ? "conic-gradient(#EC4899,#C9A227,#7C3AED,#EC4899)"
-                        : "linear-gradient(135deg,#E8D48A,#C9A227)",
+                        ? "conic-gradient(rgb(var(--c-sec2)),rgb(var(--c-gold)),rgb(var(--c-sec)),rgb(var(--c-sec2)))"
+                        : "linear-gradient(135deg,rgb(var(--c-goldSoft)),rgb(var(--c-gold)))",
                     }}
                   >
                     <span className="block rounded-full border-[3px] border-bgPrimary overflow-hidden">

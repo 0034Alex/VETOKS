@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Тема шоу: цвета берутся отсюда, а активное шоу подменяет их (components/ShowTheme.tsx). По умолчанию — Miss. */
+:root {
+  --c-bg: 11 11 13;
+  --c-surface: 22 22 24;
+  --c-gold: 201 162 39;
+  --c-goldSoft: 232 212 138;
+  --c-sec: 124 58 237;
+  --c-sec2: 236 72 153;
+}
+
 /* Монета VETOKS: знак «\E000» рисуется золотой короной в кольце */
 @font-face{font-family:"VCoin";src:url(data:font/woff;base64,d09GRgABAAAAAALwAAoAAAAAA4wAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAABPUy8yAAABZAAAAC4AAABgJRI0vGNtYXAAAAGcAAAAKgAAADQADOBTZ2x5ZgAAAdAAAAC2AAABNhu9unFoZWFkAAAA9AAAADYAAAA2MQgKoGhoZWEAAAEsAAAAHgAAACQGpgLxaG10eAAAAZQAAAAIAAAACAV4ADJsb2NhAAAByAAAAAYAAAAGAJsAAG1heHAAAAFMAAAAFwAAACAACwBtbmFtZQAAAogAAABOAAAAWjjrRLFwb3N0AAAC2AAAABUAAAArcG9yYwABAAAAAQAAVZFwAF8PPPUAAQPoAAAAAOcFY4wAAAAA5wVjjABk/8QDhALkAAAAAwACAAAAAAAAeJxjYGRgYFb4bwEkWxiMGIyYgxiAIiiACQBE8AKfAAB4nGNgZGBgYGLIZuBgYACz0AAAC8IAeQB4nGNgZtrDOIGBlYGFgQgggMS2BwIGhgdAyKzw34KBgbmF4ReacgUGBgAbnQcjAAAB9AAAA4QAMnicY2BgYGJgYGAGYhEgyQimWRgUgDQLEAL5Dxj+/4eQCoxgeQYAWYoGPQAAAAAAAACbAAB4nGPgYEj5f4S5hekJAz+DPIM+gxmDFYMXQxRDFgMDowg7m7KSupqpibmZsZG4GLuJupqyEjubqIi4mLGRuZk6mjyzOjsIiosqmjKjKUXXqorGZ24pLV22rLQUQhqlp02cmJYOIfmTkrq7k5IgpLdhQXJygaEE442znJy8vJycEPIaBwcPDwcHhGRchsILgRsLJOGmAkm4oUlJ/579qNm1q+aHhJoaYyjcVE5ObbgxqCQAOKtE0wAAeJwtiEEKgCAUBeebEUW07ChdwBu4cO9CRBAFwfun0Swe8wbQPAgTYf12otjGWxC9j3Jw/q64uJ2pqdgQe/YNh6GSKFgCkU7G017t/QoSAAB4nGNgYsAPgPKMTCzJ+Zl5AATTAbUAAAA=) format("woff");unicode-range:U+E000;font-display:block}
 html {
@@ -11,7 +21,7 @@ html {
 }
 
 body {
-  background-color: #0B0B0D;
+  background-color: rgb(var(--c-bg));
   color: #F5F5F2;
   overflow-x: clip;
 }

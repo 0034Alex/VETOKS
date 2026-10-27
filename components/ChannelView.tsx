@@ -112,7 +112,7 @@ export default function ChannelView({ keyStr }: { keyStr: string }) {
       <PageHeader />
       <div className="max-w-xl mx-auto px-5">
         <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center flex items-center justify-center text-white text-2xl font-semibold flex-shrink-0" style={ch.photo ? { backgroundImage: `url(${ch.photo})` } : undefined}>
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-sec to-sec2 bg-cover bg-center flex items-center justify-center text-white text-2xl font-semibold flex-shrink-0" style={ch.photo ? { backgroundImage: `url(${ch.photo})` } : undefined}>
             {!ch.photo && ch.name.slice(0, 1).toUpperCase()}
           </div>
           <div className="min-w-0">

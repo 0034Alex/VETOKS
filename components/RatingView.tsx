@@ -192,7 +192,7 @@ export default function RatingView() {
           {editorsChoice && (
             <Link
               href={`/participant/${editorsChoice.id}`}
-              className="flex items-center gap-3 bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-3"
+              className="flex items-center gap-3 bg-gradient-to-r from-sec to-sec2 rounded-xl p-3"
             >
               {editorsChoice.photo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element

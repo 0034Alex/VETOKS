@@ -86,7 +86,7 @@ export default function PostRepostTag({
           {!compact && <span className="text-[10px] mt-0.5">Отметить</span>}
         </button>
       ) : (
-        <button onClick={repost} className={`flex flex-col items-center ${reposted ? "text-[#E8D48A]" : "text-white"}`} aria-label="Репост">
+        <button onClick={repost} className={`flex flex-col items-center ${reposted ? "text-goldSoft" : "text-white"}`} aria-label="Репост">
           <IconRepost size={compact ? 26 : 28} />
           {!compact && <span className="text-[10px] mt-0.5">{reposted ? "В репостах" : "Репост"}</span>}
         </button>

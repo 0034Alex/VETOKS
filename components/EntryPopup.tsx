@@ -124,7 +124,7 @@ export default function EntryPopup() {
               style={{
                 display: "block",
                 width: "100%",
-                backgroundColor: "#C9A227",
+                backgroundColor: "rgb(var(--c-gold))",
                 color: "#0B0B0D",
                 fontWeight: 600,
                 textAlign: "center",

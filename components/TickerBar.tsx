@@ -38,7 +38,7 @@ export default function TickerBar() {
       <div
         style={{
           whiteSpace: "nowrap",
-          color: "#C9A227",
+          color: "rgb(var(--c-gold))",
           fontSize: 12,
           display: "flex",
           alignItems: "center",

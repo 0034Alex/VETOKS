@@ -65,7 +65,7 @@ export default function FanZoneStrip() {
     >
       <span>{ICON[it.kind] ?? "🎁"}</span>
       <b>{it.sender_name}</b>
-      <span className="text-[#EC4899]">→</span>
+      <span className="text-sec2">→</span>
       <b>{it.participant_name}</b>
       <span className="text-goldSoft">· {it.label}</span>
       <span className="text-muted pl-3">✦</span>

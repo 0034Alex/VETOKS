@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, isStaff, CurrentUser } from "@/lib/currentUser";
 import AdminPricesPanel from "@/components/AdminPricesPanel";
 import AdminCoinsPanel from "@/components/AdminCoinsPanel";
+import AdminShowsPanel from "@/components/AdminShowsPanel";
 import AdminRatingPanel from "@/components/AdminRatingPanel";
 import AdminBlackMarksPanel from "@/components/AdminBlackMarksPanel";
 import { apiPost } from "@/lib/authClient";
@@ -86,6 +87,7 @@ type Tab =
   | "countries"
   | "app-prices"
   | "coins"
+  | "shows"
   | "rating-admin"
   | "reports"
   | "ad-stats"
@@ -130,6 +132,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "countries", label: "Страны и регионы" },
   { key: "app-prices", label: "Цены (в долларах)" },
   { key: "coins", label: "Монеты и Короны" },
+  { key: "shows", label: "Шоу" },
   { key: "rating-admin", label: "Рейтинг и титулы" },
   { key: "reports", label: "Жалобы" },
   { key: "content-mod", label: "Проверка контента" },
@@ -162,7 +165,7 @@ type Level = "r" | "w";
 const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: Tab[] }[] = [
   { key: "today", ic: "🏠", label: "Сегодня", desc: "Что требует действия прямо сейчас", tabs: ["dashboard", "support"] },
   { key: "people", ic: "👥", label: "Люди", desc: "Все, кто есть в приложении", tabs: ["users", "participants", "applications", "badges", "black-marks"] },
-  { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["stages", "rating-admin", "goal", "tasks", "cards"] },
+  { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["shows", "stages", "rating-admin", "goal", "tasks", "cards"] },
   { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "broadcast", "mediafeed", "channels", "banners"] },
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["content-mod", "reports", "clan"] },
   { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["coins", "app-prices", "referrals"] },
@@ -198,6 +201,7 @@ const TAB_DESC: Partial<Record<Tab, string>> = {
   reports: "Жалобы на ролики",
   clan: "Чаты кланов",
   coins: "Курсы, пакеты, бонусы",
+  shows: "Какое шоу идёт, даты и цвета",
   "app-prices": "Цены в приложении",
   referrals: "Рефералы и комиссии",
   partners: "Партнёры и связь",
@@ -224,6 +228,9 @@ const ROLE_LABELS: Record<string, string> = {
 
 // Что человеку можно: по каждой вкладке «только смотреть» или «смотреть и менять».
 // Владелец — всё. Новые права хранятся по группам, старые (галочки) — как раньше.
+// Вкладки только для владельца, даже если у сотрудника есть вся группа.
+const OWNER_ONLY: Tab[] = ["shows"];
+
 function computeAccess(user: CurrentUser): Partial<Record<Tab, Level>> {
   const out: Partial<Record<Tab, Level>> = {};
   const give = (t: Tab, l: Level) => {
@@ -238,7 +245,7 @@ function computeAccess(user: CurrentUser): Partial<Record<Tab, Level>> {
     if (!value) return;
     const level: Level = value === "r" ? "r" : "w";
     const group = CRM_GROUPS.find((g) => g.key === key);
-    if (group) group.tabs.forEach((t) => give(t, level));
+    if (group) group.tabs.filter((t) => !OWNER_ONLY.includes(t)).forEach((t) => give(t, level));
     else if (PERMISSION_TABS[key]) PERMISSION_TABS[key].forEach((t) => give(t, level));
   });
   return out;
@@ -521,6 +528,7 @@ export default function AdminPage() {
         {tab === "countries" && <CountriesTab />}
         {tab === "app-prices" && <AdminPricesPanel />}
         {tab === "coins" && <AdminCoinsPanel />}
+        {tab === "shows" && <AdminShowsPanel />}
         {tab === "documents" && <AdminDocumentsPanel />}
         {tab === "posters" && <AdminPostersPanel />}
         {tab === "calendar" && <CalendarTab />}
@@ -898,7 +906,7 @@ function ParticipantsTab() {
               className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
                 r.is_editors_choice
                   ? "bg-bgPrimary border border-danger text-danger"
-                  : "bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
+                  : "bg-gradient-to-r from-sec to-sec2 text-white"
               }`}
             >
               {r.is_editors_choice ? "✕ Убрать выбор редакции" : "Назначить выбор редакции"}{" "}

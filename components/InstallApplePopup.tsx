@@ -33,7 +33,7 @@ export default function InstallApplePopup({ onClose }: { onClose: () => void }) 
 
         <button
           onClick={openInSafari}
-          className="w-full bg-[#7C3AED] text-white font-semibold py-4 rounded-2xl text-base mb-4 flex items-center justify-center gap-2"
+          className="w-full bg-sec text-white font-semibold py-4 rounded-2xl text-base mb-4 flex items-center justify-center gap-2"
         >
           🌐 Открыть в Safari
         </button>
@@ -44,7 +44,7 @@ export default function InstallApplePopup({ onClose }: { onClose: () => void }) 
         </p>
 
         <div className="flex items-start gap-3 py-3 border-t border-gray-100">
-          <span className="w-7 h-7 rounded-full bg-[#7C3AED] text-white text-sm flex items-center justify-center flex-shrink-0 font-semibold">
+          <span className="w-7 h-7 rounded-full bg-sec text-white text-sm flex items-center justify-center flex-shrink-0 font-semibold">
             1
           </span>
           <p className="text-black text-sm leading-snug">
@@ -55,7 +55,7 @@ export default function InstallApplePopup({ onClose }: { onClose: () => void }) 
         </div>
 
         <div className="flex items-start gap-3 py-3 border-t border-gray-100">
-          <span className="w-7 h-7 rounded-full bg-[#7C3AED] text-white text-sm flex items-center justify-center flex-shrink-0 font-semibold">
+          <span className="w-7 h-7 rounded-full bg-sec text-white text-sm flex items-center justify-center flex-shrink-0 font-semibold">
             2
           </span>
           <p className="text-black text-sm leading-snug">
@@ -65,7 +65,7 @@ export default function InstallApplePopup({ onClose }: { onClose: () => void }) 
         </div>
 
         <div className="flex items-start gap-3 py-3 border-t border-gray-100">
-          <span className="w-7 h-7 rounded-full bg-[#7C3AED] text-white text-sm flex items-center justify-center flex-shrink-0 font-semibold">
+          <span className="w-7 h-7 rounded-full bg-sec text-white text-sm flex items-center justify-center flex-shrink-0 font-semibold">
             3
           </span>
           <p className="text-black text-sm leading-snug">

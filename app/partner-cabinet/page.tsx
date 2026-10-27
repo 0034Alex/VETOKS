@@ -257,7 +257,7 @@ export default function PartnerCabinetPage() {
                   <button
                     onClick={() => payNow(r.id)}
                     disabled={paying === r.id}
-                    className="w-full bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold py-3 rounded-full text-sm disabled:opacity-50 mt-2"
+                    className="w-full bg-gradient-to-r from-sec to-sec2 text-white font-semibold py-3 rounded-full text-sm disabled:opacity-50 mt-2"
                   >
                     {paying === r.id ? "Оплата..." : `Оплатить ${Math.round(Number(r.price ?? 0))} ${cur}`}
                   </button>

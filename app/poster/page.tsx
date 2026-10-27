@@ -340,7 +340,7 @@ export default function PosterPage() {
         <button
           onClick={() => inp.current?.click()}
           disabled={!!busy}
-          className="w-full bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold rounded-xl py-3.5 mb-4 disabled:opacity-60"
+          className="w-full bg-gradient-to-r from-sec to-sec2 text-white font-semibold rounded-xl py-3.5 mb-4 disabled:opacity-60"
         >
           {hasPhoto ? "Обрати інше фото" : "📷 Обрати фото"}
         </button>

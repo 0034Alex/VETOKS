@@ -433,7 +433,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                       right: 12,
                       bottom: 14,
                       left: 12,
-                      border: "1px solid #C9A227",
+                      border: "1px solid rgb(var(--c-gold))",
                       overflow: "hidden",
                       display: "flex",
                       alignItems: "center",
@@ -477,7 +477,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                       right: 12,
                       bottom: 14,
                       left: 12,
-                      border: "1px solid #C9A227",
+                      border: "1px solid rgb(var(--c-gold))",
                       overflow: "hidden",
                     }}
                   >
@@ -504,7 +504,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                             fontFamily: "Georgia, 'Times New Roman', serif",
                             fontSize: 40,
                             lineHeight: 1,
-                            color: "#C9A227",
+                            color: "rgb(var(--c-gold))",
                             opacity: 0.35,
                           }}
                         >
@@ -575,7 +575,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                           </span>
                           <span className="italic text-[#5a5260] text-[8px]">{qa.q}</span>
                           <br />
-                          <span className="text-[#7C3AED] text-[7px] tracking-[0.1em] font-bold uppercase">
+                          <span className="text-sec text-[7px] tracking-[0.1em] font-bold uppercase">
                             О:{" "}
                           </span>
                           {qa.a}
@@ -584,7 +584,7 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center text-center py-4">
-                      <span className="text-[#C9A227] text-base mb-1.5">✦</span>
+                      <span className="text-gold text-base mb-1.5">✦</span>
                       <p
                         className="text-[#5a5260] text-[11px] italic"
                         style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
@@ -928,7 +928,7 @@ export default function Home() {
               </div>
               <div className="w-full bg-black/40 rounded-full h-2 mb-2">
                 <div
-                  className="bg-gradient-to-r from-[#7C3AED] to-gold rounded-full h-2"
+                  className="bg-gradient-to-r from-sec to-gold rounded-full h-2"
                   style={{ width: `${stageProgress}%` }}
                 />
               </div>
@@ -948,7 +948,7 @@ export default function Home() {
                 className="flex-1 rounded-full p-[2px]"
                 style={{
                   background:
-                    "conic-gradient(from var(--vetoks-angle-2, 0deg), transparent 0%, #C9A227 12%, #F5E6A8 18%, #C9A227 24%, transparent 36%)",
+                    "conic-gradient(from var(--vetoks-angle-2, 0deg), transparent 0%, rgb(var(--c-gold)) 12%, #F5E6A8 18%, rgb(var(--c-gold)) 24%, transparent 36%)",
                   animation: "vetoks-border-spin-2 3s linear infinite",
                 }}
               >
@@ -982,7 +982,7 @@ export default function Home() {
         </div>
 
         {anns.map((a) => (
-          <div key={a.id} className="mx-6 mb-4 bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 text-center">
+          <div key={a.id} className="mx-6 mb-4 bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 text-center">
             <p className="text-white font-semibold text-sm">{a.title}</p>
             {a.body && <p className="text-white/90 text-xs mt-1 whitespace-pre-wrap">{a.body}</p>}
             {a.show_timer && <p className="text-white font-semibold text-sm mt-2 tabular-nums">⏳ {annLeft(a.ends_at, annNow)}</p>}
@@ -990,7 +990,7 @@ export default function Home() {
         ))}
 
         {inWindow && homeCfg.strip_enabled === "true" && (
-          <div className="mx-6 mb-4 bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 text-center animate-pulse">
+          <div className="mx-6 mb-4 bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 text-center animate-pulse">
             <p className="text-white font-semibold text-sm">
               {(homeCfg.strip_text?.trim() || "🔥 До отсева недели: {time}").replace("{time}", timeLeft)}
             </p>
@@ -1010,9 +1010,9 @@ export default function Home() {
       >
         <defs>
           <linearGradient id="waveEdge" x1="0" x2="1">
-            <stop offset="0" stopColor="#C9A227" stopOpacity="0" />
-            <stop offset="0.5" stopColor="#E8D48A" />
-            <stop offset="1" stopColor="#C9A227" stopOpacity="0" />
+            <stop offset="0" stopColor="rgb(var(--c-gold))" stopOpacity="0" />
+            <stop offset="0.5" stopColor="rgb(var(--c-goldSoft))" />
+            <stop offset="1" stopColor="rgb(var(--c-gold))" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path d="M0 0 L400 0 L400 14 C330 44 280 6 200 26 C120 46 70 40 0 22 Z" fill="#150f22" />
@@ -1108,7 +1108,7 @@ export default function Home() {
               className="relative rounded-full p-[2px]"
               style={{
                 background:
-                  "conic-gradient(from var(--vetoks-angle, 0deg), transparent 0%, #C9A227 12%, #F5E6A8 18%, #C9A227 24%, transparent 36%)",
+                  "conic-gradient(from var(--vetoks-angle, 0deg), transparent 0%, rgb(var(--c-gold)) 12%, #F5E6A8 18%, rgb(var(--c-gold)) 24%, transparent 36%)",
                 animation: "vetoks-border-spin 3s linear infinite",
               }}
             >

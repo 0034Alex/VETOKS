@@ -307,7 +307,7 @@ export default function VoteCardModal({ participantId, onClose }: { participantI
         </div>
 
         <div className="grid grid-cols-2 gap-2 mt-3">
-          <button onClick={shareFile} disabled={!url} className="col-span-2 bg-gradient-to-b from-[#F1DE98] via-[#C9A227] to-[#b08d1c] text-[#1a1405] font-semibold rounded-full py-3 disabled:opacity-40">
+          <button onClick={shareFile} disabled={!url} className="col-span-2 bg-gradient-to-b from-[#F1DE98] via-gold to-[#b08d1c] text-[#1a1405] font-semibold rounded-full py-3 disabled:opacity-40">
             Поделиться (Instagram и др.)
           </button>
           <button onClick={telegram} disabled={!link} className="bg-[#229ED9] text-white font-semibold rounded-full py-3 disabled:opacity-40">

@@ -13,8 +13,8 @@ export function Crown({ size = 46 }: { size?: number }) {
     <svg width={size} height={size * 0.6} viewBox="0 0 100 60" fill="none" aria-hidden>
       <defs>
         <linearGradient id="pfGold" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#E8D48A" />
-          <stop offset="100%" stopColor="#C9A227" />
+          <stop offset="0%" stopColor="rgb(var(--c-goldSoft))" />
+          <stop offset="100%" stopColor="rgb(var(--c-gold))" />
         </linearGradient>
       </defs>
       <path
@@ -125,10 +125,10 @@ type Props = {
 
 export type HeroKpi = { icon: ReactNode; value: string | number; label: string };
 
-const kStroke = { fill: "none", stroke: "#E8D48A", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+const kStroke = { fill: "none", stroke: "rgb(var(--c-goldSoft))", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 export const KpiCrown = () => (
   <svg width="26" height="16" viewBox="0 0 100 60" fill="none">
-    <path d="M10 50 L20 15 L35 35 L50 8 L65 35 L80 15 L90 50 Z" stroke="#E8D48A" strokeWidth="5" strokeLinejoin="round" />
+    <path d="M10 50 L20 15 L35 35 L50 8 L65 35 L80 15 L90 50 Z" stroke="rgb(var(--c-goldSoft))" strokeWidth="5" strokeLinejoin="round" />
   </svg>
 );
 export const KpiHeart = () => (
@@ -174,7 +174,7 @@ export default function ProfileHero({
     <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden className="flex-none">
               <path
                 d="M12 1.8l2.6 1.9 3.2-.2 1 3.1 2.6 1.9-1 3.1 1 3.1-2.6 1.9-1 3.1-3.2-.2L12 22.2l-2.6-1.9-3.2.2-1-3.1L2.6 15.5l1-3.1-1-3.1 2.6-1.9 1-3.1 3.2.2z"
-                fill="#E8D48A"
+                fill="rgb(var(--c-goldSoft))"
               />
               <path d="M8 12.2l2.8 2.8L16.2 9.6" fill="none" stroke="#1a1405" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -239,13 +239,13 @@ export default function ProfileHero({
               className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-[13px] backdrop-blur ${
                 statusTone === "win"
                   ? statusTalent
-                    ? "border-transparent bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-bold"
+                    ? "border-transparent bg-gradient-to-r from-sec to-sec2 text-white font-bold"
                     : "border-transparent bg-gradient-to-r from-[#8a6d12] via-[#F5E6A8] to-[#8a6d12] text-[#1a1405] font-bold"
                   : statusTone === "fin"
-                  ? "border-[#E8D48A] bg-[#C9A227]/30 text-white"
+                  ? "border-goldSoft bg-gold/30 text-white"
                   : statusTalent
-                  ? "border-[#EC4899]/70 bg-black/35 text-[#f5b8d6]"
-                  : "border-[#E8D48A]/55 bg-black/35 text-[#E8D48A]"
+                  ? "border-sec2/70 bg-black/35 text-[#f5b8d6]"
+                  : "border-goldSoft/55 bg-black/35 text-goldSoft"
               }`}
             >
               {status}
@@ -259,14 +259,14 @@ export default function ProfileHero({
           {handle && <p className="mt-3 text-[15px] text-[#c9c9ce]">{handle}</p>}
           {city && (
             <p className="mt-4 flex items-center gap-2 text-sm text-muted">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#E8D48A" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgb(var(--c-goldSoft))" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 21s7-6.2 7-11.5A7 7 0 005 9.5C5 14.8 12 21 12 21z" />
                 <circle cx="12" cy="9.5" r="2.5" />
               </svg>
               {city}
             </p>
           )}
-          {rank && <p className="mt-1.5 text-[13px] text-[#E8D48A]">🏆 {rank}</p>}
+          {rank && <p className="mt-1.5 text-[13px] text-goldSoft">🏆 {rank}</p>}
           {badges.length > 0 && (
             <div className="mt-5 flex flex-wrap gap-2.5">
               {badges.slice(0, 3).map((b) => (
@@ -342,7 +342,7 @@ export default function ProfileHero({
             <div className="flex flex-col gap-2">
               {channels.map((c) => (
                 <a key={c.id} href={`/channels/${c.id}`} className="flex items-center gap-3 border border-muted rounded-xl p-3">
-                  <span className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center flex-shrink-0 text-white flex items-center justify-center font-semibold" style={c.photo ? { backgroundImage: `url(${c.photo})` } : undefined}>{!c.photo && c.name.slice(0, 1).toUpperCase()}</span>
+                  <span className="w-10 h-10 rounded-full bg-gradient-to-br from-sec to-sec2 bg-cover bg-center flex-shrink-0 text-white flex items-center justify-center font-semibold" style={c.photo ? { backgroundImage: `url(${c.photo})` } : undefined}>{!c.photo && c.name.slice(0, 1).toUpperCase()}</span>
                   <span className="flex-1 min-w-0">
                     <span className="block text-offwhite text-sm font-semibold truncate">{c.name}</span>
                     <span className="block text-muted text-xs">{c.kind === "closed" ? "🔒 Закрытый · подать заявку" : "Открытый · подписаться"}</span>
@@ -400,11 +400,11 @@ export default function ProfileHero({
           {kpis.map((k) => (
             <div
               key={k.label}
-              className="rounded-2xl border border-[#C9A227]/35 py-4 px-1 text-center"
+              className="rounded-2xl border border-gold/35 py-4 px-1 text-center"
               style={{ background: "linear-gradient(160deg,rgba(124,58,237,.18),rgba(11,11,13,.9))" }}
             >
               <div className="flex justify-center mb-2">{k.icon}</div>
-              <b className="block text-[16px] tabular-nums text-[#E8D48A]">{k.value}</b>
+              <b className="block text-[16px] tabular-nums text-goldSoft">{k.value}</b>
               <span className="block mt-0.5 text-[10.5px] text-muted">{k.label}</span>
             </div>
           ))}
@@ -451,10 +451,10 @@ export function BigBtn({
     "h-[58px] rounded-full font-semibold flex items-center justify-center disabled:opacity-40 text-center";
   const v =
     variant === "gold"
-      ? "flex-1 text-[17px] text-[#1a1405] bg-gradient-to-b from-[#F1DE98] via-[#C9A227] to-[#b08d1c] shadow-[0_10px_26px_rgba(201,162,39,.28)]"
+      ? "flex-1 text-[17px] text-[#1a1405] bg-gradient-to-b from-[#F1DE98] via-gold to-[#b08d1c] shadow-[0_10px_26px_rgba(201,162,39,.28)]"
       : variant === "on"
-      ? "flex-1 text-[16px] text-[#E8D48A] bg-bgSurface border border-[#8a6d12]"
-      : "px-5 text-[15px] text-white bg-gradient-to-r from-[#7C3AED] to-[#EC4899] shadow-[0_10px_26px_rgba(124,58,237,.3)]";
+      ? "flex-1 text-[16px] text-goldSoft bg-bgSurface border border-[#8a6d12]"
+      : "px-5 text-[15px] text-white bg-gradient-to-r from-sec to-sec2 shadow-[0_10px_26px_rgba(124,58,237,.3)]";
   if (href)
     return (
       <Link href={href} className={`${base} ${v}`}>
@@ -480,7 +480,7 @@ export function RoundBtn({
   label: string;
 }) {
   const cls =
-    "flex-none w-[58px] h-[58px] rounded-full border border-muted/60 bg-bgSurface text-[#E8D48A] flex items-center justify-center";
+    "flex-none w-[58px] h-[58px] rounded-full border border-muted/60 bg-bgSurface text-goldSoft flex items-center justify-center";
   if (href)
     return (
       <Link href={href} aria-label={label} className={cls}>

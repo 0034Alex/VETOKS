@@ -50,7 +50,7 @@ export default function VoteLanding({ id, info }: { id: string; info: CardInfo |
       </div>
       <Link
         href={`/login?redirect=${next}`}
-        className="w-full max-w-xs h-[54px] rounded-full font-semibold flex items-center justify-center text-[#1a1405] bg-gradient-to-b from-[#F1DE98] via-[#C9A227] to-[#b08d1c]"
+        className="w-full max-w-xs h-[54px] rounded-full font-semibold flex items-center justify-center text-[#1a1405] bg-gradient-to-b from-[#F1DE98] via-gold to-[#b08d1c]"
       >
         Проголосовать за меня
       </Link>

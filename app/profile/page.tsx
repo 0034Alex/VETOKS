@@ -413,7 +413,7 @@ export default function ProfilePage() {
           topRight={
             <>
               <TopBtn href="/add-video" label="Новая публикация">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8D48A" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgb(var(--c-goldSoft))" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
               </TopBtn>
@@ -463,7 +463,7 @@ export default function ProfilePage() {
         </div>
 
       {user && !user.phone_verified && !phoneDone && (
-        <div className="rounded-xl p-4 mt-3 border border-gold bg-gradient-to-r from-[#7C3AED]/30 to-[#EC4899]/30">
+        <div className="rounded-xl p-4 mt-3 border border-gold bg-gradient-to-r from-sec/30 to-sec2/30">
           <p className="text-offwhite font-semibold text-sm mb-1">{t("profile.verifyTitle")}</p>
           <p className="text-muted text-xs mb-3">{t("profile.verifyText")}</p>
           <button
@@ -479,7 +479,7 @@ export default function ProfilePage() {
       )}
 
       {needBirth && (
-        <div className="rounded-xl p-4 mt-3 border border-gold bg-gradient-to-r from-[#7C3AED]/30 to-[#EC4899]/30">
+        <div className="rounded-xl p-4 mt-3 border border-gold bg-gradient-to-r from-sec/30 to-sec2/30">
           <p className="text-offwhite font-semibold text-sm mb-1">Укажите дату рождения</p>
           <p className="text-muted text-xs mb-3">По дате мы определим вашу возрастную категорию. Указать можно один раз.</p>
           <button
@@ -551,13 +551,13 @@ export default function ProfilePage() {
 
         {participant && (
           <>
-            <a href="/content-ideas" className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mt-3">
+            <a href="/content-ideas" className="block bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 mt-3">
               <span className="text-white font-semibold text-sm">{t("profile.ideas")}</span>
             </a>
             <a href="/media-materials" className="block bg-bgPrimary border border-gold/40 rounded-xl p-4 mt-3">
               <span className="text-gold font-semibold text-sm">{t("profile.materials")}</span>
             </a>
-            <a href="/tasks" className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mt-3">
+            <a href="/tasks" className="block bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 mt-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-white font-semibold text-sm">{t("profile.tasks")}</span>
                 <span className="text-white text-sm">
@@ -585,11 +585,11 @@ export default function ProfilePage() {
         </div>
 
         {isPartner ? (
-          <a href="/partner-cabinet" className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mt-5 text-center">
+          <a href="/partner-cabinet" className="block bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 mt-5 text-center">
             <span className="text-white font-semibold text-sm">{t("profile.partnerCabinet")}</span>
           </a>
         ) : (
-          <a href="/ad-space" className="block bg-gradient-to-r from-[#7C3AED] to-[#EC4899] rounded-xl p-4 mt-5 text-center">
+          <a href="/ad-space" className="block bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 mt-5 text-center">
             <span className="text-white font-semibold text-sm">{t("profile.becomePartner")}</span>
           </a>
         )}

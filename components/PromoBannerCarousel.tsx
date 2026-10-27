@@ -206,7 +206,7 @@ export default function PromoBannerCarousel({
                   width: 6,
                   height: 6,
                   borderRadius: 999,
-                  backgroundColor: i === active ? "#C9A227" : "rgba(255,255,255,0.4)",
+                  backgroundColor: i === active ? "rgb(var(--c-gold))" : "rgba(255,255,255,0.4)",
                 }}
               />
             ))}

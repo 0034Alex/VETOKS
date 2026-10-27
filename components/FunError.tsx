@@ -26,7 +26,7 @@ export default function FunError({ info, onReload }: { info?: string; onReload?:
       <p style={{ margin: 0, color: "#8b8b93", fontSize: 14, lineHeight: 1.5, maxWidth: 300 }}>{p}</p>
       <button
         onClick={() => (onReload ? onReload() : window.location.reload())}
-        style={{ marginTop: 8, background: "#c9a227", color: "#000", border: 0, borderRadius: 999, padding: "13px 34px", fontSize: 15, fontWeight: 700, width: "100%", maxWidth: 300 }}
+        style={{ marginTop: 8, background: "rgb(var(--c-gold))", color: "#000", border: 0, borderRadius: 999, padding: "13px 34px", fontSize: 15, fontWeight: 700, width: "100%", maxWidth: 300 }}
       >
         {b}
       </button>

@@ -70,7 +70,7 @@ export default function ProfileTabs({ userId }: { userId?: string }) {
             aria-selected={tab === t.key}
             aria-label={t.label}
             onClick={() => setTab(t.key)}
-            className={`flex-1 py-3 flex items-center justify-center relative ${tab === t.key ? "text-[#E8D48A]" : "text-muted"}`}
+            className={`flex-1 py-3 flex items-center justify-center relative ${tab === t.key ? "text-goldSoft" : "text-muted"}`}
           >
             {t.icon}
             {tab === t.key && <span className="absolute left-[22%] right-[22%] -bottom-px h-0.5 bg-gold" />}

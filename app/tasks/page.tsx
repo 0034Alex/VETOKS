@@ -219,7 +219,7 @@ export default function TasksPage() {
               <button
                 onClick={claimProfileTask}
                 disabled={!profileComplete || claiming}
-                className="bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold px-3 py-2 rounded-full text-xs disabled:opacity-40 whitespace-nowrap flex-shrink-0"
+                className="bg-gradient-to-r from-sec to-sec2 text-white font-semibold px-3 py-2 rounded-full text-xs disabled:opacity-40 whitespace-nowrap flex-shrink-0"
               >
                 {profileComplete ? "Забрать" : "Не готово"}
               </button>
@@ -263,7 +263,7 @@ export default function TasksPage() {
                   <button
                     onClick={() => submitTaskCompletion(task.id)}
                     disabled={!!expired || submittingTaskId === task.id}
-                    className="bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold px-3 py-2 rounded-full text-xs disabled:opacity-40 whitespace-nowrap flex-shrink-0"
+                    className="bg-gradient-to-r from-sec to-sec2 text-white font-semibold px-3 py-2 rounded-full text-xs disabled:opacity-40 whitespace-nowrap flex-shrink-0"
                   >
                     {expired ? "Срок истёк" : "Выполнила"}
                   </button>

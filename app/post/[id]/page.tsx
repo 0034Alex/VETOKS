@@ -86,7 +86,7 @@ function Carousel({ media }: { media: { kind: "video" | "photo"; url: string }[]
 }
 
 const Heart = ({ on, size = 24 }: { on: boolean; size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill={on ? "#EC4899" : "none"} stroke={on ? "#EC4899" : "currentColor"} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={on ? "rgb(var(--c-sec2))" : "none"} stroke={on ? "rgb(var(--c-sec2))" : "currentColor"} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 21s-8-5.2-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.8-8 11-8 11z" />
   </svg>
 );
@@ -336,7 +336,7 @@ export default function PostFeedPage() {
             <div className="relative z-30 flex items-center gap-3 pb-2">
               <Link href={p.authorHref} className="flex items-center gap-3 min-w-0 flex-1">
                 <span
-                  className="w-9 h-9 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] border border-gold/70 bg-cover bg-center flex-none flex items-center justify-center text-white font-semibold text-sm"
+                  className="w-9 h-9 rounded-full bg-gradient-to-br from-sec to-sec2 border border-gold/70 bg-cover bg-center flex-none flex items-center justify-center text-white font-semibold text-sm"
                   style={p.authorPhoto ? { backgroundImage: `url(${p.authorPhoto})` } : undefined}
                 >
                   {!p.authorPhoto && (p.authorName || "?").slice(0, 1).toUpperCase()}
@@ -396,7 +396,7 @@ export default function PostFeedPage() {
               )}
             </div>
             {/* Рамка с фото или видео */}
-            <div className="relative z-10 flex-1 min-h-0 rounded-3xl p-[3px]" style={{ background: "linear-gradient(160deg,#E8D48A,#8a6d12 40%,#E8D48A)" }}>
+            <div className="relative z-10 flex-1 min-h-0 rounded-3xl p-[3px]" style={{ background: "linear-gradient(160deg,rgb(var(--c-goldSoft)),#8a6d12 40%,rgb(var(--c-goldSoft)))" }}>
               <div className="relative w-full h-full rounded-[21px] overflow-hidden bg-black select-none" onPointerUp={() => onMediaTap(p)} style={{ touchAction: "manipulation" }}>
                 {p.media && p.media.length > 1 ? (
                   <Carousel media={p.media} />
@@ -429,7 +429,7 @@ export default function PostFeedPage() {
                     className="absolute left-1/2 top-1/2 -ml-[46px] -mt-[46px] pointer-events-none"
                     style={{ animation: "vtPop .8s ease-out forwards", opacity: 0 }}
                   >
-                    <svg width="92" height="92" viewBox="0 0 24 24" fill="#EC4899" stroke="#EC4899" strokeWidth="1.5" strokeLinejoin="round" style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,.5))" }}>
+                    <svg width="92" height="92" viewBox="0 0 24 24" fill="rgb(var(--c-sec2))" stroke="rgb(var(--c-sec2))" strokeWidth="1.5" strokeLinejoin="round" style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,.5))" }}>
                       <path d="M12 21s-8-5.2-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.8-8 11-8 11z" />
                     </svg>
                   </span>
@@ -507,7 +507,7 @@ export default function PostFeedPage() {
                 return (
                   <div key={c.id} className="flex gap-3">
                     <span
-                      className="w-8 h-8 rounded-full flex-none bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center flex items-center justify-center text-white text-xs font-semibold"
+                      className="w-8 h-8 rounded-full flex-none bg-gradient-to-br from-sec to-sec2 bg-cover bg-center flex items-center justify-center text-white text-xs font-semibold"
                       style={u?.photo_url ? { backgroundImage: `url(${u.photo_url})` } : undefined}
                     >
                       {!u?.photo_url && nm.slice(0, 1).toUpperCase()}
@@ -562,7 +562,7 @@ export default function PostFeedPage() {
               </div>
               <div className="flex items-center gap-2.5">
                 <span
-                  className="w-8 h-8 rounded-full flex-none bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center"
+                  className="w-8 h-8 rounded-full flex-none bg-gradient-to-br from-sec to-sec2 bg-cover bg-center"
                   style={myPhoto ? { backgroundImage: `url(${myPhoto})` } : undefined}
                 />
                 <div className="flex-1 flex items-center bg-bgPrimary border border-muted rounded-full pl-4 pr-1.5">

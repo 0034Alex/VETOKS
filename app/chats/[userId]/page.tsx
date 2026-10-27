@@ -177,7 +177,7 @@ export default function ChatPage() {
         <button onClick={goBack} className="text-offwhite text-xl">←</button>
         <button onClick={() => router.push(`/u/${other}`)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
           <div
-            className="w-9 h-9 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center text-white flex items-center justify-center font-semibold flex-none"
+            className="w-9 h-9 rounded-full bg-gradient-to-br from-sec to-sec2 bg-cover bg-center text-white flex items-center justify-center font-semibold flex-none"
             style={photo ? { backgroundImage: `url(${photo})` } : undefined}
           >
             {!photo && (name || "?").slice(0, 1).toUpperCase()}
@@ -265,7 +265,7 @@ export default function ChatPage() {
           return (
             <div key={m.id} className={`flex items-end gap-2 ${mine ? "flex-row-reverse" : ""}`}>
               <span
-                className="w-7 h-7 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#EC4899] bg-cover bg-center text-white text-xs font-semibold flex items-center justify-center flex-none"
+                className="w-7 h-7 rounded-full bg-gradient-to-br from-sec to-sec2 bg-cover bg-center text-white text-xs font-semibold flex items-center justify-center flex-none"
                 style={ph ? { backgroundImage: `url(${ph})` } : undefined}
               >
                 {!ph && (nm || "?").slice(0, 1).toUpperCase()}

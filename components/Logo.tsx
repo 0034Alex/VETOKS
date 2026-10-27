@@ -10,8 +10,8 @@ export default function Logo({ size = 40 }: { size?: number }) {
       >
         <defs>
           <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#E8D48A" />
-            <stop offset="100%" stopColor="#C9A227" />
+            <stop offset="0%" stopColor="rgb(var(--c-goldSoft))" />
+            <stop offset="100%" stopColor="rgb(var(--c-gold))" />
           </linearGradient>
         </defs>
         <path

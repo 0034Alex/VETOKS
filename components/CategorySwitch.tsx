@@ -78,7 +78,7 @@ export default function CategorySwitch() {
           onClick={() => (open ? close() : setOpen(true))}
           className="absolute inset-0 flex flex-col items-center justify-center rounded-full leading-none text-offwhite"
           style={{
-            border: `2px ${other ? "dashed" : "solid"} #C9A227`,
+            border: `2px ${other ? "dashed" : "solid"} rgb(var(--c-gold))`,
             background: "radial-gradient(circle at 30% 25%, #3a2f10, #161618 70%)",
             boxShadow: "0 0 0 4px rgba(201,162,39,.12), 0 6px 18px rgba(0,0,0,.5)",
             animation: open ? "none" : "vetoksCatGlow 2.4s ease-out infinite",

@@ -5,10 +5,12 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bgPrimary: "#0B0B0D",
-        bgSurface: "#161618",
-        gold: "#C9A227",
-        goldSoft: "#E8D48A",
+        bgPrimary: "rgb(var(--c-bg) / <alpha-value>)",
+        bgSurface: "rgb(var(--c-surface) / <alpha-value>)",
+        gold: "rgb(var(--c-gold) / <alpha-value>)",
+        goldSoft: "rgb(var(--c-goldSoft) / <alpha-value>)",
+        sec: "rgb(var(--c-sec) / <alpha-value>)",
+        sec2: "rgb(var(--c-sec2) / <alpha-value>)",
         offwhite: "#F5F5F2",
         muted: "#8A8A8E",
         success: "#3FA76B",

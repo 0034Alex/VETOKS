@@ -102,7 +102,7 @@ export default function InstallPage() {
                   <div className="flex items-center gap-3 py-4">
                     <span className="w-8 h-8 rounded-full bg-gold text-bgPrimary font-bold flex items-center justify-center flex-shrink-0">1</span>
                     <p className="text-offwhite text-sm flex-1">Нажмите на значок «Поделиться» внизу экрана Safari</p>
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 3v12M8 7l4-4 4 4M5 12v8h14v-8" /></svg>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgb(var(--c-gold))" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 3v12M8 7l4-4 4 4M5 12v8h14v-8" /></svg>
                   </div>
                   <div className="flex items-center gap-3 py-4">
                     <span className="w-8 h-8 rounded-full bg-gold text-bgPrimary font-bold flex items-center justify-center flex-shrink-0">2</span>

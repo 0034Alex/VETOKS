@@ -26,8 +26,8 @@ export default function LoadingScreen({ inline = false }: { inline?: boolean }) 
       >
         <defs>
           <linearGradient id="goldGradLoading" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#E8D48A" />
-            <stop offset="100%" stopColor="#C9A227" />
+            <stop offset="0%" stopColor="rgb(var(--c-goldSoft))" />
+            <stop offset="100%" stopColor="rgb(var(--c-gold))" />
           </linearGradient>
           <filter id="crownGlow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="2.5" result="blur" />

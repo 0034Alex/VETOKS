@@ -291,7 +291,7 @@ export default function ParticipantsPage() {
                   href={`/n/${h.nick}`}
                   className="flex items-center gap-3 px-4 py-3 border-b border-muted/40 last:border-0"
                 >
-                  <span className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-[#7C3AED] to-[#EC4899] text-white flex items-center justify-center font-semibold flex-none">
+                  <span className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-sec to-sec2 text-white flex items-center justify-center font-semibold flex-none">
                     {h.photoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={h.photoUrl} alt="" className="w-full h-full object-cover" />
@@ -316,7 +316,7 @@ export default function ParticipantsPage() {
               onClick={() => setFilter(f.key)}
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
                 filter === f.key
-                  ? "bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
+                  ? "bg-gradient-to-r from-sec to-sec2 text-white"
                   : "bg-bgSurface text-muted border border-muted"
               }`}
             >
@@ -351,7 +351,7 @@ export default function ParticipantsPage() {
                     className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
                       index === 0
                         ? "bg-gold text-bgPrimary"
-                        : "bg-gradient-to-br from-[#7C3AED] to-[#EC4899] text-white"
+                        : "bg-gradient-to-br from-sec to-sec2 text-white"
                     }`}
                   >
                     {index === 0 ? "👑" : index + 1}
@@ -409,7 +409,7 @@ export default function ParticipantsPage() {
               <div className="p-3 pt-2">
                 <button
                   onClick={() => handleVote(p.id)}
-                  className="w-full bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold py-2 rounded-full text-xs"
+                  className="w-full bg-gradient-to-r from-sec to-sec2 text-white font-semibold py-2 rounded-full text-xs"
                 >
                   🗳️ Проголосовать
                 </button>

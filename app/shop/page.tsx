@@ -273,7 +273,7 @@ function ShopContent() {
           onClick={() => setSection("gifts")}
           className={`px-4 py-2 rounded-full text-sm font-medium ${
             section === "gifts"
-              ? "bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
+              ? "bg-gradient-to-r from-sec to-sec2 text-white"
               : "bg-bgSurface text-muted border border-muted"
           }`}
         >
@@ -283,7 +283,7 @@ function ShopContent() {
           onClick={() => setSection("votes")}
           className={`px-4 py-2 rounded-full text-sm font-medium ${
             section === "votes"
-              ? "bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
+              ? "bg-gradient-to-r from-sec to-sec2 text-white"
               : "bg-bgSurface text-muted border border-muted"
           }`}
         >
@@ -293,7 +293,7 @@ function ShopContent() {
           onClick={() => setSection("cards")}
           className={`px-4 py-2 rounded-full text-sm font-medium ${
             section === "cards"
-              ? "bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
+              ? "bg-gradient-to-r from-sec to-sec2 text-white"
               : "bg-bgSurface text-muted border border-muted"
           }`}
         >
@@ -494,7 +494,7 @@ function ShopContent() {
             onClick={() => setCategory(c.key)}
             className={`px-4 py-2 rounded-full text-sm font-medium ${
               category === c.key
-                ? "bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white"
+                ? "bg-gradient-to-r from-sec to-sec2 text-white"
                 : "bg-bgSurface text-muted border border-muted"
             }`}
           >
@@ -538,7 +538,7 @@ function ShopContent() {
               <button
                 onClick={() => sendGift(g)}
                 disabled={!selectedParticipant || status === "sending"}
-                className="mt-1 w-full bg-gradient-to-r from-[#7C3AED] to-[#EC4899] text-white font-semibold py-1.5 rounded-full text-xs disabled:opacity-40"
+                className="mt-1 w-full bg-gradient-to-r from-sec to-sec2 text-white font-semibold py-1.5 rounded-full text-xs disabled:opacity-40"
               >
                 Подарить
               </button>
