@@ -33,15 +33,16 @@ function ipOf(req?: Request): string | null {
 
 async function alertOwners(text: string) {
   try {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-    if (!token) return;
+    const { botForUser } = await import("@/lib/countryBot");
     const { data } = await supabaseAdmin
       .from("users")
-      .select("telegram_id")
+      .select("id, telegram_id")
       .eq("role", "super_admin")
       .not("telegram_id", "is", null)
       .limit(3);
     for (const u of data ?? []) {
+      const token = (await botForUser((u as any).id)).token;
+      if (!token) continue;
       await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/shopServer";
 import { rateLimit } from "@/lib/rateLimit";
 import { parentConsentOk } from "@/lib/parentServer";
 import { hasBadWords } from "@/lib/badWords";
+import { countryOfUser } from "@/lib/countryServer";
 import { posterProfile, posterChat, sendPosterToTg, POSTER_CAT_LABEL } from "@/lib/posterServer";
 
 export const dynamic = "force-dynamic";
@@ -58,7 +59,8 @@ export async function POST(req: Request) {
     .single();
 
   let sent = false;
-  const chat = await posterChat(p.cat);
+  const pCountry = await countryOfUser(uid);
+  const chat = await posterChat(p.cat, pCountry);
   if (chat) {
     const caption = [
       p.name,
@@ -69,7 +71,7 @@ export async function POST(req: Request) {
     ]
       .filter(Boolean)
       .join("\n");
-    const r = await sendPosterToTg(chat, url, caption);
+    const r = await sendPosterToTg(pCountry, chat, url, caption);
     sent = r.ok;
     if (sent && row) await supabaseAdmin.from("participant_posters").update({ sent_tg: true }).eq("id", (row as any).id);
   }

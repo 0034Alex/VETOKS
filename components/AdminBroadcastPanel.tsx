@@ -80,7 +80,7 @@ export default function AdminBroadcastPanel() {
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
         <p className="text-offwhite font-semibold text-sm mb-2">📣 Сообщение от VETOKS</p>
         <p className={`text-xs mb-2 ${countryId ? "text-gold" : "text-orange-300"}`}>
-          {countryId ? `Страна: ${countryName || "…"}. Получат только люди этой страны, от бота этой страны.` : "Выбрано «Общие»: сообщение уйдёт людям ВСЕХ стран. Выберите страну вверху CRM, чтобы писать одной стране."}
+          {countryId ? `Страна: ${countryName || "…"}. Получат только люди этой страны, от бота этой страны.` : "Выберите страну вверху CRM. Без страны рассылка не отправляется."}
         </p>
         <textarea
           value={text}

@@ -6,6 +6,7 @@ import { hasBadWords, BAD_WORDS_MESSAGE } from "@/lib/badWords";
 import { checkImageNsfw } from "@/lib/nsfw";
 import { parseStorageUrl, verifyStoredFile } from "@/lib/fileCheck";
 import { bunnyCfg, bunnyCreateVideo, bunnyDeleteVideo, bunnyGetVideo, bunnyPlayUrl, bunnySignature } from "@/lib/bunny";
+import { sameCountry } from "@/lib/countryServer";
 import { Ch, EMOJIS, LINK_RE, cleanSlug, fanoutPost, getChannel, memberStatus, slugOk, userFlags } from "@/lib/channelsServer";
 
 export const dynamic = "force-dynamic";
@@ -127,6 +128,7 @@ export async function POST(req: Request) {
   if (action === "get") {
     const ch = await getChannel(String(b.key));
     if (!ch) return bad("not_found", 404);
+    if (ch.owner_id !== uid && !(await sameCountry(ch.owner_id, uid))) return bad("not_found", 404);
     const st = ch.owner_id === uid ? "owner" : await memberStatus(ch.id, uid);
     if (ch.kind === "hidden" && !st) return bad("not_found", 404);
     if (st === "banned") return bad("not_found", 404);
@@ -168,6 +170,7 @@ export async function POST(req: Request) {
     const ch = await getChannel(String(b.id));
     if (!ch || ch.owner_id === uid) return bad("not_found", 404);
     if (ch.frozen) return bad("frozen", 403);
+    if (!(await sameCountry(ch.owner_id, uid))) return bad("not_found", 404);
     const st = await memberStatus(ch.id, uid);
     if (st === "banned") return bad("banned_here", 403);
     if (st === "member") return ok({ me: "member" });
@@ -225,6 +228,7 @@ export async function POST(req: Request) {
     if (!nick) return bad("bad_request");
     const { data: u } = await supabaseAdmin.from("users").select("id, age_category, is_banned").ilike("nick", nick).maybeSingle();
     if (!u || u.is_banned || (u as any).age_category === "teen" || u.id === uid) return bad("no_user", 404);
+    if (!(await sameCountry(uid, u.id as string))) return bad("no_user", 404);
     const st = await memberStatus(own!.id, u.id as string);
     if (st === "banned") return bad("banned_here", 403);
     if (st === "member") return ok({ already: true });

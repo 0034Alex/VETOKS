@@ -14,10 +14,9 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const BOT_ENV = process.env.TELEGRAM_BOT_TOKEN!;
-// Токен бота той страны, чей вебхук сейчас обрабатываем (?c=<страна>); без него — общий бот.
+// Токен бота той страны, чей вебхук сейчас обрабатываем (?c=<страна>).
 const botCtx = new AsyncLocalStorage<string>();
-const botToken = () => botCtx.getStore() || BOT_ENV;
+const botToken = () => botCtx.getStore() || "";
 
 // Язык чата: из профиля (users.language), иначе из Telegram, по умолчанию украинский.
 const chatLang = new Map<string, BotLang>();
@@ -341,8 +340,9 @@ async function handleParentStop(chatId: string) {
 
 export async function POST(req: Request) {
   const cid = new URL(req.url).searchParams.get("c");
-  const token = cid ? (await botForCountry(cid)).token : BOT_ENV;
-  return botCtx.run(token || BOT_ENV, () => handle(req));
+  const token = cid ? (await botForCountry(cid)).token : "";
+  if (!token) return NextResponse.json({ ok: false }, { status: 404 });
+  return botCtx.run(token, () => handle(req));
 }
 
 async function handle(req: Request) {

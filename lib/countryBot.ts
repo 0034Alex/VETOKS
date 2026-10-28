@@ -5,7 +5,7 @@ import { countryOfUser } from "@/lib/countryServer";
 export type Bot = { token: string; username: string; custom: boolean };
 type Row = { country_id: string; bot_username: string | null; bot_token: string | null; channel_link: string | null; channel_chat: string | null };
 
-// Запасного бота нет: у страны без своего бота в CRM токен и имя пустые (сообщений в Telegram нет).
+// Бот только у страны (задаётся в CRM). Нет бота у страны — токен и имя пустые, сообщений в Telegram нет.
 const none = (): Bot => ({ token: "", username: "", custom: false });
 
 let cache: { at: number; rows: Row[] } | null = null;
@@ -30,10 +30,9 @@ export async function botForUser(userId: string): Promise<Bot> {
   return botForCountry(await countryOfUser(userId));
 }
 
-// Все токены (общий + страновые): нужны, чтобы проверить подпись входа из мини-приложения любого бота.
+// Токены ботов всех стран: нужны, чтобы проверить подпись входа из мини-приложения.
 export async function allBotTokens(): Promise<string[]> {
   const out = new Set<string>();
-  if (process.env.TELEGRAM_BOT_TOKEN) out.add(process.env.TELEGRAM_BOT_TOKEN);
   (await rows()).forEach((r) => r.bot_token && out.add(r.bot_token));
   return Array.from(out);
 }

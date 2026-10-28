@@ -1,7 +1,6 @@
 import { randomBytes } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-export const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || "VETOKS_bot";
 
 export function tgEmail(telegramId: string | number) {
   return `tg${telegramId}@tg.vetoks.app`;

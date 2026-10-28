@@ -52,7 +52,7 @@ export default function AdminCountryBotsPanel() {
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
         <p className="text-offwhite font-semibold text-sm mb-1">Telegram: боты и каналы стран</p>
         <p className="text-xs text-offwhite/70">
-          Для каждой страны — свой бот и свой официальный канал. Сообщения людям страны уходят только от её бота, в канал — только её канал. Пока бот страны не задан, работает общий бот.
+          Для каждой страны — свой бот и свой официальный канал. Сообщения людям страны уходят только от её бота, в канал — только её канал. Пока бот страны не задан, люди этой страны не получают сообщений в Telegram.
         </p>
         <p className="text-xs text-offwhite/60 mt-2">
           Как подключить: 1) в @BotFather создайте бота; 2) вставьте здесь имя и токен; 3) нажмите «Сохранить и подключить». Человек получает сообщения от бота, только если начал с ним диалог (вход или подтверждение через этого бота).
@@ -64,7 +64,7 @@ export default function AdminCountryBotsPanel() {
           <button onClick={() => choose(r)} className="w-full flex items-center justify-between px-4 py-3 text-left">
             <span className="text-offwhite text-sm font-semibold">{r.country}</span>
             <span className="text-xs text-offwhite/70">
-              {r.hasToken ? `бот ${r.botUsername ? "@" + r.botUsername : "задан"} ✓` : "общий бот"} · {r.channelLink ? "канал ✓" : "канала нет"}
+              {r.hasToken ? `бот ${r.botUsername ? "@" + r.botUsername : "задан"} ✓` : "бота нет"} · {r.channelLink ? "канал ✓" : "канала нет"}
             </span>
           </button>
           {open === r.countryId && (

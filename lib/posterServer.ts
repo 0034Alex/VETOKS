@@ -9,31 +9,34 @@ export const POSTER_CAT_LABEL: Record<string, string> = {
   adult: "LADY 30+",
 };
 
-export const posterKey = (cat: string) => `poster_chat_${cat}`;
+// Чаты афиш у каждой страны свои: ключ включает страну.
+export const posterKey = (cat: string, countryId: string) => `poster_chat_${cat}_${countryId}`;
 
-export async function posterChat(cat: string): Promise<string | null> {
-  const { data } = await supabaseAdmin.from("platform_settings").select("value").eq("key", posterKey(cat)).maybeSingle();
+export async function posterChat(cat: string, countryId: string | null): Promise<string | null> {
+  if (!countryId) return null;
+  const { data } = await supabaseAdmin.from("platform_settings").select("value").eq("key", posterKey(cat, countryId)).maybeSingle();
   const v = String((data as any)?.value ?? "").trim();
   return v || null;
 }
 
-export async function posterChats(): Promise<Record<string, string>> {
+export async function posterChats(countryId: string): Promise<Record<string, string>> {
   const { data } = await supabaseAdmin
     .from("platform_settings")
     .select("key, value")
-    .in("key", POSTER_CATS.map(posterKey));
+    .in("key", POSTER_CATS.map((c) => posterKey(c, countryId)));
   const out: Record<string, string> = {};
   POSTER_CATS.forEach((c) => (out[c] = ""));
   ((data ?? []) as any[]).forEach((r) => {
-    const c = String(r.key).replace("poster_chat_", "");
+    const c = String(r.key).replace("poster_chat_", "").replace(`_${countryId}`, "");
     out[c] = String(r.value ?? "");
   });
   return out;
 }
 
-async function tg(method: string, body: object): Promise<{ ok: boolean; error?: string }> {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) return { ok: false, error: "Нет токена бота (TELEGRAM_BOT_TOKEN)." };
+async function tg(countryId: string | null, method: string, body: object): Promise<{ ok: boolean; error?: string }> {
+  const { botForCountry } = await import("@/lib/countryBot");
+  const token = (await botForCountry(countryId)).token;
+  if (!token) return { ok: false, error: "У этой страны не подключён бот (CRM → Настройки → Telegram)." };
   try {
     const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
       method: "POST",
@@ -49,12 +52,12 @@ async function tg(method: string, body: object): Promise<{ ok: boolean; error?: 
 }
 
 // Готовая афиша уходит файлом (документом): так в Telegram сохраняется полное качество.
-export function sendPosterToTg(chatId: string, imageUrl: string, caption: string) {
-  return tg("sendDocument", { chat_id: chatId, document: imageUrl, caption: caption.slice(0, 1000) });
+export function sendPosterToTg(countryId: string | null, chatId: string, imageUrl: string, caption: string) {
+  return tg(countryId, "sendDocument", { chat_id: chatId, document: imageUrl, caption: caption.slice(0, 1000) });
 }
 
-export function sendTgText(chatId: string, text: string) {
-  return tg("sendMessage", { chat_id: chatId, text });
+export function sendTgText(countryId: string | null, chatId: string, text: string) {
+  return tg(countryId, "sendMessage", { chat_id: chatId, text });
 }
 
 export function ageFromBirth(birth: string | null | undefined): number | null {

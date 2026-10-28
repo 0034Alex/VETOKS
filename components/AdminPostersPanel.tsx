@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
+import { getCrmCountry } from "@/lib/crmCountry";
 
 const CATS: [string, string][] = [
   ["teen", "MISS TEEN 15–17"],
@@ -18,7 +19,7 @@ export default function AdminPostersPanel() {
   const [busy, setBusy] = useState(false);
 
   async function load(c = cat) {
-    const r = await apiPost("/api/admin/posters", { action: "list", cat: c });
+    const r = await apiPost("/api/admin/posters", { action: "list", cat: c, countryId: getCrmCountry() });
     if (r?.ok) {
       setItems(r.items ?? []);
       setChats((prev) => ({ ...prev, ...(r.chats ?? {}) }));
@@ -30,13 +31,13 @@ export default function AdminPostersPanel() {
 
   async function save() {
     setBusy(true);
-    const r = await apiPost("/api/admin/posters", { action: "set_chats", chats });
+    const r = await apiPost("/api/admin/posters", { action: "set_chats", chats, countryId: getCrmCountry() });
     setMsg(r?.ok ? "Сохранено." : r?.error === "owner_only" ? "Менять чаты может только владелец." : "Не получилось сохранить.");
     setBusy(false);
   }
   async function test(c: string) {
     setMsg("Проверяю…");
-    const r = await apiPost("/api/admin/posters", { action: "test", cat: c });
+    const r = await apiPost("/api/admin/posters", { action: "test", cat: c, countryId: getCrmCountry() });
     setMsg(r?.ok ? "Готово: в чат ушло тестовое сообщение." : `Не получилось: ${r?.error || "проверь, что бот добавлен в чат админом"}`);
   }
   async function resend(id: string) {

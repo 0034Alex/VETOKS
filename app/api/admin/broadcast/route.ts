@@ -10,15 +10,16 @@ export const maxDuration = 30;
 const PAGE = 100;
 
 // CRM → «Рассылка»: сообщение всем, по категориям или выбранным людям.
-// Приходит всплывающим окном в приложении и сообщением от бота в Telegram.
+// Приходит только сообщением от бота страны в Telegram.
 // Большие списки уходят порциями по 100 — CRM вызывает метод, пока done не станет true.
 export async function POST(req: Request) {
   const uid = await requireStaff(req, ["super_admin"]);
   if (uid instanceof NextResponse) return uid;
   const b = await req.json().catch(() => ({}));
-  // Страна рассылки: пустая = все страны. Сообщение уходит только людям этой страны и от бота этой страны.
+  // Страна рассылки обязательна. Сообщение уходит только людям этой страны и от бота этой страны.
   const countryId = typeof b.countryId === "string" && b.countryId ? b.countryId.slice(0, 64) : null;
-  const regionIds = countryId ? await regionIdsOfCountry(countryId) : null;
+  if (!countryId) return NextResponse.json({ ok: false, error: "no_country", message: "Выберите страну вверху CRM." });
+  const regionIds = await regionIdsOfCountry(countryId);
 
   if (b.action === "search") {
     const q = String(b.q ?? "").trim().replace(/[,()%]/g, " ");

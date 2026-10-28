@@ -12,9 +12,8 @@ export type TgUser = {
 export function verifyInitData(
   initData: string,
   maxAgeSec = 60 * 60 * 24,
-  tokenOverride?: string
+  botToken: string
 ): TgUser | null {
-  const botToken = tokenOverride ?? process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken || !initData) return null;
 
   const params = new URLSearchParams(initData);
