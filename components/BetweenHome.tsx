@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import PageHeader from "@/components/PageHeader";
+import Logo from "@/components/Logo";
 import BottomNav from "@/components/BottomNav";
 import RecruitBanner from "@/components/RecruitBanner";
 import PromoBannerCarousel from "@/components/PromoBannerCarousel";
@@ -23,9 +23,6 @@ export default function BetweenHome() {
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    try {
-      sessionStorage.setItem("vt_between_seen", "1");
-    } catch {}
     (async () => {
       try {
         const r = await apiPost("/api/show/hall", {});
@@ -67,7 +64,11 @@ export default function BetweenHome() {
   const first = winners[0];
   return (
     <main className="min-h-screen pb-28">
-      <PageHeader />
+      <div className="flex justify-center">
+        <div className="flex items-center justify-center px-4 py-4 w-full max-w-3xl" style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" }}>
+          <Logo size={28} />
+        </div>
+      </div>
       {!off.includes("recruit") && <RecruitBanner />}
 
       {!off.includes("hall") && (
