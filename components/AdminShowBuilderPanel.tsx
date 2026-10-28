@@ -41,7 +41,20 @@ const PEOPLE: { key: string; slot?: string; note: string }[] = [
   { key: "p_blackmark", note: "Кнопка «Чёрная метка» для участницы." },
   { key: "p_ticker", note: "Бегущая лента событий внизу экрана." },
 ];
-const PAGE_BLOCKS: Record<string, typeof HOME> = { home: HOME, people: PEOPLE };
+// Страница «Медиа» (вертикальная лента роликов).
+const MEDIA: { key: string; slot?: string; note: string }[] = [
+  { key: "m_recs", slot: "feed", note: "Главная вкладка ленты. Внутри: какие ролики попадают в ленту и как сортируются." },
+  { key: "m_following", note: "Ролики тех, на кого подписан человек." },
+  { key: "m_country", note: "Ролики по всей стране." },
+  { key: "m_live", note: "Вкладка прямых эфиров (только шоу талантов)." },
+  { key: "m_search", note: "Поиск по имени участницы." },
+  { key: "m_sound", note: "Кнопка включения звука." },
+  { key: "m_like", note: "Лайк под роликом." },
+  { key: "m_comment", note: "Комментарии под роликом." },
+  { key: "m_share", note: "Кнопка «Поделиться»." },
+  { key: "m_vote", note: "Кнопка «Голосовать» прямо в ленте." },
+];
+const PAGE_BLOCKS: Record<string, typeof HOME> = { home: HOME, people: PEOPLE, media: MEDIA };
 
 // На главной Мисс слушаются только эти блоки (остальные там пока не выключаются).
 const MISS_HOME = ["scope", "cats", "news", "strip", "top", "mag", "poll", "partners"];

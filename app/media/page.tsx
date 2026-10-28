@@ -13,7 +13,7 @@ import ReportButton from "@/components/ReportButton";
 import ShareButton from "@/components/ShareButton";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory } from "@/lib/viewCategory";
-import { useShow } from "@/lib/useShow";
+import { useShow, hasBlock } from "@/lib/useShow";
 import { applyContest, cleanContest } from "@/lib/contest";
 import {
   IconHeart,
@@ -76,7 +76,18 @@ export default function MediaPage() {
   const [commentText, setCommentText] = useState("");
   const [feedTab, setFeedTab] = useState<FeedTab>("region");
   const { show: curShow } = useShow();
-  const liveOn = curShow?.contest === "talent";
+  const liveOn = curShow?.contest === "talent" && hasBlock(curShow, "m_live");
+  const onB = (k: string) => hasBlock(curShow, k);
+  useEffect(() => {
+    // Если вкладка выключена в конструкторе — открываем первую доступную.
+    const order: [FeedTab, string][] = [["region", "m_recs"], ["following", "m_following"], ["country", "m_country"]];
+    const cur = order.find((o) => o[0] === feedTab);
+    if (cur && !hasBlock(curShow, cur[1])) {
+      const next = order.find((o) => hasBlock(curShow, o[1]));
+      if (next) setFeedTab(next[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [curShow]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
@@ -330,7 +341,7 @@ export default function MediaPage() {
         >
           <div className="w-full max-w-md px-4 py-3 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent">
             <div className="flex items-center gap-4 overflow-x-auto">
-              <button
+              {onB("m_recs") && <button
                 onClick={() => {
                   setFeedTab("region");
                   setSearchOpen(false);
@@ -341,8 +352,8 @@ export default function MediaPage() {
                 }`}
               >
                 Рекомендации
-              </button>
-              <button
+              </button>}
+              {onB("m_following") && <button
                 onClick={() => {
                   setFeedTab("following");
                   setSearchOpen(false);
@@ -353,8 +364,8 @@ export default function MediaPage() {
                 }`}
               >
                 Подписки
-              </button>
-              <button
+              </button>}
+              {onB("m_country") && <button
                 onClick={() => {
                   setFeedTab("country");
                   setSearchOpen(false);
@@ -365,7 +376,7 @@ export default function MediaPage() {
                 }`}
               >
                 Вся страна
-              </button>
+              </button>}
               {liveOn && (
                 <button
                   onClick={() => {
@@ -379,9 +390,9 @@ export default function MediaPage() {
                 </button>
               )}
             </div>
-            <button onClick={() => setSearchOpen((v) => !v)} className="flex-shrink-0 ml-2">
+            {onB("m_search") && <button onClick={() => setSearchOpen((v) => !v)} className="flex-shrink-0 ml-2">
               <IconSearchWhite />
-            </button>
+            </button>}
           </div>
           {searchOpen && (
             <div className="absolute top-full left-0 right-0 px-4 pb-2 flex justify-center bg-black/70">
@@ -441,13 +452,13 @@ export default function MediaPage() {
             />
             )}
 
-            <button
+            {onB("m_sound") && <button
               onClick={toggleSound}
               aria-label={soundOn ? "Выключить звук" : "Включить звук"}
               className="absolute right-3 top-16 z-20 w-10 h-10 rounded-full bg-black/50 text-white text-lg flex items-center justify-center"
             >
               {soundOn ? "🔊" : "🔇"}
-            </button>
+            </button>}
 
             <div className="absolute bottom-0 left-0 right-0 p-4 pb-24 bg-gradient-to-t from-black/90 to-transparent">
               <Link
@@ -499,31 +510,31 @@ export default function MediaPage() {
                 )}
               </div>
 
-              <button onClick={() => toggleLike(p.id)} className="flex flex-col items-center">
+              {onB("m_like") && <button onClick={() => toggleLike(p.id)} className="flex flex-col items-center">
                 <IconHeart filled={likedIds.has(p.id)} />
                 <span className="text-white text-xs mt-0.5">{likeCounts[p.id] ?? 0}</span>
-              </button>
+              </button>}
 
-              <button onClick={() => openCommentsFor(p.id)} className="flex flex-col items-center">
+              {onB("m_comment") && <button onClick={() => openCommentsFor(p.id)} className="flex flex-col items-center">
                 <IconComment />
                 <span className="text-white text-xs mt-0.5">{commentCounts[p.id] ?? 0}</span>
-              </button>
+              </button>}
 
-              <ShareButton postId={p.id}>
+              {onB("m_share") && <ShareButton postId={p.id}>
                 <IconShare />
                 <span className="text-white text-[10px] mt-0.5">Поделиться</span>
-              </ShareButton>
+              </ShareButton>}
 
               <ReportButton postId={p.id} loggedIn={!!me} />
 
-              <button
+              {onB("m_vote") && <button
                 onClick={() => handleVote(p.participant_id)}
                 disabled={!me}
                 className="flex flex-col items-center disabled:opacity-50"
               >
                 <IconCrownVote />
                 <span className="text-white text-[10px] mt-0.5">Голосовать</span>
-              </button>
+              </button>}
             </div>
           </div>
         ))}
