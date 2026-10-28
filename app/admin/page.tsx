@@ -10,6 +10,7 @@ import { getCurrentUser, isStaff, CurrentUser } from "@/lib/currentUser";
 import AdminPricesPanel from "@/components/AdminPricesPanel";
 import AdminCoinsPanel from "@/components/AdminCoinsPanel";
 import AdminShowsPanel from "@/components/AdminShowsPanel";
+import AdminLaunchesPanel from "@/components/AdminLaunchesPanel";
 import AdminAwardsPanel from "@/components/AdminAwardsPanel";
 import AdminStoryReportsPanel from "@/components/AdminStoryReportsPanel";
 import AdminRatingPanel from "@/components/AdminRatingPanel";
@@ -91,6 +92,7 @@ type Tab =
   | "app-prices"
   | "coins"
   | "shows"
+  | "launches"
   | "awards"
   | "story-reports"
   | "rating-admin"
@@ -138,6 +140,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "app-prices", label: "Цены (в долларах)" },
   { key: "coins", label: "Монеты и Короны" },
   { key: "shows", label: "Шоу" },
+  { key: "launches", label: "Страны и запуск" },
   { key: "awards", label: "Номинации и победители" },
   { key: "story-reports", label: "Жалобы на истории" },
   { key: "rating-admin", label: "Рейтинг и титулы" },
@@ -157,6 +160,84 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "security", label: "Безопасность" },
 ];
 
+// Поиск по CRM: слова, по которым раздел можно найти (кроме названия и подсказки).
+const SEARCH_WORDS: Partial<Record<Tab, string>> = {
+  dashboard: "статистика цифры главная сегодня",
+  applications: "заявки анкеты одобрение новые участницы подача",
+  participants: "участницы конкурсантки титулы статус",
+  users: "пользователи аккаунты люди возраст",
+  staff: "сотрудники доступы права роли персонал",
+  stages: "этап сезон старт конец даты вопрос опрос отбор финал программа",
+  goal: "цель недели голоса план",
+  tasks: "задания проверка выполнение",
+  calendar: "календарь подсказки темы дни контент идеи",
+  banners: "баннер баннеры картинка главная промо",
+  "magazine-ads": "журнал реклама разворот",
+  documents: "договор договоры оферта правила политика конфиденциальность тексты",
+  posters: "афиши афіша постер",
+  media: "материалы монтаж логотип рамки наклейки скачать",
+  "app-prices": "курс доллара гривна цены подарки голоса карточки валюта стоимость",
+  coins: "монеты короны комиссия вывод курс баланс",
+  shows: "шоу мисс таланты цвета тема баннер старт набор анкет предпросмотр",
+  launches: "запуск страна очередь шоу старт пауза программа подсказки вопросы задания блоки включить выключить дата этап календарь",
+  awards: "номинации победители зал славы",
+  "rating-admin": "рейтинг титулы голоса",
+  "ad-space": "реклама места кабинет партнёры покупка",
+  "ad-prices": "цены реклама прайс день неделя месяц",
+  broadcast: "рассылка уведомления сообщения пуш",
+  countries: "страны регионы языки валюта часовой пояс",
+  translations: "переводы язык тексты",
+  reports: "жалобы нарушения ролики",
+  "content-mod": "модерация проверка контента видео фото",
+  security: "безопасность блокировки журнал вход",
+  "action-log": "журнал действий кто менял история",
+  referrals: "рефералы приглашения комиссия",
+  support: "поддержка обращения вопросы людей",
+};
+
+function CrmSearch({ tabs, onGo }: { tabs: Tab[]; onGo: (t: Tab) => void }) {
+  const [q, setQ] = useState("");
+  const v = q.trim().toLowerCase();
+  const found = v
+    ? tabs.filter((t) => {
+        const label = TABS.find((x) => x.key === t)?.label ?? "";
+        return `${label} ${TAB_DESC[t] ?? ""} ${SEARCH_WORDS[t] ?? ""}`.toLowerCase().includes(v);
+      })
+    : [];
+  return (
+    <div className="relative min-w-0 flex-1 max-w-sm">
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="🔎 Найти: курс, баннер, вопрос…"
+        aria-label="Поиск по CRM"
+        className="w-full bg-bgPrimary border border-muted/60 rounded-lg px-3 py-1.5 text-sm text-offwhite min-w-0"
+      />
+      {v && (
+        <div className="absolute left-0 right-0 top-10 z-50 bg-bgSurface border border-gold/60 rounded-lg overflow-hidden shadow-xl max-h-80 overflow-y-auto">
+          {found.length === 0 && <p className="px-3 py-2 text-sm text-muted">Ничего не найдено</p>}
+          {found.map((t) => {
+            const g = CRM_GROUPS.find((x) => x.tabs.includes(t));
+            return (
+              <button
+                key={t}
+                onClick={() => {
+                  onGo(t);
+                  setQ("");
+                }}
+                className="block w-full text-left px-3 py-2 border-b border-muted/30 last:border-0 hover:bg-gold/10"
+              >
+                <span className="text-sm text-offwhite">{TABS.find((x) => x.key === t)?.label}</span>
+                <span className="block text-[11px] text-muted">{g ? `${g.ic} ${g.label}` : ""}{TAB_DESC[t] ? ` · ${TAB_DESC[t]}` : ""}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Каждая галочка в «Персонал» открывает свой набор разделов.
 // Владелец (super_admin) видит всё независимо от галочек.
 const PERMISSION_TABS: Record<string, Tab[]> = {
@@ -172,7 +253,7 @@ type Level = "r" | "w";
 const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: Tab[] }[] = [
   { key: "today", ic: "🏠", label: "Сегодня", desc: "Что требует действия прямо сейчас", tabs: ["dashboard", "support"] },
   { key: "people", ic: "👥", label: "Люди", desc: "Все, кто есть в приложении", tabs: ["users", "participants", "applications", "badges", "black-marks"] },
-  { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["shows", "awards", "stages", "rating-admin", "goal", "tasks", "cards"] },
+  { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["launches", "shows", "awards", "stages", "rating-admin", "goal", "tasks", "cards"] },
   { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "broadcast", "mediafeed", "channels", "banners"] },
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["content-mod", "reports", "story-reports", "clan"] },
   { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["coins", "app-prices", "referrals"] },
@@ -208,7 +289,8 @@ const TAB_DESC: Partial<Record<Tab, string>> = {
   reports: "Жалобы на ролики",
   clan: "Чаты кланов",
   coins: "Курсы, пакеты, бонусы",
-  shows: "Какое шоу идёт, даты и цвета",
+  launches: "Страна → очередь шоу, программа и блоки",
+  shows: "Шаблон шоу: цвета, баннер, набор",
   awards: "Победители для зала славы",
   "story-reports": "Жалобы на истории",
   "app-prices": "Цены в приложении",
@@ -238,7 +320,7 @@ const ROLE_LABELS: Record<string, string> = {
 // Что человеку можно: по каждой вкладке «только смотреть» или «смотреть и менять».
 // Владелец — всё. Новые права хранятся по группам, старые (галочки) — как раньше.
 // Вкладки только для владельца, даже если у сотрудника есть вся группа.
-const OWNER_ONLY: Tab[] = ["shows", "awards"];
+const OWNER_ONLY: Tab[] = ["shows", "awards", "launches"];
 
 function computeAccess(user: CurrentUser): Partial<Record<Tab, Level>> {
   const out: Partial<Record<Tab, Level>> = {};
@@ -454,6 +536,7 @@ export default function AdminPage() {
         <span className="text-xs border border-gold/60 text-gold rounded-full px-2.5 py-1 whitespace-nowrap" title={me?.email ?? ""}>
           {roleLabel}
         </span>
+        <CrmSearch tabs={allowedTabs} onGo={go} />
         <div className="ml-auto flex items-center gap-2 min-w-0">
           <span className="hidden sm:inline text-xs text-muted whitespace-nowrap">🌍 Страна CRM:</span>
           <CrmCountrySwitch allowedIds={me?.role === "super_admin" ? null : Array.isArray(me?.staff_countries) ? (me!.staff_countries as string[]) : null} />
@@ -538,6 +621,7 @@ export default function AdminPage() {
         {tab === "app-prices" && <AdminPricesPanel />}
         {tab === "coins" && <AdminCoinsPanel />}
         {tab === "shows" && <AdminShowsPanel />}
+        {tab === "launches" && <AdminLaunchesPanel />}
         {tab === "awards" && <AdminAwardsPanel />}
         {tab === "story-reports" && <AdminStoryReportsPanel />}
         {tab === "documents" && <AdminDocumentsPanel />}

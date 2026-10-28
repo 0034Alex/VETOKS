@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { userIdFromBearer } from "@/lib/authServer";
+import { countryOfUser } from "@/lib/countryServer";
+import { countryView } from "@/lib/launchServer";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +48,32 @@ export async function POST(req: Request) {
     }
   }
   if (forced) return NextResponse.json({ ok: true, preview: true, show: pub(forced), recruiting: null });
+
+  // Если в стране человека есть запуски — шоу выбирает запуск (даты считаются от старта).
+  try {
+    const uid2 = await userIdFromBearer(req);
+    const cid = uid2 ? await countryOfUser(uid2) : null;
+    const cv = cid ? await countryView(cid) : null;
+    if (cv) {
+      const byKey = (k: string | null) => (k ? rows.find((s) => s.key === k) : undefined);
+      const lv = byKey(cv.liveKey);
+      const rc = byKey(cv.recruitKey);
+      const withOver = lv
+        ? {
+            ...pub(lv),
+            banner: { ...(lv.banner ?? {}), ...cv.banner },
+            blocks: cv.blocks,
+            launch: cv.info,
+          }
+        : null;
+      return NextResponse.json({
+        ok: true,
+        preview: false,
+        show: withOver,
+        recruiting: rc ? { ...pub(rc), startsAt: rc.starts_at } : null,
+      });
+    }
+  } catch {}
 
   const live = rows
     .filter((s) => s.eff === "live")

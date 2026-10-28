@@ -15,7 +15,7 @@ import RecruitBanner from "@/components/RecruitBanner";
 import { apiPost } from "@/lib/authClient";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory, rankCat } from "@/lib/viewCategory";
-import { applyOpen, type ActiveShow } from "@/lib/useShow";
+import { applyOpen, hasBlock, type ActiveShow } from "@/lib/useShow";
 
 type Row = { rank: number; participant_id: string; votes: number; display_name: string; photo_url: string | null };
 
@@ -70,18 +70,38 @@ export default function TalentHome({ show }: { show: NonNullable<ActiveShow> }) 
 
         <StoryStrip />
 
-        <BattleCard contest={show.contest} />
+        {show.launch && (show.launch.tips.length > 0 || show.launch.tasks.length > 0) && (
+          <div className="px-6 mb-5">
+            <div className="rounded-2xl border border-gold/40 bg-bgSurface p-4">
+              <div className="text-[11px] text-muted mb-1">
+                {show.launch.stage} · день {show.launch.day} из {show.launch.total}
+              </div>
+              {show.launch.tips.map((t, i) => (
+                <p key={"t" + i} className="text-sm text-offwhite mb-1">💡 {t}</p>
+              ))}
+              {show.launch.tasks.map((t, i) => (
+                <p key={"k" + i} className="text-sm text-gold">✅ {t}</p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {hasBlock(show, "battle") && <BattleCard contest={show.contest} />}
 
         {/* Топ-25 */}
-        <div className="px-6 mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-offwhite">Топ-25</h2>
-          <Link href="/top25" className="text-gold text-sm">
-            Весь ›
-          </Link>
-        </div>
-        {loading ? <LoadingScreen inline /> : <TopCards rows={rows} />}
+        {hasBlock(show, "top") && (
+          <>
+            <div className="px-6 mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-offwhite">Топ-25</h2>
+              <Link href="/top25" className="text-gold text-sm">
+                Весь ›
+              </Link>
+            </div>
+            {loading ? <LoadingScreen inline /> : <TopCards rows={rows} />}
+          </>
+        )}
 
-        <ShowPoll showId={show.id} />
+        {hasBlock(show, "poll") && <ShowPoll showId={show.id} />}
 
         {applyOpen(show.banner) && (
           <div className="px-6 mt-8">
