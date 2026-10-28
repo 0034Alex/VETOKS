@@ -14,6 +14,7 @@ import PresenceBeat from "@/components/PresenceBeat";
 import BirthPopup from "@/components/BirthPopup";
 import ShowTheme from "@/components/ShowTheme";
 import BroadcastPopup from "@/components/BroadcastPopup";
+import CountryGate from "@/components/CountryGate";
 
 export const metadata: Metadata = {
   title: "VETOKS",
@@ -60,6 +61,7 @@ export default function RootLayout({
           strategy="beforeInteractive"
         />
         <AuthGate>{children}</AuthGate>
+        <CountryGate />
         <VerifyPhonePopup />
         <ReferralCapture />
         <AutoTranslate />

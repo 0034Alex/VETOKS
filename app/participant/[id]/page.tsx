@@ -578,13 +578,13 @@ export default function ParticipantProfilePage() {
                     type="number"
                     value={donateAmount}
                     onChange={(e) => setDonateAmount(e.target.value)}
-                    className="flex-1 bg-bgPrimary text-offwhite border border-muted rounded-lg px-3 py-2 text-sm"
+                    className="flex-1 min-w-0 w-full bg-bgPrimary text-offwhite border border-muted rounded-lg px-3 py-2 text-base"
                     min={10}
                   />
                   <button
                     onClick={donateToGoal}
                     disabled={busy || !userId}
-                    className="bg-gold text-bgPrimary font-semibold px-4 py-2 rounded-full text-sm disabled:opacity-40"
+                    className="shrink-0 whitespace-nowrap bg-gold text-bgPrimary font-semibold px-3 py-2 rounded-full text-sm disabled:opacity-40"
                   >
                     Поддержать цель
                   </button>

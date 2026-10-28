@@ -69,7 +69,9 @@ function RegisterForm() {
       // Подсказка страны по адресу посетителя; если не угадали или страна не включена — человек выбирает сам.
       try {
         const g = await fetch("/api/geo").then((r) => r.json());
-        const hit = cl.find((c) => c.code.toUpperCase() === g?.code);
+        let stored = "";
+        try { stored = localStorage.getItem("vt_country") || ""; } catch {}
+        const hit = cl.find((c) => c.id === stored) ?? cl.find((c) => c.code.toUpperCase() === g?.code);
         if (hit) setCountryId(hit.id);
         else if (cl.length === 1) setCountryId(cl[0].id);
       } catch {

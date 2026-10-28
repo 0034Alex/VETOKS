@@ -1750,5 +1750,11 @@
  "{} · день {} из {}": "{} · day {} of {}",
  "Скачать в галерею": "Save to gallery",
  "Файл скачан.": "File downloaded.",
- "Если файл открылся в браузере, нажмите и удерживайте его, затем «Сохранить».": "If the file opened in the browser, press and hold it, then tap “Save”."
+ "Если файл открылся в браузере, нажмите и удерживайте его, затем «Сохранить».": "If the file opened in the browser, press and hold it, then tap “Save”.",
+ "Выберите вашу страну": "Choose your country",
+ "Это нужно, чтобы показать шоу и язык вашей страны.": "This lets us show your country's shows and language.",
+ "— выберите страну —": "— choose a country —",
+ "VETOKS пока нет в вашей стране.": "VETOKS is not in your country yet.",
+ "Продолжить": "Continue",
+ "Вход через Telegram для вашей страны пока недоступен. Войдите по номеру телефона и паролю.": "Telegram login is not available for your country yet. Sign in with your phone number and password."
 }

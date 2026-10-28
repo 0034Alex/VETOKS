@@ -14,7 +14,7 @@ export default function TelegramLoginButton({
   label?: string;
 }) {
   const router = useRouter();
-  const [state, setState] = useState<"idle" | "waiting" | "error">("idle");
+  const [state, setState] = useState<"idle" | "waiting" | "error" | "nobot">("idle");
   const [link, setLink] = useState("");
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -67,7 +67,13 @@ export default function TelegramLoginButton({
 
   async function start() {
     setState("waiting");
-    const r = await postJson("/api/auth/tg-start", {});
+    let countryId = "";
+    try { countryId = localStorage.getItem("vt_country") || ""; } catch {}
+    const r = await postJson("/api/auth/tg-start", { countryId });
+    if (r.status === "no_bot") {
+      setState("nobot");
+      return;
+    }
     if (r.status !== "ok") {
       setState("error");
       return;
@@ -92,6 +98,9 @@ export default function TelegramLoginButton({
         <a href={link} className="block text-gold underline text-xs mt-2">
           Telegram не открылся? Нажмите сюда
         </a>
+      )}
+      {state === "nobot" && (
+        <p className="text-muted text-xs mt-2">Вход через Telegram для вашей страны пока недоступен. Войдите по номеру телефона и паролю.</p>
       )}
       {state === "error" && (
         <p className="text-danger text-xs mt-2">
