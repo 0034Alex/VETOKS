@@ -47,6 +47,39 @@ export function useShow(): { show: ActiveShow; ready: boolean } {
   return { show: current, ready: loaded };
 }
 
+// «Между шоу»: в стране нет идущего шоу. off — выключенные блоки главной, question — вопрос недели.
+export type Between = { on: boolean; off: string[]; question: string } | null;
+let between: Between = null;
+const BEVT = "vetoks-between";
+const BSTORE = "vt_between";
+export function publishBetween(b: Between) {
+  between = b;
+  try {
+    localStorage.setItem(BSTORE, JSON.stringify(b));
+  } catch {}
+  try {
+    window.dispatchEvent(new Event(BEVT));
+  } catch {}
+}
+export function useBetween(): Between {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!between) {
+      try {
+        const raw = localStorage.getItem(BSTORE);
+        if (raw) {
+          between = JSON.parse(raw);
+          tick((n) => n + 1);
+        }
+      } catch {}
+    }
+    const h = () => tick((n) => n + 1);
+    window.addEventListener(BEVT, h);
+    return () => window.removeEventListener(BEVT, h);
+  }, []);
+  return between;
+}
+
 // Шоу, на которое сейчас идёт набор анкет (приходит вместе с активным шоу).
 export type Recruit = { id: string; key: string; title: string; contest: string; banner: ShowBanner; startsAt?: string | null } | null;
 let recruit: Recruit = null;

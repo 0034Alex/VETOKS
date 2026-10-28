@@ -5,6 +5,7 @@ import { apiPost } from "@/lib/authClient";
 import { getCrmCountry } from "@/lib/crmCountry";
 import { BLOCKS, blockFits, dayIdx, effState, idxToStr, itemRange, startIdx, todayIdx, type ItemRow, type LaunchRow } from "@/lib/launch";
 import { ItemEditor } from "@/components/AdminLaunchesPanel";
+import AdminBetweenPanel from "@/components/AdminBetweenPanel";
 
 const PAGES: [string, string][] = [
   ["home", "Главная"],
@@ -148,6 +149,12 @@ export default function AdminShowBuilderPanel({ slots, launchesPanel }: { slots:
 
   return (
     <div className="max-w-2xl space-y-4">
+      <div className="bg-bgSurface border border-muted/40 rounded-xl p-3">
+        <button className="w-full text-left text-sm font-semibold text-offwhite flex justify-between" onClick={() => setOpen(open === "__between" ? "" : "__between")}>
+          Страница «Между шоу»: что видят люди, когда шоу не идёт <span className="text-gold">{open === "__between" ? "▲" : "▼"}</span>
+        </button>
+        {open === "__between" && <div className="pt-3"><AdminBetweenPanel /></div>}
+      </div>
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 space-y-3">
         <p className="text-offwhite font-semibold text-sm">Конструктор шоу</p>
         <p className="text-muted text-xs">Страна выбирается вверху CRM. Здесь шоу этой страны и все страницы приложения: включайте блоки, задавайте, когда они показываются, и сразу меняйте их содержимое.</p>

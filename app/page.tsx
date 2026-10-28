@@ -1,8 +1,9 @@
 "use client";
 
-import { useShow, hasBlock } from "@/lib/useShow";
+import { useShow, hasBlock, useBetween } from "@/lib/useShow";
 import { applyContest, cleanContest } from "@/lib/contest";
 import TalentHome from "@/components/TalentHome";
+import BetweenHome from "@/components/BetweenHome";
 import { useT } from "@/lib/i18n";
 import StagePoll from "@/components/StagePoll";
 import CategorySwitch, { CategoryStrip } from "@/components/CategorySwitch";
@@ -1170,6 +1171,21 @@ function MissHome() {
 
 export default function Home() {
   const { show } = useShow();
+  const between = useBetween();
+  const homeRouter = useRouter();
+  const betweenOn = !!between?.on && !show;
+  useEffect(() => {
+    // Между шоу приложение при входе открывается на «Медиа»; «Главная» потом показывает свой экран.
+    if (!betweenOn) return;
+    try {
+      if (sessionStorage.getItem("vt_between_seen")) return;
+      sessionStorage.setItem("vt_between_seen", "1");
+    } catch {
+      return;
+    }
+    homeRouter.replace("/media");
+  }, [betweenOn, homeRouter]);
+  if (betweenOn) return <BetweenHome />;
   if (show?.contest === "talent") return <TalentHome show={show} />;
   return <MissHome />;
 }

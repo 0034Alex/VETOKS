@@ -58,7 +58,7 @@ export async function POST(req: Request) {
       const byKey = (k: string | null) => (k ? rows.find((s) => s.key === k) : undefined);
       const lv = byKey(cv.liveKey);
       const rc = byKey(cv.recruitKey);
-      const withOver = lv
+      const withOver = lv && !cv.between.on
         ? {
             ...pub(lv),
             banner: { ...(lv.banner ?? {}), ...cv.banner },
@@ -70,6 +70,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         ok: true,
         preview: false,
+        between: cv.between,
         show: withOver,
         recruiting: rc ? { ...pub(rc), startsAt: rc.starts_at } : null,
       });

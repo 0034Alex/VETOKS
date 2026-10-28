@@ -7,7 +7,8 @@ export type CountryView = {
   liveKey: string | null;
   recruitKey: string | null;
   blocksOff: string[];
-  blockOrder: string[]; // блоки, заданные в запуске, но сегодня выключенные
+  blockOrder: string[];
+  between: { on: boolean; off: string[]; question: string }; // блоки, заданные в запуске, но сегодня выключенные
   banner: { apply?: boolean; poll_question?: string; poll_id?: string };
   info: { stage: string; day: number; total: number; tips: string[]; tasks: string[]; stageEndsAt: number | null } | null;
 };
@@ -23,7 +24,7 @@ export async function loadCountryLaunches(countryId: string): Promise<{ launches
 export async function countryView(countryId: string, now: number = Date.now()): Promise<CountryView | null> {
   const { launches, items } = await loadCountryLaunches(countryId);
   if (!launches.length) return null;
-  const view: CountryView = { liveKey: null, recruitKey: null, blocksOff: [], blockOrder: [], banner: {}, info: null };
+  const view: CountryView = { liveKey: null, recruitKey: null, blocksOff: [], blockOrder: [], between: { on: false, off: [], question: "" }, banner: {}, info: null };
 
   const states = launches.map((l) => ({ l, ...effState(l, launches, todayIdxOf(l, now)) }));
   const live = states.filter((s) => s.state === "live").sort((a, b) => (a.S ?? 0) - (b.S ?? 0))[0];
@@ -50,6 +51,18 @@ export async function countryView(countryId: string, now: number = Date.now()): 
       tips: act.filter((i) => i.kind === "tip").map((i) => (i.body || i.title).slice(0, 400)),
       tasks: act.filter((i) => i.kind === "task").map((i) => (i.body || i.title).slice(0, 400)),
       stageEndsAt: st ? now + msToMidnight(live.l.tz, now) + (st.endIdx - today) * 86400000 : null,
+    };
+  }
+  // «Между шоу»: нет идущего шоу. Режим из CRM: auto (само), on (всегда), off (никогда).
+  {
+    const keys = ["between_mode", "between_off", "between_question"].map((k) => `${k}:${countryId}`);
+    const { data: st } = await supabaseAdmin.from("platform_settings").select("key, value").in("key", keys);
+    const g = (k: string) => String(((st ?? []) as any[]).find((r) => r.key === `${k}:${countryId}`)?.value ?? "");
+    const mode = g("between_mode") || "auto";
+    view.between = {
+      on: mode === "on" || (mode !== "off" && !view.liveKey),
+      off: g("between_off").split(",").map((x) => x.trim()).filter(Boolean),
+      question: g("between_question").slice(0, 300),
     };
   }
   // Набор анкет на следующее шоу: запуск ещё не начался, а кнопка «Подать анкету» уже действует.
