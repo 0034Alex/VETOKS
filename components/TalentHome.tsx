@@ -74,7 +74,7 @@ export default function TalentHome({ show }: { show: NonNullable<ActiveShow> }) 
           <div className="px-6 mb-5">
             <div className="rounded-2xl border border-gold/40 bg-bgSurface p-4">
               <div className="text-[11px] text-muted mb-1">
-                {show.launch.stage} · день {show.launch.day} из {show.launch.total}
+                {`${show.launch.stage} · день ${show.launch.day} из ${show.launch.total}`}
               </div>
               {show.launch.tips.map((t, i) => (
                 <p key={"t" + i} className="text-sm text-offwhite mb-1">💡 {t}</p>
