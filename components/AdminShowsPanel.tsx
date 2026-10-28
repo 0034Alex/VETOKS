@@ -230,10 +230,10 @@ export default function AdminShowsPanel() {
           {!isNew && s.id && (
             <>
               <button onClick={() => previewMe(s.id!)} className="border border-gold text-gold px-4 py-2 rounded-full text-sm">
-                Посмотреть у себя
+                👁 Открыть для теста
               </button>
               <button onClick={() => copyLink(s.preview_token)} className="border border-muted text-offwhite px-4 py-2 rounded-full text-sm">
-                Ссылка для постороннего
+                🔗 Ссылка для теста
               </button>
               <button onClick={() => newToken(s.id!)} className="text-muted text-xs px-2 py-2">
                 сбросить ссылку
@@ -255,8 +255,9 @@ export default function AdminShowsPanel() {
   return (
     <div className="max-w-3xl flex flex-col gap-4">
       <p className="text-muted text-xs">
-        Здесь задаётся, какое шоу сейчас идёт и как оно выглядит. «Посмотреть у себя» включает вид шоу только у вас в этом браузере, зрители ничего не видят.
-        Выйти из предпросмотра можно кнопкой «выйти» вверху страницы.
+        Здесь создаются шаблоны шоу: название, цвета, баннер. «Открыть для теста» показывает вам приложение так, как будто это шоу идёт, со всеми блоками и функциями.
+        Видите только вы в этом браузере, зрители ничего не замечают. «Ссылка для теста» открывает то же самое любому, кому вы её отправите. Выйти из теста можно кнопкой «выйти» вверху страницы.
+        Когда и в какой стране шоу идёт, задаётся в разделе «Страны и запуск».
       </p>
       {msg && <p className="text-success text-sm">{msg}</p>}
 
