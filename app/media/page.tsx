@@ -13,7 +13,7 @@ import ReportButton from "@/components/ReportButton";
 import ShareButton from "@/components/ShareButton";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory } from "@/lib/viewCategory";
-import { useShow, hasBlock, useBetween } from "@/lib/useShow";
+import { useShow, hasBlock } from "@/lib/useShow";
 import { applyContest, cleanContest } from "@/lib/contest";
 import {
   IconHeart,
@@ -78,8 +78,6 @@ export default function MediaPage() {
   const { show: curShow } = useShow();
   const liveOn = curShow?.contest === "talent" && hasBlock(curShow, "m_live");
   const onB = (k: string) => hasBlock(curShow, k);
-  const betweenM = useBetween();
-  const archive = !!betweenM?.on && !curShow;
   useEffect(() => {
     // Если вкладка выключена в конструкторе — открываем первую доступную.
     const order: [FeedTab, string][] = [["region", "m_recs"], ["following", "m_following"], ["country", "m_country"]];
@@ -481,7 +479,6 @@ export default function MediaPage() {
                   {p.participants?.display_name}
                 </span>
               </Link>
-              {archive && <span className="inline-block text-[10px] border border-gold text-gold rounded-md px-1.5 py-0.5 mb-1">Архив</span>}
               {p.caption && (
                 <p className="text-white text-sm mb-2">{p.caption}</p>
               )}
