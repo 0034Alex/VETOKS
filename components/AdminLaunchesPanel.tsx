@@ -551,7 +551,7 @@ function LaunchCard({
   );
 }
 
-function ItemEditor({ launch, S, it, act }: { launch: LaunchRow; S: number | null; it: ItemRow; act: (b: Record<string, unknown>, ok?: string) => Promise<boolean> }) {
+export function ItemEditor({ launch, S, it, act }: { launch: LaunchRow; S: number | null; it: ItemRow; act: (b: Record<string, unknown>, ok?: string) => Promise<boolean> }) {
   const [d, setD] = useState<ItemRow>(it);
   const dirty = JSON.stringify(d) !== JSON.stringify(it);
   const isBlock = d.kind === "block";

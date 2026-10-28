@@ -11,6 +11,7 @@ import AdminPricesPanel from "@/components/AdminPricesPanel";
 import AdminCoinsPanel from "@/components/AdminCoinsPanel";
 import AdminShowsPanel from "@/components/AdminShowsPanel";
 import AdminLaunchesPanel from "@/components/AdminLaunchesPanel";
+import AdminShowBuilderPanel from "@/components/AdminShowBuilderPanel";
 import AdminAwardsPanel from "@/components/AdminAwardsPanel";
 import AdminStoryReportsPanel from "@/components/AdminStoryReportsPanel";
 import AdminRatingPanel from "@/components/AdminRatingPanel";
@@ -22,7 +23,7 @@ import AdminPartnersPanel from "@/components/AdminPartnersPanel";
 import AdminAdStatsPanel from "@/components/AdminAdStatsPanel";
 import AdminDocumentsPanel from "@/components/AdminDocumentsPanel";
 import { makeCardImage } from "@/lib/cardFrame";
-import AdminHomeSettingsPanel from "@/components/AdminHomeSettingsPanel";
+import AdminHomeSettingsPanel, { AnnouncementsBlock, StripBlock } from "@/components/AdminHomeSettingsPanel";
 import AdminBroadcastPanel from "@/components/AdminBroadcastPanel";
 import AdminChannelsPanel from "@/components/AdminChannelsPanel";
 import AdminMediaFeedPanel from "@/components/AdminMediaFeedPanel";
@@ -94,6 +95,7 @@ type Tab =
   | "coins"
   | "shows"
   | "launches"
+  | "builder"
   | "awards"
   | "story-reports"
   | "rating-admin"
@@ -142,6 +144,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "app-prices", label: "Цены (в долларах)" },
   { key: "coins", label: "Монеты и Короны" },
   { key: "shows", label: "Шаблоны шоу" },
+  { key: "builder", label: "Конструктор шоу" },
   { key: "launches", label: "Страны и запуск" },
   { key: "awards", label: "Номинации и победители" },
   { key: "story-reports", label: "Жалобы на истории" },
@@ -256,7 +259,7 @@ type Level = "r" | "w";
 const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: Tab[] }[] = [
   { key: "today", ic: "🏠", label: "Сегодня", desc: "Что требует действия прямо сейчас", tabs: ["dashboard", "support"] },
   { key: "people", ic: "👥", label: "Люди", desc: "Все, кто есть в приложении", tabs: ["users", "participants", "applications", "badges", "black-marks"] },
-  { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["shows", "launches", "awards", "stages", "rating-admin", "goal", "tasks", "cards"] },
+  { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["builder", "shows", "launches", "awards", "stages", "rating-admin", "goal", "tasks", "cards"] },
   { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "broadcast", "mediafeed", "channels", "banners"] },
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["content-mod", "reports", "story-reports", "clan"] },
   { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["coins", "app-prices", "referrals"] },
@@ -628,6 +631,26 @@ export default function AdminPage() {
         {tab === "app-prices" && <AdminPricesPanel />}
         {tab === "coins" && <AdminCoinsPanel />}
         {tab === "shows" && <AdminShowsPanel />}
+        {tab === "builder" && (
+          <AdminShowBuilderPanel
+            slots={{
+              stages: <StagesTab />,
+              banners: <BannersTab />,
+              magazine: <MagazineAdsTab />,
+              partners: <PartnerLogosTab />,
+              news: <AnnouncementsBlock />,
+              strip: <StripBlock />,
+            }}
+            launchesPanel={
+              <AdminLaunchesPanel
+                allowedIds={me?.role === "super_admin" ? null : Array.isArray(me?.staff_countries) ? (me!.staff_countries as string[]) : []}
+                isOwner={me?.role === "super_admin"}
+                onGo={(t) => go(t as Tab)}
+                canOpen={(t) => !!access[t as Tab]}
+              />
+            }
+          />
+        )}
         {tab === "launches" && (
           <AdminLaunchesPanel
             allowedIds={me?.role === "super_admin" ? null : Array.isArray(me?.staff_countries) ? (me!.staff_countries as string[]) : []}

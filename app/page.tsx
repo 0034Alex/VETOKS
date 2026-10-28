@@ -1,6 +1,6 @@
 "use client";
 
-import { useShow } from "@/lib/useShow";
+import { useShow, hasBlock } from "@/lib/useShow";
 import { applyContest, cleanContest } from "@/lib/contest";
 import TalentHome from "@/components/TalentHome";
 import { useT } from "@/lib/i18n";
@@ -645,7 +645,8 @@ function Magazine({ scope, userRegionId }: { scope: "region" | "country"; userRe
 
 function MissHome() {
   const { t } = useT();
-  const contestH = cleanContest(useShow().show?.contest);
+  const showH = useShow().show;
+  const contestH = cleanContest(showH?.contest);
   const router = useRouter();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [isParticipant, setIsParticipant] = useState(false);
@@ -876,6 +877,7 @@ function MissHome() {
         <CategoryStrip />
         <RecruitBanner />
         <TeenConsentBanner />
+        {hasBlock(showH, "scope") && (
         <div className="px-6 mb-4 flex gap-2">
           <button
             onClick={() => setScope("region")}
@@ -898,6 +900,7 @@ function MissHome() {
             Вся страна
           </button>
         </div>
+        )}
 
         <div className="relative">
         <div
@@ -987,10 +990,10 @@ function MissHome() {
             }
           `}</style>
         </div>
-        <CategorySwitch />
+        {hasBlock(showH, "cats") && <CategorySwitch />}
         </div>
 
-        {anns.map((a) => (
+        {hasBlock(showH, "news") && anns.map((a) => (
           <div key={a.id} className="mx-6 mb-4 bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 text-center">
             <p className="text-white font-semibold text-sm">{a.title}</p>
             {a.body && <p className="text-white/90 text-xs mt-1 whitespace-pre-wrap">{a.body}</p>}
@@ -998,7 +1001,7 @@ function MissHome() {
           </div>
         ))}
 
-        {inWindow && homeCfg.strip_enabled === "true" && (
+        {hasBlock(showH, "strip") && inWindow && homeCfg.strip_enabled === "true" && (
           <div className="mx-6 mb-4 bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 text-center animate-pulse">
             <p className="text-white font-semibold text-sm">
               {(homeCfg.strip_text?.trim() || "🔥 До отсева недели: {time}").replace("{time}", timeLeft)}
@@ -1035,6 +1038,8 @@ function MissHome() {
       </svg>
 
       <div className="max-w-5xl mx-auto">
+        {hasBlock(showH, "top") && (
+          <>
         <div className="px-6 mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-offwhite">
             {t("home.topDay")}
@@ -1109,7 +1114,10 @@ function MissHome() {
           </div>
         )}
 
-        <Magazine scope={scope} userRegionId={user?.region_id ?? null} />
+          </>
+        )}
+
+        {hasBlock(showH, "mag") && <Magazine scope={scope} userRegionId={user?.region_id ?? null} />}
 
         {season?.status === "registration" && !isParticipant && (
           <div className="px-6 mb-8">
@@ -1141,9 +1149,9 @@ function MissHome() {
           </div>
         )}
 
-        {vc.view === vc.mine && <StagePoll />}
+        {hasBlock(showH, "poll") && vc.view === vc.mine && <StagePoll />}
 
-        <PartnersShowcase />
+        {hasBlock(showH, "partners") && <PartnersShowcase />}
       </div>
 
       <BottomNav />

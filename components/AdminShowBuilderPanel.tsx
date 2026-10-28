@@ -1,0 +1,182 @@
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
+import { apiPost } from "@/lib/authClient";
+import { getCrmCountry } from "@/lib/crmCountry";
+import { BLOCKS, blockFits, effState, startIdx, todayIdx, type ItemRow, type LaunchRow } from "@/lib/launch";
+import { ItemEditor } from "@/components/AdminLaunchesPanel";
+
+const PAGES: [string, string][] = [
+  ["home", "Главная"],
+  ["people", "Участницы"],
+  ["media", "Медиа"],
+  ["gifts", "Подарки"],
+  ["me", "Профиль"],
+];
+
+// Блоки Главной по порядку (как на экране сверху вниз). slot: какой редактор открывается внутри блока.
+const HOME: { key: string; slot?: string; note: string }[] = [
+  { key: "scope", note: "Две кнопки над лентой: свой регион или вся страна." },
+  { key: "cats", note: "Переключатель возрастных категорий." },
+  { key: "news", slot: "news", note: "Любое сообщение людям страны: текст, период, возраст, регионы." },
+  { key: "strip", slot: "strip", note: "Яркая полоса с обратным отсчётом." },
+  { key: "promo", slot: "banners", note: "Загрузить баннер, ссылка, период, регионы." },
+  { key: "top", note: "Лучшие участницы по голосам, со ссылкой на полный список." },
+  { key: "mag", slot: "magazine", note: "Страницы журнала и реклама в нём." },
+  { key: "poll", slot: "stages", note: "Вопрос опроса задаётся для каждого этапа, поле «Вопрос опроса этапа»." },
+  { key: "partners", slot: "partners", note: "Логотипы партнёров внизу главной." },
+  { key: "apply", note: "Кнопка приёма анкет (для Мисс идёт по статусу сезона)." },
+  { key: "battle", note: "Два ролика друг против друга." },
+  { key: "stories", note: "Круглые истории сверху." },
+];
+
+// На главной Мисс слушаются только эти блоки (остальные там пока не выключаются).
+const MISS_HOME = ["scope", "cats", "news", "strip", "top", "mag", "poll", "partners"];
+
+export default function AdminShowBuilderPanel({ slots, launchesPanel }: { slots: Record<string, ReactNode>; launchesPanel: ReactNode }) {
+  const cid = getCrmCountry();
+  const [launches, setLaunches] = useState<LaunchRow[]>([]);
+  const [items, setItems] = useState<ItemRow[]>([]);
+  const [shows, setShows] = useState<{ key: string; title: string }[]>([]);
+  const [lid, setLid] = useState("");
+  const [page, setPage] = useState("home");
+  const [open, setOpen] = useState<string>("");
+  const [newShow, setNewShow] = useState("");
+  const [msg, setMsg] = useState("");
+
+  async function load() {
+    if (!cid) return;
+    const r = await apiPost("/api/admin/launches", { action: "list", country_id: cid });
+    if (!r?.ok) return setMsg(r?.message || "Не получилось загрузить.");
+    const ls: LaunchRow[] = (r.launches ?? []).map((l: LaunchRow) => ({ ...l, stages: Array.isArray(l.stages) ? l.stages : [] }));
+    setLaunches(ls);
+    setItems(r.items ?? []);
+    setShows(r.shows ?? []);
+    setNewShow((x) => x || r.shows?.[0]?.key || "");
+    setLid((x) => (ls.some((l) => l.id === x) ? x : ls.find((l) => l.status === "live")?.id ?? ls[0]?.id ?? ""));
+  }
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function act(body: Record<string, unknown>, ok?: string) {
+    const r = await apiPost("/api/admin/launches", body);
+    if (!r?.ok) {
+      setMsg(r?.message || "Не получилось.");
+      return false;
+    }
+    if (ok) setMsg(ok);
+    await load();
+    return true;
+  }
+
+  if (!cid) return <p className="text-muted text-sm">Выберите страну вверху CRM.</p>;
+  const title = (k: string) => shows.find((s) => s.key === k)?.title || k;
+  const l = launches.find((x) => x.id === lid) ?? null;
+  const S = l ? startIdx(l, launches) : null;
+  const eff = l ? effState(l, launches, todayIdx(l.tz)) : null;
+  const mine = items.filter((i) => i.launch_id === lid && i.kind === "block");
+  const input = "w-full bg-bgPrimary border border-muted/60 rounded-lg px-2.5 py-2 text-sm text-offwhite";
+
+  return (
+    <div className="max-w-2xl space-y-4">
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 space-y-3">
+        <p className="text-offwhite font-semibold text-sm">Конструктор шоу</p>
+        <p className="text-muted text-xs">Страна выбирается вверху CRM. Здесь шоу этой страны и все страницы приложения: включайте блоки, задавайте, когда они показываются, и сразу меняйте их содержимое.</p>
+        {launches.length > 0 && (
+          <label className="text-[11px] text-muted block space-y-1">
+            Шоу в стране
+            <select className={input} value={lid} onChange={(e) => { setLid(e.target.value); setOpen(""); }}>
+              {launches.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {title(x.show_key)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {l && eff && <p className="text-xs text-gold">Сейчас: {({ draft: "черновик", waiting: "запланировано", live: "идёт", paused: "на паузе", finished: "закончено" } as Record<string, string>)[eff.state] ?? eff.state}{S !== null ? "" : " · дата старта не задана"}</p>}
+        <div className="flex gap-2 flex-wrap items-end">
+          <label className="text-[11px] text-muted space-y-1 flex-1 min-w-[160px]">
+            Добавить шоу в эту страну
+            <select className={input} value={newShow} onChange={(e) => setNewShow(e.target.value)}>
+              {shows.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="px-3 py-2 rounded-lg bg-gold text-black text-sm font-semibold" onClick={() => act({ action: "create", country_id: cid, show_key: newShow }, "Шоу добавлено в страну.")}>
+            + Добавить
+          </button>
+        </div>
+        {msg && <p className="text-sm text-gold">{msg}</p>}
+      </div>
+
+      {l && (
+        <>
+          <details className="bg-bgSurface border border-muted/40 rounded-xl p-3">
+            <summary className="cursor-pointer text-sm font-semibold text-offwhite">Даты запуска, этапы, старт и пауза</summary>
+            <div className="pt-3">{launchesPanel}</div>
+          </details>
+
+          <div className="flex gap-2 flex-wrap">
+            {PAGES.map(([k, label]) => (
+              <button key={k} onClick={() => { setPage(k); setOpen(""); }} className={`px-4 py-2 rounded-full text-sm ${page === k ? "bg-gold text-black font-semibold" : "bg-bgSurface border border-muted/50 text-muted"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {page === "home" ? (
+            <div className="space-y-3">
+              {l.show_key === "miss" && (
+                <div className="bg-bgSurface border border-muted/40 rounded-xl p-3">
+                  <button className="w-full text-left text-sm font-semibold text-offwhite flex justify-between" onClick={() => setOpen(open === "__stages" ? "" : "__stages")}>
+                    Шапка этапа: этапы сезона, обложки, вопрос опроса <span className="text-gold">{open === "__stages" ? "▲" : "▼"}</span>
+                  </button>
+                  {open === "__stages" && <div className="pt-3">{slots.stages}</div>}
+                </div>
+              )}
+              {HOME.filter((h) => blockFits(h.key, l.show_key) && (l.show_key !== "miss" || MISS_HOME.includes(h.key))).map((h) => {
+                const it = mine.find((i) => i.block_key === h.key);
+                const def = BLOCKS.find((b) => b.key === h.key)!;
+                const slot = h.slot ? slots[h.slot] : null;
+                return (
+                  <div key={h.key} className="space-y-2">
+                    {it ? (
+                      <ItemEditor key={it.id + "-" + it.start_mode + it.stage + it.enabled} launch={l} S={S} it={it} act={act} />
+                    ) : (
+                      <div className="border border-dashed border-muted/50 rounded-xl p-2.5 flex items-center gap-2">
+                        <span className="flex-1 text-sm text-offwhite">{def.label}</span>
+                        <button className="px-3 py-2 rounded-lg border border-muted/60 text-sm text-offwhite" onClick={() => act({ action: "item_save", launch_id: l.id, kind: "block", block_key: h.key, stage: def.stage, enabled: true, start_mode: def.start_mode, start_n: def.start_n, dur_mode: def.dur_mode, dur_n: def.dur_n, sort: 20 }, "Блок добавлен.")}>
+                          Добавить блок
+                        </button>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-muted px-1">{h.note}</p>
+                    {slot && (
+                      <div className="px-1">
+                        <button className="text-sm text-gold" onClick={() => setOpen(open === h.key ? "" : h.key)}>
+                          {open === h.key ? "▲ Скрыть настройки содержимого" : "▼ Настроить содержимое"}
+                        </button>
+                        {open === h.key && <div className="mt-2 border border-muted/40 rounded-xl p-3">{slot}</div>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-bgSurface border border-muted/40 rounded-xl p-4 text-sm text-muted">
+              Страница «{PAGES.find((p) => p[0] === page)?.[1]}» переедет в конструктор следующим шагом. Пока её настройки лежат в старых разделах CRM.
+            </div>
+          )}
+        </>
+      )}
+      {!l && launches.length === 0 && <p className="text-sm text-muted">В этой стране пока нет шоу. Добавьте шоу выше, и появятся страницы.</p>}
+    </div>
+  );
+}

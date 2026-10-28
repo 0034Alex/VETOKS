@@ -32,17 +32,28 @@ export type ItemRow = {
 
 // Реестр блоков шаблона. Новый блок в приложении = новая строка здесь (с умолчаниями);
 // кнопка «Опубликовать» в CRM добавит его во все запуски (не трогая то, что уже есть).
-export type BlockDef = { key: string; label: string; stage: number; start_mode: string; start_n: number; dur_mode: string; dur_n: number };
+export type BlockDef = { key: string; label: string; stage: number; start_mode: string; start_n: number; dur_mode: string; dur_n: number; shows?: "miss" | "other" };
+const W = { stage: -1, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 };
 export const BLOCKS: BlockDef[] = [
   { key: "apply", label: "Кнопка «Подать анкету»", stage: 0, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 },
-  { key: "battle", label: "Батл", stage: -1, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 },
-  { key: "top", label: "Топ-25", stage: -1, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 },
-  { key: "poll", label: "Опрос зрителей", stage: -1, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 },
-  { key: "stories", label: "Истории", stage: -1, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 },
-  { key: "promo", label: "Рекламные баннеры на главной", stage: -1, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 },
+  { key: "battle", label: "Батл", ...W, shows: "other" },
+  { key: "top", label: "Топ-25", ...W },
+  { key: "poll", label: "Опрос зрителей", ...W },
+  { key: "stories", label: "Истории", ...W, shows: "other" },
+  { key: "promo", label: "Рекламные баннеры на главной", ...W },
+  { key: "scope", label: "Переключатель «Мой регион / Вся страна»", ...W, shows: "miss" },
+  { key: "cats", label: "Переключатель категорий Teen / 18–29 / 30+", ...W, shows: "miss" },
+  { key: "news", label: "Объявления", ...W, shows: "miss" },
+  { key: "strip", label: "Яркая полоса", ...W, shows: "miss" },
+  { key: "mag", label: "Журнал", ...W, shows: "miss" },
+  { key: "partners", label: "Партнёры (логотипы)", ...W, shows: "miss" },
 ];
-// Какие блоки имеют смысл для шоу. «Мисс» живёт по своей главной: из блоков ей нужны только анкета и реклама.
-export const blockFits = (blockKey: string, showKey: string | null | undefined): boolean => showKey !== "miss" || blockKey === "apply" || blockKey === "promo";
+// Какие блоки имеют смысл для шоу: у блока может быть пометка «только Мисс» или «только остальные шоу».
+export const blockFits = (blockKey: string, showKey: string | null | undefined): boolean => {
+  const d = BLOCKS.find((b) => b.key === blockKey);
+  if (!d || !d.shows) return true;
+  return d.shows === "miss" ? showKey === "miss" : showKey !== "miss";
+};
 // Подсказки, вопросы и задания по дням нужны только главной Таланта и подобных шоу.
 export const extrasFit = (showKey: string | null | undefined): boolean => showKey !== "miss";
 export const KIND_LABEL: Record<string, string> = { block: "Блок", tip: "Подсказка участникам", question: "Вопрос зрителям", task: "Задание" };
