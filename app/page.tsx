@@ -52,12 +52,21 @@ function annLeft(endIso: string, now: number) {
   return `${d > 0 ? d + " д " : ""}${h}:${m}:${sec}`;
 }
 
-function useSundayCountdown() {
+function useSundayCountdown(endsAt?: number | null, hours?: number) {
   const [inWindow, setInWindow] = useState(false);
   const [timeLeft, setTimeLeft] = useState("");
 
   useEffect(() => {
     function update() {
+      if (endsAt) {
+        const d = endsAt - Date.now();
+        setInWindow(d > 0 && d <= (hours || 3) * 3600000);
+        const h = Math.max(0, Math.floor(d / 3600000));
+        const m = Math.max(0, Math.floor((d % 3600000) / 60000));
+        const s = Math.max(0, Math.floor((d % 60000) / 1000));
+        setTimeLeft(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
+        return;
+      }
       const now = new Date();
       const sunday = new Date(now);
       const day = sunday.getDay();
@@ -80,7 +89,7 @@ function useSundayCountdown() {
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [endsAt, hours]);
 
   return { inWindow, timeLeft };
 }
@@ -673,7 +682,7 @@ function MissHome() {
       setChecked(true);
 
       const cm = await loadScoped(
-        ["strip_enabled", "strip_text"],
+        ["strip_enabled", "strip_text", "strip_hours"],
         (await getMyCountry()).countryId
       );
       setHomeCfg(cm);
@@ -789,7 +798,7 @@ function MissHome() {
     })();
   }, [router, contestH]);
 
-  const { inWindow, timeLeft } = useSundayCountdown();
+  const { inWindow, timeLeft } = useSundayCountdown(showH?.launch?.stageEndsAt ?? null, Number(homeCfg.strip_hours) || 3);
   const [anns, setAnns] = useState<{ id: string; title: string; body: string | null; ends_at: string; show_timer: boolean }[]>([]);
   const [annNow, setAnnNow] = useState(Date.now());
   useEffect(() => {
@@ -1004,7 +1013,7 @@ function MissHome() {
         {hasBlock(showH, "strip") && inWindow && homeCfg.strip_enabled === "true" && (
           <div className="mx-6 mb-4 bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 text-center animate-pulse">
             <p className="text-white font-semibold text-sm">
-              {(homeCfg.strip_text?.trim() || "🔥 До отсева недели: {time}").replace("{time}", timeLeft)}
+              {(homeCfg.strip_text?.trim() || (showH?.launch?.stageEndsAt ? "🔥 До конца этапа: {time}" : "🔥 До отсева недели: {time}")).replace("{time}", timeLeft)}
             </p>
             <p className="text-white/80 text-xs mt-1">
               Рейтинг обновляется прямо сейчас — успейте поддержать!

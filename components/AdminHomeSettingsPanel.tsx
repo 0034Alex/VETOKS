@@ -319,13 +319,13 @@ export function StripBlock() {
   const cc = getCrmCountry() || null;
   useEffect(() => {
     (async () => {
-      setV(await loadScoped(["strip_enabled", "strip_text"], cc));
+      setV(await loadScoped(["strip_enabled", "strip_text", "strip_hours"], cc));
       setReady(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   async function save() {
-    await supabase.from("platform_settings").upsert(["strip_enabled", "strip_text"].map((k) => ({ key: scopedKey(k, cc), value: v[k] ?? "" })));
+    await supabase.from("platform_settings").upsert(["strip_enabled", "strip_text", "strip_hours"].map((k) => ({ key: scopedKey(k, cc), value: v[k] ?? "" })));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
@@ -334,12 +334,16 @@ export function StripBlock() {
     <div className="space-y-2">
       <label className="flex items-center gap-2 text-offwhite text-sm">
         <input type="checkbox" checked={v.strip_enabled === "true"} onChange={(e) => setV((p) => ({ ...p, strip_enabled: e.target.checked ? "true" : "false" }))} />
-        Показывать полосу (в последние 3 часа перед воскресным отсевом)
+        Показывать полосу перед концом этапа
+      </label>
+      <label className="text-xs text-muted flex items-center gap-2">
+        За сколько часов до конца этапа показывать
+        <input type="number" min={1} max={72} value={v.strip_hours ?? "3"} onChange={(e) => setV((p) => ({ ...p, strip_hours: e.target.value }))} className="w-20 bg-bgPrimary border border-muted rounded-lg px-2 py-1.5 text-base text-offwhite" />
       </label>
       <input
         value={v.strip_text ?? ""}
         onChange={(e) => setV((p) => ({ ...p, strip_text: e.target.value }))}
-        placeholder="🔥 До отсева недели: {time}"
+        placeholder="🔥 До конца этапа: {time}"
         className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-base text-offwhite"
       />
       <p className="text-muted text-xs">Вместо {"{time}"} подставится обратный отсчёт. Пусто: стандартный текст.</p>

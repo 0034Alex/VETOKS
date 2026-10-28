@@ -152,10 +152,21 @@ export function activeItems(l: LaunchRow, items: ItemRow[], S: number, today: nu
   });
 }
 
-export function stageAt(l: LaunchRow, S: number, today: number): { idx: number; name: string; day: number } | null {
+// Сколько миллисекунд осталось до конца дня (полночь по часовому поясу страны).
+export function msToMidnight(tz: string, now: number = Date.now()): number {
+  try {
+    const p = new Intl.DateTimeFormat("en-GB", { timeZone: tz || "Europe/Kyiv", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(new Date(now));
+    const g = (t: string) => Number(p.find((x) => x.type === t)?.value ?? 0);
+    return Math.max(0, DAY - ((g("hour") * 60 + g("minute")) * 60 + g("second")) * 1000);
+  } catch {
+    return DAY - (now % DAY);
+  }
+}
+
+export function stageAt(l: LaunchRow, S: number, today: number): { idx: number; name: string; day: number; endIdx: number } | null {
   for (let i = 0; i < l.stages.length; i++) {
     const [a, b] = stageRange(l, S, i);
-    if (today >= a && today <= b) return { idx: i, name: l.stages[i].name, day: today - S + 1 };
+    if (today >= a && today <= b) return { idx: i, name: l.stages[i].name, day: today - S + 1, endIdx: b };
   }
   return null;
 }

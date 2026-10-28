@@ -1,14 +1,15 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { activeItems, effState, stageAt, totalDays, type ItemRow, type LaunchRow } from "@/lib/launch";
+import { activeItems, effState, msToMidnight, stageAt, totalDays, type ItemRow, type LaunchRow } from "@/lib/launch";
 
 // Что видит человек из страны, где есть запуски. null — в стране запусков нет,
 // приложение работает как раньше (по датам в разделе «Шоу»).
 export type CountryView = {
   liveKey: string | null;
   recruitKey: string | null;
-  blocksOff: string[]; // блоки, заданные в запуске, но сегодня выключенные
-  banner: { apply?: boolean; poll_question?: string };
-  info: { stage: string; day: number; total: number; tips: string[]; tasks: string[] } | null;
+  blocksOff: string[];
+  blockOrder: string[]; // блоки, заданные в запуске, но сегодня выключенные
+  banner: { apply?: boolean; poll_question?: string; poll_id?: string };
+  info: { stage: string; day: number; total: number; tips: string[]; tasks: string[]; stageEndsAt: number | null } | null;
 };
 
 export async function loadCountryLaunches(countryId: string): Promise<{ launches: LaunchRow[]; items: ItemRow[] }> {
@@ -22,7 +23,7 @@ export async function loadCountryLaunches(countryId: string): Promise<{ launches
 export async function countryView(countryId: string, now: number = Date.now()): Promise<CountryView | null> {
   const { launches, items } = await loadCountryLaunches(countryId);
   if (!launches.length) return null;
-  const view: CountryView = { liveKey: null, recruitKey: null, blocksOff: [], banner: {}, info: null };
+  const view: CountryView = { liveKey: null, recruitKey: null, blocksOff: [], blockOrder: [], banner: {}, info: null };
 
   const states = launches.map((l) => ({ l, ...effState(l, launches, todayIdxOf(l, now)) }));
   const live = states.filter((s) => s.state === "live").sort((a, b) => (a.S ?? 0) - (b.S ?? 0))[0];
@@ -33,10 +34,14 @@ export async function countryView(countryId: string, now: number = Date.now()): 
     view.liveKey = live.l.show_key;
     const defined = Array.from(new Set(mine.filter((i) => i.kind === "block" && i.block_key).map((i) => i.block_key as string)));
     const onNow = new Set(act.filter((i) => i.kind === "block" && i.block_key).map((i) => i.block_key as string));
+    view.blockOrder = mine.filter((i) => i.kind === "block" && i.block_key).sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)).map((i) => i.block_key as string);
     view.blocksOff = defined.filter((k) => !onNow.has(k));
     if (defined.includes("apply")) view.banner.apply = onNow.has("apply");
     const q = act.find((i) => i.kind === "question");
-    if (q) view.banner.poll_question = (q.body || q.title).slice(0, 200);
+    if (q) {
+      view.banner.poll_question = (q.body || q.title).slice(0, 200);
+      view.banner.poll_id = q.id;
+    }
     const st = stageAt(live.l, live.S, today);
     view.info = {
       stage: st?.name ?? "",
@@ -44,6 +49,7 @@ export async function countryView(countryId: string, now: number = Date.now()): 
       total: totalDays(live.l),
       tips: act.filter((i) => i.kind === "tip").map((i) => (i.body || i.title).slice(0, 400)),
       tasks: act.filter((i) => i.kind === "task").map((i) => (i.body || i.title).slice(0, 400)),
+      stageEndsAt: st ? now + msToMidnight(live.l.tz, now) + (st.endIdx - today) * 86400000 : null,
     };
   }
   // Набор анкет на следующее шоу: запуск ещё не начался, а кнопка «Подать анкету» уже действует.

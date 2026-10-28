@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 // Какое шоу сейчас активно (его сообщает components/ShowTheme.tsx после запроса к серверу).
 export type ShowBanner = { image?: string; title?: string; subtitle?: string; stage_label?: string; countdown_to?: string | null; apply?: boolean; apply_until?: string | null; poll_question?: string };
-export type ActiveShow = { id: string; key: string; title: string; contest: string; preview: boolean; banner?: ShowBanner; endsAt?: string | null; blocksOff?: string[]; launch?: { stage: string; day: number; total: number; tips: string[]; tasks: string[] } | null } | null;
+export type ActiveShow = { id: string; key: string; title: string; contest: string; preview: boolean; banner?: ShowBanner; endsAt?: string | null; blocksOff?: string[]; blockOrder?: string[]; launch?: { stage: string; day: number; total: number; tips: string[]; tasks: string[]; stageEndsAt?: number | null } | null } | null;
 const EVT = "vetoks-show";
 let current: ActiveShow = null;
 let loaded = false;

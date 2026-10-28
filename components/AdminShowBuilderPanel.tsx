@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { apiPost } from "@/lib/authClient";
 import { getCrmCountry } from "@/lib/crmCountry";
-import { BLOCKS, blockFits, effState, startIdx, todayIdx, type ItemRow, type LaunchRow } from "@/lib/launch";
+import { BLOCKS, blockFits, dayIdx, effState, idxToStr, itemRange, startIdx, todayIdx, type ItemRow, type LaunchRow } from "@/lib/launch";
 import { ItemEditor } from "@/components/AdminLaunchesPanel";
 
 const PAGES: [string, string][] = [
@@ -23,7 +23,7 @@ const HOME: { key: string; slot?: string; note: string }[] = [
   { key: "promo", slot: "banners", note: "Загрузить баннер, ссылка, период, регионы." },
   { key: "top", note: "Лучшие участницы по голосам, со ссылкой на полный список." },
   { key: "mag", slot: "magazine", note: "Страницы журнала и реклама в нём." },
-  { key: "poll", slot: "stages", note: "Вопрос опроса задаётся для каждого этапа, поле «Вопрос опроса этапа»." },
+  { key: "poll", slot: "poll", note: "Пишите вопросы наперёд и ставьте даты. Люди выбирают участницу, один бесплатный голос на вопрос." },
   { key: "partners", slot: "partners", note: "Логотипы партнёров внизу главной." },
   { key: "apply", note: "Кнопка приёма анкет (для Мисс идёт по статусу сезона)." },
   { key: "battle", note: "Два ролика друг против друга." },
@@ -77,6 +77,25 @@ export default function AdminShowBuilderPanel({ slots, launchesPanel }: { slots:
   const S = l ? startIdx(l, launches) : null;
   const eff = l ? effState(l, launches, todayIdx(l.tz)) : null;
   const mine = items.filter((i) => i.launch_id === lid && i.kind === "block");
+  function homeList(l: LaunchRow) {
+    const base = HOME.filter((h) => blockFits(h.key, l.show_key) && (l.show_key !== "miss" || MISS_HOME.includes(h.key)));
+    if (l.show_key === "miss") return base;
+    const pos = (k: string) => mine.find((i) => i.block_key === k)?.sort ?? 1e6;
+    return base.map((h, i) => ({ h, i })).sort((a, b) => pos(a.h.key) - pos(b.h.key) || a.i - b.i).map((x) => x.h);
+  }
+  async function move(l: LaunchRow, arr: { key: string }[], hi: number, dir: number) {
+    const keys = arr.map((h) => h.key);
+    const j = hi + dir;
+    if (j < 0 || j >= keys.length) return;
+    [keys[hi], keys[j]] = [keys[j], keys[hi]];
+    let n = 0;
+    for (const k of keys) {
+      const it = mine.find((i) => i.block_key === k);
+      if (!it) continue;
+      n += 10;
+      if (it.sort !== n) await act({ action: "item_save", id: it.id, launch_id: l.id, kind: "block", block_key: k, title: it.title, body: it.body, enabled: it.enabled, stage: it.stage, start_mode: it.start_mode, start_n: it.start_n, dur_mode: it.dur_mode, dur_n: it.dur_n, sort: n });
+    }
+  }
   const input = "w-full bg-bgPrimary border border-muted/60 rounded-lg px-2.5 py-2 text-sm text-offwhite";
 
   return (
@@ -140,12 +159,18 @@ export default function AdminShowBuilderPanel({ slots, launchesPanel }: { slots:
                   {open === "__stages" && <div className="pt-3">{slots.stages}</div>}
                 </div>
               )}
-              {HOME.filter((h) => blockFits(h.key, l.show_key) && (l.show_key !== "miss" || MISS_HOME.includes(h.key))).map((h) => {
+              {homeList(l).map((h, hi, arr) => {
                 const it = mine.find((i) => i.block_key === h.key);
                 const def = BLOCKS.find((b) => b.key === h.key)!;
-                const slot = h.slot ? slots[h.slot] : null;
+                const slot = h.slot === "poll" ? <PollQuestions launch={l} S={S} items={items.filter((i) => i.launch_id === l.id && i.kind === "question")} act={act} fallback={slots.stages} /> : h.slot ? slots[h.slot] : null;
                 return (
                   <div key={h.key} className="space-y-2">
+                    {it && l.show_key !== "miss" && (
+                      <div className="flex gap-1 justify-end">
+                        <button disabled={hi === 0 || !arr[hi - 1] || !mine.find((i) => i.block_key === arr[hi - 1].key)} className="px-3 py-1.5 rounded-lg border border-muted/60 text-sm text-offwhite disabled:opacity-30" onClick={() => move(l, arr, hi, -1)}>▲ Выше</button>
+                        <button disabled={hi === arr.length - 1 || !mine.find((i) => i.block_key === arr[hi + 1]?.key)} className="px-3 py-1.5 rounded-lg border border-muted/60 text-sm text-offwhite disabled:opacity-30" onClick={() => move(l, arr, hi, 1)}>▼ Ниже</button>
+                      </div>
+                    )}
                     {it ? (
                       <ItemEditor key={it.id + "-" + it.start_mode + it.stage + it.enabled} launch={l} S={S} it={it} act={act} />
                     ) : (
@@ -177,6 +202,77 @@ export default function AdminShowBuilderPanel({ slots, launchesPanel }: { slots:
         </>
       )}
       {!l && launches.length === 0 && <p className="text-sm text-muted">В этой стране пока нет шоу. Добавьте шоу выше, и появятся страницы.</p>}
+    </div>
+  );
+}
+
+
+// Вопросы опроса: текст и даты «с» и «по». Даты считаются от старта запуска.
+function PollQuestions({ launch, S, items, act, fallback }: { launch: LaunchRow; S: number | null; items: ItemRow[]; act: (b: Record<string, unknown>, ok?: string) => Promise<boolean>; fallback: ReactNode }) {
+  const [showFallback, setShowFallback] = useState(false);
+  const inp = "w-full bg-bgPrimary border border-muted/60 rounded-lg px-2.5 py-2 text-base text-offwhite min-w-0";
+  if (S === null) return <p className="text-sm text-muted">Сначала задайте дату старта шоу (блок «Даты запуска» выше), тогда можно ставить даты вопросам.</p>;
+  return (
+    <div className="space-y-3">
+      {items.length === 0 && <p className="text-xs text-muted">Вопросов пока нет.</p>}
+      {items.map((it) => (
+        <QuestionRow key={it.id + "-" + it.start_n + it.dur_n + it.body} launch={launch} S={S} it={it} act={act} inp={inp} />
+      ))}
+      <button
+        className="px-3 py-2 rounded-lg border border-muted/60 text-sm text-offwhite"
+        onClick={() => act({ action: "item_save", launch_id: launch.id, kind: "question", title: "", body: "", stage: -1, enabled: true, start_mode: "from", start_n: Math.max(0, todayIdx(launch.tz) - S), dur_mode: "days", dur_n: 7, sort: 10 + items.length }, "Вопрос добавлен: напишите текст и нажмите «Сохранить».")}
+      >
+        + Вопрос
+      </button>
+      <p className="text-[11px] text-muted">На главной показывается вопрос, у которого сегодня идут даты. Если на сегодня вопроса нет, показывается вопрос этапа (как раньше).</p>
+      <button className="text-sm text-gold" onClick={() => setShowFallback(!showFallback)}>
+        {showFallback ? "▲ Скрыть вопросы этапов" : "▼ Вопросы этапов (запасные)"}
+      </button>
+      {showFallback && <div className="border border-muted/40 rounded-xl p-3">{fallback}</div>}
+    </div>
+  );
+}
+
+function QuestionRow({ launch, S, it, act, inp }: { launch: LaunchRow; S: number; it: ItemRow; act: (b: Record<string, unknown>, ok?: string) => Promise<boolean>; inp: string }) {
+  const r = itemRange(launch, S, it);
+  const [text, setText] = useState(it.body || it.title || "");
+  const [from, setFrom] = useState(r ? idxToStr(r[0]) : "");
+  const [to, setTo] = useState(r ? idxToStr(r[1]) : "");
+  const [on, setOn] = useState(it.enabled);
+  const dirty = text !== (it.body || it.title || "") || (r && (from !== idxToStr(r[0]) || to !== idxToStr(r[1]))) || on !== it.enabled;
+  function save() {
+    if (!from || !to || dayIdx(to) < dayIdx(from)) return;
+    act(
+      { action: "item_save", id: it.id, launch_id: launch.id, kind: "question", title: "", body: text.slice(0, 200), stage: -1, enabled: on, start_mode: "from", start_n: Math.max(0, dayIdx(from) - S), dur_mode: "days", dur_n: dayIdx(to) - dayIdx(from) + 1, sort: it.sort },
+      "Сохранено."
+    );
+  }
+  return (
+    <div className={`border border-muted/40 rounded-xl p-2.5 space-y-2 ${on ? "" : "opacity-60"}`}>
+      <textarea className={`${inp} min-h-[56px]`} placeholder="Вопрос зрителям, например: Кто лучше выступила на этой неделе?" value={text} onChange={(e) => setText(e.target.value)} />
+      <div className="flex gap-2 flex-wrap items-end">
+        <label className="text-[11px] text-muted flex-1 min-w-[130px] space-y-1">
+          С
+          <input type="date" className={inp} value={from} onChange={(e) => setFrom(e.target.value)} />
+        </label>
+        <label className="text-[11px] text-muted flex-1 min-w-[130px] space-y-1">
+          По (включая)
+          <input type="date" className={inp} value={to} onChange={(e) => setTo(e.target.value)} />
+        </label>
+        <label className="text-xs text-offwhite flex items-center gap-1.5 pb-2">
+          <input type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} /> Включён
+        </label>
+      </div>
+      <div className="flex gap-2 items-center">
+        {dirty && (
+          <button className="px-3 py-2 rounded-lg bg-gold text-black text-sm font-semibold" onClick={save}>
+            Сохранить
+          </button>
+        )}
+        <button className="text-xs text-red-300 ml-auto" onClick={() => act({ action: "item_delete", id: it.id }, "Удалено.")}>
+          Удалить
+        </button>
+      </div>
     </div>
   );
 }
