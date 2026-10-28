@@ -20,6 +20,13 @@ const cleanStages = (v: any): Stage[] => {
   return out.length ? out : DEFAULT_STAGES;
 };
 
+// Номер дня (от 1970-01-01) для момента времени в часовом поясе страны.
+function startIdx0(iso: string, tz: string): number {
+  const d = new Date(iso);
+  const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  return Math.floor(Date.parse(ymd + "T00:00:00Z") / 86400000);
+}
+
 async function loadAll(countryId: string) {
   const { data: ls } = await supabaseAdmin.from("launches").select("*").eq("country_id", countryId).order("position", { ascending: true });
   const launches = ((ls as LaunchRow[]) ?? []).map((l) => ({ ...l, stages: Array.isArray(l.stages) ? l.stages : [] }));
@@ -74,7 +81,7 @@ export async function POST(req: Request) {
     if (me?.role !== "super_admin") return NextResponse.json({ ok: false, message: "Публикация шаблона — только владелец." }, { status: 403 });
   } else {
     let target: string | undefined;
-    if (a === "list" || a === "create") target = String(b.country_id ?? "");
+    if (a === "list" || a === "create" || a === "import_season") target = String(b.country_id ?? "");
     else if (["save", "status", "shift", "delete", "copy"].includes(a)) target = await launchCountry(String(b.id ?? ""));
     else if (a === "item_save") target = b.id ? await itemCountry(String(b.id)) : await launchCountry(String(b.launch_id ?? ""));
     else if (a === "item_delete") target = await itemCountry(String(b.id ?? ""));
@@ -119,6 +126,39 @@ export async function POST(req: Request) {
       : { data: [] as any[] };
     const { data: shows } = await supabaseAdmin.from("shows").select("key,title").order("created_at", { ascending: true });
     return NextResponse.json({ ok: true, launches, items: it ?? [], shows: shows ?? [], today: todayIdx("Europe/Kyiv") });
+  }
+
+  // Перенос текущего сезона страны в запуск (например Мисс Украина): этапы и даты берутся из сезона.
+  if (a === "import_season") {
+    const cid = String(b.country_id ?? "");
+    const key = String(b.show_key ?? "miss").trim();
+    if (!cid) return NextResponse.json({ ok: false, message: "Выберите страну." });
+    const { data: sh } = await supabaseAdmin.from("shows").select("key").eq("key", key).maybeSingle();
+    if (!sh) return NextResponse.json({ ok: false, message: `Шоу «${key}» нет в «Шаблоны шоу». Создайте его там.` });
+    const { data: se } = await supabaseAdmin.from("seasons").select("*").eq("country_id", cid).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (!se) return NextResponse.json({ ok: false, message: "В этой стране нет сезона." });
+    const { data: st } = await supabaseAdmin.from("season_stages").select("title, ends_at, stage_number").eq("season_id", (se as any).id).order("stage_number", { ascending: true });
+    const list = ((st as any[]) ?? []).filter((x) => x.ends_at);
+    if (!list.length) return NextResponse.json({ ok: false, message: "У сезона нет этапов с датами окончания." });
+    const { data: ctry } = await supabaseAdmin.from("countries").select("code").eq("id", cid).maybeSingle();
+    const tz = COUNTRY_TZ[String((ctry as any)?.code ?? "").toUpperCase()] || "Europe/Kyiv";
+    const day = (v: string) => startIdx0(v, tz);
+    const first = String((se as any).starts_at ?? (se as any).start_date ?? (se as any).created_at ?? list[0].ends_at);
+    let prev = day(first);
+    const stages = list.map((x: any, n: number) => {
+      const end = day(String(x.ends_at));
+      const days = Math.max(1, end - prev + (n === 0 ? 1 : 0));
+      prev = end;
+      return { name: String(x.title || `Этап ${n + 1}`).slice(0, 40), days: Math.min(365, days) };
+    });
+    const existing = await loadAll(cid);
+    const startStr = new Date(day(first) * 86400000).toISOString().slice(0, 10);
+    const row = { country_id: cid, show_key: key, tz, status: "draft", start_date: startStr, after_id: null, after_offset: 0, stages, position: existing.length };
+    const { data, error } = await supabaseAdmin.from("launches").insert(row).select("id").maybeSingle();
+    if (error || !data) return NextResponse.json({ ok: false, message: error?.message || "Не получилось создать." });
+    await supabaseAdmin.from("launch_items").insert(defaultItems().map((i) => ({ ...i, launch_id: data.id })));
+    await logAction(uid, "launch_import_season", data.id, { cid, key, stages: stages.length });
+    return NextResponse.json({ ok: true, id: data.id, stages: stages.length, start: startStr });
   }
 
   if (a === "create") {

@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireUser } from "@/lib/shopServer";
 import { getRefSettings } from "@/lib/referral";
 import { countryOfUser } from "@/lib/countryServer";
-import { BOT_USERNAME } from "@/lib/authServer";
+import { botForUser } from "@/lib/countryBot";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     ok: true,
     code: me?.referral_code ?? "",
     nick: (me as any)?.nick ?? null,
-    bot: BOT_USERNAME,
+    bot: (await botForUser(uid)).username,
     invitedBy,
     canEnterCode,
     enabled: s.enabled,

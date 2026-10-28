@@ -4,7 +4,7 @@ import { checkBirthForSignup } from "@/lib/ageServer";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { verifyInitData } from "@/lib/telegramAuth";
+import { verifyInitDataAny } from "@/lib/telegramAuth";
 import { findUserByTelegramId, tgEmail, tokenHashForUser } from "@/lib/authServer";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   let telegramId: string | null = null;
   let loginToken: string | null = null;
 
-  const tg = body.initData ? verifyInitData(String(body.initData)) : null;
+  const tg = body.initData ? await verifyInitDataAny(String(body.initData)) : null;
   if (tg) {
     telegramId = String(tg.id);
   } else if (body.loginToken) {

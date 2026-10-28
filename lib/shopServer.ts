@@ -33,7 +33,8 @@ export async function notify(userId: string, message: string, link?: string, typ
 
   // Дублируем важное сообщением от бота (если Telegram привязан и не выключено в настройках).
   try {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const { botForUser } = await import("@/lib/countryBot");
+    const token = (await botForUser(userId)).token;
     if (!token) return;
     const { data: u } = await supabaseAdmin
       .from("users")

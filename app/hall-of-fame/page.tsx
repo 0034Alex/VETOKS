@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import { apiPost } from "@/lib/authClient";
 
 type Winner = { id: string; name: string; photo: string | null; crown: string; region?: string };
 type Award = { id: string; season: string; nomination: string; name: string; photo: string | null };
@@ -36,8 +37,7 @@ export default function HallOfFamePage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/show/hall", { method: "POST" });
-        const r = await res.json();
+        const r = await apiPost("/api/show/hall", {});
         if (r?.ok) setShows(r.shows);
       } catch {}
       setLoading(false);

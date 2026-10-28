@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { BOT_USERNAME, newToken } from "@/lib/authServer";
+import { newToken } from "@/lib/authServer";
+import { botForUser } from "@/lib/countryBot";
 import { bad, requireUser } from "@/lib/shopServer";
 import { rateLimit } from "@/lib/rateLimit";
 import { CONSENT_VERSION } from "@/lib/parentServer";
@@ -41,5 +42,5 @@ export async function POST(req: Request) {
     expires_at: new Date(Date.now() + 3 * 86400_000).toISOString(),
   });
   if (error) return bad("server", 500);
-  return NextResponse.json({ ok: true, needed: true, approved: false, link: `https://t.me/${BOT_USERNAME}?start=parent_${token}` });
+  return NextResponse.json({ ok: true, needed: true, approved: false, link: `https://t.me/${(await botForUser(uid)).username}?start=parent_${token}` });
 }

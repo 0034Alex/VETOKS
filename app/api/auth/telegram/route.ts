@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyInitData } from "@/lib/telegramAuth";
+import { verifyInitDataAny } from "@/lib/telegramAuth";
 import { findUserByTelegramId, tokenHashForUser } from "@/lib/authServer";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 // Вход из Telegram-мини-приложения: подпись Telegram -> наш пользователь.
 export async function POST(req: NextRequest) {
   const { initData } = await req.json().catch(() => ({}));
-  const tg = verifyInitData(String(initData || ""));
+  const tg = await verifyInitDataAny(String(initData || ""));
   if (!tg) return NextResponse.json({ status: "error" }, { status: 401 });
 
   const user = await findUserByTelegramId(tg.id);

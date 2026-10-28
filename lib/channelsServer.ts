@@ -40,7 +40,9 @@ export async function fanoutPost(ch: Ch, postId: string, preview: string, ownerI
   if (!ids.length) return;
   const msg = `Новый пост в канале «${ch.name}»` + (preview ? `: ${preview.slice(0, 80)}` : "");
   const link = `/channels/${ch.id}#p${postId}`;
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const { botForCountry } = await import("@/lib/countryBot");
+  const { countryOfUser } = await import("@/lib/countryServer");
+  const token = (await botForCountry(await countryOfUser(ownerId))).token;
   for (let i = 0; i < ids.length; i += 500) {
     const chunk = ids.slice(i, i + 500);
     const { data: us } = await supabaseAdmin.from("users").select("id, telegram_id, notify_tg, language").in("id", chunk);

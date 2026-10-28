@@ -5,6 +5,8 @@ import { normalizePhone } from "@/lib/phone";
 import { qualifyReferral } from "@/lib/referral";
 import { logSecurity } from "@/lib/security";
 import { lockCheck, lockClear, lockFail, waitText } from "@/lib/rateLimit";
+import { AsyncLocalStorage } from "async_hooks";
+import { botForCountry } from "@/lib/countryBot";
 import { tx, txMarkup, pickBotLang, type BotLang } from "@/lib/botText";
 
 const supabaseAdmin = createClient(
@@ -12,7 +14,10 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
+const BOT_ENV = process.env.TELEGRAM_BOT_TOKEN!;
+// Токен бота той страны, чей вебхук сейчас обрабатываем (?c=<страна>); без него — общий бот.
+const botCtx = new AsyncLocalStorage<string>();
+const botToken = () => botCtx.getStore() || BOT_ENV;
 
 // Язык чата: из профиля (users.language), иначе из Telegram, по умолчанию украинский.
 const chatLang = new Map<string, BotLang>();
@@ -27,7 +32,7 @@ async function setChatLang(chatId: string | number, from?: any) {
 
 async function sendMessage(chatId: string | number, text: string, extra?: object) {
   const lang = chatLang.get(String(chatId)) ?? "uk";
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+  await fetch(`https://api.telegram.org/bot${botToken()}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text: tx(lang, text), ...(txMarkup(lang, extra) ?? {}) }),
@@ -335,6 +340,12 @@ async function handleParentStop(chatId: string) {
 }
 
 export async function POST(req: Request) {
+  const cid = new URL(req.url).searchParams.get("c");
+  const token = cid ? (await botForCountry(cid)).token : BOT_ENV;
+  return botCtx.run(token || BOT_ENV, () => handle(req));
+}
+
+async function handle(req: Request) {
   const secretHeader = req.headers.get("x-telegram-bot-api-secret-token") || "";
   const wanted = process.env.TELEGRAM_WEBHOOK_SECRET || "";
   const a = Buffer.from(secretHeader);

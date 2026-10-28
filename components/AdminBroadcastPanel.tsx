@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
+import { supabase } from "@/lib/supabaseClient";
+import { getCrmCountry } from "@/lib/crmCountry";
 
 type Hit = { id: string; name: string; nick: string | null; tg: boolean; cat: string };
 const CATS: [string, string][] = [["teen", "TEEN 15–17"], ["main", "MISS 18–29"], ["adult", "LADY 30+"]];
@@ -21,7 +23,16 @@ export default function AdminBroadcastPanel() {
   const [msg, setMsg] = useState("");
   const [confirmed, setConfirmed] = useState(false);
 
-  const payload = () => ({ mode, categories: cats, userIds: picked.map((p) => p.id) });
+  const [countryName, setCountryName] = useState("");
+  const countryId = typeof window !== "undefined" ? getCrmCountry() : "";
+  useEffect(() => {
+    (async () => {
+      if (!countryId) return setCountryName("");
+      const { data } = await supabase.from("countries").select("name").eq("id", countryId).maybeSingle();
+      setCountryName((data as any)?.name ?? "");
+    })();
+  }, [countryId]);
+  const payload = () => ({ mode, categories: cats, userIds: picked.map((p) => p.id), countryId });
 
   useEffect(() => {
     setConfirmed(false);
@@ -32,7 +43,7 @@ export default function AdminBroadcastPanel() {
   useEffect(() => {
     const t = setTimeout(async () => {
       if (mode !== "users" || q.trim().length < 2) return setHits([]);
-      const r = await apiPost("/api/admin/broadcast", { action: "search", q });
+      const r = await apiPost("/api/admin/broadcast", { action: "search", q, countryId });
       setHits(r?.items ?? []);
     }, 300);
     return () => clearTimeout(t);
@@ -70,6 +81,9 @@ export default function AdminBroadcastPanel() {
     <div className="max-w-lg flex flex-col gap-4">
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
         <p className="text-offwhite font-semibold text-sm mb-2">📣 Сообщение от VETOKS</p>
+        <p className={`text-xs mb-2 ${countryId ? "text-gold" : "text-orange-300"}`}>
+          {countryId ? `Страна: ${countryName || "…"}. Получат только люди этой страны, от бота этой страны.` : "Выбрано «Общие»: сообщение уйдёт людям ВСЕХ стран. Выберите страну вверху CRM, чтобы писать одной стране."}
+        </p>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}

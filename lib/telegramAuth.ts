@@ -11,9 +11,10 @@ export type TgUser = {
 // тот, кем назвался. Работает только на сервере.
 export function verifyInitData(
   initData: string,
-  maxAgeSec = 60 * 60 * 24
+  maxAgeSec = 60 * 60 * 24,
+  tokenOverride?: string
 ): TgUser | null {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const botToken = tokenOverride ?? process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken || !initData) return null;
 
   const params = new URLSearchParams(initData);
@@ -43,4 +44,14 @@ export function verifyInitData(
   } catch {
     return null;
   }
+}
+
+// То же, но подпись может быть от любого из ботов (общий или бот страны из CRM).
+export async function verifyInitDataAny(initData: string, maxAgeSec = 60 * 60 * 24): Promise<TgUser | null> {
+  const { allBotTokens } = await import("@/lib/countryBot");
+  for (const t of await allBotTokens()) {
+    const u = verifyInitData(initData, maxAgeSec, t);
+    if (u) return u;
+  }
+  return null;
 }

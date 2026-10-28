@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { rateLimit } from "@/lib/rateLimit";
-import { verifyInitData } from "@/lib/telegramAuth";
-import { BOT_USERNAME, newToken, userIdFromBearer } from "@/lib/authServer";
+import { verifyInitDataAny } from "@/lib/telegramAuth";
+import { botForUser } from "@/lib/countryBot";
+import { newToken, userIdFromBearer } from "@/lib/authServer";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
   if (me?.phone_verified) return NextResponse.json({ status: "verified" });
 
   const body = await req.json().catch(() => ({}));
-  const tg = body.initData ? verifyInitData(String(body.initData)) : null;
+  const tg = body.initData ? await verifyInitDataAny(String(body.initData)) : null;
 
   const token = newToken();
   const { error } = await supabaseAdmin.from("phone_verify_tokens").insert({
@@ -35,6 +36,6 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     status: "ok",
     token,
-    link: `https://t.me/${BOT_USERNAME}?start=verify_${token}`,
+    link: `https://t.me/${(await botForUser(userId)).username}?start=verify_${token}`,
   });
 }

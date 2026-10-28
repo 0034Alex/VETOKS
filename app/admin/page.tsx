@@ -36,6 +36,7 @@ import AdminActionLogPanel from "@/components/AdminActionLogPanel";
 import AdminSecurityPanel from "@/components/AdminSecurityPanel";
 import AdminContentModerationPanel from "@/components/AdminContentModerationPanel";
 import AdminOfficialPanel from "@/components/AdminOfficialPanel";
+import AdminCountryBotsPanel from "@/components/AdminCountryBotsPanel";
 import AdminPostersPanel from "@/components/AdminPostersPanel";
 import { getCrmCountry, setCrmCountry, crmRegionIds, crmCur, loadCrmCur } from "@/lib/crmCountry";
 import { loadScoped, loadOwn, loadOwnRegion, scopedKey } from "@/lib/scopedSettings";
@@ -109,6 +110,7 @@ type Tab =
   | "action-log"
   | "content-mod"
   | "official"
+  | "tgbots"
   | "security";
 
 const TABS: { key: Tab; label: string }[] = [
@@ -147,6 +149,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "reports", label: "Жалобы" },
   { key: "content-mod", label: "Проверка контента" },
   { key: "official", label: "Официальный аккаунт" },
+  { key: "tgbots", label: "Telegram: боты и каналы" },
   { key: "ad-stats", label: "Статистика рекламы" },
   { key: "home-settings", label: "Главная" },
   { key: "broadcast", label: "Рассылка" },
@@ -258,7 +261,7 @@ const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: 
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["content-mod", "reports", "story-reports", "clan"] },
   { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["coins", "app-prices", "referrals"] },
   { key: "ads", ic: "📣", label: "Реклама и партнёры", desc: "Всё, что приносит доход от партнёров", tabs: ["partners", "partner-logos", "ad-space", "ad-prices", "ad-stats", "magazine-ads", "branding"] },
-  { key: "set", ic: "⚙️", label: "Настройки", desc: "Страны, языки, доступы", tabs: ["countries", "translations", "social", "documents", "staff", "action-log", "security"] },
+  { key: "set", ic: "⚙️", label: "Настройки", desc: "Страны, языки, доступы", tabs: ["countries", "translations", "social", "tgbots", "documents", "staff", "action-log", "security"] },
 ];
 
 // Короткие подсказки под пунктами меню: что внутри.
@@ -320,7 +323,7 @@ const ROLE_LABELS: Record<string, string> = {
 // Что человеку можно: по каждой вкладке «только смотреть» или «смотреть и менять».
 // Владелец — всё. Новые права хранятся по группам, старые (галочки) — как раньше.
 // Вкладки только для владельца, даже если у сотрудника есть вся группа.
-const OWNER_ONLY: Tab[] = ["shows", "awards"];
+const OWNER_ONLY: Tab[] = ["shows", "awards", "tgbots"];
 
 function computeAccess(user: CurrentUser): Partial<Record<Tab, Level>> {
   const out: Partial<Record<Tab, Level>> = {};
@@ -609,6 +612,7 @@ export default function AdminPage() {
         {tab === "reports" && <AdminReportsPanel />}
         {tab === "content-mod" && <AdminContentModerationPanel />}
         {tab === "official" && <AdminOfficialPanel />}
+        {tab === "tgbots" && <AdminCountryBotsPanel />}
         {tab === "ad-stats" && <AdminAdStatsPanel />}
         {tab === "home-settings" && <AdminHomeSettingsPanel />}
         {tab === "broadcast" && <AdminBroadcastPanel />}

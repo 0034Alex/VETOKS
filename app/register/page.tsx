@@ -22,6 +22,8 @@ function RegisterForm() {
   const [initData, setInitData] = useState("");
   const [regions, setRegions] = useState<Region[]>([]);
   const [countryCodes, setCountryCodes] = useState<Record<string, string>>({});
+  const [countryList, setCountryList] = useState<{ id: string; name: string; code: string }[]>([]);
+  const [countryId, setCountryId] = useState("");
   const { setLang } = useT();
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
@@ -56,12 +58,23 @@ function RegisterForm() {
       // «Страны и регионы»).
       const { data: enabledCountries } = await supabase
         .from("countries")
-        .select("id, code")
+        .select("id, code, name")
         .eq("enabled", true);
       const countryIds = (enabledCountries ?? []).map((c: { id: string }) => c.id);
       const codes: Record<string, string> = {};
       (enabledCountries ?? []).forEach((c: any) => (codes[c.id] = c.code));
       setCountryCodes(codes);
+      const cl = ((enabledCountries ?? []) as any[]).map((c) => ({ id: c.id as string, name: String(c.name ?? ""), code: String(c.code ?? "") }));
+      setCountryList(cl);
+      // Подсказка страны по адресу посетителя; если не угадали или страна не включена — человек выбирает сам.
+      try {
+        const g = await fetch("/api/geo").then((r) => r.json());
+        const hit = cl.find((c) => c.code.toUpperCase() === g?.code);
+        if (hit) setCountryId(hit.id);
+        else if (cl.length === 1) setCountryId(cl[0].id);
+      } catch {
+        if (cl.length === 1) setCountryId(cl[0].id);
+      }
 
       let query = supabase.from("regions").select("id, name, country_id").order("name");
       if (countryIds.length > 0) {
@@ -144,6 +157,31 @@ function RegisterForm() {
 
   const regionSelect = (
     <div>
+      {countryList.length > 1 && (
+        <div className="mb-3">
+          <label className="text-offwhite text-sm">Страна</label>
+          <select
+            value={countryId}
+            onChange={(e) => {
+              setCountryId(e.target.value);
+              setRegionId("");
+              const code = countryCodes[e.target.value];
+              if (code) setLang(readyLangsForCountry(code)[0]);
+            }}
+            className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
+            required
+          >
+            <option value="" disabled>
+              — выберите —
+            </option>
+            {countryList.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <label className="text-offwhite text-sm">Регион</label>
       <select
         data-tr
@@ -160,11 +198,13 @@ function RegisterForm() {
         <option value="" disabled>
           — выберите —
         </option>
-        {regions.map((r) => (
-          <option key={r.id} value={r.id}>
-            {r.name}
-          </option>
-        ))}
+        {regions
+          .filter((r) => !countryId || r.country_id === countryId)
+          .map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
       </select>
     </div>
   );
