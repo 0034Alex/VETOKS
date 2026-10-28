@@ -30,6 +30,19 @@ const HOME: { key: string; slot?: string; note: string }[] = [
   { key: "stories", note: "Круглые истории сверху." },
 ];
 
+// Страница «Участницы»: блоки сверху вниз.
+const PEOPLE: { key: string; slot?: string; note: string }[] = [
+  { key: "p_promo", slot: "banners", note: "Рекламные баннеры над списком: загрузить, ссылка, период, регионы." },
+  { key: "p_cats", note: "Переключатель возрастных категорий (только Мисс)." },
+  { key: "p_rating", slot: "rating", note: "Вкладка «Рейтинг» рядом со списком: голоса, титулы, движение мест." },
+  { key: "p_scope", note: "Две кнопки: свой регион или вся страна." },
+  { key: "p_search", note: "Поиск по имени или @нику." },
+  { key: "p_filters", note: "Кнопки «Все / Топ / Новые»." },
+  { key: "p_blackmark", note: "Кнопка «Чёрная метка» для участницы." },
+  { key: "p_ticker", note: "Бегущая лента событий внизу экрана." },
+];
+const PAGE_BLOCKS: Record<string, typeof HOME> = { home: HOME, people: PEOPLE };
+
 // На главной Мисс слушаются только эти блоки (остальные там пока не выключаются).
 const MISS_HOME = ["scope", "cats", "news", "strip", "top", "mag", "poll", "partners"];
 
@@ -78,8 +91,8 @@ export default function AdminShowBuilderPanel({ slots, launchesPanel }: { slots:
   const eff = l ? effState(l, launches, todayIdx(l.tz)) : null;
   const mine = items.filter((i) => i.launch_id === lid && i.kind === "block");
   function homeList(l: LaunchRow) {
-    const base = HOME.filter((h) => blockFits(h.key, l.show_key) && (l.show_key !== "miss" || MISS_HOME.includes(h.key)));
-    if (l.show_key === "miss") return base;
+    const base = (PAGE_BLOCKS[page] ?? []).filter((h) => blockFits(h.key, l.show_key) && (page !== "home" || l.show_key !== "miss" || MISS_HOME.includes(h.key)));
+    if (l.show_key === "miss" && page === "home") return base;
     const pos = (k: string) => mine.find((i) => i.block_key === k)?.sort ?? 1e6;
     return base.map((h, i) => ({ h, i })).sort((a, b) => pos(a.h.key) - pos(b.h.key) || a.i - b.i).map((x) => x.h);
   }
@@ -149,9 +162,9 @@ export default function AdminShowBuilderPanel({ slots, launchesPanel }: { slots:
             ))}
           </div>
 
-          {page === "home" ? (
+          {PAGE_BLOCKS[page] ? (
             <div className="space-y-3">
-              {l.show_key === "miss" && (
+              {page === "home" && l.show_key === "miss" && (
                 <div className="bg-bgSurface border border-muted/40 rounded-xl p-3">
                   <button className="w-full text-left text-sm font-semibold text-offwhite flex justify-between" onClick={() => setOpen(open === "__stages" ? "" : "__stages")}>
                     Шапка этапа: этапы сезона, обложки, вопрос опроса <span className="text-gold">{open === "__stages" ? "▲" : "▼"}</span>
@@ -165,7 +178,7 @@ export default function AdminShowBuilderPanel({ slots, launchesPanel }: { slots:
                 const slot = h.slot === "poll" ? <PollQuestions launch={l} S={S} items={items.filter((i) => i.launch_id === l.id && i.kind === "question")} act={act} fallback={slots.stages} /> : h.slot ? slots[h.slot] : null;
                 return (
                   <div key={h.key} className="space-y-2">
-                    {it && l.show_key !== "miss" && (
+                    {it && !(l.show_key === "miss" && page === "home") && (
                       <div className="flex gap-1 justify-end">
                         <button disabled={hi === 0 || !arr[hi - 1] || !mine.find((i) => i.block_key === arr[hi - 1].key)} className="px-3 py-1.5 rounded-lg border border-muted/60 text-sm text-offwhite disabled:opacity-30" onClick={() => move(l, arr, hi, -1)}>▲ Выше</button>
                         <button disabled={hi === arr.length - 1 || !mine.find((i) => i.block_key === arr[hi + 1]?.key)} className="px-3 py-1.5 rounded-lg border border-muted/60 text-sm text-offwhite disabled:opacity-30" onClick={() => move(l, arr, hi, 1)}>▼ Ниже</button>

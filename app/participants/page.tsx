@@ -16,7 +16,7 @@ import { getVoteTotals } from "@/lib/voteTotals";
 import { apiPost } from "@/lib/authClient";
 import { getMyCountry } from "@/lib/myCountry";
 import { useViewCategory } from "@/lib/viewCategory";
-import { useShow } from "@/lib/useShow";
+import { useShow, hasBlock } from "@/lib/useShow";
 import { applyContest, cleanContest } from "@/lib/contest";
 import { viewInfo } from "@/lib/viewCategory";
 import { CategoryStrip } from "@/components/CategorySwitch";
@@ -226,12 +226,12 @@ export default function ParticipantsPage() {
     <main className="min-h-screen pb-28">
       <div className="max-w-5xl mx-auto">
         <PageHeader />
-        <PromoBannerCarousel />
+        {hasBlock(curShow, "p_promo") && <PromoBannerCarousel />}
 
-        {contest === "miss" && <CategoryStrip />}
+        {contest === "miss" && hasBlock(curShow, "p_cats") && <CategoryStrip />}
         <div className="px-6 mb-4">
           <div className="flex items-baseline justify-between">
-            {(["people", "rating"] as const).map((k) => (
+            {(["people", "rating"] as const).filter((k) => k === "people" || hasBlock(curShow, "p_rating")).map((k) => (
               <button
                 key={k}
                 onClick={() => {
@@ -254,11 +254,11 @@ export default function ParticipantsPage() {
           )}
         </div>
 
-        {tab === "rating" ? (
+        {tab === "rating" && hasBlock(curShow, "p_rating") ? (
           <RatingView />
         ) : (
           <>
-        <div className="px-6 mb-4 flex gap-2">
+        {hasBlock(curShow, "p_scope") && <div className="px-6 mb-4 flex gap-2">
           <button
             onClick={() => setScope("region")}
             className={`px-4 py-2 rounded-full text-sm font-medium ${
@@ -279,9 +279,9 @@ export default function ParticipantsPage() {
           >
             Вся страна
           </button>
-        </div>
+        </div>}
 
-        <div className="px-6 mb-4">
+        {hasBlock(curShow, "p_search") && <div className="px-6 mb-4">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -312,10 +312,10 @@ export default function ParticipantsPage() {
               ))}
             </div>
           )}
-        </div>
+        </div>}
 
         <div className="px-6 mb-6 flex gap-2 overflow-x-auto">
-          {filters.map((f) => (
+          {hasBlock(curShow, "p_filters") && filters.map((f) => (
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
@@ -328,7 +328,7 @@ export default function ParticipantsPage() {
               {f.label}
             </button>
           ))}
-          {myParticipantId && (
+          {myParticipantId && hasBlock(curShow, "p_blackmark") && (
           <button
             onClick={() => setBlackMarkOpen(true)}
             className="ml-auto px-2.5 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-medium whitespace-nowrap bg-bgSurface border border-danger text-danger flex-shrink-0"
@@ -447,7 +447,7 @@ export default function ParticipantsPage() {
         />
       )}
 
-      <TickerBar />
+      {hasBlock(curShow, "p_ticker") && <TickerBar />}
       <BottomNav />
     </main>
   );

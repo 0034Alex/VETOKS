@@ -47,6 +47,15 @@ export const BLOCKS: BlockDef[] = [
   { key: "strip", label: "Яркая полоса", ...W, shows: "miss" },
   { key: "mag", label: "Журнал", ...W, shows: "miss" },
   { key: "partners", label: "Партнёры (логотипы)", ...W, shows: "miss" },
+  // Страница «Участницы»
+  { key: "p_promo", label: "Участницы: рекламные баннеры вверху", ...W },
+  { key: "p_cats", label: "Участницы: переключатель категорий", ...W, shows: "miss" },
+  { key: "p_rating", label: "Участницы: вкладка «Рейтинг»", ...W },
+  { key: "p_scope", label: "Участницы: «Мой регион / Вся страна»", ...W },
+  { key: "p_search", label: "Участницы: поиск", ...W },
+  { key: "p_filters", label: "Участницы: фильтры «Все / Топ / Новые»", ...W },
+  { key: "p_blackmark", label: "Участницы: кнопка «Чёрная метка»", ...W },
+  { key: "p_ticker", label: "Участницы: бегущая лента внизу", ...W },
 ];
 // Какие блоки имеют смысл для шоу: у блока может быть пометка «только Мисс» или «только остальные шоу».
 export const blockFits = (blockKey: string, showKey: string | null | undefined): boolean => {

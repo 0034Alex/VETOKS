@@ -640,6 +640,7 @@ export default function AdminPage() {
               partners: <PartnerLogosTab />,
               news: <AnnouncementsBlock />,
               strip: <StripBlock />,
+              rating: <AdminRatingPanel />,
             }}
             launchesPanel={
               <AdminLaunchesPanel
