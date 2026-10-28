@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff, logAction } from "@/lib/staffServer";
-import { BLOCKS, COUNTRY_TZ, DEFAULT_STAGES, defaultItems, endIdx, startIdx, todayIdx, type LaunchRow, type Stage } from "@/lib/launch";
+import { BLOCKS, blockFits, COUNTRY_TZ, DEFAULT_STAGES, defaultItems, endIdx, startIdx, todayIdx, type LaunchRow, type Stage } from "@/lib/launch";
 
 export const dynamic = "force-dynamic";
 
@@ -86,7 +86,8 @@ export async function POST(req: Request) {
   // «Опубликовать» шаблон: добавляет во все запуски новые блоки (то, чего там ещё нет).
   // Существующие блоки, тексты, подсказки и вопросы стран не трогаем.
   if (a === "publish_preview" || a === "publish") {
-    const { data: ls } = await supabaseAdmin.from("launches").select("id, status");
+    const { data: ls } = await supabaseAdmin.from("launches").select("id, status, show_key");
+    const showOf = new Map<string, string>(((ls as any[]) ?? []).map((l) => [l.id, l.show_key]));
     const ids = ((ls as any[]) ?? []).filter((l) => l.status !== "finished").map((l) => l.id as string);
     const { data: its } = ids.length ? await supabaseAdmin.from("launch_items").select("launch_id, block_key").eq("kind", "block").in("launch_id", ids) : { data: [] as any[] };
     const have = new Map<string, Set<string>>();
@@ -97,7 +98,7 @@ export async function POST(req: Request) {
     const rows: any[] = [];
     ids.forEach((id) =>
       BLOCKS.forEach((bl, n) => {
-        if (!have.get(id)?.has(bl.key)) rows.push({ launch_id: id, kind: "block", block_key: bl.key, title: "", body: "", enabled: true, stage: bl.stage, start_mode: bl.start_mode, start_n: bl.start_n, dur_mode: bl.dur_mode, dur_n: bl.dur_n, sort: n });
+        if (blockFits(bl.key, showOf.get(id)) && !have.get(id)?.has(bl.key)) rows.push({ launch_id: id, kind: "block", block_key: bl.key, title: "", body: "", enabled: true, stage: bl.stage, start_mode: bl.start_mode, start_n: bl.start_n, dur_mode: bl.dur_mode, dur_n: bl.dur_n, sort: n });
       })
     );
     const launchesTouched = new Set(rows.map((r) => r.launch_id)).size;
@@ -144,7 +145,7 @@ export async function POST(req: Request) {
     };
     const { data, error } = await supabaseAdmin.from("launches").insert(row).select("id").maybeSingle();
     if (error || !data) return NextResponse.json({ ok: false, message: error?.message || "Не получилось создать." });
-    await supabaseAdmin.from("launch_items").insert(defaultItems().map((i) => ({ ...i, launch_id: data.id })));
+    await supabaseAdmin.from("launch_items").insert(defaultItems(key).map((i) => ({ ...i, launch_id: data.id })));
     await logAction(uid, "launch_create", data.id, { cid, key });
     return NextResponse.json({ ok: true, id: data.id });
   }

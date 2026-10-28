@@ -443,8 +443,8 @@ export default function ParticipantProfilePage() {
   const boostsLeft = BOOST_LIMIT - boostCount;
 
   return (
-    <main className="min-h-screen pb-36">
-      <div className="max-w-md mx-auto">
+    <main className="min-h-screen pb-36 overflow-x-hidden">
+      <div className="max-w-md mx-auto w-full min-w-0">
         <ProfileHero
           photoUrl={participant.photo_url ?? owner?.photoUrl ?? null}
           name={participant.display_name}
@@ -507,7 +507,7 @@ export default function ParticipantProfilePage() {
               >
                 ♥ Проголосовать
               </button>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0 [&>*]:px-2 [&>*]:whitespace-nowrap [&>*]:overflow-hidden">
                 {userId ? (
                   <Link
                     href={`/chats/${participant.user_id}`}

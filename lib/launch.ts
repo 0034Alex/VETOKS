@@ -41,6 +41,10 @@ export const BLOCKS: BlockDef[] = [
   { key: "stories", label: "Истории", stage: -1, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 },
   { key: "promo", label: "Рекламные баннеры на главной", stage: -1, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 },
 ];
+// Какие блоки имеют смысл для шоу. «Мисс» живёт по своей главной: из блоков ей нужны только анкета и реклама.
+export const blockFits = (blockKey: string, showKey: string | null | undefined): boolean => showKey !== "miss" || blockKey === "apply" || blockKey === "promo";
+// Подсказки, вопросы и задания по дням нужны только главной Таланта и подобных шоу.
+export const extrasFit = (showKey: string | null | undefined): boolean => showKey !== "miss";
 export const KIND_LABEL: Record<string, string> = { block: "Блок", tip: "Подсказка участникам", question: "Вопрос зрителям", task: "Задание" };
 export const DEFAULT_STAGES: Stage[] = [
   { name: "Отбор", days: 14 },
@@ -145,8 +149,8 @@ export function stageAt(l: LaunchRow, S: number, today: number): { idx: number; 
   return null;
 }
 
-export function defaultItems(): Omit<ItemRow, "id" | "launch_id">[] {
-  return BLOCKS.map((b, i) => ({ kind: "block", block_key: b.key, title: "", body: "", enabled: true, stage: b.stage, start_mode: b.start_mode, start_n: b.start_n, dur_mode: b.dur_mode, dur_n: b.dur_n, sort: i }));
+export function defaultItems(showKey?: string | null): Omit<ItemRow, "id" | "launch_id">[] {
+  return BLOCKS.filter((b) => blockFits(b.key, showKey)).map((b, i) => ({ kind: "block", block_key: b.key, title: "", body: "", enabled: true, stage: b.stage, start_mode: b.start_mode, start_n: b.start_n, dur_mode: b.dur_mode, dur_n: b.dur_n, sort: i }));
 }
 
 // Часовой пояс по умолчанию для каждой страны (по нему в 00:00 страны меняется день запуска).

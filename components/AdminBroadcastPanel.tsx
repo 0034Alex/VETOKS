@@ -16,8 +16,6 @@ export default function AdminBroadcastPanel() {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<Hit[]>([]);
   const [picked, setPicked] = useState<Hit[]>([]);
-  const [popup, setPopup] = useState(true);
-  const [tg, setTg] = useState(true);
   const [total, setTotal] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -57,7 +55,7 @@ export default function AdminBroadcastPanel() {
     let sent = 0;
     let tgSent = 0;
     for (let i = 0; i < 200; i++) {
-      const r = await apiPost("/api/admin/broadcast", { action: "send", text, offset, popup, telegram: tg, ...payload() });
+      const r = await apiPost("/api/admin/broadcast", { action: "send", text, offset, ...payload() });
       if (!r?.ok) {
         setMsg(`Остановилось на ${sent} получателях. Ошибка отправки.`);
         setBusy(false);
@@ -65,11 +63,11 @@ export default function AdminBroadcastPanel() {
       }
       sent += r.sent;
       tgSent += r.tg;
-      setMsg(`Отправлено: ${sent}${tg ? ` · в Telegram: ${tgSent}` : ""}…`);
+      setMsg(`Обработано: ${sent} · доставлено в Telegram: ${tgSent}…`);
       if (r.done) break;
       offset = r.next;
     }
-    setMsg(`Готово. Получили в приложении: ${sent}${tg ? ` · в Telegram от бота: ${tgSent} (у кого привязан Telegram)` : ""}.`);
+    setMsg(`Готово. С привязанным Telegram: ${sent} · доставлено ботом: ${tgSent}. Если у страны не подключён бот, никому не уйдёт (CRM → Настройки → Telegram).`);
     setText("");
     setConfirmed(false);
     setBusy(false);
@@ -136,13 +134,7 @@ export default function AdminBroadcastPanel() {
           </div>
         )}
 
-        <label className="flex items-center gap-2 text-offwhite text-sm mt-2">
-          <input type="checkbox" checked={popup} onChange={(e) => setPopup(e.target.checked)} /> Всплывающее окно в приложении
-        </label>
-        <label className="flex items-center gap-2 text-offwhite text-sm mt-1">
-          <input type="checkbox" checked={tg} onChange={(e) => setTg(e.target.checked)} /> Сообщение от бота в Telegram
-        </label>
-        <p className="text-muted text-xs mt-1">В «Уведомлениях» человека сообщение останется в любом случае.</p>
+        <p className="text-muted text-xs mt-2">Сообщение приходит только от бота страны в Telegram. В приложении оно не показывается. Получат те, у кого привязан Telegram и кто начинал диалог с ботом.</p>
 
         <p className="text-gold text-sm mt-3">Получателей: {total ?? "…"}</p>
         {!confirmed ? (

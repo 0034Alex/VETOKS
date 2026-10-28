@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCrmCountry } from "@/lib/crmCountry";
 import {
   BLOCKS,
+  blockFits,
+  extrasFit,
   KIND_LABEL,
   activeItems,
   dayIdx,
@@ -327,10 +329,42 @@ function LaunchCard({
     setStages((s) => s.map((x, k) => (k === i ? { ...x, ...p } : x)));
   }
 
-  const groups: { kind: string; list: ItemRow[] }[] = ["block", "tip", "question", "task"].map((k) => ({ kind: k, list: items.filter((i) => i.kind === k) }));
-  const freeBlocks = BLOCKS.filter((b) => !items.some((i) => i.kind === "block" && i.block_key === b.key));
+  const groups: { kind: string; list: ItemRow[] }[] = ["block", "tip", "question", "task"].filter((k) => k === "block" || extrasFit(l.show_key)).map((k) => ({ kind: k, list: items.filter((i) => i.kind === k && (k !== "block" || blockFits(i.block_key ?? "", l.show_key))) }));
+  const freeBlocks = BLOCKS.filter((b) => blockFits(b.key, l.show_key)).filter((b) => !items.some((i) => i.kind === "block" && i.block_key === b.key));
   const active = pIdx !== null && S !== null ? activeItems({ ...l, stages }, items, S, pIdx) : [];
   const pStage = pIdx !== null && S !== null ? stageAt({ ...l, stages }, S, pIdx) : null;
+
+  const renderGroup = (g: { kind: string; list: ItemRow[] }) => (
+            <div key={g.kind} className="space-y-2">
+              <h3 className="text-sm font-semibold text-offwhite">{g.kind === "block" ? "2. Что видят люди (включить или выключить)" : g.kind === "tip" ? "Подсказки участникам по дням" : g.kind === "question" ? "Вопросы зрителям по дням" : "Задания по дням"}</h3>
+              {g.list.length === 0 && g.kind !== "block" && <p className="text-xs text-muted">Пока нет.</p>}
+              {g.list.map((it) => (
+                <ItemEditor key={it.id + "-" + it.start_mode + it.stage} launch={{ ...l, stages }} S={S} it={it} act={act} />
+              ))}
+              {g.kind === "block" ? (
+                freeBlocks.length > 0 && (
+                  <div className="flex gap-2 flex-wrap">
+                    {freeBlocks.map((b) => (
+                      <button
+                        key={b.key}
+                        className={btn}
+                        onClick={() => act({ action: "item_save", launch_id: l.id, kind: "block", block_key: b.key, stage: b.stage, enabled: true, start_mode: b.start_mode, start_n: b.start_n, dur_mode: b.dur_mode, dur_n: b.dur_n, sort: 9 }, "Добавлено.")}
+                      >
+                        + {b.label}
+                      </button>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <button
+                  className={btn}
+                  onClick={() => act({ action: "item_save", launch_id: l.id, kind: g.kind, title: "", body: "", stage: 0, enabled: true, start_mode: "from", start_n: 0, dur_mode: "days", dur_n: 7, sort: 10 + g.list.length }, "Добавлено — заполните текст.")}
+                >
+                  + {KIND_LABEL[g.kind]}
+                </button>
+              )}
+            </div>
+  );
 
   return (
     <div className="bg-bgSurface border border-muted/40 rounded-xl overflow-hidden">
@@ -456,37 +490,13 @@ function LaunchCard({
           </div>
 
           {/* Пункты программы */}
-          {groups.map((g) => (
-            <div key={g.kind} className="space-y-2">
-              <h3 className="text-sm font-semibold text-offwhite">{g.kind === "block" ? "2. Что видят люди (включить или выключить)" : g.kind === "tip" ? "3. Подсказки участникам по дням" : g.kind === "question" ? "Вопросы зрителям по дням" : "Задания по дням"}</h3>
-              {g.list.length === 0 && g.kind !== "block" && <p className="text-xs text-muted">Пока нет.</p>}
-              {g.list.map((it) => (
-                <ItemEditor key={it.id + "-" + it.start_mode + it.stage} launch={{ ...l, stages }} S={S} it={it} act={act} />
-              ))}
-              {g.kind === "block" ? (
-                freeBlocks.length > 0 && (
-                  <div className="flex gap-2 flex-wrap">
-                    {freeBlocks.map((b) => (
-                      <button
-                        key={b.key}
-                        className={btn}
-                        onClick={() => act({ action: "item_save", launch_id: l.id, kind: "block", block_key: b.key, stage: b.stage, enabled: true, start_mode: b.start_mode, start_n: b.start_n, dur_mode: b.dur_mode, dur_n: b.dur_n, sort: 9 }, "Добавлено.")}
-                      >
-                        + {b.label}
-                      </button>
-                    ))}
-                  </div>
-                )
-              ) : (
-                <button
-                  className={btn}
-                  onClick={() => act({ action: "item_save", launch_id: l.id, kind: g.kind, title: "", body: "", stage: 0, enabled: true, start_mode: "from", start_n: 0, dur_mode: "days", dur_n: 7, sort: 10 + g.list.length }, "Добавлено — заполните текст.")}
-                >
-                  + {KIND_LABEL[g.kind]}
-                </button>
-              )}
-            </div>
-          ))}
+          {groups.filter((g) => g.kind === "block").map(renderGroup)}
+          {groups.some((g) => g.kind !== "block") && (
+            <details className="border-t border-muted/30 pt-3">
+              <summary className="cursor-pointer text-sm font-semibold text-offwhite">Дополнительно: подсказки, вопросы, задания по дням</summary>
+              <div className="space-y-4 pt-3">{groups.filter((g) => g.kind !== "block").map(renderGroup)}</div>
+            </details>
+          )}
 
           <details className="border-t border-muted/30 pt-3">
           <summary className="cursor-pointer text-sm font-semibold text-offwhite">Ещё: посмотреть день, скопировать, удалить</summary>

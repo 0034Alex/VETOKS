@@ -47,16 +47,9 @@ export async function POST(req: Request) {
     const { data: rows } = await filtered(b, supabaseAdmin.from("users").select("id, telegram_id"), regionIds).order("id", { ascending: true }).range(offset, offset + PAGE - 1);
     const list = (rows ?? []) as { id: string; telegram_id: string | null }[];
 
-    if (list.length) {
-      const base = list.map((u) => ({ user_id: u.id, message: text, link: null as string | null }));
-      const r1 = await supabaseAdmin.from("notifications").insert(base.map((x) => ({ ...x, popup: b.popup !== false })));
-      // Если колонки popup ещё нет — сообщение всё равно попадёт в «Уведомления».
-      if (r1.error) await supabaseAdmin.from("notifications").insert(base);
-    }
-
     let tg = 0;
     const token = (await botForCountry(countryId)).token;
-    if (token && b.telegram !== false) {
+    if (token) {
       const targets = list.filter((u) => u.telegram_id);
       for (let i = 0; i < targets.length; i += 25) {
         const chunk = targets.slice(i, i + 25);
@@ -84,7 +77,7 @@ export async function POST(req: Request) {
 
 // Кого выбрали: все / возрастные категории / конкретные люди (и только из выбранной страны).
 function filtered(b: any, q: any, regionIds?: string[] | null) {
-  q = q.eq("is_banned", false);
+  q = q.eq("is_banned", false).not("telegram_id", "is", null); // рассылка только в Telegram: берём тех, у кого он привязан
   if (regionIds) q = q.in("region_id", regionIds.length ? regionIds : ["00000000-0000-0000-0000-000000000000"]);
   if (b.mode === "users") {
     const ids = (Array.isArray(b.userIds) ? b.userIds : []).map(String).slice(0, 500);
