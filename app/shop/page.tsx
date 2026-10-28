@@ -134,6 +134,12 @@ function ShopContent() {
   const cardsOn0 = useCardsEnabled();
   const cardsOn = cardsOn0 && hasBlock(curShow, "g_cards");
   const onG = (k: string) => hasBlock(curShow, k);
+  useEffect(() => {
+    if (section === "gifts" && !hasBlock(curShow, "g_gifts")) {
+      if (hasBlock(curShow, "g_votes")) setSection("votes");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [curShow]);
 
   useEffect(() => {
     (async () => {

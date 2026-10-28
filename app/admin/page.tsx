@@ -645,6 +645,9 @@ export default function AdminPage() {
               prices: <AdminPricesPanel />,
               coins: <AdminCoinsPanel />,
               cards: <CardsTab />,
+              goal: <GoalTab />,
+              tasks: <TasksAdminTab />,
+              referrals: <AdminReferralsPanel />,
             }}
             launchesPanel={
               <AdminLaunchesPanel

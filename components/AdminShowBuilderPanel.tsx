@@ -64,7 +64,19 @@ const GIFTS: { key: string; slot?: string; note: string }[] = [
   { key: "g_pick", note: "Выбор, кому подарить: подписки, недавние, поиск." },
   { key: "g_cats", note: "Категории подарков: Лёгкие, Премиум, VIP." },
 ];
-const PAGE_BLOCKS: Record<string, typeof HOME> = { home: HOME, people: PEOPLE, media: MEDIA, gifts: GIFTS };
+// Страница «Профиль». Кошелёк, «Редактировать», «Настройки» и «Поддержка» есть всегда.
+const ME: { key: string; slot?: string; note: string }[] = [
+  { key: "r_goal", slot: "goal", note: "Полоса «Цель недели» в кошельке. Внутри: текст цели, сумма, период." },
+  { key: "r_ideas", note: "Кнопка «Идеи для контента» (для участниц)." },
+  { key: "r_materials", note: "Кнопка «Материалы» (для участниц)." },
+  { key: "r_tasks", slot: "tasks", note: "Задания участницы с полоской прогресса. Внутри: список заданий." },
+  { key: "r_clan", note: "Чат клана региона." },
+  { key: "r_invites", slot: "referrals", note: "Приглашения друзей. Внутри: рефералы и награды." },
+  { key: "r_blackmarks", note: "Раздел «Чёрные метки» (для участниц)." },
+  { key: "r_docs", note: "Документы (для участниц и партнёров)." },
+  { key: "r_partner", note: "Кнопка «Стать партнёром» / «Кабинет партнёра»." },
+];
+const PAGE_BLOCKS: Record<string, typeof HOME> = { home: HOME, people: PEOPLE, media: MEDIA, gifts: GIFTS, me: ME };
 
 // На главной Мисс слушаются только эти блоки (остальные там пока не выключаются).
 const MISS_HOME = ["scope", "cats", "news", "strip", "top", "mag", "poll", "partners"];

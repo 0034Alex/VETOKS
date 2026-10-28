@@ -20,6 +20,7 @@ import { loadTitleBadges, TitleBadge } from "@/lib/profileExtras";
 import AccountSwitcher from "@/components/AccountSwitcher";
 import { getCurrencySymbol } from "@/lib/currency";
 import { useT } from "@/lib/i18n";
+import { useShow, hasBlock } from "@/lib/useShow";
 import { apiPost } from "@/lib/authClient";
 import GiftShowcase from "@/components/GiftShowcase";
 
@@ -44,6 +45,8 @@ function maskEmail(email: string | null | undefined): string {
 export default function ProfilePage() {
   const router = useRouter();
   const { t } = useT();
+  const { show: curShowR } = useShow();
+  const onR = (k: string) => hasBlock(curShowR, k);
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [isPartner, setIsPartner] = useState(false);
@@ -516,7 +519,7 @@ export default function ProfilePage() {
               <a href="/balance?open=exchange" className="border border-gold/50 text-offwhite rounded-xl py-2.5 text-xs font-semibold text-center">Обменять</a>
               <a href="/balance?open=withdraw" className="border border-gold/50 text-offwhite rounded-xl py-2.5 text-xs font-semibold text-center">Вывод</a>
             </div>
-            {goalText && goalEnabled && (
+            {goalText && goalEnabled && onR("r_goal") && (
               <a href="/goal-donors" className="block border-t border-muted/40 mt-3 pt-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-offwhite text-xs font-semibold">🎯 Цель недели · {goalText}</p>
@@ -551,13 +554,13 @@ export default function ProfilePage() {
 
         {participant && (
           <>
-            <a href="/content-ideas" className="block bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 mt-3">
+            {onR("r_ideas") && <a href="/content-ideas" className="block bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 mt-3">
               <span className="text-white font-semibold text-sm">{t("profile.ideas")}</span>
-            </a>
-            <a href="/media-materials" className="block bg-bgPrimary border border-gold/40 rounded-xl p-4 mt-3">
+            </a>}
+            {onR("r_materials") && <a href="/media-materials" className="block bg-bgPrimary border border-gold/40 rounded-xl p-4 mt-3">
               <span className="text-gold font-semibold text-sm">{t("profile.materials")}</span>
-            </a>
-            <a href="/tasks" className="block bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 mt-3">
+            </a>}
+            {onR("r_tasks") && <a href="/tasks" className="block bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 mt-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-white font-semibold text-sm">{t("profile.tasks")}</span>
                 <span className="text-white text-sm">
@@ -567,24 +570,24 @@ export default function ProfilePage() {
               <div className="w-full bg-black/30 rounded-full h-2">
                 <div className="bg-white rounded-full h-2" style={{ width: `${Math.min(100, (tasksDone / TOTAL_TASKS) * 100)}%` }} />
               </div>
-            </a>
+            </a>}
           </>
         )}
 
-        <a href="/region-clan" className="block bg-bgPrimary border border-gold/40 rounded-xl p-4 mt-3">
+        {onR("r_clan") && <a href="/region-clan" className="block bg-bgPrimary border border-gold/40 rounded-xl p-4 mt-3">
           <span className="text-offwhite font-semibold text-sm">{t("profile.clan")}</span>
-        </a>
+        </a>}
 
         <div className="mt-4">
-          <Row href="/invites" label={t("profile.invites")} right={`${referralCount} →`} />
-          {participant && <Row href="/black-marks" label={t("profile.blackMarks")} />}
+          {onR("r_invites") && <Row href="/invites" label={t("profile.invites")} right={`${referralCount} →`} />}
+          {participant && onR("r_blackmarks") && <Row href="/black-marks" label={t("profile.blackMarks")} />}
           <Row href="/edit-profile" label={t("profile.edit")} />
-          {(participant || isPartner) && <Row href="/documents" label={t("profile.docs")} />}
+          {(participant || isPartner) && onR("r_docs") && <Row href="/documents" label={t("profile.docs")} />}
           <Row href="/settings" label={t("profile.settings")} />
           <Row href="/support" label={t("profile.support")} />
         </div>
 
-        {isPartner ? (
+        {!onR("r_partner") ? null : isPartner ? (
           <a href="/partner-cabinet" className="block bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 mt-5 text-center">
             <span className="text-white font-semibold text-sm">{t("profile.partnerCabinet")}</span>
           </a>
