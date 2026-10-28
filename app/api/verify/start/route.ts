@@ -33,9 +33,11 @@ export async function POST(req: NextRequest) {
   });
   if (error) return NextResponse.json({ status: "error" }, { status: 500 });
 
+  const vbot = await botForUser(userId);
+  if (!vbot.username) return NextResponse.json({ status: "no_bot" }, { status: 409 });
   return NextResponse.json({
     status: "ok",
     token,
-    link: `https://t.me/${(await botForUser(userId)).username}?start=verify_${token}`,
+    link: `https://t.me/${vbot.username}?start=verify_${token}`,
   });
 }

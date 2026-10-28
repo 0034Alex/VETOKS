@@ -1,12 +1,12 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { BOT_USERNAME } from "@/lib/authServer";
 import { countryOfUser } from "@/lib/countryServer";
 
 // Telegram-бот страны. Если для страны бот не задан в CRM — общий бот (переменные окружения).
 export type Bot = { token: string; username: string; custom: boolean };
 type Row = { country_id: string; bot_username: string | null; bot_token: string | null; channel_link: string | null; channel_chat: string | null };
 
-const def = (): Bot => ({ token: process.env.TELEGRAM_BOT_TOKEN || "", username: BOT_USERNAME, custom: false });
+// Запасного бота нет: у страны без своего бота в CRM токен и имя пустые (сообщений в Telegram нет).
+const none = (): Bot => ({ token: "", username: "", custom: false });
 
 let cache: { at: number; rows: Row[] } | null = null;
 async function rows(): Promise<Row[]> {
@@ -21,9 +21,9 @@ export function resetBotCache() {
 }
 
 export async function botForCountry(countryId: string | null | undefined): Promise<Bot> {
-  if (!countryId) return def();
+  if (!countryId) return none();
   const r = (await rows()).find((x) => x.country_id === countryId && x.bot_token);
-  return r ? { token: r.bot_token as string, username: String(r.bot_username || "").replace(/^@/, "") || BOT_USERNAME, custom: true } : def();
+  return r ? { token: r.bot_token as string, username: String(r.bot_username || "").replace(/^@/, "") || "", custom: true } : none();
 }
 
 export async function botForUser(userId: string): Promise<Bot> {

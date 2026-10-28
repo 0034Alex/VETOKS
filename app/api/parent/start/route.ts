@@ -33,6 +33,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, needed: true, approved, agreedAt: (ok as any)?.[0]?.agreed_at ?? null });
   }
 
+  const pbot = await botForUser(uid);
+  if (!pbot.username) return NextResponse.json({ ok: false, error: "no_bot" }, { status: 409 });
   const token = newToken();
   const { error } = await supabaseAdmin.from("parental_consents").insert({
     user_id: uid,
@@ -42,5 +44,5 @@ export async function POST(req: Request) {
     expires_at: new Date(Date.now() + 3 * 86400_000).toISOString(),
   });
   if (error) return bad("server", 500);
-  return NextResponse.json({ ok: true, needed: true, approved: false, link: `https://t.me/${(await botForUser(uid)).username}?start=parent_${token}` });
+  return NextResponse.json({ ok: true, needed: true, approved: false, link: `https://t.me/${pbot.username}?start=parent_${token}` });
 }

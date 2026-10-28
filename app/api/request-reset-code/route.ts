@@ -8,7 +8,6 @@ import { tx, pickBotLang } from "@/lib/botText";
 
 export const dynamic = "force-dynamic";
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 import { botForUser } from "@/lib/countryBot";
 
 // Просим код для сброса пароля. Код уходит ТОЛЬКО владельцу аккаунта — в его Telegram.
@@ -30,7 +29,8 @@ export async function POST(req: NextRequest) {
   if (per) return per;
 
   const user = await findUserForReset(body);
-  if (user && user.telegram_id && BOT_TOKEN) {
+  const rbot = user ? await botForUser(user.id) : null;
+  if (user && user.telegram_id && rbot?.token) {
     const code = String(randomInt(100000, 1000000));
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     // Старые неиспользованные коды гасим: действует только последний.
@@ -41,8 +41,7 @@ export async function POST(req: NextRequest) {
       const { data: lu } = await supabaseAdmin.from("users").select("language").eq("id", user.id).maybeSingle();
       resetLang = pickBotLang((lu as any)?.language ?? null, null);
     } catch {}
-    const rbot = await botForUser(user.id);
-    await fetch(`https://api.telegram.org/bot${rbot.token || BOT_TOKEN}/sendMessage`, {
+    await fetch(`https://api.telegram.org/bot${rbot.token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

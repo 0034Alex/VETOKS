@@ -181,11 +181,6 @@ export default function AdminLaunchesPanel({
           <button className={btnGold} onClick={() => act({ action: "create", country_id: cid, show_key: newShow }, "Добавлено в очередь.")}>
             + Добавить
           </button>
-          {shows.some((x) => x.key === "miss") && (
-            <button className={btnGold} onClick={() => act({ action: "import_season", country_id: cid, show_key: "miss" }, "Запуск «Мисс» создан из текущего сезона страны (этапы и даты взяты оттуда). Проверьте и включите.")}>
-              ⬇ Перенести текущий сезон «Мисс»
-            </button>
-          )}
         </div>
         <p className="text-[11px] text-muted">
           В стране идёт одно шоу за раз. Пока в стране нет ни одного запуска, приложение работает как раньше (по датам в разделе «Шоу»). Как только добавите запуск, шоу в этой стране выбирает он.
