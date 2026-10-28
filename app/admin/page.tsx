@@ -169,6 +169,7 @@ const TABS: { key: Tab; label: string }[] = [
 // Поиск по CRM: слова, по которым раздел можно найти (кроме названия и подсказки).
 const SEARCH_WORDS: Partial<Record<Tab, string>> = {
   dashboard: "статистика цифры главная сегодня",
+  builder: "конструктор шоу запуск запустить дата этапы страницы главная участницы медиа подарки профиль баннеры журнал партнёры рейтинг титулы цель недели задания карточки лента монеты короны цены рефералы между шоу вопрос недели опрос зал славы удалить шоу",
   applications: "заявки анкеты одобрение новые участницы подача",
   participants: "участницы конкурсантки титулы статус",
   users: "пользователи аккаунты люди возраст",
@@ -254,22 +255,28 @@ const PERMISSION_TABS: Record<string, Tab[]> = {
   support: ["support", "documents"],
 };
 
+// Эти разделы теперь живут внутри «Конструктора шоу» (на своих страницах и блоках).
+// Владельцу и тем, у кого есть конструктор, отдельными пунктами меню они не показываются, чтобы не двоилось.
+// Сотрудникам без доступа к конструктору пункты остаются, чтобы они не потеряли свою работу.
+const IN_BUILDER: Tab[] = ["stages", "banners", "magazine-ads", "partner-logos", "rating-admin", "goal", "tasks", "cards", "mediafeed", "coins", "app-prices", "referrals", "launches"];
+
 // Меню CRM: 8 групп по задачам. Каждая группа — набор вкладок.
 type Level = "r" | "w";
 const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: Tab[] }[] = [
   { key: "today", ic: "🏠", label: "Сегодня", desc: "Что требует действия прямо сейчас", tabs: ["dashboard", "support"] },
   { key: "people", ic: "👥", label: "Люди", desc: "Все, кто есть в приложении", tabs: ["users", "participants", "applications", "badges", "black-marks"] },
-  { key: "contest", ic: "👑", label: "Конкурс", desc: "Сезон, рейтинг и задания", tabs: ["builder", "shows", "launches", "awards", "stages", "rating-admin", "goal", "tasks", "cards"] },
-  { key: "content", ic: "🎬", label: "Контент", desc: "Что видят люди в приложении", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "broadcast", "mediafeed", "channels", "banners"] },
+  { key: "contest", ic: "👑", label: "Шоу страны", desc: "Запуск, страницы приложения, рейтинг, подарки, задания", tabs: ["builder", "shows", "launches", "awards", "stages", "rating-admin", "goal", "tasks", "cards"] },
+  { key: "content", ic: "🎬", label: "Контент и связь", desc: "Материалы, афиши, рассылки, каналы", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "broadcast", "mediafeed", "channels", "banners"] },
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["content-mod", "reports", "story-reports", "clan"] },
   { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["coins", "app-prices", "referrals"] },
   { key: "ads", ic: "📣", label: "Реклама и партнёры", desc: "Всё, что приносит доход от партнёров", tabs: ["partners", "partner-logos", "ad-space", "ad-prices", "ad-stats", "magazine-ads", "branding"] },
-  { key: "set", ic: "⚙️", label: "Настройки", desc: "Страны, языки, доступы", tabs: ["countries", "translations", "social", "tgbots", "documents", "staff", "action-log", "security"] },
+  { key: "set", ic: "⚙️", label: "Общее", desc: "Страны, боты, языки, доступы, безопасность", tabs: ["countries", "translations", "social", "tgbots", "documents", "staff", "action-log", "security"] },
 ];
 
 // Короткие подсказки под пунктами меню: что внутри.
 const TAB_DESC: Partial<Record<Tab, string>> = {
   dashboard: "Цифры и что ждёт решения",
+  builder: "Всё про шоу страны: запуск, даты, 5 страниц, «Между шоу»",
   support: "Обращения людей",
   users: "Все пользователи",
   participants: "Участницы конкурса",
@@ -468,7 +475,8 @@ export default function AdminPage() {
     );
   }
 
-  const visibleGroups = CRM_GROUPS.filter((g) => g.tabs.some((t) => access[t]));
+  const inMenu = (t: Tab) => !!access[t] && !(IN_BUILDER.includes(t) && access.builder);
+  const visibleGroups = CRM_GROUPS.filter((g) => g.tabs.some((t) => inMenu(t)));
   const curGroup = CRM_GROUPS.find((g) => g.key === group) ?? visibleGroups[0];
   const roleLabel = ROLE_LABELS[me?.role ?? ""] ?? "Сотрудник";
   const readOnly = access[tab] === "r";
@@ -476,7 +484,7 @@ export default function AdminPage() {
     <nav className="flex flex-col gap-1">
       {visibleGroups.map((g) => {
         const open = openGroup === g.key;
-        const items = g.tabs.filter((t) => access[t]);
+        const items = g.tabs.filter((t) => inMenu(t));
         const allRead = items.every((t) => access[t] === "r");
         return (
           <div key={g.key}>
@@ -549,7 +557,7 @@ export default function AdminPage() {
       </div>
 
       <div className="px-4 py-3 border-b border-muted/40">
-        <CrmSearch tabs={allowedTabs} onGo={go} />
+        <CrmSearch tabs={allowedTabs.filter((t) => !(IN_BUILDER.includes(t) && access.builder))} onGo={go} />
       </div>
 
       {menuOpen && (

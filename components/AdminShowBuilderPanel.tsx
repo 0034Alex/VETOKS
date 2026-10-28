@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { apiPost } from "@/lib/authClient";
 import { getCrmCountry } from "@/lib/crmCountry";
-import { BLOCKS, blockFits, dayIdx, effState, idxToStr, itemRange, startIdx, todayIdx, type ItemRow, type LaunchRow } from "@/lib/launch";
+import { BLOCKS, DEFAULT_STAGES, blockFits, dayIdx, effState, idxToStr, itemRange, startIdx, todayIdx, type ItemRow, type LaunchRow } from "@/lib/launch";
 import { ItemEditor } from "@/components/AdminLaunchesPanel";
 import AdminBetweenPanel from "@/components/AdminBetweenPanel";
 
@@ -92,6 +92,10 @@ export default function AdminShowBuilderPanel({ slots, launchesPanel }: { slots:
   const [open, setOpen] = useState<string>("");
   const [newShow, setNewShow] = useState("");
   const [msg, setMsg] = useState("");
+  const [wzDate, setWzDate] = useState("");
+  const [wzStages, setWzStages] = useState<{ name: string; days: number }[]>(DEFAULT_STAGES.map((s) => ({ ...s })));
+  const [wzBusy, setWzBusy] = useState(false);
+  const [delAsk, setDelAsk] = useState("");
 
   async function load() {
     if (!cid) return;
@@ -120,6 +124,24 @@ export default function AdminShowBuilderPanel({ slots, launchesPanel }: { slots:
     return true;
   }
 
+  async function launchNow() {
+    if (wzBusy || !newShow) return;
+    setWzBusy(true);
+    setMsg("");
+    try {
+      const a = await apiPost("/api/admin/launches", { action: "create", country_id: cid, show_key: newShow });
+      if (!a?.ok) return setMsg(a?.message || "Не получилось создать шоу.");
+      const date = wzDate || idxToStr(todayIdx("Europe/Kyiv"));
+      const b = await apiPost("/api/admin/launches", { action: "save", id: a.id, start_date: date, stages: wzStages, after_id: "" });
+      if (!b?.ok) return setMsg(b?.message || "Шоу создано, но даты не сохранились. Откройте «Даты запуска».");
+      const c = await apiPost("/api/admin/launches", { action: "status", id: a.id, status: "live" });
+      setMsg(c?.ok ? "Готово: шоу запущено." : `Шоу создано как черновик. ${c?.message || ""}`);
+      await load();
+      setLid(a.id);
+    } finally {
+      setWzBusy(false);
+    }
+  }
   if (!cid) return <p className="text-muted text-sm">Выберите страну вверху CRM.</p>;
   const title = (k: string) => shows.find((s) => s.key === k)?.title || k;
   const l = launches.find((x) => x.id === lid) ?? null;
@@ -171,21 +193,74 @@ export default function AdminShowBuilderPanel({ slots, launchesPanel }: { slots:
           </label>
         )}
         {l && eff && <p className="text-xs text-gold">Сейчас: {({ draft: "черновик", waiting: "запланировано", live: "идёт", paused: "на паузе", finished: "закончено" } as Record<string, string>)[eff.state] ?? eff.state}{S !== null ? "" : " · дата старта не задана"}</p>}
-        <div className="flex gap-2 flex-wrap items-end">
-          <label className="text-[11px] text-muted space-y-1 flex-1 min-w-[160px]">
-            Добавить шоу в эту страну
-            <select className={input} value={newShow} onChange={(e) => setNewShow(e.target.value)}>
-              {shows.map((s) => (
-                <option key={s.key} value={s.key}>
-                  {s.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button className="px-3 py-2 rounded-lg bg-gold text-black text-sm font-semibold" onClick={() => act({ action: "create", country_id: cid, show_key: newShow }, "Шоу добавлено в страну.")}>
-            + Добавить
+        <div className="border border-gold/40 rounded-xl p-3 space-y-2">
+          <p className="text-sm font-semibold text-offwhite">Запустить шоу в этой стране</p>
+          <div className="flex gap-2 flex-wrap items-end">
+            <label className="text-[11px] text-muted space-y-1 flex-1 min-w-[150px]">
+              Шоу
+              <select className={input} value={newShow} onChange={(e) => setNewShow(e.target.value)}>
+                {shows.map((s) => (
+                  <option key={s.key} value={s.key}>
+                    {s.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-[11px] text-muted space-y-1 flex-1 min-w-[150px]">
+              Дата старта
+              <input type="date" className={input} value={wzDate} onChange={(e) => setWzDate(e.target.value)} />
+            </label>
+          </div>
+          <p className="text-[11px] text-muted">Этапы и сколько дней идёт каждый:</p>
+          <div className="space-y-1.5">
+            {wzStages.map((st, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <input className={input} value={st.name} onChange={(e) => setWzStages(wzStages.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
+                <input type="number" min={1} max={365} className={`${input} !w-20`} value={st.days} onChange={(e) => setWzStages(wzStages.map((x, k) => (k === i ? { ...x, days: Math.max(1, Number(e.target.value) || 1) } : x)))} />
+                <span className="text-[11px] text-muted">дн.</span>
+                {wzStages.length > 1 && (
+                  <button className="text-red-300 text-sm px-1" onClick={() => setWzStages(wzStages.filter((_, k) => k !== i))}>
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            <button className="text-sm text-gold" onClick={() => setWzStages([...wzStages, { name: "Этап", days: 7 }])}>
+              + Этап
+            </button>
+          </div>
+          <button disabled={wzBusy} className="w-full px-3 py-2.5 rounded-lg bg-gold text-black text-sm font-semibold disabled:opacity-50" onClick={launchNow}>
+            {wzBusy ? "Запускаю..." : "Запустить шоу"}
           </button>
+          <p className="text-[11px] text-muted">Дата в будущем: шоу само включится в этот день. Пусто: стартует сегодня.</p>
         </div>
+        {launches.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[11px] text-muted">Шоу этой страны</p>
+            {launches.map((x) => (
+              <div key={x.id} className={`flex items-center gap-2 border rounded-lg px-2.5 py-2 ${x.id === lid ? "border-gold/60" : "border-muted/40"}`}>
+                <button className="flex-1 text-left text-sm text-offwhite min-w-0 truncate" onClick={() => { setLid(x.id); setOpen(""); }}>
+                  {title(x.show_key)}
+                </button>
+                <span className="text-[11px] text-muted">{({ draft: "черновик", live: "идёт", paused: "пауза", finished: "закончено" } as Record<string, string>)[x.status] ?? x.status}</span>
+                {delAsk === x.id ? (
+                  <>
+                    <button className="text-xs text-red-300 border border-red-300/60 rounded px-2 py-1" onClick={async () => { setDelAsk(""); await act({ action: "delete", id: x.id }, "Удалено."); }}>
+                      Точно удалить
+                    </button>
+                    <button className="text-xs text-muted" onClick={() => setDelAsk("")}>
+                      Отмена
+                    </button>
+                  </>
+                ) : (
+                  <button className="text-xs text-red-300" onClick={() => setDelAsk(x.id)}>
+                    Удалить
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         {msg && <p className="text-sm text-gold">{msg}</p>}
       </div>
 
