@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff, logAction } from "@/lib/staffServer";
+import { finalizeWinners } from "@/lib/autoWinners";
 import { BLOCKS, blockFits, COUNTRY_TZ, DEFAULT_STAGES, defaultItems, endIdx, startIdx, todayIdx, type LaunchRow, type Stage } from "@/lib/launch";
 
 export const dynamic = "force-dynamic";
@@ -181,6 +182,12 @@ export async function POST(req: Request) {
     const { error } = await supabaseAdmin.from("launches").update({ status: st }).eq("id", id);
     if (error) return NextResponse.json({ ok: false, message: error.message });
     await logAction(uid, "launch_status", id, { st });
+    if (st === "finished") {
+      try {
+        const w = await finalizeWinners(String((l as any).country_id), String((l as any).show_key));
+        if (w.top) return NextResponse.json({ ok: true, message: `Шоу закончено. Победительницы определены сами: топ-${w.top} в Зале славы.` });
+      } catch {}
+    }
     return NextResponse.json({ ok: true });
   }
 

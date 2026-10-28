@@ -29,6 +29,14 @@ export default function BetweenHome() {
         if (r?.ok) {
           const seen = new Set<string>();
           const list: W[] = [];
+          for (const s of [...(r.shows ?? [])].reverse()) {
+            for (const a of s.awards ?? []) {
+              if (!String(a.nomination).startsWith("Гранд-финал") || seen.has(a.id)) continue;
+              seen.add(a.id);
+              list.push({ id: a.id, name: a.name, photo: a.photo });
+            }
+            if (list.length) break;
+          }
           for (const crown of ["season", "region"]) {
             for (const s of [...(r.shows ?? [])].reverse()) {
               for (const w of s.winners ?? []) {
