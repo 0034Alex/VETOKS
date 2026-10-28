@@ -14,7 +14,7 @@ import { applyGiftOverrides, getAppPrices, getCurrencySymbol, getUsdRate } from 
 import { apiPost } from "@/lib/authClient";
 import TopUpSheet from "@/components/TopUpSheet";
 import { getMyCountry } from "@/lib/myCountry";
-import { useShow } from "@/lib/useShow";
+import { useShow, hasBlock } from "@/lib/useShow";
 import { applyContest, cleanContest } from "@/lib/contest";
 
 type Gift = {
@@ -131,7 +131,9 @@ function ShopContent() {
     (searchParams.get("section") as "gifts" | "votes" | "cards") ?? "gifts"
   );
   const [currencySymbol, setCurrencySymbol] = useState("\uE000");
-  const cardsOn = useCardsEnabled();
+  const cardsOn0 = useCardsEnabled();
+  const cardsOn = cardsOn0 && hasBlock(curShow, "g_cards");
+  const onG = (k: string) => hasBlock(curShow, k);
 
   useEffect(() => {
     (async () => {
@@ -281,10 +283,10 @@ function ShopContent() {
     <main className="min-h-screen pb-28">
       <PageHeader />
 
-      <FanZoneStrip />
+      {onG("g_fanzone") && <FanZoneStrip />}
 
       <div className="px-6 mb-4 flex gap-2">
-        <button
+        {onG("g_gifts") && <button
           onClick={() => setSection("gifts")}
           className={`px-4 py-2 rounded-full text-sm font-medium ${
             section === "gifts"
@@ -293,8 +295,8 @@ function ShopContent() {
           }`}
         >
           Подарки
-        </button>
-        <button
+        </button>}
+        {onG("g_votes") && <button
           onClick={() => setSection("votes")}
           className={`px-4 py-2 rounded-full text-sm font-medium ${
             section === "votes"
@@ -303,7 +305,7 @@ function ShopContent() {
           }`}
         >
           🗳️ Голоса
-        </button>
+        </button>}
         {cardsOn && <button
           onClick={() => setSection("cards")}
           className={`px-4 py-2 rounded-full text-sm font-medium ${
@@ -318,7 +320,7 @@ function ShopContent() {
 
       {section === "cards" && cardsOn ? (
         <CardsSection />
-      ) : section === "votes" ? (
+      ) : section === "votes" && onG("g_votes") ? (
         <VotesSection />
       ) : (
         <>
@@ -330,7 +332,7 @@ function ShopContent() {
 
       <p className="px-6 mb-4 text-muted text-xs">
         Баланс: <span className="text-gold font-semibold">{Math.round(balance)} {currencySymbol}</span>
-        {topupOn && (
+        {topupOn && onG("g_topup") && (
           <>
             {" · "}
             <button onClick={() => setTopOpen(true)} className="text-offwhite underline">Пополнить</button>
@@ -339,7 +341,7 @@ function ShopContent() {
       </p>
       <TopUpSheet open={topOpen} onClose={() => setTopOpen(false)} onDone={(b) => setBalance(b)} />
 
-      {!participantId && (
+      {!participantId && onG("g_pick") && (
         <div className="px-6 mb-4">
           {selectedParticipant ? (
             <div className="flex items-center justify-between bg-bgSurface border border-gold rounded-lg px-4 py-3">
@@ -502,7 +504,7 @@ function ShopContent() {
         </div>
       )}
 
-      <div className="px-6 mb-4 flex gap-2">
+      {onG("g_cats") && <div className="px-6 mb-4 flex gap-2">
         {CATEGORIES.map((c) => (
           <button
             key={c.key}
@@ -516,7 +518,7 @@ function ShopContent() {
             {c.label}
           </button>
         ))}
-      </div>
+      </div>}
 
       <div className="px-6 grid grid-cols-3 gap-3">
         {filteredGifts.map((g) => {

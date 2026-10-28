@@ -642,6 +642,9 @@ export default function AdminPage() {
               strip: <StripBlock />,
               rating: <AdminRatingPanel />,
               feed: <AdminMediaFeedPanel />,
+              prices: <AdminPricesPanel />,
+              coins: <AdminCoinsPanel />,
+              cards: <CardsTab />,
             }}
             launchesPanel={
               <AdminLaunchesPanel

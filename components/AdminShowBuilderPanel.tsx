@@ -54,7 +54,17 @@ const MEDIA: { key: string; slot?: string; note: string }[] = [
   { key: "m_share", note: "Кнопка «Поделиться»." },
   { key: "m_vote", note: "Кнопка «Голосовать» прямо в ленте." },
 ];
-const PAGE_BLOCKS: Record<string, typeof HOME> = { home: HOME, people: PEOPLE, media: MEDIA };
+// Страница «Подарки» (магазин).
+const GIFTS: { key: string; slot?: string; note: string }[] = [
+  { key: "g_fanzone", note: "Яркая полоса фан-зоны вверху магазина (минимальная сумма задаётся в настройках «Главная»)." },
+  { key: "g_gifts", slot: "prices", note: "Вкладка с подарками. Внутри: цены в долларах и курс." },
+  { key: "g_votes", slot: "coins", note: "Вкладка «Голоса». Внутри: монеты, короны и пакеты." },
+  { key: "g_cards", slot: "cards", note: "Вкладка «Карточки». Внутри: настройки карточек голосования." },
+  { key: "g_topup", note: "Строка с балансом и кнопка «Пополнить»." },
+  { key: "g_pick", note: "Выбор, кому подарить: подписки, недавние, поиск." },
+  { key: "g_cats", note: "Категории подарков: Лёгкие, Премиум, VIP." },
+];
+const PAGE_BLOCKS: Record<string, typeof HOME> = { home: HOME, people: PEOPLE, media: MEDIA, gifts: GIFTS };
 
 // На главной Мисс слушаются только эти блоки (остальные там пока не выключаются).
 const MISS_HOME = ["scope", "cats", "news", "strip", "top", "mag", "poll", "partners"];
