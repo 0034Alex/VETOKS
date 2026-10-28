@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff, logAction } from "@/lib/staffServer";
-import { DEFAULT_STAGES, defaultItems, endIdx, startIdx, todayIdx, type LaunchRow, type Stage } from "@/lib/launch";
+import { BLOCKS, DEFAULT_STAGES, defaultItems, endIdx, startIdx, todayIdx, type LaunchRow, type Stage } from "@/lib/launch";
 
 export const dynamic = "force-dynamic";
 
@@ -43,13 +43,74 @@ async function overlapMessage(l: LaunchRow): Promise<string | null> {
   return null;
 }
 
-// CRM → «Страны и запуск» (только владелец).
+async function launchCountry(id: string): Promise<string | undefined> {
+  const { data } = await supabaseAdmin.from("launches").select("country_id").eq("id", id).maybeSingle();
+  return (data?.country_id as string) ?? undefined;
+}
+async function itemCountry(id: string): Promise<string | undefined> {
+  const { data } = await supabaseAdmin.from("launch_items").select("launch_id").eq("id", id).maybeSingle();
+  return data ? launchCountry(data.launch_id as string) : undefined;
+}
+
+// Владелец — всё. «Менеджер страны» — сотрудник с правом «Конкурс» и своими странами (галочки в «Персонал»).
+function allowed(me: any, countryId: string | undefined, write: boolean): boolean {
+  if (me?.role === "super_admin") return true;
+  const perm = (me?.permissions ?? {}).contest;
+  if (!perm || !countryId) return false;
+  if (write && perm === "r") return false;
+  const cs = Array.isArray(me?.staff_countries) ? (me.staff_countries as string[]) : [];
+  return cs.length > 0 && cs.includes(countryId);
+}
+
+// CRM → «Страны и запуск» (владелец и менеджеры стран).
 export async function POST(req: Request) {
-  const uid = await requireStaff(req, ["super_admin"]);
+  const uid = await requireStaff(req, ["moderator", "finance_admin", "super_admin"]);
   if (uid instanceof NextResponse) return uid;
   const b = await req.json().catch(() => ({}));
+  const { data: me } = await supabaseAdmin.from("users").select("role, permissions, staff_countries").eq("id", uid).maybeSingle();
+  const a = String(b.action ?? "");
 
-  if (b.action === "list") {
+  if (a === "publish" || a === "publish_preview") {
+    if (me?.role !== "super_admin") return NextResponse.json({ ok: false, message: "Публикация шаблона — только владелец." }, { status: 403 });
+  } else {
+    let target: string | undefined;
+    if (a === "list" || a === "create") target = String(b.country_id ?? "");
+    else if (["save", "status", "shift", "delete", "copy"].includes(a)) target = await launchCountry(String(b.id ?? ""));
+    else if (a === "item_save") target = b.id ? await itemCountry(String(b.id)) : await launchCountry(String(b.launch_id ?? ""));
+    else if (a === "item_delete") target = await itemCountry(String(b.id ?? ""));
+    if (!allowed(me, target, a !== "list") || (a === "copy" && !allowed(me, String(b.country_id ?? ""), true))) {
+      return NextResponse.json({ ok: false, message: "Нет доступа к этой стране." }, { status: 403 });
+    }
+  }
+
+  // «Опубликовать» шаблон: добавляет во все запуски новые блоки (то, чего там ещё нет).
+  // Существующие блоки, тексты, подсказки и вопросы стран не трогаем.
+  if (a === "publish_preview" || a === "publish") {
+    const { data: ls } = await supabaseAdmin.from("launches").select("id, status");
+    const ids = ((ls as any[]) ?? []).filter((l) => l.status !== "finished").map((l) => l.id as string);
+    const { data: its } = ids.length ? await supabaseAdmin.from("launch_items").select("launch_id, block_key").eq("kind", "block").in("launch_id", ids) : { data: [] as any[] };
+    const have = new Map<string, Set<string>>();
+    (its ?? []).forEach((i: any) => {
+      if (!have.has(i.launch_id)) have.set(i.launch_id, new Set());
+      have.get(i.launch_id)!.add(i.block_key);
+    });
+    const rows: any[] = [];
+    ids.forEach((id) =>
+      BLOCKS.forEach((bl, n) => {
+        if (!have.get(id)?.has(bl.key)) rows.push({ launch_id: id, kind: "block", block_key: bl.key, title: "", body: "", enabled: true, stage: bl.stage, start_mode: bl.start_mode, start_n: bl.start_n, dur_mode: bl.dur_mode, dur_n: bl.dur_n, sort: n });
+      })
+    );
+    const launchesTouched = new Set(rows.map((r) => r.launch_id)).size;
+    const blocks = Array.from(new Set(rows.map((r) => r.block_key)));
+    if (a === "publish" && rows.length) {
+      const { error } = await supabaseAdmin.from("launch_items").insert(rows);
+      if (error) return NextResponse.json({ ok: false, message: error.message });
+      await logAction(uid, "launch_publish", null, { added: rows.length, launches: launchesTouched });
+    }
+    return NextResponse.json({ ok: true, count: rows.length, launches: launchesTouched, blocks });
+  }
+
+  if (a === "list") {
     const cid = String(b.country_id ?? "");
     if (!cid) return NextResponse.json({ ok: false, message: "Выберите страну." });
     const launches = await loadAll(cid);
@@ -60,7 +121,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, launches, items: it ?? [], shows: shows ?? [], today: todayIdx("Europe/Kyiv") });
   }
 
-  if (b.action === "create") {
+  if (a === "create") {
     const cid = String(b.country_id ?? "");
     const key = String(b.show_key ?? "").trim();
     if (!cid || !key) return NextResponse.json({ ok: false, message: "Выберите страну и шоу." });
@@ -85,7 +146,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, id: data.id });
   }
 
-  if (b.action === "save") {
+  if (a === "save") {
     const id = String(b.id ?? "");
     const patch: Record<string, any> = {};
     if (b.show_key !== undefined) patch.show_key = String(b.show_key).slice(0, 40);
@@ -103,7 +164,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  if (b.action === "status") {
+  if (a === "status") {
     const id = String(b.id ?? "");
     const st = String(b.status ?? "");
     if (!STATUSES.includes(st)) return NextResponse.json({ ok: false, message: "Неверный статус." });
@@ -119,7 +180,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  if (b.action === "shift") {
+  if (a === "shift") {
     const id = String(b.id ?? "");
     const days = int(b.days, -30, 30, 0);
     const { data: l } = await supabaseAdmin.from("launches").select("start_date,after_id,after_offset").eq("id", id).maybeSingle();
@@ -136,7 +197,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  if (b.action === "delete") {
+  if (a === "delete") {
     const id = String(b.id ?? "");
     await supabaseAdmin.from("launches").update({ after_id: null }).eq("after_id", id);
     const { error } = await supabaseAdmin.from("launches").delete().eq("id", id);
@@ -146,7 +207,7 @@ export async function POST(req: Request) {
   }
 
   // Копия запуска в другую страну (черновик): программа переносится, даты считаются от нового старта.
-  if (b.action === "copy") {
+  if (a === "copy") {
     const id = String(b.id ?? "");
     const cid = String(b.country_id ?? "");
     if (!cid) return NextResponse.json({ ok: false, message: "Выберите страну." });
@@ -168,7 +229,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, id: nl.id });
   }
 
-  if (b.action === "item_save") {
+  if (a === "item_save") {
     const kind = String(b.kind ?? "");
     if (!KINDS.includes(kind)) return NextResponse.json({ ok: false, message: "Неверный тип." });
     const row: Record<string, any> = {
@@ -177,7 +238,7 @@ export async function POST(req: Request) {
       title: String(b.title ?? "").slice(0, 120),
       body: String(b.body ?? "").slice(0, 1000),
       enabled: b.enabled !== false,
-      stage: int(b.stage, 0, 11, 0),
+      stage: int(b.stage, -1, 11, 0),
       start_mode: MODES.includes(b.start_mode) ? b.start_mode : "from",
       start_n: int(b.start_n, 0, 365, 0),
       dur_mode: DURS.includes(b.dur_mode) ? b.dur_mode : "stage",
@@ -194,7 +255,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, id: data?.id });
   }
 
-  if (b.action === "item_delete") {
+  if (a === "item_delete") {
     const { error } = await supabaseAdmin.from("launch_items").delete().eq("id", String(b.id ?? ""));
     if (error) return NextResponse.json({ ok: false, message: error.message });
     return NextResponse.json({ ok: true });

@@ -64,11 +64,13 @@ export default function TalentHome({ show }: { show: NonNullable<ActiveShow> }) 
 
         <RecruitBanner />
 
-        <div className="mb-5">
-          <PromoBannerCarousel />
-        </div>
+        {hasBlock(show, "promo") && (
+          <div className="mb-5">
+            <PromoBannerCarousel />
+          </div>
+        )}
 
-        <StoryStrip />
+        {hasBlock(show, "stories") && <StoryStrip />}
 
         {show.launch && (show.launch.tips.length > 0 || show.launch.tasks.length > 0) && (
           <div className="px-6 mb-5">

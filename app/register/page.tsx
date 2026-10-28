@@ -191,7 +191,7 @@ function RegisterForm() {
       />
       <span>
         Я принимаю{" "}
-        <ConsentLinks place="register" fallbackHref="/legal/offer" fallbackText="пользовательское соглашение и публичную оферту" />
+        <ConsentLinks place="register" countryId={regions.find((r) => r.id === regionId)?.country_id ?? null} fallbackHref="/legal/offer" fallbackText="пользовательское соглашение и публичную оферту" />
       </span>
     </label>
   );

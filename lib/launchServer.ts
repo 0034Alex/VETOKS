@@ -6,7 +6,7 @@ import { activeItems, effState, stageAt, totalDays, type ItemRow, type LaunchRow
 export type CountryView = {
   liveKey: string | null;
   recruitKey: string | null;
-  blocks: string[] | null; // какие блоки включены сегодня (null — все)
+  blocksOff: string[]; // блоки, заданные в запуске, но сегодня выключенные
   banner: { apply?: boolean; poll_question?: string };
   info: { stage: string; day: number; total: number; tips: string[]; tasks: string[] } | null;
 };
@@ -22,7 +22,7 @@ export async function loadCountryLaunches(countryId: string): Promise<{ launches
 export async function countryView(countryId: string, now: number = Date.now()): Promise<CountryView | null> {
   const { launches, items } = await loadCountryLaunches(countryId);
   if (!launches.length) return null;
-  const view: CountryView = { liveKey: null, recruitKey: null, blocks: null, banner: {}, info: null };
+  const view: CountryView = { liveKey: null, recruitKey: null, blocksOff: [], banner: {}, info: null };
 
   const states = launches.map((l) => ({ l, ...effState(l, launches, todayIdxOf(l, now)) }));
   const live = states.filter((s) => s.state === "live").sort((a, b) => (a.S ?? 0) - (b.S ?? 0))[0];
@@ -31,9 +31,10 @@ export async function countryView(countryId: string, now: number = Date.now()): 
     const mine = items.filter((i) => i.launch_id === live.l.id);
     const act = activeItems(live.l, mine, live.S, today);
     view.liveKey = live.l.show_key;
-    const blockItems = mine.filter((i) => i.kind === "block");
-    if (blockItems.length) view.blocks = act.filter((i) => i.kind === "block" && i.block_key).map((i) => i.block_key as string);
-    if (blockItems.some((i) => i.block_key === "apply")) view.banner.apply = !!view.blocks?.includes("apply");
+    const defined = Array.from(new Set(mine.filter((i) => i.kind === "block" && i.block_key).map((i) => i.block_key as string)));
+    const onNow = new Set(act.filter((i) => i.kind === "block" && i.block_key).map((i) => i.block_key as string));
+    view.blocksOff = defined.filter((k) => !onNow.has(k));
+    if (defined.includes("apply")) view.banner.apply = onNow.has("apply");
     const q = act.find((i) => i.kind === "question");
     if (q) view.banner.poll_question = (q.body || q.title).slice(0, 200);
     const st = stageAt(live.l, live.S, today);

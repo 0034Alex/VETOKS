@@ -62,7 +62,7 @@ export async function POST(req: Request) {
         ? {
             ...pub(lv),
             banner: { ...(lv.banner ?? {}), ...cv.banner },
-            blocks: cv.blocks,
+            blocksOff: cv.blocksOff,
             launch: cv.info,
           }
         : null;

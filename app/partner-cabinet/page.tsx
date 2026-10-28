@@ -10,6 +10,7 @@ import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import PartnerAdStats from "@/components/PartnerAdStats";
 import { apiPost } from "@/lib/authClient";
+import { getMyCountry, orCountry } from "@/lib/myCountry";
 import { payAdRequest } from "@/lib/adPayClient";
 import { adHintFor } from "@/lib/adHints";
 
@@ -146,12 +147,15 @@ export default function PartnerCabinetPage() {
       setApproved(true);
       setCompanyName(sponsor?.name ?? "");
       await loadPurchases();
-      const { data: docsData } = await supabase
+      const myC = await getMyCountry();
+      let dq = supabase
         .from("documents")
         .select("id, title, content")
         .eq("is_active", true)
         .eq("audience", "partner")
         .order("sort_order", { ascending: true });
+      dq = orCountry(dq, myC.countryId);
+      const { data: docsData } = await dq;
       setDocs((docsData as DocRow[]) ?? []);
       setLoading(false);
     })();

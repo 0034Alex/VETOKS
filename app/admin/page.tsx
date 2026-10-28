@@ -320,7 +320,7 @@ const ROLE_LABELS: Record<string, string> = {
 // Что человеку можно: по каждой вкладке «только смотреть» или «смотреть и менять».
 // Владелец — всё. Новые права хранятся по группам, старые (галочки) — как раньше.
 // Вкладки только для владельца, даже если у сотрудника есть вся группа.
-const OWNER_ONLY: Tab[] = ["shows", "awards", "launches"];
+const OWNER_ONLY: Tab[] = ["shows", "awards"];
 
 function computeAccess(user: CurrentUser): Partial<Record<Tab, Level>> {
   const out: Partial<Record<Tab, Level>> = {};
@@ -621,7 +621,14 @@ export default function AdminPage() {
         {tab === "app-prices" && <AdminPricesPanel />}
         {tab === "coins" && <AdminCoinsPanel />}
         {tab === "shows" && <AdminShowsPanel />}
-        {tab === "launches" && <AdminLaunchesPanel />}
+        {tab === "launches" && (
+          <AdminLaunchesPanel
+            allowedIds={me?.role === "super_admin" ? null : Array.isArray(me?.staff_countries) ? (me!.staff_countries as string[]) : []}
+            isOwner={me?.role === "super_admin"}
+            onGo={(t) => go(t as Tab)}
+            canOpen={(t) => !!access[t as Tab]}
+          />
+        )}
         {tab === "awards" && <AdminAwardsPanel />}
         {tab === "story-reports" && <AdminStoryReportsPanel />}
         {tab === "documents" && <AdminDocumentsPanel />}

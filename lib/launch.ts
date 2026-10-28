@@ -30,11 +30,16 @@ export type ItemRow = {
   sort: number;
 };
 
-export const BLOCKS: { key: string; label: string }[] = [
-  { key: "apply", label: "Кнопка «Подать анкету»" },
-  { key: "battle", label: "Батл" },
-  { key: "top", label: "Топ-25" },
-  { key: "poll", label: "Опрос зрителей" },
+// Реестр блоков шаблона. Новый блок в приложении = новая строка здесь (с умолчаниями);
+// кнопка «Опубликовать» в CRM добавит его во все запуски (не трогая то, что уже есть).
+export type BlockDef = { key: string; label: string; stage: number; start_mode: string; start_n: number; dur_mode: string; dur_n: number };
+export const BLOCKS: BlockDef[] = [
+  { key: "apply", label: "Кнопка «Подать анкету»", stage: 0, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 },
+  { key: "battle", label: "Батл", stage: -1, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 },
+  { key: "top", label: "Топ-25", stage: -1, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 },
+  { key: "poll", label: "Опрос зрителей", stage: -1, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 },
+  { key: "stories", label: "Истории", stage: -1, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 },
+  { key: "promo", label: "Рекламные баннеры на главной", stage: -1, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 },
 ];
 export const KIND_LABEL: Record<string, string> = { block: "Блок", tip: "Подсказка участникам", question: "Вопрос зрителям", task: "Задание" };
 export const DEFAULT_STAGES: Stage[] = [
@@ -92,8 +97,14 @@ export function stageRange(l: LaunchRow, S: number, i: number): [number, number]
 
 // Когда пункт действует (индексы дней, включительно).
 export function itemRange(l: LaunchRow, S: number, it: ItemRow): [number, number] {
-  const si = Math.min(Math.max(0, it.stage | 0), Math.max(0, l.stages.length - 1));
-  const [a0, b0] = stageRange(l, S, si);
+  let a0: number, b0: number;
+  if ((it.stage | 0) < 0) {
+    a0 = S;
+    b0 = S + totalDays(l) - 1; // «весь запуск»
+  } else {
+    const si = Math.min(Math.max(0, it.stage | 0), Math.max(0, l.stages.length - 1));
+    [a0, b0] = stageRange(l, S, si);
+  }
   const n = Math.max(0, Math.floor(Number(it.start_n)) || 0);
   let a: number;
   if (it.start_mode === "before") a = S - n;
@@ -135,11 +146,5 @@ export function stageAt(l: LaunchRow, S: number, today: number): { idx: number; 
 }
 
 export function defaultItems(): Omit<ItemRow, "id" | "launch_id">[] {
-  const base = { kind: "block", title: "", body: "", enabled: true, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1 };
-  return [
-    { ...base, block_key: "apply", stage: 0, sort: 0 },
-    { ...base, block_key: "battle", stage: 1, sort: 1 },
-    { ...base, block_key: "top", stage: 0, dur_mode: "days", dur_n: 14 + 21 + 7, sort: 2 },
-    { ...base, block_key: "poll", stage: 1, sort: 3 },
-  ];
+  return BLOCKS.map((b, i) => ({ kind: "block", block_key: b.key, title: "", body: "", enabled: true, stage: b.stage, start_mode: b.start_mode, start_n: b.start_n, dur_mode: b.dur_mode, dur_n: b.dur_n, sort: i }));
 }

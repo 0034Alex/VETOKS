@@ -56,7 +56,17 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
   );
 }
 
-export default function AdminLaunchesPanel() {
+export default function AdminLaunchesPanel({
+  allowedIds = null,
+  isOwner = false,
+  onGo,
+  canOpen,
+}: {
+  allowedIds?: string[] | null;
+  isOwner?: boolean;
+  onGo?: (t: string) => void;
+  canOpen?: (t: string) => boolean;
+}) {
   const [countries, setCountries] = useState<Country[]>([]);
   const [cid, setCid] = useState("");
   const [launches, setLaunches] = useState<LaunchRow[]>([]);
@@ -65,6 +75,21 @@ export default function AdminLaunchesPanel() {
   const [newShow, setNewShow] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pub, setPub] = useState<{ count: number; launches: number; blocks: string[] } | null>(null);
+  const [money, setMoney] = useState<{ rate: string; cur: string }>({ rate: "", cur: "" });
+
+  async function loadPub() {
+    if (!isOwner) return;
+    const r = await apiPost("/api/admin/launches", { action: "publish_preview" });
+    if (r?.ok) setPub({ count: r.count, launches: r.launches, blocks: r.blocks });
+  }
+  async function doPublish() {
+    const r = await apiPost("/api/admin/launches", { action: "publish" });
+    if (!r?.ok) return flash(r?.message || "Не получилось.");
+    flash(r.count ? `Опубликовано: добавлено блоков ${r.count} в ${r.launches} запусках.` : "Нечего добавлять — всё уже есть.");
+    await load();
+    await loadPub();
+  }
 
   function flash(t: string) {
     setMsg(t);
@@ -74,7 +99,7 @@ export default function AdminLaunchesPanel() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from("countries").select("id, name").order("name");
-      const list = (data as Country[]) ?? [];
+      const list = ((data as Country[]) ?? []).filter((c) => !allowedIds || allowedIds.includes(c.id));
       setCountries(list);
       const saved = getCrmCountry();
       setCid(list.find((c) => c.id === saved)?.id ?? list[0]?.id ?? "");
@@ -94,6 +119,15 @@ export default function AdminLaunchesPanel() {
   }
   useEffect(() => {
     load();
+    loadPub();
+    (async () => {
+      if (!cid) return;
+      const { data: st } = await supabase.from("platform_settings").select("key, value").in("key", [`usd_to_uah_rate:${cid}`, "usd_to_uah_rate"]);
+      const m: Record<string, string> = {};
+      (st ?? []).forEach((x: any) => (m[x.key] = x.value));
+      const { data: c } = await supabase.from("countries").select("currency_symbol").eq("id", cid).maybeSingle();
+      setMoney({ rate: m[`usd_to_uah_rate:${cid}`] || "", cur: (c as any)?.currency_symbol || "" });
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cid]);
 
@@ -142,6 +176,49 @@ export default function AdminLaunchesPanel() {
           В стране идёт одно шоу за раз. Пока в стране нет ни одного запуска, приложение работает как раньше (по датам в разделе «Шоу»). Как только добавите запуск, шоу в этой стране выбирает он.
         </p>
         {msg && <p className="text-sm text-gold">{msg}</p>}
+      </div>
+
+      {isOwner && (
+        <div className="bg-bgSurface border border-muted/40 rounded-xl p-3 space-y-2">
+          <h3 className="text-sm font-semibold text-offwhite">Опубликовать шаблон</h3>
+          <p className="text-[11px] text-muted">
+            Новые блоки приложения добавляются сюда кодом. Кнопка добавляет их во все запуски всех стран. Что страны уже внесли (тексты, вопросы, подсказки, свои выключатели) не меняется.
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button className={pub && pub.count > 0 ? btnGold : btn} onClick={doPublish}>
+              📤 Опубликовать
+            </button>
+            <span className="text-xs text-muted">
+              {pub ? (pub.count > 0 ? `Ждёт публикации: ${pub.blocks.map((k) => BLOCKS.find((b) => b.key === k)?.label ?? k).join(", ")} (запусков: ${pub.launches})` : "Всё опубликовано, новых блоков нет.") : ""}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-bgSurface border border-muted/40 rounded-xl p-3 space-y-2">
+        <h3 className="text-sm font-semibold text-offwhite">Деньги, документы и реклама этой страны</h3>
+        <p className="text-xs text-offwhite">
+          Курс: {money.rate ? `1 $ = ${money.rate} ${money.cur}` : "не задан (берётся общий)"}. Цены в долларах, в приложении показываются в валюте страны, внутри всё через монету.
+        </p>
+        {typeof window !== "undefined" && getCrmCountry() !== cid && (
+          <p className="text-[11px] text-orange-300">Чтобы открыть разделы ниже для этой страны, выберите её в шапке CRM (вверху).</p>
+        )}
+        <div className="flex gap-2 flex-wrap">
+          {[
+            ["app-prices", "Курс и цены"],
+            ["documents", "Документы"],
+            ["banners", "Баннеры"],
+            ["ad-space", "Реклама и места"],
+            ["calendar", "Подсказки (календарь)"],
+            ["countries", "Страны и регионы"],
+          ]
+            .filter(([t]) => !canOpen || canOpen(t))
+            .map(([t, label]) => (
+              <button key={t} className={btn} onClick={() => onGo?.(t)}>
+                {label} →
+              </button>
+            ))}
+        </div>
       </div>
 
       {loading && <p className="text-sm text-muted">Загрузка…</p>}
@@ -360,7 +437,7 @@ function LaunchCard({
                       <button
                         key={b.key}
                         className={btn}
-                        onClick={() => act({ action: "item_save", launch_id: l.id, kind: "block", block_key: b.key, stage: 0, enabled: true, start_mode: "from", start_n: 0, dur_mode: "stage", dur_n: 1, sort: 9 }, "Добавлено.")}
+                        onClick={() => act({ action: "item_save", launch_id: l.id, kind: "block", block_key: b.key, stage: b.stage, enabled: true, start_mode: b.start_mode, start_n: b.start_n, dur_mode: b.dur_mode, dur_n: b.dur_n, sort: 9 }, "Добавлено.")}
                       >
                         + {b.label}
                       </button>
@@ -461,6 +538,7 @@ function ItemEditor({ launch, S, it, act }: { launch: LaunchRow; S: number | nul
         <label className="text-[11px] text-muted space-y-1 flex-1 min-w-[110px]">
           Этап
           <select className={inp} value={d.stage} onChange={(e) => set({ stage: Number(e.target.value) })}>
+            <option value={-1}>Весь запуск</option>
             {launch.stages.map((s, i) => (
               <option key={i} value={i}>
                 {s.name}
@@ -504,11 +582,6 @@ function ItemEditor({ launch, S, it, act }: { launch: LaunchRow; S: number | nul
         {!isBlock && (
           <button className="text-xs text-red-300 ml-auto" onClick={() => act({ action: "item_delete", id: d.id }, "Удалено.")}>
             Удалить
-          </button>
-        )}
-        {isBlock && (
-          <button className="text-xs text-muted ml-auto" onClick={() => act({ action: "item_delete", id: d.id }, "Блок убран из программы.")}>
-            Убрать
           </button>
         )}
       </div>

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
+import { supabase } from "@/lib/supabaseClient";
+import { getCrmCountry } from "@/lib/crmCountry";
 
 const AUD: Record<string, string> = { all: "все", participants: "участницы", partner: "кабинет партнёра" };
 
@@ -12,6 +14,8 @@ export default function AdminDocumentsPanel() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [audience, setAudience] = useState("all");
+  const [countries, setCountries] = useState<{ id: string; name: string }[]>([]);
+  const [country, setCountry] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
   const [eTitle, setETitle] = useState("");
   const [eContent, setEContent] = useState("");
@@ -25,7 +29,13 @@ export default function AdminDocumentsPanel() {
   }
   useEffect(() => {
     load();
+    (async () => {
+      const { data } = await supabase.from("countries").select("id, name").order("name");
+      setCountries((data as { id: string; name: string }[]) ?? []);
+      setCountry(getCrmCountry());
+    })();
   }, []);
+  const cname = (id?: string | null) => (id ? countries.find((c) => c.id === id)?.name ?? "страна" : "Стандарт (все страны)");
 
   const act = async (body: object) => {
     const r = await apiPost("/api/admin/documents", body);
@@ -35,7 +45,11 @@ export default function AdminDocumentsPanel() {
 
   async function create() {
     if (!title.trim() || !content.trim()) return;
-    await act({ action: "create", title, content, audience });
+    const r = await act({ action: "create", title, content, audience, country_id: country || null });
+    if (r && r.ok === false) {
+      alert(r.message || "Не получилось. Если пишет про колонку — выполните SQL про country_id.");
+      return;
+    }
     setTitle("");
     setContent("");
     setAudience("all");
@@ -75,6 +89,16 @@ export default function AdminDocumentsPanel() {
           <option value="participants">Только участницы</option>
           <option value="partner">Кабинет партнёра (показывать партнёрам)</option>
         </select>
+        <label className="block text-xs text-muted mb-1">Для какой страны этот документ</label>
+        <select value={country} onChange={(e) => setCountry(e.target.value)} className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3">
+          <option value="">Стандарт — для всех стран</option>
+          {countries.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <p className="text-[11px] text-muted mb-3">Свой документ страны заменяет стандартный с тем же названием. Другие страны его не видят.</p>
         <button onClick={create} disabled={!title.trim() || !content.trim()} className="w-full bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm disabled:opacity-40">
           Добавить документ
         </button>
@@ -86,7 +110,7 @@ export default function AdminDocumentsPanel() {
             <div className="flex justify-between items-start mb-1">
               <p className="text-offwhite text-sm font-semibold">{d.title}</p>
               <span className="text-muted text-[10px] text-right">
-                {AUD[d.audience] ?? d.audience} · версия {d.version ?? 1}
+                {cname(d.country_id)} · {AUD[d.audience] ?? d.audience} · версия {d.version ?? 1}
                 {d.updated_at ? ` · ${new Date(d.updated_at).toLocaleDateString("ru-RU")}` : ""}
               </span>
             </div>
@@ -109,6 +133,19 @@ export default function AdminDocumentsPanel() {
                   <button onClick={() => act({ action: "toggle", id: d.id, active: !d.is_active })} className={`text-xs px-3 py-1 rounded-full ${d.is_active ? "bg-success text-bgPrimary" : "bg-bgPrimary border border-muted text-muted"}`}>
                     {d.is_active ? "Активен" : "Выключен"}
                   </button>
+                  <select
+                    value={d.country_id ?? ""}
+                    onChange={(e) => act({ action: "set_country", id: d.id, country_id: e.target.value || null })}
+                    className="text-xs px-2 py-1 rounded-full bg-bgPrimary border border-muted text-offwhite"
+                    title="Для какой страны документ"
+                  >
+                    <option value="">Стандарт (все страны)</option>
+                    {countries.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
                   <select
                     value={(d as any).show_at ?? ""}
                     onChange={(e) => act({ action: "show_at", id: d.id, value: e.target.value })}

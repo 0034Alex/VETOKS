@@ -4,15 +4,15 @@ import { useEffect, useState } from "react";
 
 // Какое шоу сейчас активно (его сообщает components/ShowTheme.tsx после запроса к серверу).
 export type ShowBanner = { image?: string; title?: string; subtitle?: string; stage_label?: string; countdown_to?: string | null; apply?: boolean; apply_until?: string | null; poll_question?: string };
-export type ActiveShow = { id: string; key: string; title: string; contest: string; preview: boolean; banner?: ShowBanner; endsAt?: string | null; blocks?: string[] | null; launch?: { stage: string; day: number; total: number; tips: string[]; tasks: string[] } | null } | null;
+export type ActiveShow = { id: string; key: string; title: string; contest: string; preview: boolean; banner?: ShowBanner; endsAt?: string | null; blocksOff?: string[]; launch?: { stage: string; day: number; total: number; tips: string[]; tasks: string[] } | null } | null;
 const EVT = "vetoks-show";
 let current: ActiveShow = null;
 let loaded = false;
 
 const STORE = "vt_show_info";
 
-// Блок включён в CRM (null — запусков нет, показываем всё как раньше).
-export const hasBlock = (s: ActiveShow | undefined | null, key: string) => !s?.blocks || s.blocks.includes(key);
+// Блок виден, если в CRM запуска он не выключен (нет запуска или блок не задан — показываем как раньше).
+export const hasBlock = (s: ActiveShow | undefined | null, key: string) => !(s?.blocksOff ?? []).includes(key);
 
 // Кнопка «Подать анкету» видна, пока приём открыт: галочка в CRM и срок «приём анкет до».
 export const applyOpen = (b?: ShowBanner | null) => b?.apply !== false && (!b?.apply_until || Date.now() < new Date(b.apply_until).getTime());

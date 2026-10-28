@@ -23,5 +23,6 @@ export async function POST(req: Request) {
   }
 
   const place = b.place === "apply" ? "apply" : "register";
-  return NextResponse.json({ ok: true, docs: await consentDocs(place) });
+  const cid = typeof b.countryId === "string" && b.countryId.length < 64 ? b.countryId : null;
+  return NextResponse.json({ ok: true, docs: await consentDocs(place, cid) });
 }
