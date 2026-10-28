@@ -146,6 +146,13 @@ export default function AdminLaunchesPanel({
 
   return (
     <div className="space-y-4 max-w-3xl">
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-3 text-sm text-offwhite space-y-1">
+        <p className="font-semibold">Как пользоваться, три шага:</p>
+        <p>1. Выберите страну и добавьте шоу.</p>
+        <p>2. Откройте шоу, поставьте дату старта.</p>
+        <p>3. Нажмите «Старт». Дальше всё идёт само по дням.</p>
+        <p className="text-xs text-muted">Остальное (подсказки, вопросы, блоки) по желанию, всё внутри шоу. Публикация, курс и копирование — внизу в «Ещё».</p>
+      </div>
       <div className="bg-bgSurface border border-muted/40 rounded-xl p-3 space-y-3">
         <div className="flex gap-2 flex-wrap items-end">
           <label className="flex-1 min-w-[160px] text-xs text-muted space-y-1">
@@ -178,8 +185,11 @@ export default function AdminLaunchesPanel({
         {msg && <p className="text-sm text-gold">{msg}</p>}
       </div>
 
+      <details className="bg-bgSurface border border-muted/40 rounded-xl p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-offwhite">Ещё: публикация шаблона, курс, документы, реклама</summary>
+        <div className="space-y-3 mt-3">
       {isOwner && (
-        <div className="bg-bgSurface border border-muted/40 rounded-xl p-3 space-y-2">
+        <div className="border border-muted/40 rounded-xl p-3 space-y-2">
           <h3 className="text-sm font-semibold text-offwhite">Опубликовать шаблон</h3>
           <p className="text-[11px] text-muted">
             Новые блоки приложения добавляются сюда кодом. Кнопка добавляет их во все запуски всех стран. Что страны уже внесли (тексты, вопросы, подсказки, свои выключатели) не меняется.
@@ -195,7 +205,7 @@ export default function AdminLaunchesPanel({
         </div>
       )}
 
-      <div className="bg-bgSurface border border-muted/40 rounded-xl p-3 space-y-2">
+      <div className="border border-muted/40 rounded-xl p-3 space-y-2">
         <h3 className="text-sm font-semibold text-offwhite">Деньги, документы и реклама этой страны</h3>
         <p className="text-xs text-offwhite">
           Курс: {money.rate ? `1 $ = ${money.rate} ${money.cur}` : "не задан (берётся общий)"}. Цены в долларах, в приложении показываются в валюте страны, внутри всё через монету.
@@ -220,6 +230,8 @@ export default function AdminLaunchesPanel({
             ))}
         </div>
       </div>
+        </div>
+      </details>
 
       {loading && <p className="text-sm text-muted">Загрузка…</p>}
       {!loading && launches.length === 0 && <p className="text-sm text-muted">В этой стране пока нет запусков. Добавьте первое шоу.</p>}
@@ -357,7 +369,8 @@ function LaunchCard({
 
           {/* Старт и этапы */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-offwhite">Старт и этапы</h3>
+            <h3 className="text-sm font-semibold text-offwhite">1. Старт и этапы</h3>
+            <p className="text-[11px] text-muted">Когда начинается шоу и сколько дней идёт каждый этап.</p>
             <div className="flex gap-2 flex-wrap items-end">
               <label className="text-xs text-muted space-y-1 flex-1 min-w-[150px]">
                 Старт
@@ -425,7 +438,7 @@ function LaunchCard({
           {/* Пункты программы */}
           {groups.map((g) => (
             <div key={g.kind} className="space-y-2">
-              <h3 className="text-sm font-semibold text-offwhite">{g.kind === "block" ? "Блоки в приложении (включить / выключить и когда)" : KIND_LABEL[g.kind] + " (по этапам и дням)"}</h3>
+              <h3 className="text-sm font-semibold text-offwhite">{g.kind === "block" ? "2. Что видят люди (включить или выключить)" : g.kind === "tip" ? "3. Подсказки участникам по дням" : g.kind === "question" ? "Вопросы зрителям по дням" : "Задания по дням"}</h3>
               {g.list.length === 0 && g.kind !== "block" && <p className="text-xs text-muted">Пока нет.</p>}
               {g.list.map((it) => (
                 <ItemEditor key={it.id + "-" + it.start_mode + it.stage} launch={{ ...l, stages }} S={S} it={it} act={act} />
@@ -455,8 +468,10 @@ function LaunchCard({
             </div>
           ))}
 
+          <details className="border-t border-muted/30 pt-3">
+          <summary className="cursor-pointer text-sm font-semibold text-offwhite">Ещё: посмотреть день, скопировать, удалить</summary>
           {/* Предпросмотр дня */}
-          <div className="space-y-2 border-t border-muted/30 pt-3">
+          <div className="space-y-2 pt-3">
             <h3 className="text-sm font-semibold text-offwhite">Что будет в выбранный день</h3>
             <input type="date" className={inp} value={previewDate} onChange={(e) => setPreviewDate(e.target.value)} />
             {pIdx !== null && (
@@ -499,6 +514,7 @@ function LaunchCard({
               Удалить запуск
             </button>
           </div>
+          </details>
         </div>
       )}
     </div>

@@ -205,16 +205,16 @@ function CrmSearch({ tabs, onGo }: { tabs: Tab[]; onGo: (t: Tab) => void }) {
       })
     : [];
   return (
-    <div className="relative min-w-0 flex-1 max-w-sm">
+    <div className="relative w-full max-w-xl">
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="🔎 Найти: курс, баннер, вопрос…"
+        placeholder="🔎 Поиск по CRM"
         aria-label="Поиск по CRM"
-        className="w-full bg-bgPrimary border border-muted/60 rounded-lg px-3 py-1.5 text-sm text-offwhite min-w-0"
+        className="w-full bg-bgPrimary border border-muted/60 rounded-lg px-3 py-2.5 text-base text-offwhite min-w-0"
       />
       {v && (
-        <div className="absolute left-0 right-0 top-10 z-50 bg-bgSurface border border-gold/60 rounded-lg overflow-hidden shadow-xl max-h-80 overflow-y-auto">
+        <div className="absolute left-0 right-0 top-12 z-50 bg-bgSurface border border-gold/60 rounded-lg overflow-hidden shadow-xl max-h-80 overflow-y-auto">
           {found.length === 0 && <p className="px-3 py-2 text-sm text-muted">Ничего не найдено</p>}
           {found.map((t) => {
             const g = CRM_GROUPS.find((x) => x.tabs.includes(t));
@@ -536,11 +536,14 @@ export default function AdminPage() {
         <span className="text-xs border border-gold/60 text-gold rounded-full px-2.5 py-1 whitespace-nowrap" title={me?.email ?? ""}>
           {roleLabel}
         </span>
-        <CrmSearch tabs={allowedTabs} onGo={go} />
         <div className="ml-auto flex items-center gap-2 min-w-0">
           <span className="hidden sm:inline text-xs text-muted whitespace-nowrap">🌍 Страна CRM:</span>
           <CrmCountrySwitch allowedIds={me?.role === "super_admin" ? null : Array.isArray(me?.staff_countries) ? (me!.staff_countries as string[]) : null} />
         </div>
+      </div>
+
+      <div className="px-4 py-3 border-b border-muted/40">
+        <CrmSearch tabs={allowedTabs} onGo={go} />
       </div>
 
       {menuOpen && (
