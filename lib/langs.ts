@@ -56,3 +56,23 @@ export const GOOGLE_CODE: Record<Lang, string> = {
   ru: "ru", uk: "uk", en: "en", ro: "ro", ka: "ka", az: "az", kk: "kk", hy: "hy",
   uz: "uz", pl: "pl", cs: "cs", ky: "ky", tg: "tg", tk: "tk", be: "be",
 };
+
+// Языки, для которых собраны полные словари всего приложения. Остальные пока переведены только
+// частично (шаблон шоу), поэтому их не предлагаем, чтобы не мешать языки. Добавьте код сюда,
+// когда словарь языка будет готов целиком.
+export const READY_LANGS: Lang[] = ["uk", "ru", "en"];
+
+// Языки страны, которые уже можно показывать (главный первым). Если готовых нет — английский.
+export function readyLangsForCountry(code?: string | null): Lang[] {
+  const l = langsForCountry(code).filter((x) => READY_LANGS.includes(x));
+  return l.length ? l : ["en"];
+}
+
+// Язык по настройкам телефона/браузера; если такого готового языка нет — английский.
+export function langFromDevice(list: readonly string[] | undefined | null): Lang {
+  for (const raw of list ?? []) {
+    const p = String(raw).toLowerCase().split("-")[0];
+    if (isLang(p) && READY_LANGS.includes(p)) return p;
+  }
+  return "en";
+}

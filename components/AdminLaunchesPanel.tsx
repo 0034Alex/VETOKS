@@ -16,12 +16,15 @@ import {
   stageAt,
   stageRange,
   totalDays,
+  COUNTRY_TZ,
+  TZ_LIST,
+  tzLabel,
   type ItemRow,
   type LaunchRow,
   type Stage,
 } from "@/lib/launch";
 
-type Country = { id: string; name: string };
+type Country = { id: string; name: string; code?: string | null };
 type ShowOpt = { key: string; title: string };
 
 const STATE_LABEL: Record<string, string> = {
@@ -98,7 +101,7 @@ export default function AdminLaunchesPanel({
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("countries").select("id, name").order("name");
+      const { data } = await supabase.from("countries").select("id, name, code").order("name");
       const list = ((data as Country[]) ?? []).filter((c) => !allowedIds || allowedIds.includes(c.id));
       setCountries(list);
       const saved = getCrmCountry();
@@ -248,6 +251,7 @@ export default function AdminLaunchesPanel({
           countries={countries}
           cid={cid}
           act={act}
+          suggestTz={COUNTRY_TZ[String(countries.find((c) => c.id === cid)?.code ?? "").toUpperCase()] ?? ""}
         />
       ))}
     </div>
@@ -264,6 +268,7 @@ function LaunchCard({
   countries,
   cid,
   act,
+  suggestTz,
 }: {
   l: LaunchRow;
   index: number;
@@ -274,6 +279,7 @@ function LaunchCard({
   countries: Country[];
   cid: string;
   act: (b: Record<string, unknown>, ok?: string) => Promise<boolean>;
+  suggestTz: string;
 }) {
   const [open, setOpen] = useState(index === 0);
   const [stages, setStages] = useState<Stage[]>(l.stages);
@@ -406,10 +412,24 @@ function LaunchCard({
                 </>
               )}
               <label className="text-xs text-muted space-y-1 flex-1 min-w-[150px]">
-                Часовой пояс страны
-                <input className={inp} value={tz} onChange={(e) => setTz(e.target.value)} placeholder="Europe/Kyiv" />
+                Часовой пояс (по нему в 00:00 страны меняется день)
+                <select className={inp} value={tz} onChange={(e) => setTz(e.target.value)}>
+                  {(TZ_LIST.includes(tz) ? TZ_LIST : [tz, ...TZ_LIST]).map((z) => (
+                    <option key={z} value={z}>
+                      {tzLabel(z)}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
+            {suggestTz && l.tz !== suggestTz && (
+              <p className="text-[11px] text-orange-300">
+                Для этой страны обычно {tzLabel(suggestTz)}.{" "}
+                <button className="underline" onClick={() => act({ action: "save", id: l.id, tz: suggestTz }, "Часовой пояс обновлён.")}>
+                  Поставить
+                </button>
+              </p>
+            )}
             <div className="space-y-1.5">
               {stages.map((s, i) => {
                 const r = S !== null ? stageRange({ ...l, stages }, S, i) : null;

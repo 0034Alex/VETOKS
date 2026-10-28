@@ -148,3 +148,24 @@ export function stageAt(l: LaunchRow, S: number, today: number): { idx: number; 
 export function defaultItems(): Omit<ItemRow, "id" | "launch_id">[] {
   return BLOCKS.map((b, i) => ({ kind: "block", block_key: b.key, title: "", body: "", enabled: true, stage: b.stage, start_mode: b.start_mode, start_n: b.start_n, dur_mode: b.dur_mode, dur_n: b.dur_n, sort: i }));
 }
+
+// Часовой пояс по умолчанию для каждой страны (по нему в 00:00 страны меняется день запуска).
+export const COUNTRY_TZ: Record<string, string> = {
+  UA: "Europe/Kyiv", MD: "Europe/Chisinau", GE: "Asia/Tbilisi", AZ: "Asia/Baku", KZ: "Asia/Almaty",
+  AM: "Asia/Yerevan", UZ: "Asia/Tashkent", PL: "Europe/Warsaw", RO: "Europe/Bucharest", CZ: "Europe/Prague",
+  KG: "Asia/Bishkek", TJ: "Asia/Dushanbe", TM: "Asia/Ashgabat", BY: "Europe/Minsk", RU: "Europe/Moscow",
+};
+const TZ_NAME: Record<string, string> = {
+  "Europe/Kyiv": "Киев", "Europe/Chisinau": "Кишинёв", "Asia/Tbilisi": "Тбилиси", "Asia/Baku": "Баку", "Asia/Almaty": "Алматы",
+  "Asia/Yerevan": "Ереван", "Asia/Tashkent": "Ташкент", "Europe/Warsaw": "Варшава", "Europe/Bucharest": "Бухарест",
+  "Europe/Prague": "Прага", "Asia/Bishkek": "Бишкек", "Asia/Dushanbe": "Душанбе", "Asia/Ashgabat": "Ашхабад",
+  "Europe/Minsk": "Минск", "Europe/Moscow": "Москва",
+};
+export const TZ_LIST: string[] = Object.keys(TZ_NAME);
+export function tzLabel(tz: string): string {
+  let off = "";
+  try {
+    off = new Intl.DateTimeFormat("en", { timeZone: tz, timeZoneName: "shortOffset" }).formatToParts(new Date()).find((x) => x.type === "timeZoneName")?.value.replace("GMT", "UTC") ?? "";
+  } catch {}
+  return `${TZ_NAME[tz] ?? tz}${off ? ` (${off})` : ""}`;
+}

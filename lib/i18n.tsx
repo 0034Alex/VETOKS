@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-import { ALL_LANGS, LANG_LABELS, isLang, Lang } from "@/lib/langs";
+import { ALL_LANGS, LANG_LABELS, isLang, Lang, langFromDevice, readyLangsForCountry } from "@/lib/langs";
 export type { Lang };
 export const LANGS: { code: Lang; label: string }[] = ALL_LANGS.map((code) => ({ code, label: LANG_LABELS[code] }));
 
@@ -300,7 +300,11 @@ function detect(): Lang {
     const saved = localStorage.getItem("vt_lang");
     if (isLang(saved)) return saved;
   } catch {}
-  return "uk"; // по умолчанию украинский; другой язык — только по выбору человека
+  // Нет сохранённого выбора: берём язык телефона (украинский, русский, английский), иначе английский.
+  try {
+    return langFromDevice(navigator.languages?.length ? navigator.languages : [navigator.language]);
+  } catch {}
+  return "en";
 }
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
@@ -312,8 +316,22 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       const { data } = await supabase.auth.getUser();
       if (!data.user) return;
-      const { data: row } = await supabase.from("users").select("language").eq("id", data.user.id).maybeSingle();
-      const l = row?.language;
+      const { data: row } = await supabase.from("users").select("language, region_id").eq("id", data.user.id).maybeSingle();
+      let l: unknown = row?.language;
+      // Язык должен подходить стране человека (в России не украинский и т.д.); не подходит — язык страны.
+      try {
+        if (row?.region_id) {
+          const { data: rg } = await supabase.from("regions").select("country_id").eq("id", row.region_id).maybeSingle();
+          if (rg?.country_id) {
+            const { data: c } = await supabase.from("countries").select("code").eq("id", rg.country_id).maybeSingle();
+            const allowed = readyLangsForCountry((c as any)?.code);
+            if (!isLang(l) || !allowed.includes(l)) {
+              l = allowed[0];
+              await supabase.from("users").update({ language: l }).eq("id", data.user.id);
+            }
+          }
+        }
+      } catch {}
       if (isLang(l)) {
         setLangState(l);
         try { localStorage.setItem("vt_lang", l); } catch {}

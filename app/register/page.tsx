@@ -10,7 +10,7 @@ import { getInitData, openSession, postJson } from "@/lib/authClient";
 import TelegramLoginButton from "@/components/TelegramLoginButton";
 import TurnstileBox, { captchaOn } from "@/components/TurnstileBox";
 import { useT } from "@/lib/i18n";
-import { langsForCountry } from "@/lib/langs";
+import { readyLangsForCountry } from "@/lib/langs";
 
 type Region = { id: string; name: string; country_id?: string | null };
 
@@ -152,7 +152,7 @@ function RegisterForm() {
           setRegionId(e.target.value);
           const rg = regions.find((r) => r.id === e.target.value);
           const code = rg?.country_id ? countryCodes[rg.country_id] : null;
-          if (code) setLang(langsForCountry(code)[0]);
+          if (code) setLang(readyLangsForCountry(code)[0]);
         }}
         className="w-full bg-bgSurface text-offwhite border border-muted rounded-lg px-4 py-3 mt-1"
         required

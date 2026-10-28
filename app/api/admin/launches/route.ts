@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff, logAction } from "@/lib/staffServer";
-import { BLOCKS, DEFAULT_STAGES, defaultItems, endIdx, startIdx, todayIdx, type LaunchRow, type Stage } from "@/lib/launch";
+import { BLOCKS, COUNTRY_TZ, DEFAULT_STAGES, defaultItems, endIdx, startIdx, todayIdx, type LaunchRow, type Stage } from "@/lib/launch";
 
 export const dynamic = "force-dynamic";
 
@@ -129,9 +129,12 @@ export async function POST(req: Request) {
     if (!sh) return NextResponse.json({ ok: false, message: "Такого шоу нет в разделе «Шоу»." });
     const existing = await loadAll(cid);
     const last = existing[existing.length - 1];
+    const { data: ctry } = await supabaseAdmin.from("countries").select("code").eq("id", cid).maybeSingle();
+    const tz = COUNTRY_TZ[String((ctry as any)?.code ?? "").toUpperCase()] || "Europe/Kyiv";
     const row = {
       country_id: cid,
       show_key: key,
+      tz,
       status: "draft",
       start_date: last ? null : null,
       after_id: last ? last.id : null,
