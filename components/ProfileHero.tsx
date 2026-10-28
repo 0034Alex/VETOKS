@@ -508,16 +508,16 @@ export function Drawer({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[100] bg-black/60" onClick={onClose} style={{ touchAction: "none" }}>
+    <div className="fixed inset-0 z-[100] bg-black/60" onClick={onClose}>
       <div
         className="absolute top-0 right-0 w-[88%] max-w-sm bg-bgSurface border-l border-muted/50 overflow-y-auto overscroll-contain px-4"
         style={{
           bottom: 0,
-          height: "100%",
+          height: "100dvh",
+          maxHeight: "100dvh",
           paddingTop: "calc(env(safe-area-inset-top) + 16px)",
           paddingBottom: "calc(env(safe-area-inset-bottom) + 130px)",
           WebkitOverflowScrolling: "touch",
-          touchAction: "pan-y",
         }}
         onClick={(e) => e.stopPropagation()}
       >
