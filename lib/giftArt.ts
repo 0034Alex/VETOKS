@@ -486,3 +486,20 @@ export const giftSvg = (name: string): string | null => {
   const body = art.replace(/<circle class="ga-gl"[^>]*\/>/g, (m) => (glows.push(m), ""));
   return `${head}<defs>${LIGHT}</defs>${glows.join("")}<g filter="url(#gLit)">${body}</g></svg>`;
 };
+
+// Чатовые подарки (у них своё имя) → какой рисунок показывать.
+export const GIFT_ART_ALIAS: Record<string, string> = {
+  Мишка: "Плюшевый мишка", Единорог: "Сказочный единорог", Лев: "Золотой лев", Корона: "Золотая корона",
+  Ракета: "Космическая ракета", Фейерверк: "Праздничный фейерверк", Шампанское: "Бутылка шампанского",
+  Букет: "Букет роз", Поцелуй: "Воздушный поцелуй", Огонь: "Огненное сердце", Яхта: "Корабль",
+};
+// Ключ рисунка: исходное имя (art) → само имя → псевдоним. null — рисунка нет.
+export const resolveArt = (name: string, art?: string | null): string | null => {
+  for (const k of [art, name, GIFT_ART_ALIAS[art ?? ""], GIFT_ART_ALIAS[name]]) if (k && A[k]) return k;
+  return null;
+};
+// Без объёмного фильтра — для большого показа на весь экран.
+export const giftSvgFlat = (name: string): string | null => {
+  const s = giftSvg(name);
+  return s ? s.replace('filter="url(#gLit)"', "") : null;
+};

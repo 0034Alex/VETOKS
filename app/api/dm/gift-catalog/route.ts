@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   const rate = await getUsdRate(cid);
   const items = (await applyGiftOverrides((data ?? []) as any[], cid))
     .filter((g) => g.is_active)
-    .map((g) => ({ id: g.id, name: g.name, art: (g as any).art ?? null, price: giftUahPrice(g, rate) }))
+    .map((g) => ({ id: g.id, name: g.name, art: (g as any).art ?? null, fx: (g as any).fx ?? null, usd: Number((g as any).usd_price) || 0, price: giftUahPrice(g, rate) }))
     .sort((a, b) => a.price - b.price);
   const { data: w } = await supabaseAdmin.from("wallets").select("balance").eq("user_id", uid).order("id").limit(1).maybeSingle();
   return NextResponse.json({ ok: true, items, balance: w ? Number(w.balance) : 0 });

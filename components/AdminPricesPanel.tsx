@@ -35,6 +35,7 @@ type GiftRow = {
   is_active: boolean;
   chat_only?: boolean;
   art?: string | null;
+  fx?: string;
   origName?: string;
 };
 
@@ -48,6 +49,7 @@ export default function AdminPricesPanel() {
   const [freeVotes, setFreeVotes] = useState("3");
   const [userShare, setUserShare] = useState("");
   const [topupOn, setTopupOn] = useState(true);
+  const [fxSound, setFxSound] = useState(true);
   const [loading, setLoading] = useState(true);
   const [savedKey, setSavedKey] = useState("");
 
@@ -121,9 +123,14 @@ export default function AdminPricesPanel() {
         is_active: !!x.is_active,
         chat_only: !!x.chat_only,
         art: x.art ?? null,
+        fx: x.fx ?? "",
         origName: x.name,
       }))
     );
+    try {
+      const { data: fs } = await supabase.from("platform_settings").select("value").eq("key", "gift_fx_sound").maybeSingle();
+      setFxSound(!fs || String(fs.value) !== "false");
+    } catch {}
     setLoading(false);
   }
 
@@ -150,6 +157,8 @@ export default function AdminPricesPanel() {
 
   async function saveGift(g: GiftRow) {
     const usd = Number(g.usd_price);
+    // Эффект подарка один для всех стран. Если колонки fx ещё нет — просто пропускаем.
+    await supabase.from("gift_catalog").update({ fx: g.fx || null }).eq("id", g.id);
     if (cc) {
       // Для выбранной страны — своя цена/доля/«в магазине», общий каталог не трогаем.
       await supabase.from("gift_country_prices").upsert({
@@ -280,6 +289,20 @@ export default function AdminPricesPanel() {
       </div>
 
       <h3 className="text-offwhite font-semibold mb-1">Подарки</h3>
+      <label className="flex items-center gap-2 text-offwhite text-sm mb-2">
+        <input
+          type="checkbox"
+          checked={fxSound}
+          onChange={async (e) => {
+            setFxSound(e.target.checked);
+            await supabase.from("platform_settings").upsert({ key: "gift_fx_sound", value: e.target.checked ? "true" : "false" });
+            flash("gift_fx_sound");
+          }}
+        />
+        Звук эффектов подарков (для всех пользователей)
+        {savedKey === "gift_fx_sound" && <span className="text-success text-xs">✓</span>}
+      </label>
+      <p className="text-muted text-xs mb-2">«Эффект на экране»: по умолчанию — обычные подарки лёгкие, премиум и VIP на весь экран.</p>
       <p className="text-muted text-xs mb-2">Название можно менять прямо тут (оно одно для всех стран). Картинка подарка при переименовании остаётся.</p>
       <div className="flex flex-col gap-3 mb-8">
         {gifts.map((g, i) => (
@@ -337,6 +360,21 @@ export default function AdminPricesPanel() {
                 className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm w-16"
               />
               <span className="text-muted text-sm">%</span>
+              <span className="text-muted text-xs ml-2 basis-full sm:basis-auto">эффект на экране</span>
+              <select
+                value={g.fx ?? ""}
+                onChange={(e) => {
+                  const n = [...gifts];
+                  n[i] = { ...g, fx: e.target.value };
+                  setGifts(n);
+                }}
+                className="bg-bgPrimary border border-muted rounded-lg px-2 py-2 text-sm"
+              >
+                <option value="">по умолчанию</option>
+                <option value="off">без эффекта</option>
+                <option value="mini">лёгкий</option>
+                <option value="full">на весь экран</option>
+              </select>
               <button onClick={() => saveGift(g)} className={`${btnCls} ml-auto`}>
                 {savedKey === g.id ? "✓" : "Сохранить"}
               </button>

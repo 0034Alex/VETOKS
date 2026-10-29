@@ -9,6 +9,7 @@ import OwnTextActions from "@/components/OwnTextActions";
 import ReportSheet from "@/components/ReportSheet";
 import { apiPost } from "@/lib/authClient";
 import { chatGiftEmoji } from "@/lib/chatGifts";
+import { fireGiftFx } from "@/lib/giftFx";
 import { getCurrencySymbol } from "@/lib/currency";
 
 type Msg = { id: string; sender_id: string; body: string; kind: string; meta: any; created_at: string };
@@ -46,7 +47,7 @@ export default function ChatPage() {
   const [, setAccepted] = useState(false);
   const [, setHasThread] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
-  const [gifts, setGifts] = useState<{ id: string; name: string; art?: string | null; price: number }[]>([]);
+  const [gifts, setGifts] = useState<{ id: string; name: string; art?: string | null; fx?: string | null; usd?: number; price: number }[]>([]);
   const [balance, setBalance] = useState(0);
   const [cur, setCur] = useState("\uE000");
   const [giftMsg, setGiftMsg] = useState("");
@@ -130,6 +131,8 @@ export default function ChatPage() {
     const r = await apiPost("/api/dm/gift", { toUserId: other, giftId: id, qty: giftQty });
     setGiftBusy("");
     if (r?.ok) {
+      const gg = gifts.find((x) => x.id === id);
+      if (gg) fireGiftFx({ name: gg.name, art: gg.art, category: "chat", usd: gg.usd, fx: gg.fx, qty: giftQty, to: name || null, avatar: photo, emoji: chatGiftEmoji(gg.name, gg.art) });
       setBalance(r.balance);
       setGiftOpen(false);
       setGiftSel("");

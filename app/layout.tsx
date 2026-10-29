@@ -16,6 +16,7 @@ import ShowTheme from "@/components/ShowTheme";
 import BroadcastPopup from "@/components/BroadcastPopup";
 import PreStartGate from "@/components/PreStartGate";
 import CountryGate from "@/components/CountryGate";
+import GiftFxHost from "@/components/GiftFxHost";
 
 export const metadata: Metadata = {
   title: "VETOKS",
@@ -75,6 +76,7 @@ export default function RootLayout({
         <BirthPopup />
         <ShowTheme />
         <BroadcastPopup />
+        <GiftFxHost />
       </LangProvider>
       </body>
     </html>

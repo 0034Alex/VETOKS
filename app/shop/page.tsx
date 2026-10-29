@@ -1,6 +1,7 @@
 "use client";
 
 import GiftArt from "@/components/GiftArt";
+import { fireGiftFx } from "@/lib/giftFx";
 import { useCardsEnabled } from "@/lib/useCardsEnabled";
 import { loadTeenOpen } from "@/lib/teenFlag";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -28,6 +29,7 @@ type Gift = {
   chat_only?: boolean;
   show_key?: string | null;
   art?: string | null;
+  fx?: string | null;
 };
 
 function useTopupEnabled() {
@@ -273,6 +275,8 @@ function ShopContent() {
 
     setBalance(Number(r.balance));
     setQuantities((q) => ({ ...q, [gift.id]: 1 }));
+    const pr = participants.find((p) => p.id === selectedParticipant);
+    fireGiftFx({ name: gift.name, art: gift.art, category: gift.category, usd: gift.usd_price, fx: gift.fx, qty, to: pr?.display_name ?? null, avatar: pr?.photo_url ?? null });
     setStatus("sent");
     setTimeout(() => setStatus("idle"), 2000);
   }
