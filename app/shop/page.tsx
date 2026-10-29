@@ -1,5 +1,6 @@
 "use client";
 
+import GiftArt from "@/components/GiftArt";
 import { useCardsEnabled } from "@/lib/useCardsEnabled";
 import { loadTeenOpen } from "@/lib/teenFlag";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -534,7 +535,7 @@ function ShopContent() {
               key={g.id}
               className="bg-bgSurface border border-muted rounded-xl p-3 flex flex-col items-center gap-1"
             >
-              <span className="text-3xl">{GIFT_EMOJI[g.name] ?? "🎁"}</span>
+              <GiftArt name={g.name} size={64} fallback={GIFT_EMOJI[g.name] ?? "🎁"} />
               <span data-tr className="text-offwhite text-xs text-center">
                 {g.name}
               </span>

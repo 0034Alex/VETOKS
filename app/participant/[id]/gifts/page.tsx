@@ -1,5 +1,6 @@
 "use client";
 
+import GiftArt from "@/components/GiftArt";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -103,7 +104,7 @@ export default function ParticipantGiftsPage() {
               key={name}
               className="bg-bgSurface border border-muted rounded-xl p-3 flex flex-col items-center"
             >
-              <span className="text-2xl">{GIFT_EMOJI[name] ?? "🎁"}</span>
+              <GiftArt name={name} size={44} fallback={GIFT_EMOJI[name] ?? "🎁"} />
               <span className="text-offwhite text-xs mt-1">{name}</span>
               <span className="text-gold text-sm font-semibold">
                 × {count}
@@ -122,7 +123,7 @@ export default function ParticipantGiftsPage() {
               className="flex items-center justify-between bg-bgSurface border border-muted rounded-lg px-4 py-2"
             >
               <span className="text-offwhite text-sm">
-                {GIFT_EMOJI[g.gift_catalog?.name ?? ""] ?? "🎁"}{" "}
+                <GiftArt name={g.gift_catalog?.name ?? ""} size={24} fallback={GIFT_EMOJI[g.gift_catalog?.name ?? ""] ?? "🎁"} />{" "}
                 {g.gift_catalog?.name ?? "Подарок"} × {g.quantity}
               </span>
               <span className="text-muted text-xs">
