@@ -169,7 +169,7 @@ const TABS: { key: Tab; label: string }[] = [
 // Поиск по CRM: слова, по которым раздел можно найти (кроме названия и подсказки).
 const SEARCH_WORDS: Partial<Record<Tab, string>> = {
   dashboard: "статистика цифры главная сегодня",
-  builder: "конструктор шоу запуск запустить дата этапы страницы главная участницы медиа подарки профиль баннеры журнал партнёры рейтинг титулы цель недели задания карточки лента монеты короны цены рефералы между шоу вопрос недели опрос зал славы удалить шоу",
+  builder: "бусты буст продвинуть подарки цены красивые конструктор шоу запуск запустить дата этапы страницы главная участницы медиа подарки профиль баннеры журнал партнёры рейтинг титулы цель недели задания карточки лента монеты короны цены рефералы между шоу вопрос недели опрос зал славы удалить шоу",
   applications: "заявки анкеты одобрение новые участницы подача",
   participants: "участницы конкурсантки титулы статус",
   users: "пользователи аккаунты люди возраст",
@@ -475,7 +475,7 @@ export default function AdminPage() {
     );
   }
 
-  const inMenu = (t: Tab) => !!access[t] && !(IN_BUILDER.includes(t) && access.builder);
+  const inMenu = (t: Tab) => !!access[t] && t !== "awards" && !(IN_BUILDER.includes(t) && access.builder);
   const visibleGroups = CRM_GROUPS.filter((g) => g.tabs.some((t) => inMenu(t)));
   const curGroup = CRM_GROUPS.find((g) => g.key === group) ?? visibleGroups[0];
   const roleLabel = ROLE_LABELS[me?.role ?? ""] ?? "Сотрудник";
@@ -557,7 +557,7 @@ export default function AdminPage() {
       </div>
 
       <div className="px-4 py-3 border-b border-muted/40">
-        <CrmSearch tabs={allowedTabs.filter((t) => !(IN_BUILDER.includes(t) && access.builder))} onGo={go} />
+        <CrmSearch tabs={allowedTabs.filter((t) => t !== "awards" && !(IN_BUILDER.includes(t) && access.builder))} onGo={go} />
       </div>
 
       {menuOpen && (

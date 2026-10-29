@@ -14,6 +14,7 @@ import PresenceBeat from "@/components/PresenceBeat";
 import BirthPopup from "@/components/BirthPopup";
 import ShowTheme from "@/components/ShowTheme";
 import BroadcastPopup from "@/components/BroadcastPopup";
+import PreStartGate from "@/components/PreStartGate";
 import CountryGate from "@/components/CountryGate";
 
 export const metadata: Metadata = {
@@ -62,6 +63,7 @@ export default function RootLayout({
         />
         <AuthGate>{children}</AuthGate>
         <CountryGate />
+        <PreStartGate />
         <VerifyPhonePopup />
         <ReferralCapture />
         <AutoTranslate />

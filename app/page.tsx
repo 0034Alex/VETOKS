@@ -4,6 +4,7 @@ import { useShow, hasBlock, useBetween } from "@/lib/useShow";
 import { applyContest, cleanContest } from "@/lib/contest";
 import TalentHome from "@/components/TalentHome";
 import BetweenHome from "@/components/BetweenHome";
+import PreStartScreen from "@/components/PreStartScreen";
 import { useT } from "@/lib/i18n";
 import StagePoll from "@/components/StagePoll";
 import CategorySwitch, { CategoryStrip } from "@/components/CategorySwitch";
@@ -1185,6 +1186,7 @@ export default function Home() {
     }
     homeRouter.replace("/media");
   }, [betweenOn, homeRouter]);
+  if (betweenOn && between?.prestart && between.prestart > Date.now()) return <PreStartScreen />;
   if (betweenOn) return <BetweenHome />;
   if (show?.contest === "talent") return <TalentHome show={show} />;
   return <MissHome />;

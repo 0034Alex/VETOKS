@@ -7,6 +7,7 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import { getMyCountry } from "@/lib/myCountry";
 import { loadScoped } from "@/lib/scopedSettings";
+import { useShow } from "@/lib/useShow";
 
 function useCountdown(targetAt: string | null) {
   const [left, setLeft] = useState<{
@@ -44,6 +45,11 @@ function useCountdown(targetAt: string | null) {
 
 export default function WelcomePage() {
   const router = useRouter();
+  const liveShow = useShow().show;
+  useEffect(() => {
+    // Шоу уже идёт: приложение открыто, отсчёт не нужен.
+    if (liveShow) router.replace("/");
+  }, [liveShow, router]);
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
   const [targetAt, setTargetAt] = useState<string | null>(null);

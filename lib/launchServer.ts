@@ -8,7 +8,7 @@ export type CountryView = {
   recruitKey: string | null;
   blocksOff: string[];
   blockOrder: string[];
-  between: { on: boolean; off: string[]; question: string }; // блоки, заданные в запуске, но сегодня выключенные
+  between: { on: boolean; off: string[]; question: string; prestart: number | null }; // блоки, заданные в запуске, но сегодня выключенные
   banner: { apply?: boolean; poll_question?: string; poll_id?: string };
   info: { stage: string; day: number; total: number; tips: string[]; tasks: string[]; stageEndsAt: number | null } | null;
 };
@@ -24,7 +24,7 @@ export async function loadCountryLaunches(countryId: string): Promise<{ launches
 export async function countryView(countryId: string, now: number = Date.now()): Promise<CountryView | null> {
   const { launches, items } = await loadCountryLaunches(countryId);
   if (!launches.length) return null;
-  const view: CountryView = { liveKey: null, recruitKey: null, blocksOff: [], blockOrder: [], between: { on: false, off: [], question: "" }, banner: {}, info: null };
+  const view: CountryView = { liveKey: null, recruitKey: null, blocksOff: [], blockOrder: [], between: { on: false, off: [], question: "", prestart: null }, banner: {}, info: null };
 
   const states = launches.map((l) => ({ l, ...effState(l, launches, todayIdxOf(l, now)) }));
   const live = states.filter((s) => s.state === "live").sort((a, b) => (a.S ?? 0) - (b.S ?? 0))[0];
@@ -63,7 +63,15 @@ export async function countryView(countryId: string, now: number = Date.now()): 
       on: mode === "on" || (mode !== "off" && !view.liveKey),
       off: g("between_off").split(",").map((x) => x.trim()).filter(Boolean),
       question: g("between_question").slice(0, 300),
+      prestart: null,
     };
+    // Страна ещё не начинала ни одного шоу, старт назначен: до старта людей в приложение не пускаем.
+    const waiting = states.filter((s) => s.state === "waiting" && s.S !== null).sort((a, b) => (a.S ?? 0) - (b.S ?? 0))[0];
+    if (waiting && !view.liveKey && !launches.some((l) => l.status === "finished")) {
+      const t = todayIdxOf(waiting.l, now);
+      view.between.prestart = now + msToMidnight(waiting.l.tz, now) + ((waiting.S as number) - t - 1) * 86400000;
+      view.between.on = true;
+    }
   }
   // Набор анкет на следующее шоу: запуск ещё не начался, а кнопка «Подать анкету» уже действует.
   const rec = states.find((s) => {
