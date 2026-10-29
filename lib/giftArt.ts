@@ -195,10 +195,14 @@ A["Духи"] =
   `<path d="M50 78C42 72 40 66 44 62C47 60 50 62 50 64C50 62 53 60 56 62C60 66 58 72 50 78Z" fill="#fff" fill-opacity=".85"/><path d="M33 50C32 60 32 70 34 80" stroke="#fff" stroke-opacity=".5" stroke-width="3.5" fill="none" stroke-linecap="round"/>` +
   `<g fill="#fff" fill-opacity=".7"><circle cx="82" cy="22" r="2.5"/><circle cx="90" cy="32" r="2"/><circle cx="84" cy="40" r="1.8"/></g>`;
 
-A["Золотая роза"] =
-  `<path d="M50 52C47 70 53 82 50 95" stroke="url(#gGd)" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M50 80C38 77 31 69 29 62C41 62 48 68 50 74Z" fill="url(#gGd)"/><path d="M51 72C62 70 69 64 71 57C60 58 53 63 51 68Z" fill="#c9a52f"/>` +
-  `<path d="M50 12C29 12 22 34 31 47C38 57 62 57 69 47C78 34 71 12 50 12Z" fill="url(#gGd)"/><path d="M50 19C39 21 37 34 45 39C52 43 61 39 61 30C61 24 56 19 50 19Z" fill="#e0b030"/><path d="M45 29C45 24 55 24 55 30C55 35 46 36 45 29Z" fill="#8a5a10"/>` +
-  `<path d="M35 24C37 20 42 17 47 16" stroke="#fff" stroke-opacity=".7" stroke-width="3" fill="none" stroke-linecap="round"/>` + spark(82, 20, 8, "#fff0a8") + spark(18, 62, 5, "#fff0a8");
+A["Золотая роза"] = (() => {
+  let o = `<defs>${R("gr1", "#fff0a8", "#b8861c")}</defs><circle cx="50" cy="52" r="42" fill="#8a5a10" fill-opacity=".35"/>`;
+  [[5, 30, 0, 17], [5, 22, 36, 14], [4, 14, 10, 11]].forEach(([n, d, off, r]) => {
+    for (let i = 0; i < n; i++) { const a = ((off + (i * 360) / n) * Math.PI) / 180; o += `<circle cx="${(50 + d * Math.cos(a)).toFixed(1)}" cy="${(52 + d * Math.sin(a)).toFixed(1)}" r="${r}" fill="url(#gr1)" stroke="#8a5a10" stroke-width="1.6"/>`; }
+  });
+  o += `<circle cx="50" cy="52" r="9" fill="url(#gr1)" stroke="#8a5a10" stroke-width="1.6"/><path d="M45 52C45 47 55 47 55 52C55 57 47 57 47 53" stroke="#8a5a10" stroke-width="1.6" fill="none"/>`;
+  return o + spark(86, 14, 9, "#fff0a8") + spark(12, 86, 6, "#fff0a8");
+})();
 
 A["Сумочка"] =
   `<path d="M32 46C32 14 68 14 68 46" stroke="url(#gGd)" stroke-width="5" fill="none" stroke-linecap="round"/>` +
@@ -274,18 +278,28 @@ A["Созвездие"] =
   tw(12, 72, 6, "#fff0a8", 0) + tw(32, 48, 8, "#fff", 0.3) + tw(52, 62, 9, "#ffd54a", 0.6) + tw(68, 28, 10, "#fff", 0.9) + tw(88, 44, 7, "#7fd0ff", 1.2) + tw(76, 84, 7, "#ff9ad0", 0.4) +
   `<circle class="ga-tw" cx="20" cy="22" r="1.8" fill="#fff"/><circle class="ga-tw" style="animation-delay:.7s" cx="84" cy="14" r="1.8" fill="#fff"/><circle class="ga-tw" style="animation-delay:1s" cx="40" cy="90" r="1.6" fill="#fff"/>`;
 
-A["Алмаз"] =
-  `<defs>${R("al2", "#8fe0ff", "#8fe0ff", 0.7)}</defs><circle class="ga-gl" cx="50" cy="52" r="38" fill="url(#al2)"/>` +
-  `<g class="ga-pu"><path d="M32 34H68L80 48L50 84L20 48Z" fill="url(#gBl)"/><path d="M20 48H80M32 34L38 48L50 84L62 48L68 34M38 48L50 34L62 48" stroke="#fff" stroke-opacity=".8" stroke-width="1.4" fill="none"/><path d="M32 34L38 48L20 48Z" fill="#fff" fill-opacity=".6"/></g>` +
-  `<path class="ga-rain" d="M14 8L18 12L14 18L10 12Z" fill="#9fe6ff"/><path class="ga-rain" style="animation-delay:.6s" d="M84 6L88 10L84 16L80 10Z" fill="#c8f0ff"/><path class="ga-rain" style="animation-delay:1.2s" d="M30 4L33 7L30 12L27 7Z" fill="#7fd0ff"/><path class="ga-rain" style="animation-delay:1.8s" d="M70 2L73 5L70 10L67 5Z" fill="#fff"/>` +
-  tw(80, 26, 6, "#fff", 0) + tw(20, 62, 5, "#fff", 0.7);
+A["Алмаз"] = (() => {
+  const pt = (r: number, i: number, off = 0) => { const a = ((i * 45 + off - 90) * Math.PI) / 180; return [50 + r * Math.cos(a), 52 + r * Math.sin(a)]; };
+  const O = Array.from({ length: 8 }, (_, i) => pt(38, i, 22.5)), I = Array.from({ length: 8 }, (_, i) => pt(21, i, 0));
+  const f = (pts: number[][]) => pts.map((q) => q.map((v) => v.toFixed(1)).join(" ")).join("L");
+  let o = `<defs>${L("al3", "#ffd0f0", "#6a3fd0", "#c090ff")}${R("al4", "#c090ff", "#c090ff", 0.7)}</defs><circle class="ga-gl" cx="50" cy="52" r="44" fill="url(#al4)"/>`;
+  o += `<path d="M${f(O)}Z" fill="url(#al3)"/>`;
+  for (let i = 0; i < 8; i++) { const a = O[i], b = O[(i + 1) % 8], c = I[(i + 1) % 8], d = I[i]; o += `<path d="M${f([a, b, c])}Z" fill="${i % 2 ? "#fff" : "#2a1070"}" fill-opacity="${i % 2 ? 0.28 : 0.22}"/><path d="M${f([d, c, b])}Z" fill="#fff" fill-opacity="${i % 3 ? 0.1 : 0.4}"/>`; }
+  o += `<path d="M${f(I)}Z" fill="#ffe8fa" fill-opacity=".75"/><path d="M${f(O)}Z M${f(I)}Z" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="1.3"/>`;
+  for (let i = 0; i < 8; i++) o += `<path d="M${f([O[i], I[i]])}M${f([I[i], [50, 52]])}" stroke="#fff" stroke-opacity=".7" stroke-width="1"/>`;
+  o += `<g class="ga-sp" style="animation-duration:6s">${[0, 120, 240].map((a) => `<path d="M50 6L52 12L58 14L52 16L50 22L48 16L42 14L48 12Z" fill="#fff" transform="rotate(${a} 50 52)"/>`).join("")}</g>`;
+  o += `<path class="ga-rain" d="M14 8L18 12L14 18L10 12Z" fill="#e0b8ff"/><path class="ga-rain" style="animation-delay:1.1s" d="M86 4L90 8L86 14L82 8Z" fill="#ffd0f0"/>`;
+  return o + tw(90, 70, 6, "#fff", 0.4) + tw(10, 72, 5, "#ffd0f0", 0.9);
+})();
 
 A["Императорская корона"] =
-  `<defs>${R("ic1", "#ffd54a", "#ffd54a", 0.75)}</defs><circle class="ga-gl" cx="50" cy="50" r="46" fill="url(#ic1)"/>` +
-  `<g class="ga-fy"><path d="M12 74L6 30L30 50L50 14L70 50L94 30L88 74Z" fill="url(#gGd)"/><rect x="10" y="70" width="80" height="16" rx="5" fill="#fff"/><rect x="10" y="70" width="80" height="16" rx="5" fill="url(#gWh)"/>` +
-  [18, 34, 50, 66, 82].map((x) => `<circle cx="${x}" cy="78" r="2.4" fill="#2b1a3a"/>`).join("") +
-  `<circle cx="50" cy="10" r="6" fill="url(#gGd)"/><path d="M50 2V18M44 8H56" stroke="#fff0a8" stroke-width="2"/><circle cx="50" cy="52" r="6.5" fill="url(#gRd)"/><circle cx="30" cy="58" r="4.5" fill="#3a8be8"/><circle cx="70" cy="58" r="4.5" fill="#2fc07a"/><circle cx="6" cy="28" r="4.5" fill="#fff0a8"/><circle cx="94" cy="28" r="4.5" fill="#fff0a8"/><path d="M30 50L24 66M70 50L76 66" stroke="#fff" stroke-opacity=".35" stroke-width="2"/></g>` +
-  tw(14, 14, 8, "#fff", 0) + tw(88, 12, 7, "#fff0a8", 0.5) + tw(94, 62, 5, "#fff", 1) + tw(8, 62, 5, "#fff0a8", 0.8);
+  `<defs>${R("ic1", "#ffd54a", "#ffd54a", 0.75)}${L("ic2", "#e0305a", "#6a0a28")}</defs><circle class="ga-gl" cx="50" cy="50" r="46" fill="url(#ic1)"/>` +
+  `<g class="ga-fy"><path d="M14 62C12 34 30 28 50 28C70 28 88 34 86 62Z" fill="url(#ic2)"/><path d="M26 60C24 42 34 34 44 31M74 60C76 42 66 34 56 31" stroke="#fff" stroke-opacity=".22" stroke-width="3" fill="none"/>` +
+  `<path d="M12 66C12 36 32 22 50 22C68 22 88 36 88 66" stroke="url(#gGd)" stroke-width="6.5" fill="none"/><path d="M32 66C30 40 40 26 50 22C60 26 70 40 68 66" stroke="url(#gGd)" stroke-width="5.5" fill="none"/>` +
+  `<circle cx="50" cy="19" r="6" fill="url(#gGd)"/><rect x="48" y="4" width="4" height="12" rx="1" fill="url(#gGd)"/><rect x="44" y="8" width="12" height="4" rx="1" fill="url(#gGd)"/>` +
+  `<rect x="8" y="62" width="84" height="8" rx="3" fill="url(#gGd)"/><circle cx="26" cy="66" r="2.6" fill="#3a8be8"/><circle cx="50" cy="66" r="3.2" fill="#fff"/><circle cx="74" cy="66" r="2.6" fill="#2fc07a"/>` +
+  `<rect x="8" y="70" width="84" height="16" rx="6" fill="url(#gWh)"/>` + [16, 30, 44, 58, 72, 84].map((x) => `<circle cx="${x}" cy="78" r="2.4" fill="#2b1a3a"/>`).join("") + `</g>` +
+  tw(12, 14, 8, "#fff", 0) + tw(90, 14, 7, "#fff0a8", 0.5) + tw(94, 56, 5, "#fff", 1) + tw(6, 50, 5, "#fff0a8", 0.8);
 
 A["Лебедь"] =
   `<defs>${R("lb1", "#7fd0ff", "#7fd0ff", 0.4)}</defs>` +
@@ -308,9 +322,16 @@ A["Дворец"] = castle("#fff3fa", "#e5b8da", "#c9a0ff",
   `<g class="ga-ray" style="stroke:#ffd54a;stroke-width:2.4"><path d="M16 22V8M16 22V36M16 22H2M16 22H30M16 22L6 12M16 22L26 32M16 22L26 12M16 22L6 32"/></g>` +
   `<g class="ga-ray" style="stroke:#ff5e8a;stroke-width:2.4;animation-delay:1.1s"><path d="M86 18V6M86 18V30M86 18H74M86 18H98M86 18L78 10M86 18L94 26M86 18L94 10M86 18L78 26"/></g>`);
 
-A["Хрустальный замок"] = castle("#f2fbff", "#8fd0ff", "#7fd0ff",
-  `<defs>${R("cc1", "#8fe0ff", "#8fe0ff", 0.55)}</defs><circle class="ga-gl" cx="50" cy="52" r="48" fill="url(#cc1)"/>` +
-  tw(14, 20, 8, "#fff", 0) + tw(88, 24, 7, "#bfe9ff", 0.6) + tw(90, 52, 4, "#fff", 1.1) + tw(10, 48, 4, "#bfe9ff", 0.3));
+A["Хрустальный замок"] = (() => {
+  const sp = (x: number, w: number, h: number, d: number) => {
+    const top = 90 - h;
+    return `<path d="M${x} 90V${top + 12}L${x + w / 2} ${top}L${x + w} ${top + 12}V90Z" fill="url(#gBl)" stroke="#fff" stroke-opacity=".7" stroke-width="1"/><path d="M${x} 90V${top + 12}L${x + w / 2} ${top}V90Z" fill="#fff" fill-opacity=".32"/><path d="M${x + w / 2} ${top}L${x + w} ${top + 12}V90H${x + w / 2}Z" fill="#1a4aa0" fill-opacity=".22"/>` +
+      `<rect class="ga-tw" style="animation-delay:${d}s" x="${x + w / 2 - 2}" y="${top + 22}" width="4" height="7" rx="2" fill="#fff6b0"/>`;
+  };
+  return `<defs>${R("cc2", "#8fe0ff", "#8fe0ff", 0.55)}</defs><circle class="ga-gl" cx="50" cy="52" r="48" fill="url(#cc2)"/>` +
+    sp(4, 14, 36, 0) + sp(82, 14, 36, 0.5) + sp(18, 16, 56, 0.9) + sp(66, 16, 56, 0.3) + sp(34, 32, 82, 0.6) +
+    `<path d="M0 90C20 84 30 92 50 88S80 84 100 90V96H0Z" fill="#fff" fill-opacity=".9"/>` + tw(10, 14, 7, "#fff", 0.2) + tw(90, 20, 8, "#bfe9ff", 0.7) + tw(94, 56, 4, "#fff", 1.1) + tw(6, 52, 4, "#bfe9ff", 0.4);
+})();
 
 A["Вселенная"] =
   `<defs>${R("un1", "#fff6c0", "#ff9a2f", 1)}${R("un2", "#a070ff", "#a070ff", 0.55)}</defs><circle class="ga-gl" cx="50" cy="50" r="48" fill="url(#un2)"/>` +
@@ -405,11 +426,14 @@ A["Северное сияние"] =
   `<path d="M0 100L18 66L30 84L46 56L62 84L76 68L100 100Z" fill="#1a1533"/><path d="M46 56L40 66L46 63L52 67Z" fill="#fff" fill-opacity=".8"/><path d="M18 66L13 75L18 72L23 76Z" fill="#fff" fill-opacity=".8"/></g>` +
   tw(14, 14, 5, "#fff", 0) + tw(84, 10, 4, "#fff", 0.7) + tw(70, 26, 3, "#fff", 1.2) + tw(30, 30, 3, "#fff", 0.4);
 
-A["Ледяная роза"] =
-  `<defs>${R("ir1", "#e6fbff", "#3a9bff")}</defs><circle class="ga-gl" cx="50" cy="40" r="42" fill="#8fe0ff" fill-opacity=".25"/>` +
-  `<path d="M50 52C47 70 53 82 50 95" stroke="#7fd0ff" stroke-width="4.5" fill="none" stroke-linecap="round"/><path d="M50 80C38 77 31 69 29 62C41 62 48 68 50 74Z" fill="#9fe6ff"/><path d="M51 72C62 70 69 64 71 57C60 58 53 63 51 68Z" fill="#7fd0ff"/>` +
-  `<g class="ga-pu"><path d="M50 12C29 12 22 34 31 47C38 57 62 57 69 47C78 34 71 12 50 12Z" fill="url(#ir1)"/><path d="M50 19C39 21 37 34 45 39C52 43 61 39 61 30C61 24 56 19 50 19Z" fill="#9fe6ff"/><path d="M45 29C45 24 55 24 55 30C55 35 46 36 45 29Z" fill="#3a9bff"/><path d="M35 24C37 20 42 17 47 16" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></g>` +
-  `<path class="ga-rain" d="M20 6L22 10L26 12L22 14L20 18L18 14L14 12L18 10Z" fill="#fff"/><path class="ga-rain" style="animation-delay:1s" d="M80 4L82 8L86 10L82 12L80 16L78 12L74 10L78 8Z" fill="#bfe9ff"/>` + tw(86, 40, 6, "#fff", 0.4) + tw(12, 50, 5, "#bfe9ff", 0.9);
+A["Ледяная роза"] = (() => {
+  let arms = "";
+  for (let i = 0; i < 6; i++) arms += `<g transform="rotate(${i * 60} 50 50)"><path d="M50 50V6M50 22L40 12M50 22L60 12M50 34L42 27M50 34L58 27" stroke="url(#gBl)" stroke-width="4.2" stroke-linecap="round" fill="none"/></g>`;
+  return `<defs>${R("ir2", "#ffffff", "#7fd0ff")}</defs><circle class="ga-gl" cx="50" cy="50" r="46" fill="#8fe0ff" fill-opacity=".3"/>` +
+    `<g class="ga-sp" style="animation-duration:24s">${arms}</g>` +
+    `<g class="ga-pu"><circle cx="50" cy="50" r="15" fill="url(#ir2)" stroke="#fff" stroke-width="1.5"/><path d="M50 40C42 40 40 50 48 53C54 55 59 50 56 45C54 42 50 43 50 46" stroke="#3a7be0" stroke-width="2.2" fill="none" stroke-linecap="round"/></g>` +
+    spark(90, 12, 7) + spark(10, 90, 6, "#bfe9ff") + `<path class="ga-rain" d="M20 6L22 10L26 12L22 14L20 18L18 14L14 12L18 10Z" fill="#fff"/>`;
+})();
 
 // Объём: мягкий свет сверху-слева, блик и тень под предметом.
 const LIGHT =
