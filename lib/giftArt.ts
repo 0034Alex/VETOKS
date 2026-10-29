@@ -643,6 +643,119 @@ A["Праздничный фейерверк"] = (() => {
     tw(88, 62, 5, "#fff", 0.3) + tw(10, 70, 4, "#ffd54a", 0.9) + tw(52, 14, 4, "#fff", 0.5) + tw(90, 90, 4, "#ff9ad0", 1.2);
 })();
 
+/* ======= Лёгкие и Премиум: подробная перерисовка слабых ======= */
+const facets = (cx: number, cy: number, pts: number[][], cols: string[]) =>
+  pts.map((p, i) => {
+    const q = pts[(i + 1) % pts.length];
+    return `<path d="M${cx} ${cy}L${p[0].toFixed(1)} ${p[1].toFixed(1)}L${q[0].toFixed(1)} ${q[1].toFixed(1)}Z" fill="${cols[i % cols.length]}"/>`;
+  }).join("");
+
+A["Искра"] = (() => {
+  const P: number[][] = [];
+  for (let i = 0; i < 8; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 4, r = i % 2 ? 15 : 44;
+    P.push([50 + r * Math.cos(a), 50 + r * Math.sin(a)]);
+  }
+  return `<defs>${R("sg", "#fff3b0", "#fff3b0", 0.75)}</defs><circle cx="50" cy="50" r="46" fill="url(#sg)" opacity=".55"/>` +
+    facets(50, 50, P, ["#fff7c8", "#ffd54a", "#f0b830", "#c9902a"]) +
+    `<circle cx="50" cy="50" r="7" fill="#fff"/><circle cx="50" cy="50" r="7" fill="none" stroke="#ffe27a" stroke-width="1.5"/>` +
+    spark(84, 16, 9, "#fff0a8") + spark(16, 82, 7, "#ffd37a") + spark(88, 80, 5, "#fff") + spark(14, 20, 4, "#fff");
+})();
+
+A["Звезда"] = (() => {
+  const P: number[][] = [];
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? 20 : 46;
+    P.push([50 + r * Math.cos(a), 54 + r * Math.sin(a)]);
+  }
+  return facets(50, 54, P, ["#fff3b0", "#ffd54a", "#e0a82a", "#b8861c", "#f4c63a"]) +
+    `<circle cx="50" cy="54" r="5" fill="#fff" fill-opacity=".85"/>` + spark(84, 14, 7, "#fff") + spark(14, 84, 5, "#fff0a8");
+})();
+
+A["Сердце"] = (() => {
+  return `<defs>${R("sh1", "#ffd0e4", "#e0306f")}</defs>` +
+    `<path d="M50 90C14 66 6 42 16 27C26 12 45 16 50 31C55 16 74 12 84 27C94 42 86 66 50 90Z" fill="url(#gPk)"/>` +
+    `<path d="M50 82C22 62 15 44 22 33C30 22 44 25 50 38C56 25 70 22 78 33C85 44 78 62 50 82Z" fill="url(#sh1)"/>` +
+    `<path d="M50 90C14 66 6 42 16 27C20 22 26 18 32 18C16 34 22 60 50 82C60 84 64 80 66 78C60 84 56 88 50 90Z" fill="#b5103a" fill-opacity=".28"/>` +
+    `<ellipse cx="30" cy="31" rx="10" ry="5.5" fill="#fff" fill-opacity=".7" transform="rotate(-35 30 31)"/><circle cx="42" cy="21" r="2.6" fill="#fff"/><circle cx="70" cy="30" r="2" fill="#fff" fill-opacity=".7"/>` +
+    spark(86, 14, 7, "#fff") + spark(12, 74, 5, "#ffd0e4");
+})();
+
+A["Лента"] = (() => {
+  return `<defs>${L("rb1", "#ffb0d0", "#c0123c")}${L("rb2", "#ff7aa8", "#8a0a30")}</defs>` +
+    // хвосты
+    `<path d="M46 52L30 92L42 84L48 96L54 56Z" fill="url(#rb2)"/><path d="M54 52L70 92L58 84L52 96L46 56Z" fill="url(#rb1)"/>` +
+    `<path d="M44 58L36 84M56 58L64 84" stroke="#fff" stroke-opacity=".35" stroke-width="1.4" stroke-linecap="round"/>` +
+    // петли
+    `<path d="M48 46C34 20 6 22 8 44C10 62 34 62 48 52Z" fill="url(#rb1)"/><path d="M52 46C66 20 94 22 92 44C90 62 66 62 52 52Z" fill="url(#rb1)"/>` +
+    `<path d="M44 46C32 30 18 32 16 44C18 54 32 54 44 50Z" fill="#c0123c" fill-opacity=".55"/><path d="M56 46C68 30 82 32 84 44C82 54 68 54 56 50Z" fill="#c0123c" fill-opacity=".55"/>` +
+    `<path d="M18 34C24 28 32 28 38 34" stroke="#fff" stroke-opacity=".75" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M82 34C76 28 68 28 62 34" stroke="#fff" stroke-opacity=".75" stroke-width="3" fill="none" stroke-linecap="round"/>` +
+    // узел
+    `<ellipse cx="50" cy="49" rx="8" ry="9" fill="url(#rb2)"/><ellipse cx="47" cy="45" rx="3" ry="4" fill="#fff" fill-opacity=".55"/>` +
+    spark(88, 14, 6, "#fff") + spark(12, 80, 4, "#ffd0e4");
+})();
+
+A["Кристалл"] = (() => {
+  const prism = (x: number, top: number, bot: number, w: number, c1: string, c2: string, c3: string) =>
+    `<path d="M${x} ${top}L${x - w} ${top + w * 0.9}L${x - w} ${bot - w * 0.5}L${x} ${bot}Z" fill="${c1}"/>` +
+    `<path d="M${x} ${top}L${x + w} ${top + w * 0.9}L${x + w} ${bot - w * 0.5}L${x} ${bot}Z" fill="${c2}"/>` +
+    `<path d="M${x} ${top}L${x - w} ${top + w * 0.9}L${x} ${top + w * 1.3}L${x + w} ${top + w * 0.9}Z" fill="${c3}"/>` +
+    `<path d="M${x - w * 0.55} ${top + w * 1.4}L${x - w * 0.55} ${bot - w * 1.2}" stroke="#fff" stroke-opacity=".7" stroke-width="2" stroke-linecap="round"/>`;
+  return `<defs>${R("crg", "#8fe0ff", "#8fe0ff", 0.55)}</defs><circle class="ga-gl" cx="50" cy="56" r="42" fill="url(#crg)" opacity=".6"/>` +
+    `<g transform="rotate(-24 26 88)">${prism(26, 38, 90, 11, "#e6c8ff", "#9a6ae0", "#fbefff")}</g>` +
+    `<g transform="rotate(22 76 90)">${prism(76, 42, 92, 11, "#ffd0f0", "#d070c0", "#fff0fa")}</g>` +
+    prism(50, 6, 92, 17, "#dff6ff", "#4a9be0", "#ffffff") +
+    tw(14, 20, 5, "#fff", 0) + spark(88, 20, 7, "#fff") + spark(82, 60, 4, "#bfe9ff");
+})();
+
+A["Золотая роза"] = (() => {
+  const petal = (ang: number, len: number, w: number, c: string) =>
+    `<g transform="rotate(${ang} 50 52)"><path d="M50 52C${50 - w} ${52 - len * 0.35} ${50 - w * 0.8} ${52 - len * 0.95} 50 ${52 - len}C${50 + w * 0.8} ${52 - len * 0.95} ${50 + w} ${52 - len * 0.35} 50 52Z" fill="${c}" stroke="#8a5a10" stroke-opacity=".95" stroke-width="1.5"/></g>`;
+  let s = "";
+  for (let i = 0; i < 7; i++) s += petal(i * (360 / 7), 42, 24, "url(#gGd)");
+  for (let i = 0; i < 6; i++) s += petal(i * 60 + 20, 32, 19, i % 2 ? "#f6cf52" : "#ffe27a");
+  for (let i = 0; i < 5; i++) s += petal(i * 72 + 8, 22, 14, "#ffd54a");
+  for (let i = 0; i < 4; i++) s += petal(i * 90 + 30, 13, 9, "#fff0a8");
+  return `<defs>${R("zr", "#ffe27a", "#ffe27a", 0.6)}</defs><circle cx="50" cy="52" r="46" fill="url(#zr)" opacity=".45"/>` + s +
+    `<path d="M50 52C46 50 46 44 50 44C55 44 55 52 48 53" stroke="#8a5a10" stroke-width="1.6" fill="none" stroke-linecap="round"/>` +
+    `<ellipse cx="38" cy="30" rx="9" ry="4" fill="#fff" fill-opacity=".6" transform="rotate(-40 38 30)"/>` +
+    spark(88, 14, 7, "#fff") + spark(12, 88, 5, "#fff0a8");
+})();
+
+A["Скрипка"] = (() => {
+  return `<defs>${L("vb1", "#d98a3a", "#7a3a12", "#b8661f")}</defs>` +
+    `<g transform="rotate(-14 50 54)">` +
+    // гриф и завиток
+    `<rect x="46.5" y="10" width="7" height="38" rx="2" fill="#2a160a"/><circle cx="50" cy="8" r="5.5" fill="url(#vb1)"/><path d="M47 8C47 5 53 5 53 8C53 11 49 11 49.5 8" stroke="#3a1c0a" stroke-width="1.2" fill="none"/>` +
+    `<rect x="42" y="14" width="3.5" height="6" rx="1.5" fill="#3a1c0a"/><rect x="54.5" y="14" width="3.5" height="6" rx="1.5" fill="#3a1c0a"/>` +
+    // корпус
+    `<path d="M50 38C38 38 34 50 41 56C32 60 28 74 36 84C44 94 56 94 64 84C72 74 68 60 59 56C66 50 62 38 50 38Z" fill="url(#vb1)" stroke="#4a220a" stroke-width="1.6"/>` +
+    `<path d="M50 42C41 42 38 51 44 56C46 58 46 60 43 62C36 66 34 76 40 83" stroke="#fff" stroke-opacity=".35" stroke-width="2.4" fill="none" stroke-linecap="round"/>` +
+    // эфы
+    `<path d="M43 64C41 68 45 70 43 75M57 64C59 68 55 70 57 75" stroke="#2a160a" stroke-width="2" fill="none" stroke-linecap="round"/>` +
+    // подставка, струны, подбородник
+    `<path d="M43 69L57 69L55 72L45 72Z" fill="#f2dcb0"/><path d="M48 14L47 88M50 14L50 88M52 14L53 88" stroke="#f6e7c0" stroke-width=".8" stroke-opacity=".9"/>` +
+    `<path d="M44 86L56 86L54 90L46 90Z" fill="#2a160a"/>` +
+    `</g>` +
+    // смычок
+    `<path d="M10 84L90 34" stroke="#3a1c0a" stroke-width="2.6" stroke-linecap="round"/><path d="M12 82L88 35" stroke="#f6e7c0" stroke-width="1.4" stroke-linecap="round" stroke-opacity=".9"/><rect x="8" y="80" width="9" height="6" rx="2" transform="rotate(-32 12 83)" fill="#2a160a"/>` +
+    spark(86, 14, 7, "#fff") + spark(10, 20, 5, "#fff0a8") + `<path d="M84 74q4-6 0-12M90 78q5-8 0-16" stroke="#ffd54a" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".8"/>`;
+})();
+
+A["Букет роз"] = (() => {
+  const rose = (x: number, y: number, r: number) =>
+    `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#gRd)" stroke="#8f0c2e" stroke-width=".9"/>` +
+    `<path d="M${x - r * 0.55} ${y - r * 0.1}C${x - r * 0.4} ${y - r * 0.75} ${x + r * 0.5} ${y - r * 0.7} ${x + r * 0.5} ${y - r * 0.1}C${x + r * 0.5} ${y + r * 0.5} ${x - r * 0.2} ${y + r * 0.55} ${x - r * 0.2} ${y + r * 0.1}C${x - r * 0.2} ${y - r * 0.2} ${x + r * 0.2} ${y - r * 0.2} ${x + r * 0.15} ${y + r * 0.05}" stroke="#8f0c2e" stroke-width="1.3" fill="none" stroke-linecap="round"/>` +
+    `<ellipse cx="${x - r * 0.35}" cy="${y - r * 0.55}" rx="${r * 0.4}" ry="${r * 0.2}" fill="#fff" fill-opacity=".55" transform="rotate(-30 ${x - r * 0.35} ${y - r * 0.55})"/>`;
+  return `<defs>${L("bp1", "#fff0f6", "#f08ab8")}</defs>` +
+    `<ellipse cx="22" cy="40" rx="12" ry="6" fill="#2e9b5a" transform="rotate(-30 22 40)"/><ellipse cx="78" cy="40" rx="12" ry="6" fill="#35b36a" transform="rotate(30 78 40)"/><ellipse cx="50" cy="16" rx="6" ry="11" fill="#2e9b5a"/>` +
+    `<path d="M14 40L86 40L54 96L46 96Z" fill="url(#bp1)" stroke="#e070a0" stroke-width="1.2"/>` +
+    `<path d="M30 44L48 92M70 44L52 92M50 44L50 92" stroke="#e070a0" stroke-opacity=".5" stroke-width="1.2"/>` +
+    rose(24, 36, 11) + rose(76, 36, 11) + rose(50, 20, 12) + rose(36, 50, 10.5) + rose(64, 50, 10.5) +
+    `<path d="M42 70L58 70L56 78L44 78Z" fill="url(#gGd)"/><path d="M50 72C42 66 36 70 40 76C44 80 50 76 50 72ZM50 72C58 66 64 70 60 76C56 80 50 76 50 72Z" fill="url(#gGd)"/><circle cx="50" cy="73" r="3" fill="#ffe27a"/>` +
+    spark(88, 12, 6, "#fff") + spark(12, 14, 5, "#ffd0e4");
+})();
+
 // Объём: мягкий свет сверху-слева, блик и тень под предметом.
 const LIGHT =
   '<filter id="gLit" x="-12%" y="-12%" width="124%" height="130%" color-interpolation-filters="sRGB">' +
@@ -659,7 +772,7 @@ const LIGHT =
 export const GIFT_ART_NAMES = Object.keys(A);
 export const hasGiftArt = (name: string) => !!A[name];
 // Эти рисунки состоят из лучей/линий — им объём не нужен.
-const FLAT = new Set(["Созвездие", "Праздничный фейерверк", "Вселенная", "Северное сияние", "Комета"]);
+const FLAT = new Set(["Созвездие", "Праздничный фейерверк", "Вселенная", "Северное сияние", "Комета", "Золотая роза"]);
 export const giftSvg = (name: string): string | null => {
   const art = A[name];
   if (!art) return null;
