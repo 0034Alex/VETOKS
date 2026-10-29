@@ -74,7 +74,7 @@ export default function GiftFxHost() {
       <div key={"c" + st.seq} className="gfx-cap">
         <div className="gfx-who">
           {st.e.avatar ? <img src={st.e.avatar} alt="" /> : null}
-          <i>{st.e.to ? `Вы подарили · ${st.e.to}` : "Вы подарили"}</i>
+          <i>{st.e.from ? `${st.e.from} подарил(а)` : st.e.to ? `Вы подарили · ${st.e.to}` : "Вы подарили"}</i>
         </div>
         <b>{st.e.name}</b>
         {st.combo > 1 && <em key={"n" + st.combo}>×{st.combo}</em>}

@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
+import { listenGiftFx } from "@/lib/giftFx";
 import BottomNav from "@/components/BottomNav";
 import FollowsSheet from "@/components/FollowsSheet";
 import ProfileHero, { ProfileActions, BigBtn, RoundBtn, TopBtn, IconMail, IconSend, shareLink, KpiCrown, KpiHeart, KpiGift } from "@/components/ProfileHero";
@@ -67,6 +68,12 @@ export default function ParticipantProfilePage() {
     titles: TitleBadge[];
   } | null>(null);
   const [toast, setToast] = useState("");
+  useEffect(() => {
+    let off = () => {};
+    let dead = false;
+    getCurrentUser().then((me: any) => { if (!dead) off = listenGiftFx(id, me?.id ?? null); });
+    return () => { dead = true; off(); };
+  }, [id]);
   const [followSheet, setFollowSheet] = useState<"followers" | "following" | null>(null);
 
   const [participant, setParticipant] = useState<Participant | null>(null);

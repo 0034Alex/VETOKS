@@ -11,6 +11,8 @@ export type GiftFxEvent = {
   to?: string | null; // кому подарили
   avatar?: string | null; // фото получателя
   emoji?: string | null; // запасной значок, если рисунка нет
+  from?: string | null; // кто подарил (для зрителей); пусто = «Вы подарили»
+  uid?: string | null; // id отправителя, чтобы не показывать ему эффект второй раз
 };
 
 export const levelOf = (e: GiftFxEvent): GiftFxLevel => {
@@ -24,6 +26,38 @@ export const fireGiftFx = (e: GiftFxEvent) => {
   if (typeof window === "undefined") return;
   if (levelOf(e) === "off") return;
   window.dispatchEvent(new CustomEvent("vt-gift-fx", { detail: e }));
+};
+
+// Показ эффекта всем, кто сейчас смотрит страницу участницы (Supabase Realtime broadcast, без таблиц).
+const chName = (pid: string) => "gfx:" + pid;
+export const broadcastGift = async (participantId: string, e: GiftFxEvent) => {
+  try {
+    const { supabase } = await import("@/lib/supabaseClient");
+    const ch = supabase.channel(chName(participantId));
+    ch.subscribe((st: string) => {
+      if (st === "SUBSCRIBED") {
+        ch.send({ type: "broadcast", event: "gift", payload: { ...e, qty: Math.min(99, Number(e.qty) || 1) } }).finally(() => setTimeout(() => supabase.removeChannel(ch), 800));
+      }
+    });
+  } catch {}
+};
+export const listenGiftFx = (participantId: string, myUid: string | null, onGift?: (e: GiftFxEvent) => void) => {
+  let off = () => {};
+  let last = 0;
+  import("@/lib/supabaseClient").then(({ supabase }) => {
+    const ch = supabase.channel(chName(participantId));
+    ch.on("broadcast", { event: "gift" }, (m: any) => {
+      const e = m?.payload as GiftFxEvent;
+      if (!e?.name || (myUid && e.uid === myUid)) return;
+      const now = Date.now();
+      if (now - last < 900) return; // защита от спама
+      last = now;
+      fireGiftFx({ ...e, to: null });
+      onGift?.(e);
+    }).subscribe();
+    off = () => { supabase.removeChannel(ch); };
+  }).catch(() => {});
+  return () => off();
 };
 
 export const THEME: Record<string, string> = {

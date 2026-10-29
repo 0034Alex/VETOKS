@@ -1,7 +1,7 @@
 "use client";
 
 import GiftArt from "@/components/GiftArt";
-import { fireGiftFx } from "@/lib/giftFx";
+import { broadcastGift, fireGiftFx } from "@/lib/giftFx";
 import { useCardsEnabled } from "@/lib/useCardsEnabled";
 import { loadTeenOpen } from "@/lib/teenFlag";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -235,6 +235,10 @@ function ShopContent() {
     })();
   }, [participantId, curShow?.contest]);
 
+  // Участница может быть выбрана из поиска, «подписок» или «недавних» — ищем во всех списках.
+  const selP: any = selectedParticipant
+    ? [...participants, ...followedParticipants, ...recentParticipants].find((p: any) => p.id === selectedParticipant) ?? null
+    : null;
   const topupOn = useTopupEnabled();
   const [topOpen, setTopOpen] = useState(false);
 
@@ -275,8 +279,10 @@ function ShopContent() {
 
     setBalance(Number(r.balance));
     setQuantities((q) => ({ ...q, [gift.id]: 1 }));
-    const pr = participants.find((p) => p.id === selectedParticipant);
+    const pr: any = selP;
     fireGiftFx({ name: gift.name, art: gift.art, category: gift.category, usd: gift.usd_price, fx: gift.fx, qty, to: pr?.display_name ?? null, avatar: pr?.photo_url ?? null });
+    // Все, кто сейчас смотрит страницу этой участницы, тоже увидят подарок.
+    getCurrentUser().then((me: any) => broadcastGift(selectedParticipant, { name: gift.name, art: gift.art, category: gift.category, usd: gift.usd_price, fx: gift.fx, qty, from: me?.first_name || "Зритель", uid: userId, avatar: me?.photo_url ?? null }));
     setStatus("sent");
     setTimeout(() => setStatus("idle"), 2000);
   }
@@ -357,9 +363,14 @@ function ShopContent() {
         <div className="px-6 mb-4">
           {selectedParticipant ? (
             <div className="flex items-center justify-between bg-bgSurface border border-gold rounded-lg px-4 py-3">
-              <span className="text-offwhite text-sm">
-                {participants.find((p) => p.id === selectedParticipant)
-                  ?.display_name ?? ""}
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="w-8 h-8 rounded-full bg-black/40 overflow-hidden flex-shrink-0">
+                  {selP?.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={selP.photo_url} alt="" className="w-full h-full object-cover" />
+                  ) : null}
+                </span>
+                <span className="text-offwhite text-sm truncate">{selP?.display_name ?? "Выбрана участница"}</span>
               </span>
               <button
                 onClick={() => {
