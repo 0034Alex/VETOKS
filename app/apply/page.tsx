@@ -3,7 +3,7 @@
 import ConsentLinks from "@/components/ConsentLinks";
 import { apiPost } from "@/lib/authClient";
 import { cleanImage } from "@/lib/imageClean";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
@@ -22,6 +22,23 @@ export default function ApplyPage() {
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [agreed, setAgreed] = useState(false);
+
+  // Черновик анкеты: после чтения документов поля остаются заполненными (фото выберите заново).
+  useEffect(() => {
+    try {
+      const j = JSON.parse(sessionStorage.getItem("vt_apply_draft") || "{}");
+      if (j.displayName) setDisplayName(String(j.displayName));
+      if (j.age) setAge(String(j.age));
+      if (j.city) setCity(String(j.city));
+      if (j.bio) setBio(String(j.bio));
+      if (j.agreed) setAgreed(true);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("vt_apply_draft", JSON.stringify({ displayName, age, city, bio, agreed }));
+    } catch {}
+  }, [displayName, age, city, bio, agreed]);
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -133,6 +150,9 @@ export default function ApplyPage() {
       setErrorMessage(error.message);
     } else {
       await apiPost("/api/consent/record", { place: "apply" });
+      try {
+        sessionStorage.removeItem("vt_apply_draft");
+      } catch {}
       setStatus("success");
     }
   }

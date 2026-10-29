@@ -37,6 +37,23 @@ function RegisterForm() {
   const [captcha, setCaptcha] = useState("");
   const [capKey, setCapKey] = useState(0);
 
+  // Черновик формы (без паролей): после чтения документов данные не пропадают.
+  useEffect(() => {
+    try {
+      const j = JSON.parse(sessionStorage.getItem("vt_reg_draft") || "{}");
+      if (j.firstName) setFirstName(String(j.firstName));
+      if (j.email) setEmail(String(j.email));
+      if (j.regionId) setRegionId(String(j.regionId));
+      if (j.countryId) setCountryId(String(j.countryId));
+      if (j.agreed) setAgreed(true);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("vt_reg_draft", JSON.stringify({ firstName, email, regionId, countryId, agreed }));
+    } catch {}
+  }, [firstName, email, regionId, countryId, agreed]);
+
   // Регистрация «через Telegram»: внутри мини-приложения или после
   // подтверждения в боте (ссылка ?tg=...).
   const tgMode = !!initData || !!loginToken;
@@ -115,6 +132,10 @@ function RegisterForm() {
       setErrorMessage(r.message || "Не удалось зарегистрироваться.");
       return;
     }
+    try {
+      sessionStorage.removeItem("vt_reg_draft");
+      sessionStorage.removeItem("vt_birth_draft");
+    } catch {}
     router.replace("/welcome");
     router.refresh();
   }
@@ -154,6 +175,10 @@ function RegisterForm() {
       return;
     }
 
+    try {
+      sessionStorage.removeItem("vt_reg_draft");
+      sessionStorage.removeItem("vt_birth_draft");
+    } catch {}
     router.push("/welcome");
   }
 

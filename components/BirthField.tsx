@@ -11,7 +11,29 @@ export default function BirthField({ onChange }: { onChange: (v: string) => void
   const [y, setY] = useState("");
   const thisYear = new Date().getFullYear();
   const years: number[] = [];
-  for (let i = thisYear - 15; i >= thisYear - 90; i--) years.push(i);
+  for (let i = thisYear; i >= thisYear - 90; i--) years.push(i);
+
+  // Черновик: после чтения документов и возврата дата остаётся на месте.
+  useEffect(() => {
+    try {
+      const j = JSON.parse(sessionStorage.getItem("vt_birth_draft") || "{}");
+      if (j.d) setD(String(j.d));
+      if (j.m) setM(String(j.m));
+      if (j.y) setY(String(j.y));
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      if (d || m || y) sessionStorage.setItem("vt_birth_draft", JSON.stringify({ d, m, y }));
+    } catch {}
+  }, [d, m, y]);
+  const tooYoung = !!(d && m && y) && thisYear - Number(y) < 15 && (() => {
+    const bd = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
+    const now = new Date();
+    let age = now.getUTCFullYear() - bd.getUTCFullYear();
+    if (now.getUTCMonth() < bd.getUTCMonth() || (now.getUTCMonth() === bd.getUTCMonth() && now.getUTCDate() < bd.getUTCDate())) age -= 1;
+    return age < 15;
+  })();
 
   useEffect(() => {
     if (d && m && y) onChange(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`);
@@ -49,6 +71,7 @@ export default function BirthField({ onChange }: { onChange: (v: string) => void
           ))}
         </select>
       </div>
+      {tooYoung && <p className="text-danger text-xs mt-1">Сервис доступен с 15 лет.</p>}
       <p className="text-muted text-[11px] mt-1">Нужна, чтобы определить вашу категорию. Изменить её потом можно только через поддержку.</p>
     </div>
   );

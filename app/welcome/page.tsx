@@ -73,10 +73,7 @@ export default function WelcomePage() {
       setEnabled(true);
       setTargetAt(map.welcome_countdown_target_at || null);
       setTitle(map.welcome_countdown_title || "Приём заявок открыт!");
-      setSubtitle(
-        map.welcome_countdown_subtitle ||
-          "До старта первой недели конкурса осталось:"
-      );
+      setSubtitle((map.welcome_countdown_subtitle || "До старта шоу осталось:").replace("До старта первой недели конкурса осталось:", "До старта шоу осталось:"));
       setButtonText(map.welcome_countdown_button_text || "Подать анкету");
       setLoading(false);
     })();

@@ -4168,7 +4168,7 @@ function BrandingTab() {
     );
     setCountdownSubtitle(
       map.welcome_countdown_subtitle ??
-        "До старта первой недели конкурса осталось:"
+        "До старта шоу осталось:"
     );
     setCountdownButtonText(
       map.welcome_countdown_button_text ?? "Подать анкету"
@@ -4472,7 +4472,7 @@ function BrandingTab() {
           value={countdownSubtitle}
           onChange={(e) => setCountdownSubtitle(e.target.value)}
           rows={2}
-          placeholder="До старта первой недели конкурса осталось:"
+          placeholder="До старта шоу осталось:"
           className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm mb-3"
         />
 
