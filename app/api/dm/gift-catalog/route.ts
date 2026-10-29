@@ -12,13 +12,13 @@ export async function POST(req: Request) {
   if (uid instanceof NextResponse) return uid;
   const { data } = await supabaseAdmin
     .from("gift_catalog")
-    .select("id, name, price, usd_price, is_active")
+    .select("*")
     .eq("chat_only", true);
   const cid = await countryOfUser(uid);
   const rate = await getUsdRate(cid);
   const items = (await applyGiftOverrides((data ?? []) as any[], cid))
     .filter((g) => g.is_active)
-    .map((g) => ({ id: g.id, name: g.name, price: giftUahPrice(g, rate) }))
+    .map((g) => ({ id: g.id, name: g.name, art: (g as any).art ?? null, price: giftUahPrice(g, rate) }))
     .sort((a, b) => a.price - b.price);
   const { data: w } = await supabaseAdmin.from("wallets").select("balance").eq("user_id", uid).order("id").limit(1).maybeSingle();
   return NextResponse.json({ ok: true, items, balance: w ? Number(w.balance) : 0 });

@@ -12,7 +12,7 @@ type GiftRow = {
   id: string;
   quantity: number;
   created_at: string;
-  gift_catalog: { name: string } | null;
+  gift_catalog: { name: string; art?: string | null } | null;
 };
 
 const GIFT_EMOJI: Record<string, string> = {
@@ -51,6 +51,7 @@ export default function ParticipantGiftsPage() {
 
   const [gifts, setGifts] = useState<GiftRow[]>([]);
   const [totals, setTotals] = useState<Record<string, number>>({});
+  const [artOf, setArtOf] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [participantName, setParticipantName] = useState("");
 
@@ -65,7 +66,7 @@ export default function ParticipantGiftsPage() {
 
       const { data } = await supabase
         .from("gifts")
-        .select("id, quantity, created_at, gift_catalog(name)")
+        .select("id, quantity, created_at, gift_catalog(*)")
         .eq("participant_id", id)
         .order("created_at", { ascending: false });
 
@@ -73,11 +74,14 @@ export default function ParticipantGiftsPage() {
       setGifts(list);
 
       const sums: Record<string, number> = {};
+      const arts: Record<string, string> = {};
       list.forEach((g) => {
         const name = g.gift_catalog?.name ?? "Подарок";
         sums[name] = (sums[name] ?? 0) + (g.quantity ?? 1);
+        if (g.gift_catalog?.art) arts[name] = g.gift_catalog.art;
       });
       setTotals(sums);
+      setArtOf(arts);
 
       setLoading(false);
     })();
@@ -104,7 +108,7 @@ export default function ParticipantGiftsPage() {
               key={name}
               className="bg-bgSurface border border-muted rounded-xl p-3 flex flex-col items-center"
             >
-              <GiftArt name={name} size={44} fallback={GIFT_EMOJI[name] ?? "🎁"} />
+              <GiftArt name={artOf[name] ?? name} size={44} fallback={GIFT_EMOJI[name] ?? "🎁"} />
               <span className="text-offwhite text-xs mt-1">{name}</span>
               <span className="text-gold text-sm font-semibold">
                 × {count}
@@ -123,7 +127,7 @@ export default function ParticipantGiftsPage() {
               className="flex items-center justify-between bg-bgSurface border border-muted rounded-lg px-4 py-2"
             >
               <span className="text-offwhite text-sm">
-                <GiftArt name={g.gift_catalog?.name ?? ""} size={24} fallback={GIFT_EMOJI[g.gift_catalog?.name ?? ""] ?? "🎁"} />{" "}
+                <GiftArt name={g.gift_catalog?.art || g.gift_catalog?.name || ""} size={24} fallback={GIFT_EMOJI[g.gift_catalog?.name ?? ""] ?? "🎁"} />{" "}
                 {g.gift_catalog?.name ?? "Подарок"} × {g.quantity}
               </span>
               <span className="text-muted text-xs">

@@ -18,4 +18,5 @@ export const CHAT_GIFT_EMOJI: Record<string, string> = {
   Ракета: "🚀",
   Яхта: "🛥️",
 };
-export const chatGiftEmoji = (name: string) => CHAT_GIFT_EMOJI[name] ?? "🎁";
+// art — «исходное имя» подарка (колонка art): значок не теряется, если подарок переименовали в CRM.
+export const chatGiftEmoji = (name: string, art?: string | null) => CHAT_GIFT_EMOJI[art ?? ""] ?? CHAT_GIFT_EMOJI[name] ?? "🎁";

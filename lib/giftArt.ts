@@ -148,6 +148,14 @@ A["Воздушный поцелуй"] =
   `<ellipse cx="34" cy="38" rx="9" ry="3" fill="#fff" fill-opacity=".45" transform="rotate(-12 34 38)"/><ellipse cx="42" cy="68" rx="9" ry="3.5" fill="#fff" fill-opacity=".4"/>` +
   `<path d="M82 14C82 10 87 10 87 14C87 18 82 21 82 21C82 21 77 18 77 14C77 10 82 10 82 14Z" fill="#ff5fa8"/>`;
 
+A["Пончик"] = (() => {
+  const ring = (r: number, h: number) => `M${50 - r} 50A${r} ${r} 0 1 0 ${50 + r} 50A${r} ${r} 0 1 0 ${50 - r} 50ZM${50 - h} 50A${h} ${h} 0 1 0 ${50 + h} 50A${h} ${h} 0 1 0 ${50 - h} 50Z`;
+  const cols = ["#ffd54a", "#7fd0ff", "#fff", "#8af0a8", "#ff5fa8"];
+  let sp = "";
+  for (let i = 0; i < 16; i++) { const a = i * 2.4, r = 20 + ((i * 7) % 14), x = 50 + r * Math.cos(a), y = 50 + r * Math.sin(a); sp += `<rect x="${(x - 3).toFixed(1)}" y="${(y - 1).toFixed(1)}" width="6" height="2.6" rx="1.3" fill="${cols[i % 5]}" transform="rotate(${(i * 47) % 180} ${x.toFixed(1)} ${y.toFixed(1)})"/>`; }
+  return `<g transform="translate(0 8) scale(1 .84)" ><path fill-rule="evenodd" d="${ring(40, 12)}" fill="url(#gBr)"/><path fill-rule="evenodd" d="${ring(36, 14)}" fill="url(#gPk)"/><path d="M20 46C26 36 40 30 50 30" stroke="#fff" stroke-opacity=".5" stroke-width="3.5" fill="none" stroke-linecap="round"/>${sp}</g>`;
+})();
+
 /* ======================= ПРЕМИУМ (20) ======================= */
 A["Кристалл"] =
   `<path d="M26 40L36 30V74L26 82L16 74V50Z" fill="url(#gPu)"/><path d="M26 40L26 82L16 74V50Z" fill="#fff" fill-opacity=".18"/>` +
@@ -270,6 +278,14 @@ A["Букет роз"] = (() => {
   s += `<path d="M42 56C50 66 50 66 58 56" stroke="url(#gGd)" stroke-width="5" fill="none"/><path d="M50 62L40 72L50 68L60 72Z" fill="url(#gGd)"/>`;
   return s;
 })();
+
+A["Золотые часы"] =
+  `<path d="M50 12C32 4 26 24 38 30" stroke="url(#gGd)" stroke-width="3" fill="none" stroke-linecap="round"/>` +
+  `<rect x="44" y="10" width="12" height="10" rx="3" fill="url(#gGd)"/><circle cx="50" cy="12" r="6" fill="none" stroke="url(#gGd)" stroke-width="3.5"/>` +
+  `<circle cx="50" cy="56" r="36" fill="url(#gGd)"/><circle cx="50" cy="56" r="29" fill="url(#gWh)"/><circle cx="50" cy="56" r="29" fill="none" stroke="#b8861c" stroke-width="1.5"/>` +
+  rot(12, (i, a) => `<path d="M50 30V${i % 3 ? 33.5 : 36}" stroke="#4a2a10" stroke-width="${i % 3 ? 1.4 : 2.6}" stroke-linecap="round" transform="rotate(${a} 50 56)"/>`) +
+  `<path d="M50 56V38" stroke="#2b1a3a" stroke-width="3" stroke-linecap="round"/><path d="M50 56L64 62" stroke="#2b1a3a" stroke-width="3.6" stroke-linecap="round"/><path d="M50 56L38 74" stroke="#e0204a" stroke-width="1.4" stroke-linecap="round"/><circle cx="50" cy="56" r="3.6" fill="url(#gGd)"/>` +
+  `<path d="M26 40C30 32 38 28 46 27" stroke="#fff" stroke-opacity=".6" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="78" cy="30" r="3" fill="url(#gRd)"/>` + spark(88, 80, 6) + spark(10, 70, 4);
 
 /* ======================= VIP, АНИМИРОВАННЫЕ (20) ======================= */
 A["Созвездие"] =
@@ -434,6 +450,14 @@ A["Ледяная роза"] = (() => {
     `<g class="ga-pu"><circle cx="50" cy="50" r="15" fill="url(#ir2)" stroke="#fff" stroke-width="1.5"/><path d="M50 40C42 40 40 50 48 53C54 55 59 50 56 45C54 42 50 43 50 46" stroke="#3a7be0" stroke-width="2.2" fill="none" stroke-linecap="round"/></g>` +
     spark(90, 12, 7) + spark(10, 90, 6, "#bfe9ff") + `<path class="ga-rain" d="M20 6L22 10L26 12L22 14L20 18L18 14L14 12L18 10Z" fill="#fff"/>`;
 })();
+
+A["Магический шар"] =
+  `<defs>${R("mb1", "#b8a0ff", "#2a1470")}${R("mb2", "#c090ff", "#c090ff", 0.7)}</defs><circle class="ga-gl" cx="50" cy="48" r="46" fill="url(#mb2)"/>` +
+  `<path d="M24 94C26 80 36 76 50 76C64 76 74 80 76 94Z" fill="url(#gGd)"/><rect x="30" y="72" width="40" height="8" rx="4" fill="#b8861c"/>` +
+  `<circle cx="50" cy="44" r="33" fill="url(#mb1)"/>` +
+  `<g class="ga-sp" style="animation-duration:10s"><path d="M30 44C30 30 50 26 58 38C64 48 50 56 44 50C40 46 46 40 50 44" stroke="#ff9ad0" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M70 50C66 62 46 66 38 56" stroke="#7fd0ff" stroke-width="2.4" fill="none" stroke-linecap="round"/></g>` +
+  tw(40, 30, 6, "#fff0a8", 0) + tw(62, 36, 5, "#fff", 0.5) + tw(52, 58, 6, "#ffd54a", 0.9) + tw(34, 54, 4, "#fff", 1.2) + tw(66, 56, 4, "#7fd0ff", 0.3) +
+  `<ellipse cx="38" cy="26" rx="9" ry="5" fill="#fff" fill-opacity=".5" transform="rotate(-35 38 26)"/>` + tw(88, 14, 7, "#fff", 0.2) + tw(10, 20, 5, "#ffd0f0", 0.7);
 
 // Объём: мягкий свет сверху-слева, блик и тень под предметом.
 const LIGHT =

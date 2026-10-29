@@ -56,7 +56,7 @@ export async function POST(req: Request) {
 
   const { data: giftRaw } = await supabaseAdmin
     .from("gift_catalog")
-    .select("id, name, price, usd_price, participant_share_percent, is_active, chat_only")
+    .select("*")
     .eq("id", giftId)
     .maybeSingle();
   const cid = await countryOfUser(uid);
@@ -143,7 +143,7 @@ export async function POST(req: Request) {
     earning,
   });
 
-  const text = `${chatGiftEmoji(gift.name as string)} ${gift.name}${qty > 1 ? ` ×${qty}` : ""}`;
+  const text = `${chatGiftEmoji(gift.name as string, (gift as any).art)} ${gift.name}${qty > 1 ? ` ×${qty}` : ""}`;
   await supabaseAdmin.from("dm_messages").insert({
     thread_id: thread.id,
     sender_id: uid,

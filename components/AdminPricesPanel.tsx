@@ -34,6 +34,8 @@ type GiftRow = {
   share: string;
   is_active: boolean;
   chat_only?: boolean;
+  art?: string | null;
+  origName?: string;
 };
 
 export default function AdminPricesPanel() {
@@ -92,7 +94,7 @@ export default function AdminPricesPanel() {
 
     const { data: g } = await supabase
       .from("gift_catalog")
-      .select("id, name, category, price, usd_price, participant_share_percent, is_active, chat_only")
+      .select("*")
       .order("price");
     let ov = new Map<string, any>();
     if (cc) {
@@ -118,6 +120,8 @@ export default function AdminPricesPanel() {
         share: String(x.participant_share_percent ?? 50),
         is_active: !!x.is_active,
         chat_only: !!x.chat_only,
+        art: x.art ?? null,
+        origName: x.name,
       }))
     );
     setLoading(false);
@@ -155,6 +159,7 @@ export default function AdminPricesPanel() {
         participant_share_percent: clampShare(g.share),
         is_active: g.is_active,
       });
+      await saveName(g);
       flash(g.id);
       return;
     }
@@ -166,7 +171,23 @@ export default function AdminPricesPanel() {
         is_active: g.is_active,
       })
       .eq("id", g.id);
+    await saveName(g);
     flash(g.id);
+  }
+
+  // Название подарка общее для всех стран. Картинка/значок остаются: старое имя
+  // запоминается в колонке art (если её ещё нет — название просто сохранится).
+  async function saveName(g: GiftRow) {
+    const nm = g.name.trim();
+    if (!nm || nm === g.origName) return;
+    const upd: any = { name: nm };
+    if (!g.art) upd.art = g.origName;
+    let { error } = await supabase.from("gift_catalog").update(upd).eq("id", g.id);
+    if (error && upd.art) ({ error } = await supabase.from("gift_catalog").update({ name: nm }).eq("id", g.id));
+    if (!error) {
+      await supabase.from("user_gifts").update({ gift_name: nm }).eq("gift_name", g.origName);
+      setGifts((arr) => arr.map((x) => (x.id === g.id ? { ...x, origName: nm, art: x.art || g.origName } : x)));
+    }
   }
 
   async function saveSetting(key: string, value: string) {
@@ -258,14 +279,24 @@ export default function AdminPricesPanel() {
         ))}
       </div>
 
-      <h3 className="text-offwhite font-semibold mb-2">Подарки</h3>
+      <h3 className="text-offwhite font-semibold mb-1">Подарки</h3>
+      <p className="text-muted text-xs mb-2">Название можно менять прямо тут (оно одно для всех стран). Картинка подарка при переименовании остаётся.</p>
       <div className="flex flex-col gap-3 mb-8">
         {gifts.map((g, i) => (
           <div key={g.id} className="bg-bgSurface border border-muted rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-offwhite text-sm font-semibold">
-                {g.name} <span className="text-muted text-xs">({g.chat_only ? "только в чате" : g.category})</span>
-              </p>
+              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                <input
+                  value={g.name}
+                  onChange={(e) => {
+                    const n = [...gifts];
+                    n[i] = { ...g, name: e.target.value };
+                    setGifts(n);
+                  }}
+                  className="bg-bgPrimary border border-muted rounded-lg px-2 py-1 text-sm font-semibold text-offwhite min-w-0 w-40"
+                />
+                <span className="text-muted text-xs flex-none">({g.chat_only ? "только в чате" : g.category})</span>
+              </div>
               <label className="text-muted text-xs flex items-center gap-1">
                 <input
                   type="checkbox"

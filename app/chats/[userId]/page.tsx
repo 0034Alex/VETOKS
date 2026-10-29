@@ -46,7 +46,7 @@ export default function ChatPage() {
   const [, setAccepted] = useState(false);
   const [, setHasThread] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
-  const [gifts, setGifts] = useState<{ id: string; name: string; price: number }[]>([]);
+  const [gifts, setGifts] = useState<{ id: string; name: string; art?: string | null; price: number }[]>([]);
   const [balance, setBalance] = useState(0);
   const [cur, setCur] = useState("\uE000");
   const [giftMsg, setGiftMsg] = useState("");
@@ -158,11 +158,11 @@ export default function ChatPage() {
 
   // Витрина подарков этого чата: что подарили вы и что подарили вам.
   const giftLog = messages.filter((m) => m.kind === "gift");
-  const gTotals: Record<string, { name: string; mine: number; theirs: number }> = {};
+  const gTotals: Record<string, { name: string; icon: string; mine: number; theirs: number }> = {};
   giftLog.forEach((m) => {
     const nm: string = m.meta?.name || String(m.body || "").replace(/^\S+\s/, "").replace(/\s×\d+$/, "");
     const q = Number(m.meta?.qty) || 1;
-    const g = (gTotals[nm] = gTotals[nm] ?? { name: nm, mine: 0, theirs: 0 });
+    const g = (gTotals[nm] = gTotals[nm] ?? { name: nm, icon: String(m.body || "").split(" ")[0] || chatGiftEmoji(nm), mine: 0, theirs: 0 });
     if (m.sender_id === me) g.mine += q;
     else g.theirs += q;
   });
@@ -221,7 +221,7 @@ export default function ChatPage() {
           <div className="flex gap-1.5 flex-1 min-w-0 overflow-x-auto" style={{ scrollbarWidth: "none", touchAction: "pan-x" }}>
             {gList.map((g) => (
               <button key={g.name} onClick={() => setShowcase(true)} className="flex items-center gap-1 bg-bgPrimary border border-gold/40 rounded-full px-2.5 py-1 text-sm flex-none">
-                <span className="text-xl leading-none">{chatGiftEmoji(g.name)}</span>
+                <span className="text-xl leading-none">{g.icon}</span>
               </button>
             ))}
           </div>
@@ -374,7 +374,7 @@ export default function ChatPage() {
                   {giftSel === g.id && (
                     <span className="absolute -top-1.5 -right-1 min-w-[24px] h-6 px-1.5 rounded-full bg-gold text-bgPrimary text-xs font-bold flex items-center justify-center">+{giftQty}</span>
                   )}
-                  <span className="text-4xl leading-none">{chatGiftEmoji(g.name)}</span>
+                  <span className="text-4xl leading-none">{chatGiftEmoji(g.name, g.art)}</span>
                   <span className="text-offwhite text-xs">{g.name}</span>
                   <span className="text-gold text-xs font-semibold">{g.price} {cur}</span>
                 </button>
@@ -436,7 +436,7 @@ export default function ChatPage() {
             <div className="grid grid-cols-3 gap-2">
               {gList.map((g) => (
                 <div key={g.name} className="bg-bgPrimary border border-gold/40 rounded-xl py-3 flex flex-col items-center gap-1">
-                  <span className="text-4xl leading-none">{chatGiftEmoji(g.name)}</span>
+                  <span className="text-4xl leading-none">{g.icon}</span>
                   <span className="text-offwhite text-xs">{g.name}</span>
                   <span className="text-gold text-sm font-semibold">×{g.mine + g.theirs}</span>
                 </div>

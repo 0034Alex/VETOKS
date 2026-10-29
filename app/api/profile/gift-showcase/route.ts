@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
+import { chatGiftEmoji } from "@/lib/chatGifts";
 import { sameCountry } from "@/lib/countryServer";
 
 export const dynamic = "force-dynamic";
@@ -21,8 +22,11 @@ export async function POST(req: Request) {
   const { data } = await supabaseAdmin.from("user_gifts").select("gift_name, quantity").eq("recipient_id", target).limit(5000);
   const map: Record<string, number> = {};
   (data ?? []).forEach((r: any) => (map[r.gift_name] = (map[r.gift_name] ?? 0) + Number(r.quantity || 1)));
+  const { data: cat } = await supabaseAdmin.from("gift_catalog").select("*").eq("chat_only", true);
+  const artOf: Record<string, string> = {};
+  (cat ?? []).forEach((c: any) => { if (c.art) artOf[c.name] = c.art; });
   const items = Object.entries(map)
-    .map(([name, qty]) => ({ name, qty }))
+    .map(([name, qty]) => ({ name, qty, icon: chatGiftEmoji(name, artOf[name]) }))
     .sort((a, b2) => b2.qty - a.qty);
   const total = items.reduce((s, i) => s + i.qty, 0);
   return NextResponse.json({ ok: true, show: total > 0, hidden: hidden && self, total, items });

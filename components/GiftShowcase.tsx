@@ -6,7 +6,7 @@ import { chatGiftEmoji } from "@/lib/chatGifts";
 
 // Витрина подарков в профиле: стопка значков и общее число. По нажатию — все подарки.
 export default function GiftShowcase({ userId, className = "" }: { userId?: string; className?: string }) {
-  const [d, setD] = useState<{ total: number; items: { name: string; qty: number }[]; hidden?: boolean } | null>(null);
+  const [d, setD] = useState<{ total: number; items: { name: string; qty: number; icon?: string }[]; hidden?: boolean } | null>(null);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function GiftShowcase({ userId, className = "" }: { userId?: stri
               className="not-italic w-8 h-8 rounded-full bg-bgPrimary border-2 border-gold flex items-center justify-center text-base"
               style={{ marginLeft: i === 0 ? 0 : -9 }}
             >
-              {chatGiftEmoji(g.name)}
+              {g.icon ?? chatGiftEmoji(g.name)}
             </i>
           ))}
         </span>
@@ -53,7 +53,7 @@ export default function GiftShowcase({ userId, className = "" }: { userId?: stri
             <div className="grid grid-cols-3 gap-2">
               {d.items.map((g) => (
                 <div key={g.name} className="bg-bgPrimary border border-gold/40 rounded-xl py-3 flex flex-col items-center gap-1">
-                  <span className="text-4xl leading-none">{chatGiftEmoji(g.name)}</span>
+                  <span className="text-4xl leading-none">{g.icon ?? chatGiftEmoji(g.name)}</span>
                   <span className="text-offwhite text-xs">{g.name}</span>
                   <span className="text-gold text-sm font-semibold">×{g.qty}</span>
                 </div>

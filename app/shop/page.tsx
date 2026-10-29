@@ -27,6 +27,7 @@ type Gift = {
   participant_share_percent: number;
   chat_only?: boolean;
   show_key?: string | null;
+  art?: string | null;
 };
 
 function useTopupEnabled() {
@@ -148,7 +149,7 @@ function ShopContent() {
 
       const { data: giftsData } = await supabase
         .from("gift_catalog")
-        .select("id, name, price, usd_price, category, participant_share_percent, chat_only, is_active, show_key");
+        .select("*");
       // Цена подарка задаётся в CRM в долларах; пересчитываем по курсу.
       const rate = await getUsdRate();
       const withCountry = (await applyGiftOverrides((giftsData as any[]) ?? [])).filter((g: any) => g.is_active);
@@ -535,7 +536,7 @@ function ShopContent() {
               key={g.id}
               className="bg-bgSurface border border-muted rounded-xl p-3 flex flex-col items-center gap-1"
             >
-              <GiftArt name={g.name} size={64} fallback={GIFT_EMOJI[g.name] ?? "🎁"} />
+              <GiftArt name={g.art || g.name} size={64} fallback={GIFT_EMOJI[g.name] ?? "🎁"} />
               <span data-tr className="text-offwhite text-xs text-center">
                 {g.name}
               </span>
