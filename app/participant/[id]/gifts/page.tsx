@@ -7,6 +7,8 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import { apiPost } from "@/lib/authClient";
+import { fireGiftFx } from "@/lib/giftFx";
 
 type GiftRow = {
   id: string;
@@ -54,6 +56,28 @@ export default function ParticipantGiftsPage() {
   const [artOf, setArtOf] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [participantName, setParticipantName] = useState("");
+  const [fresh, setFresh] = useState<any[]>([]);
+  const [playing, setPlaying] = useState(false);
+
+  // Только владелица видит «новые подарки» — сервер отдаёт список лишь ей.
+  useEffect(() => {
+    apiPost("/api/gifts/fx", { action: "replay" })
+      .then((r: any) => setFresh((r?.items ?? []).filter((i: any) => true)))
+      .catch(() => {});
+  }, [id]);
+
+  async function playFresh() {
+    if (playing) return;
+    setPlaying(true);
+    const list = [...fresh];
+    for (const g of list) {
+      fireGiftFx({ name: g.name, art: g.art, category: g.category, usd: g.usd, fx: g.fx === "off" ? "off" : "full", qty: g.qty, from: g.from, avatar: g.avatar });
+      await apiPost("/api/gifts/fx", { action: "ack", played: [g.id] }).catch(() => {});
+      await new Promise((r) => setTimeout(r, 4600));
+    }
+    setFresh([]);
+    setPlaying(false);
+  }
 
   useEffect(() => {
     (async () => {
@@ -95,6 +119,18 @@ export default function ParticipantGiftsPage() {
           Подарки {participantName && `— ${participantName}`}
         </h1>
       </div>
+
+      {fresh.length > 0 && (
+        <div className="px-6 mb-4">
+          <button
+            onClick={playFresh}
+            disabled={playing}
+            className="w-full bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm"
+          >
+            {playing ? "Показываю…" : `▶ Посмотреть новые подарки (${fresh.length})`}
+          </button>
+        </div>
+      )}
 
       {loading && <LoadingScreen inline />}
       {!loading && gifts.length === 0 && (

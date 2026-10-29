@@ -12,7 +12,8 @@ export type GiftFxEvent = {
   avatar?: string | null; // фото получателя
   emoji?: string | null; // запасной значок, если рисунка нет
   from?: string | null; // кто подарил (для зрителей); пусто = «Вы подарили»
-  uid?: string | null; // id отправителя, чтобы не показывать ему эффект второй раз
+  uid?: string | null; // id отправителя
+  to_uid?: string | null; // id получательницы (ей эффект показывает GiftInbox)
 };
 
 export const levelOf = (e: GiftFxEvent): GiftFxLevel => {
@@ -48,7 +49,8 @@ export const listenGiftFx = (participantId: string, myUid: string | null, onGift
     const ch = supabase.channel(chName(participantId));
     ch.on("broadcast", { event: "gift" }, (m: any) => {
       const e = m?.payload as GiftFxEvent;
-      if (!e?.name || (myUid && e.uid === myUid)) return;
+      if (!e?.name || (myUid && (e.uid === myUid || e.to_uid === myUid))) return;
+      if (e.category !== "vip") return; // зрителям на весь экран — только VIP
       const now = Date.now();
       if (now - last < 900) return; // защита от спама
       last = now;

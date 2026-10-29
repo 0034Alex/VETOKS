@@ -1,7 +1,7 @@
 "use client";
 
 import GiftArt from "@/components/GiftArt";
-import { broadcastGift, fireGiftFx } from "@/lib/giftFx";
+import { broadcastGift } from "@/lib/giftFx";
 import { useCardsEnabled } from "@/lib/useCardsEnabled";
 import { loadTeenOpen } from "@/lib/teenFlag";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -280,9 +280,16 @@ function ShopContent() {
     setBalance(Number(r.balance));
     setQuantities((q) => ({ ...q, [gift.id]: 1 }));
     const pr: any = selP;
-    fireGiftFx({ name: gift.name, art: gift.art, category: gift.category, usd: gift.usd_price, fx: gift.fx, qty, to: pr?.display_name ?? null, avatar: pr?.photo_url ?? null });
     // Все, кто сейчас смотрит страницу этой участницы, тоже увидят подарок.
-    getCurrentUser().then((me: any) => broadcastGift(selectedParticipant, { name: gift.name, art: gift.art, category: gift.category, usd: gift.usd_price, fx: gift.fx, qty, from: me?.first_name || "Зритель", uid: userId, avatar: me?.photo_url ?? null }));
+    (async () => {
+      const me: any = await getCurrentUser();
+      let toUid: string | null = pr?.user_id ?? null;
+      if (!toUid) {
+        const { data: pp } = await supabase.from("participants").select("user_id").eq("id", selectedParticipant).maybeSingle();
+        toUid = (pp as any)?.user_id ?? null;
+      }
+      broadcastGift(selectedParticipant, { name: gift.name, art: gift.art, category: gift.category, usd: gift.usd_price, fx: gift.fx, qty, from: me?.first_name || "Зритель", uid: userId, to_uid: toUid, avatar: me?.photo_url ?? null });
+    })();
     setStatus("sent");
     setTimeout(() => setStatus("idle"), 2000);
   }
