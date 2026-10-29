@@ -68,7 +68,7 @@ A["Лента"] =
   `<path d="M44 54L28 90L42 82L48 94L54 58Z" fill="#d12a68"/><path d="M56 54L72 90L58 82L52 94L46 58Z" fill="#e0306f"/>` +
   `<rect x="42" y="38" width="16" height="18" rx="6" fill="url(#gRd)"/><path d="M20 38C26 34 34 36 40 42" stroke="#fff" stroke-opacity=".5" stroke-width="3" fill="none" stroke-linecap="round"/>`;
 
-A["Мишка"] =
+A["Плюшевый мишка"] =
   `<defs>${R("mi1", "#e2a86b", "#9a5f2a")}</defs>` +
   `<circle cx="30" cy="27" r="10" fill="url(#mi1)"/><circle cx="70" cy="27" r="10" fill="url(#mi1)"/><circle cx="30" cy="27" r="5" fill="#f2c9a0"/><circle cx="70" cy="27" r="5" fill="#f2c9a0"/>` +
   `<ellipse cx="50" cy="82" rx="21" ry="15" fill="url(#mi1)"/><ellipse cx="50" cy="84" rx="11" ry="9" fill="#f2c9a0"/><circle cx="50" cy="47" r="24" fill="url(#mi1)"/><ellipse cx="50" cy="55" rx="12" ry="9" fill="#f2c9a0"/>` +
@@ -142,7 +142,7 @@ A["Колокольчик"] =
   `<path d="M36 30C32 40 32 50 34 60" stroke="#fff" stroke-opacity=".5" stroke-width="3.5" fill="none" stroke-linecap="round"/><rect x="14" y="66" width="72" height="7" rx="3.5" fill="#b8861c"/>` +
   `<circle cx="50" cy="80" r="8" fill="url(#gGd)"/><path d="M50 10C42 4 34 8 38 14M50 10C58 4 66 8 62 14" stroke="#e0306f" stroke-width="3" fill="none" stroke-linecap="round"/>`;
 
-A["Поцелуй"] =
+A["Воздушный поцелуй"] =
   `<path d="M8 50C22 32 40 32 50 41C60 32 78 32 92 50C78 56 62 56 50 54C38 56 22 56 8 50Z" fill="url(#gRd)"/>` +
   `<path d="M8 50C26 60 40 57 50 55C60 57 74 60 92 50C82 78 62 84 50 84C38 84 18 78 8 50Z" fill="url(#gPk)"/><path d="M8 50C22 56 38 54 50 54C62 54 78 56 92 50" stroke="#8f0c2e" stroke-width="2" fill="none"/>` +
   `<ellipse cx="34" cy="38" rx="9" ry="3" fill="#fff" fill-opacity=".45" transform="rotate(-12 34 38)"/><ellipse cx="42" cy="68" rx="9" ry="3.5" fill="#fff" fill-opacity=".4"/>` +
@@ -178,7 +178,7 @@ A["Золотая корона"] =
   `<circle cx="9" cy="30" r="4.5" fill="#fff0a8"/><circle cx="50" cy="16" r="5" fill="#fff0a8"/><circle cx="91" cy="30" r="4.5" fill="#fff0a8"/><circle cx="50" cy="80" r="4.5" fill="#e0204a"/><circle cx="31" cy="80" r="3.5" fill="#3a8be8"/><circle cx="69" cy="80" r="3.5" fill="#2fc07a"/>` +
   `<path d="M32 52L25 70M68 52L75 70M50 18L50 64" stroke="#fff" stroke-opacity=".3" stroke-width="2" fill="none"/>`;
 
-A["Шампанское"] =
+A["Бутылка шампанского"] =
   `<rect x="44" y="8" width="12" height="14" rx="3" fill="#f3e6c4"/><rect x="43" y="18" width="14" height="22" fill="url(#gGd)"/>` +
   `<path d="M43 40C43 40 34 46 34 58V88C34 91 36 93 39 93H61C64 93 66 91 66 88V58C66 46 57 40 57 40Z" fill="#0f6a44"/><path d="M43 40C43 40 34 46 34 58V88C34 91 36 93 39 93H61C64 93 66 91 66 88V58C66 46 57 40 57 40Z" fill="url(#gGr)" fill-opacity=".5"/>` +
   `<rect x="36" y="62" width="28" height="20" rx="3" fill="#f6ecd2"/><circle cx="50" cy="72" r="6" fill="none" stroke="#c9a52f" stroke-width="2"/><path d="M47 72L50 69L53 72L50 75Z" fill="#c9a52f"/><path d="M40 50V86" stroke="#fff" stroke-opacity=".25" stroke-width="3" stroke-linecap="round"/>` +
@@ -257,7 +257,7 @@ A["Сердце с ключом"] =
   `<g transform="rotate(35 70 64)"><circle cx="70" cy="40" r="11" fill="none" stroke="url(#gGd)" stroke-width="6"/><rect x="67" y="50" width="6" height="40" rx="2" fill="url(#gGd)"/><rect x="73" y="72" width="10" height="5" fill="url(#gGd)"/><rect x="73" y="82" width="8" height="5" fill="url(#gGd)"/></g>` +
   `<circle cx="38" cy="56" r="5" fill="#5a0a20"/><path d="M36 58L40 70H36Z" fill="#5a0a20"/>`;
 
-A["Букет"] = (() => {
+A["Букет роз"] = (() => {
   const P: [number, number, number][] = [[50,20,13],[30,28,12],[70,28,12],[18,44,11],[40,40,12],[60,40,12],[82,44,11],[28,56,11],[50,54,12],[72,56,11]];
   let s = `<defs>${R("bq1", "#ff7a8e", "#a30d33")}</defs>`;
   s += `<path d="M10 52L50 98L90 52Z" fill="url(#gPk)"/><path d="M10 52L50 98L50 52Z" fill="#fff" fill-opacity=".2"/><path d="M20 62L80 62" stroke="url(#gGd)" stroke-width="4"/>`;
@@ -333,7 +333,7 @@ A["Дракон"] =
   `<ellipse cx="50" cy="40" rx="6" ry="4" fill="#ffd54a" transform="rotate(20 50 40)"/><ellipse class="ga-tw" cx="51" cy="40" rx="2" ry="3.5" fill="#2b1a3a" transform="rotate(20 51 40)"/>` +
   `<path d="M20 70C28 66 36 70 40 78M24 56C30 54 36 58 38 64" stroke="#0f6a44" stroke-width="2.2" fill="none" stroke-linecap="round"/><circle cx="70" cy="48" r="2" fill="#0f6a44"/>`;
 
-A["Единорог"] =
+A["Сказочный единорог"] =
   `<defs>${L("un3", "#ffffff", "#d8d4f0")}</defs>` +
   `<g class="ga-sw" style="transform-origin:40px 40px">` +
   `<path d="M40 22C20 22 12 42 20 60C14 66 18 78 28 82C20 70 28 62 34 60C30 52 32 40 44 34Z" fill="#ff5fa8"/><path d="M34 16C14 22 8 46 14 62C8 56 6 44 12 34C16 24 24 18 34 16Z" fill="#a070ff"/><path d="M30 28C18 34 16 50 22 62C26 64 28 66 28 68C22 56 24 40 36 30Z" fill="#46c8ff"/></g>` +
@@ -342,7 +342,7 @@ A["Единорог"] =
   `<path d="M48 34L42 22L56 30Z" fill="#fff"/><circle cx="62" cy="48" r="3" fill="#2b1a3a"/><circle cx="63" cy="47" r="1" fill="#fff"/><ellipse cx="80" cy="60" rx="2" ry="1.4" fill="#e0306f"/>` +
   tw(84, 16, 8, "#fff", 0) + tw(18, 20, 6, "#fff0a8", 0.6) + tw(90, 40, 5, "#ffd0e8", 1);
 
-A["Фейерверк"] =
+A["Праздничный фейерверк"] =
   `<defs>${R("fw0", "#ffffff", "#ffffff", 0.9)}</defs><circle class="ga-tw" cx="50" cy="50" r="7" fill="url(#fw0)"/>` +
   `<g class="ga-ray" style="stroke:#ffd54a;stroke-width:3"><path d="M50 50V8M50 50V92M50 50H8M50 50H92"/></g>` +
   `<g class="ga-ray" style="stroke:#ff5e8a;stroke-width:3;animation-delay:.15s"><path d="M50 50L20 20M50 50L80 80M50 50L80 20M50 50L20 80"/></g>` +
@@ -390,7 +390,7 @@ A["Крылья ангела"] =
   `<path d="M50 68C38 58 38 46 46 46C49 46 50 49 50 50C50 49 51 46 54 46C62 46 62 58 50 68Z" fill="url(#gPk)"/>` +
   `<ellipse class="ga-gl" cx="50" cy="16" rx="16" ry="5" fill="none" stroke="url(#gGd)" stroke-width="4"/>` + tw(14, 20, 6, "#fff", 0) + tw(88, 24, 7, "#fff0a8", 0.6) + tw(80, 86, 5, "#fff", 1);
 
-A["Ракета"] =
+A["Космическая ракета"] =
   `<g class="ga-fy" style="transform-origin:50px 50px"><g transform="rotate(35 50 50)">` +
   `<path class="ga-fl" d="M42 76C40 88 46 94 50 100C54 94 60 88 58 76Z" fill="url(#gOr)"/><path class="ga-fl" style="animation-delay:.2s" d="M46 76C46 84 48 88 50 92C52 88 54 84 54 76Z" fill="#fff6c0"/>` +
   `<path d="M34 64L22 80L38 74Z" fill="url(#gRd)"/><path d="M66 64L78 80L62 74Z" fill="url(#gRd)"/>` +
@@ -427,7 +427,7 @@ const LIGHT =
 export const GIFT_ART_NAMES = Object.keys(A);
 export const hasGiftArt = (name: string) => !!A[name];
 // Эти рисунки состоят из лучей/линий — им объём не нужен.
-const FLAT = new Set(["Созвездие", "Фейерверк", "Вселенная", "Северное сияние"]);
+const FLAT = new Set(["Созвездие", "Праздничный фейерверк", "Вселенная", "Северное сияние"]);
 export const giftSvg = (name: string): string | null => {
   const art = A[name];
   if (!art) return null;
