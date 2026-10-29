@@ -411,7 +411,30 @@ A["Ледяная роза"] =
   `<g class="ga-pu"><path d="M50 12C29 12 22 34 31 47C38 57 62 57 69 47C78 34 71 12 50 12Z" fill="url(#ir1)"/><path d="M50 19C39 21 37 34 45 39C52 43 61 39 61 30C61 24 56 19 50 19Z" fill="#9fe6ff"/><path d="M45 29C45 24 55 24 55 30C55 35 46 36 45 29Z" fill="#3a9bff"/><path d="M35 24C37 20 42 17 47 16" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></g>` +
   `<path class="ga-rain" d="M20 6L22 10L26 12L22 14L20 18L18 14L14 12L18 10Z" fill="#fff"/><path class="ga-rain" style="animation-delay:1s" d="M80 4L82 8L86 10L82 12L80 16L78 12L74 10L78 8Z" fill="#bfe9ff"/>` + tw(86, 40, 6, "#fff", 0.4) + tw(12, 50, 5, "#bfe9ff", 0.9);
 
+// Объём: мягкий свет сверху-слева, блик и тень под предметом.
+const LIGHT =
+  '<filter id="gLit" x="-12%" y="-12%" width="124%" height="130%" color-interpolation-filters="sRGB">' +
+  '<feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="b"/>' +
+  '<feDiffuseLighting in="b" surfaceScale="3.2" diffuseConstant="1.05" lighting-color="#fff" result="df"><fePointLight x="22" y="4" z="70"/></feDiffuseLighting>' +
+  '<feComposite in="df" in2="SourceGraphic" operator="arithmetic" k1="1.18" k2="0" k3="0" k4="0" result="sh"/>' +
+  '<feSpecularLighting in="b" surfaceScale="4" specularConstant=".85" specularExponent="26" lighting-color="#fff" result="sp"><fePointLight x="22" y="4" z="60"/></feSpecularLighting>' +
+  '<feComposite in="sp" in2="SourceAlpha" operator="in" result="sp2"/>' +
+  '<feComposite in="sh" in2="sp2" operator="arithmetic" k1="0" k2="1" k3=".7" k4="0" result="lit"/>' +
+  '<feComposite in="lit" in2="SourceAlpha" operator="in" result="lit2"/>' +
+  '<feDropShadow in="lit2" dx="0" dy="3" stdDeviation="2.2" flood-color="#000" flood-opacity=".5"/>' +
+  "</filter>";
+
 export const GIFT_ART_NAMES = Object.keys(A);
 export const hasGiftArt = (name: string) => !!A[name];
-export const giftSvg = (name: string): string | null =>
-  A[name] ? `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${COMMON}${A[name]}</svg>` : null;
+// Эти рисунки состоят из лучей/линий — им объём не нужен.
+const FLAT = new Set(["Созвездие", "Фейерверк", "Вселенная", "Северное сияние"]);
+export const giftSvg = (name: string): string | null => {
+  const art = A[name];
+  if (!art) return null;
+  const head = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${COMMON}`;
+  if (FLAT.has(name)) return `${head}${art}</svg>`;
+  // свечение (круг ga-gl) остаётся вне фильтра, иначе превращается в тёмный шар
+  const glows: string[] = [];
+  const body = art.replace(/<circle class="ga-gl"[^>]*\/>/g, (m) => (glows.push(m), ""));
+  return `${head}<defs>${LIGHT}</defs>${glows.join("")}<g filter="url(#gLit)">${body}</g></svg>`;
+};
