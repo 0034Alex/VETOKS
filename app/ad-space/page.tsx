@@ -129,6 +129,14 @@ export default function AdSpacePage() {
     }
   }
 
+  async function cancelRequest(id: string) {
+    if (!window.confirm("Отменить эту заявку?")) return;
+    setPayMsg("");
+    const r = await apiPost("/api/ad/cancel", { id });
+    setPayMsg(r?.ok ? "Заявка отменена." : "Не получилось отменить заявку.");
+    await loadMine();
+  }
+
   async function payRequest(id: string) {
     setPaying(id);
     setPayMsg("");
@@ -337,7 +345,12 @@ export default function AdSpacePage() {
           {mine.map((m) => (
             <div key={m.id} className="border-t border-muted/40 py-2 first:border-t-0">
               <p className="text-offwhite text-sm">{m.title}</p>
-              {m.status === "new" && <p className="text-muted text-xs">⏳ На рассмотрении</p>}
+              {m.status === "new" && (
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-muted text-xs">⏳ На рассмотрении</p>
+                  <button onClick={() => cancelRequest(m.id)} className="text-danger text-xs underline">Отменить заявку</button>
+                </div>
+              )}
               {m.status === "approved" && (
                 <div className="flex items-center justify-between gap-2 mt-1">
                   <p className="text-success text-xs">✅ Одобрено · к оплате {Math.round(Number(m.price ?? 0))} {cur}</p>
@@ -349,6 +362,9 @@ export default function AdSpacePage() {
                     {paying === m.id ? "Оплата..." : "Оплатить"}
                   </button>
                 </div>
+              )}
+              {m.status === "approved" && (
+                <button onClick={() => cancelRequest(m.id)} className="text-danger text-xs underline mt-1">Отменить заявку</button>
               )}
               {m.status === "paying" && <p className="text-muted text-xs">Идёт оплата…</p>}
               {m.status === "paid" && <p className="text-success text-xs">💳 Оплачено — место за вами</p>}
@@ -495,11 +511,13 @@ export default function AdSpacePage() {
 
       {selected && (
         <div
-          className="fixed inset-0 bg-black/80 flex overflow-y-auto overscroll-contain z-[60] px-6"
+          className="fixed inset-0 bg-black/80 overflow-y-auto overscroll-contain z-[110]"
+          style={{ WebkitOverflowScrolling: "touch", paddingBottom: 0 }}
           onClick={() => setSelected(null)}
         >
+         <div className="min-h-full flex items-start justify-center px-6 pt-8" style={{ paddingBottom: "calc(48px + env(safe-area-inset-bottom, 0px))" }}>
           <div
-            className="bg-bgSurface border border-gold/40 rounded-2xl p-6 w-full max-w-sm m-auto my-8"
+            className="bg-bgSurface border border-gold/40 rounded-2xl p-6 w-full max-w-sm"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-gold text-xs tracking-widest mb-1">
@@ -614,6 +632,7 @@ export default function AdSpacePage() {
               Закрыть
             </button>
           </div>
+         </div>
         </div>
       )}
 

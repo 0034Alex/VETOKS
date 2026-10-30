@@ -207,7 +207,7 @@ export async function POST(req: Request) {
 
   // Удалить партнёра (например, пробного). Платежи и бонус участнице защищены от случайного удаления.
   if (a === "delete") {
-    const { data: sp } = await supabaseAdmin.from("sponsors").select("id, name, referral_paid_at").eq("id", id).maybeSingle();
+    const { data: sp } = await supabaseAdmin.from("sponsors").select("id, name, referral_paid_at, user_id").eq("id", id).maybeSingle();
     if (!sp) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
     if ((sp as any).referral_paid_at) return NextResponse.json({ ok: false, error: "referral_paid" }, { status: 400 });
     const { count: payCount } = await supabaseAdmin.from("sponsor_payments").select("id", { count: "exact", head: true }).eq("sponsor_id", id);
@@ -220,6 +220,14 @@ export async function POST(req: Request) {
       await supabaseAdmin.from("users").update({ is_business: false }).eq("id", (bp as any).user_id);
     }
     await supabaseAdmin.from("sponsor_payments").delete().eq("sponsor_id", id);
+    // Неоплаченные заявки на рекламу этого человека закрываем, чтобы у него не висело «оплатите заявку».
+    if ((sp as any).user_id) {
+      await supabaseAdmin
+        .from("ad_slot_requests")
+        .update({ status: "rejected", decision_note: "Партнёр удалён" })
+        .eq("user_id", (sp as any).user_id)
+        .in("status", ["new", "approved"]);
+    }
     const { error } = await supabaseAdmin.from("sponsors").delete().eq("id", id);
     if (error) return NextResponse.json({ ok: false, error: "failed" }, { status: 500 });
     await logAction(uid, "partner_delete", null, { sponsor: id, name: (sp as any).name });
