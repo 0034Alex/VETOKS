@@ -18,6 +18,7 @@ import { parseLinks } from "@/lib/socialLinks";
 import { statusFor } from "@/lib/status";
 import { loadTitleBadges, TitleBadge } from "@/lib/profileExtras";
 import AccountSwitcher from "@/components/AccountSwitcher";
+import BusinessSwitch from "@/components/BusinessSwitch";
 import { getCurrencySymbol } from "@/lib/currency";
 import { useT } from "@/lib/i18n";
 import { useShow, hasBlock } from "@/lib/useShow";
@@ -412,7 +413,7 @@ export default function ProfilePage() {
             </>
           }
           verified={badgeOn}
-          belowCrown={<AccountSwitcher chip />}
+          belowCrown={<div className="flex flex-col items-start gap-2"><AccountSwitcher chip /><BusinessSwitch /></div>}
           topRight={
             <>
               <TopBtn href="/add-video" label="Новая публикация">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
 import { getCrmCountry, crmCur } from "@/lib/crmCountry";
+import BusinessPageView from "@/components/BusinessPageView";
 
 const STAGES: [string, string][] = [
   ["lead", "Знакомство"],
@@ -25,6 +26,9 @@ export default function AdminPartnersPanel() {
   const [pPicked, setPPicked] = useState<{ id: string; name: string } | null>(null);
   const [pct, setPct] = useState("10");
   const [msg, setMsg] = useState("");
+  const [biz, setBiz] = useState<any[]>([]);
+  const [bizReports, setBizReports] = useState<Record<string, number>>({});
+  const [prev, setPrev] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [stageFilter, setStageFilter] = useState("all");
   const [name, setName] = useState("");
@@ -42,6 +46,8 @@ export default function AdminPartnersPanel() {
     setPays(r?.payments ?? []);
     setRefNames(r?.refNames ?? {});
     setRegionList(r?.regions ?? []);
+    setBiz(r?.biz ?? []);
+    setBizReports(r?.bizReports ?? {});
     setLoading(false);
   }
   useEffect(() => {
@@ -111,6 +117,12 @@ export default function AdminPartnersPanel() {
 
   return (
     <div className="max-w-3xl">
+      <button
+        onClick={() => setPrev({ name: "Lumi Beauty", category: "Косметика · Киев", about: "Уход за кожей и профессиональные кисти. Доставка по Украине.", logo_url: null, cover_url: null, hours: "Ежедневно 10:00–20:00", address: "Киев, ул. Хрещатик, 22", phone: "+380 44 000 00 00", email: "hello@lumi.example", site_url: "", quick_action: "buy", verified: true })}
+        className="mb-4 border border-gold text-gold px-4 py-2 rounded-full text-xs font-semibold"
+      >
+        👁 Пример страницы партнёра
+      </button>
       <form onSubmit={create} className="bg-bgSurface border border-muted rounded-xl p-4 mb-5 flex flex-col md:flex-row gap-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Название партнёра" required className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm" />
         <input value={pkg} onChange={(e) => setPkg(e.target.value)} placeholder="Пакет (необязательно)" className="md:w-52 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm" />
@@ -143,6 +155,8 @@ export default function AdminPartnersPanel() {
                   <p className="text-muted text-xs">
                     {s.package_type ?? "без пакета"} · внесено {Math.round(Number(s.amount ?? 0))} {crmCur}
                     {s.status === "approved" ? " · кабинет открыт" : ""}
+                    {biz.find((b) => String(b.sponsor_id) === String(s.id))?.is_active ? " · 🏪 страница включена" : ""}
+                    {bizReports[biz.find((b) => String(b.sponsor_id) === String(s.id))?.id] ? ` · ⚠ жалоб: ${bizReports[biz.find((b) => String(b.sponsor_id) === String(s.id))?.id]}` : ""}
                   </p>
                   {s.follow_up_at && (
                     <p className={`text-xs ${overdue ? "text-gold" : "text-muted"}`}>
@@ -216,6 +230,30 @@ export default function AdminPartnersPanel() {
                       <input value={payNote} onChange={(e) => setPayNote(e.target.value)} placeholder="Комментарий" className="flex-1 bg-bgPrimary border border-muted rounded-lg px-2 py-1.5 text-xs" />
                       <button onClick={() => addPayment(s.id)} className="bg-success text-bgPrimary px-3 rounded-full text-xs font-semibold">Внести</button>
                     </div>
+                  </div>
+
+                  <div>
+                    <p className="text-offwhite text-xs font-semibold mb-1">Бизнес-страница</p>
+                    {(() => {
+                      const b = biz.find((x) => String(x.sponsor_id) === String(s.id));
+                      if (!b) return <p className="text-muted text-xs">Партнёр ещё не включил бизнес-аккаунт. Страница появится, когда он зайдёт в «Бизнес» в профиле. Синяя галочка выдаётся автоматически при подтверждении.</p>;
+                      const rc = bizReports[b.id] ?? 0;
+                      return (
+                        <div className="flex flex-col gap-2">
+                          <p className="text-xs text-offwhite">
+                            {b.is_active ? "Включена, видна зрителям" : "Выключена партнёром"}
+                            {b.is_hidden ? " · скрыта вами" : ""} · галочка: {b.verified ? "есть" : "снята"}
+                          </p>
+                          {rc > 0 && <p className="text-danger text-xs">Открытых жалоб: {rc}</p>}
+                          <div className="flex flex-wrap gap-2">
+                            <button onClick={() => setPrev(b)} className="bg-gold text-bgPrimary px-4 py-1.5 rounded-full text-xs font-semibold">👁 Предпросмотр как в приложении</button>
+                            <button onClick={() => act({ action: "biz_set", id: s.id, hidden: !b.is_hidden })} className="border border-muted text-offwhite px-3 py-1.5 rounded-full text-xs">{b.is_hidden ? "Показать зрителям" : "Скрыть от зрителей"}</button>
+                            <button onClick={() => act({ action: "biz_set", id: s.id, verified: !b.verified })} className="border border-muted text-offwhite px-3 py-1.5 rounded-full text-xs">{b.verified ? "Снять галочку" : "Вернуть галочку"}</button>
+                            {rc > 0 && <button onClick={() => act({ action: "biz_set", id: s.id, resolveReports: true })} className="border border-success text-success px-3 py-1.5 rounded-full text-xs">Закрыть жалобы</button>}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div>
@@ -305,6 +343,20 @@ export default function AdminPartnersPanel() {
           );
         })}
       </div>
+
+      {prev && (
+        <div className="fixed inset-0 z-[300] bg-black/75 flex items-center justify-center p-4" onClick={() => setPrev(null)}>
+          <div className="relative w-full max-w-[390px] h-[88dvh] bg-bgPrimary rounded-[36px] border-[6px] border-black overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-2.5 bg-bgSurface border-b border-muted/40 flex-none">
+              <span className="text-muted text-xs">Предпросмотр: так видят зрители</span>
+              <button onClick={() => setPrev(null)} className="text-offwhite text-lg" aria-label="Закрыть">✕</button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <BusinessPageView preview p={{ ...prev, category: prev.category ?? "", about: prev.about ?? "", hours: prev.hours ?? "", address: prev.address ?? "", phone: prev.phone ?? "", email: prev.email ?? "", site_url: prev.site_url ?? "" }} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

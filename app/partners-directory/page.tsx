@@ -11,6 +11,8 @@ import { adAllowed } from "@/lib/adAudience";
 import { getCurrentUser } from "@/lib/currentUser";
 import { visibleInRegion } from "@/lib/regionFilter";
 import { useAdWatch, withUtm } from "@/lib/track";
+import { apiPost } from "@/lib/authClient";
+import { BlueCheck } from "@/components/BusinessPageView";
 
 type Partner = {
   id: string;
@@ -47,6 +49,7 @@ function DirItem({ p, index }: { p: Partner; index: number }) {
 export default function PartnersDirectoryPage() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
+  const [biz, setBiz] = useState<any[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -62,6 +65,8 @@ export default function PartnersDirectoryPage() {
       const me = await getCurrentUser();
       setPartners(visibleInRegion(((data as any[]) ?? []).filter((x: any) => adAllowed(x.audience, me?.age_category)), me?.region_id ?? null, "partner_logo_regions") as Partner[]);
       setLoading(false);
+      const br = await apiPost("/api/business/list");
+      if (br?.ok) setBiz(br.items ?? []);
     })();
   }, []);
 
@@ -90,6 +95,34 @@ export default function PartnersDirectoryPage() {
           <DirItem key={p.id} p={p} index={i} />
         ))}
       </div>
+
+      {biz.length > 0 && (
+        <div className="px-6 mt-8">
+          <h2 className="text-lg font-semibold text-offwhite mb-3">Магазины и сервисы</h2>
+          <div className="flex flex-col gap-3">
+            {biz.map((b) => (
+              <Link key={b.id} href={`/b/${b.id}`} className="flex items-center gap-3 bg-bgSurface border border-muted rounded-xl p-3">
+                <div className="w-12 h-12 rounded-xl bg-bgPrimary overflow-hidden flex items-center justify-center flex-none text-gold font-bold">
+                  {b.logo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={b.logo_url} alt={b.name} className="w-full h-full object-cover" />
+                  ) : (
+                    (b.name || "?").slice(0, 2).toUpperCase()
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-offwhite font-semibold text-sm flex items-center gap-1.5">
+                    <span className="truncate">{b.name}</span>
+                    {b.verified && <BlueCheck size={15} />}
+                  </p>
+                  <p className="text-muted text-xs truncate">{[b.category, b.address].filter(Boolean).join(" · ")}</p>
+                </div>
+                <span className="text-gold">›</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       </div>
       <BottomNav />

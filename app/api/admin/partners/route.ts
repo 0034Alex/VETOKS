@@ -45,7 +45,21 @@ export async function POST(req: Request) {
     let rgq = supabaseAdmin.from("regions").select("id, name").order("name");
     if (cid) rgq = rgq.eq("country_id", cid);
     const { data: regionList } = await rgq;
-    return NextResponse.json({ ok: true, rows: rows ?? [], payments: pays ?? [], refNames, regions: regionList ?? [] });
+    // Бизнес-страницы партнёров (если SQL ещё не выполнен, просто пусто).
+    let biz: any[] = [];
+    let bizReports: Record<string, number> = {};
+    if (ids.length) {
+      const bq = await supabaseAdmin
+        .from("business_profiles")
+        .select("id, user_id, sponsor_id, name, category, about, logo_url, cover_url, hours, address, phone, email, site_url, quick_action, is_active, verified, is_hidden")
+        .in("sponsor_id", ids.map(String));
+      biz = (bq.data as any[]) ?? [];
+      if (biz.length) {
+        const rq = await supabaseAdmin.from("business_reports").select("business_id").in("business_id", biz.map((b) => b.id)).eq("status", "open");
+        ((rq.data as any[]) ?? []).forEach((r) => (bizReports[r.business_id] = (bizReports[r.business_id] ?? 0) + 1));
+      }
+    }
+    return NextResponse.json({ ok: true, rows: rows ?? [], payments: pays ?? [], refNames, regions: regionList ?? [], biz, bizReports });
   }
 
   if (a === "create") {
@@ -173,6 +187,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, amount: bonus });
   }
 
+  // Бизнес-страница партнёра: скрыть от зрителей, дать или снять синюю галочку, закрыть жалобы.
+  if (a === "biz_set") {
+    const patch: Record<string, any> = {};
+    if (body.hidden !== undefined) patch.is_hidden = !!body.hidden;
+    if (body.verified !== undefined) patch.verified = !!body.verified;
+    const { data: bp } = await supabaseAdmin.from("business_profiles").select("id, user_id").eq("sponsor_id", id).maybeSingle();
+    if (!bp) return NextResponse.json({ ok: false, error: "no_business" }, { status: 400 });
+    if (Object.keys(patch).length) await supabaseAdmin.from("business_profiles").update(patch).eq("id", (bp as any).id);
+    if (body.resolveReports) await supabaseAdmin.from("business_reports").update({ status: "closed" }).eq("business_id", (bp as any).id).eq("status", "open");
+    await logAction(uid, "partner_business", String((bp as any).user_id), { sponsor: id, ...patch, resolved: !!body.resolveReports });
+    return NextResponse.json({ ok: true });
+  }
+
   if (a === "update") {
     const patch: Record<string, any> = {};
     if (body.stage !== undefined) {
@@ -233,9 +260,9 @@ export async function POST(req: Request) {
     await notify(
       String(sp.user_id),
       ok
-        ? "✅ Ваша заявка партнёра одобрена! Откройте «Рекламный кабинет» и выберите места для рекламы."
+        ? "✅ Ваша заявка партнёра одобрена! Откройте «Бизнес-аккаунт» в профиле: заполните страницу и нажмите «Активировать». Синяя галочка уже ваша. Места для рекламы — в «Рекламном кабинете»."
         : "К сожалению, заявка партнёра пока не одобрена. Если есть вопросы — напишите в поддержку.",
-      ok ? "/ad-space" : "/support",
+      ok ? "/business" : "/support",
       "other"
     );
     return NextResponse.json({ ok: true });
