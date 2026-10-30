@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { apiPost } from "@/lib/authClient";
 import { getCrmCountry, crmCur } from "@/lib/crmCountry";
-import BusinessPageView from "@/components/BusinessPageView";
 
 const STAGES: [string, string][] = [
   ["lead", "Знакомство"],
@@ -28,7 +27,6 @@ export default function AdminPartnersPanel() {
   const [msg, setMsg] = useState("");
   const [biz, setBiz] = useState<any[]>([]);
   const [bizReports, setBizReports] = useState<Record<string, number>>({});
-  const [prev, setPrev] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [stageFilter, setStageFilter] = useState("all");
   const [name, setName] = useState("");
@@ -117,12 +115,6 @@ export default function AdminPartnersPanel() {
 
   return (
     <div className="max-w-3xl">
-      <button
-        onClick={() => setPrev({ name: "Lumi Beauty", category: "Косметика · Киев", about: "Уход за кожей и профессиональные кисти. Доставка по Украине.", logo_url: null, cover_url: null, hours: "Ежедневно 10:00–20:00", address: "Киев, ул. Хрещатик, 22", phone: "+380 44 000 00 00", email: "hello@lumi.example", site_url: "", quick_action: "buy", verified: true, _products: [{ id: "1", sku: "SK-1042", name: "Сыворотка с витамином C", description: "", price: 890, photo_url: null, sizes: "30 мл, 50 мл", stock: 14 }, { id: "2", sku: "SK-1043", name: "Крем для лица SPF 30", description: "", price: 640, photo_url: null, sizes: "", stock: 6 }], _offers: [{ id: "o1", title: "Скидка для зрителей VETOKS", description: "На весь каталог", promo_code: "VETOKS15", discount_percent: 15, valid_until: null }] })}
-        className="mb-4 border border-gold text-gold px-4 py-2 rounded-full text-xs font-semibold"
-      >
-        👁 Пример страницы партнёра
-      </button>
       <form onSubmit={create} className="bg-bgSurface border border-muted rounded-xl p-4 mb-5 flex flex-col md:flex-row gap-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Название партнёра" required className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm" />
         <input value={pkg} onChange={(e) => setPkg(e.target.value)} placeholder="Пакет (необязательно)" className="md:w-52 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm" />
@@ -246,7 +238,7 @@ export default function AdminPartnersPanel() {
                           </p>
                           {rc > 0 && <p className="text-danger text-xs">Открытых жалоб: {rc}</p>}
                           <div className="flex flex-wrap gap-2">
-                            <button onClick={async () => { const x = await apiPost("/api/admin/partners", { action: "biz_preview", id: s.id }); setPrev({ ...b, _products: x?.products ?? [], _offers: x?.offers ?? [] }); }} className="bg-gold text-bgPrimary px-4 py-1.5 rounded-full text-xs font-semibold">👁 Предпросмотр как в приложении</button>
+                            <a href={`/b/${b.id}`} target="_blank" rel="noopener noreferrer" className="bg-gold text-bgPrimary px-4 py-1.5 rounded-full text-xs font-semibold">👁 Открыть страницу как в приложении</a>
                             <button onClick={() => act({ action: "biz_set", id: s.id, hidden: !b.is_hidden })} className="border border-muted text-offwhite px-3 py-1.5 rounded-full text-xs">{b.is_hidden ? "Показать зрителям" : "Скрыть от зрителей"}</button>
                             <button onClick={() => act({ action: "biz_set", id: s.id, verified: !b.verified })} className="border border-muted text-offwhite px-3 py-1.5 rounded-full text-xs">{b.verified ? "Снять галочку" : "Вернуть галочку"}</button>
                             {rc > 0 && <button onClick={() => act({ action: "biz_set", id: s.id, resolveReports: true })} className="border border-success text-success px-3 py-1.5 rounded-full text-xs">Закрыть жалобы</button>}
@@ -344,19 +336,6 @@ export default function AdminPartnersPanel() {
         })}
       </div>
 
-      {prev && (
-        <div className="fixed inset-0 z-[300] bg-black/75 flex items-center justify-center p-4" onClick={() => setPrev(null)}>
-          <div className="relative w-full max-w-[390px] h-[88dvh] bg-bgPrimary rounded-[36px] border-[6px] border-black overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-2.5 bg-bgSurface border-b border-muted/40 flex-none">
-              <span className="text-muted text-xs">Предпросмотр: так видят зрители</span>
-              <button onClick={() => setPrev(null)} className="text-offwhite text-lg" aria-label="Закрыть">✕</button>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              <BusinessPageView preview products={prev._products ?? []} offers={prev._offers ?? []} cur={crmCur} p={{ ...prev, category: prev.category ?? "", about: prev.about ?? "", hours: prev.hours ?? "", address: prev.address ?? "", phone: prev.phone ?? "", email: prev.email ?? "", site_url: prev.site_url ?? "" }} />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

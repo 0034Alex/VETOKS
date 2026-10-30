@@ -51,7 +51,7 @@ const ORDER_ERR: Record<string, string> = {
 };
 
 // Страница партнёра: так её видят зрители в приложении. Один и тот же вид для зрителей, владельца и предпросмотра в CRM.
-export default function BusinessPageView({ p, preview = false, products = [], offers = [], cur = "₴", canOrder = false }: { p: BizPublic; preview?: boolean; products?: BizProduct[]; offers?: BizOffer[]; cur?: string; canOrder?: boolean }) {
+export default function BusinessPageView({ p, preview = false, products = [], offers = [], cur = "₴", canOrder = false, demo = false }: { p: BizPublic; preview?: boolean; products?: BizProduct[]; offers?: BizOffer[]; cur?: string; canOrder?: boolean; demo?: boolean }) {
   const [contact, setContact] = useState(false);
   const [sel, setSel] = useState<BizProduct | null>(null);
   const [book, setBook] = useState(false);
@@ -104,6 +104,18 @@ export default function BusinessPageView({ p, preview = false, products = [], of
     if (gift && !sel) return setOErr("Выберите подарок.");
     setOBusy(true);
     setOErr("");
+    if (demo) {
+      // Предпросмотр сотрудника: заказ не отправляется, только показываем, как это выглядит.
+      const code = o.promo.trim().toUpperCase();
+      const off = offers.find((x) => x.promo_code && x.promo_code.toUpperCase() === code);
+      const pct = off?.discount_percent ?? 0;
+      const total = sel ? Math.round(sel.price * o.qty * (1 - pct / 100) * 100) / 100 : 0;
+      setTimeout(() => {
+        setOBusy(false);
+        setODone({ id: "", total });
+      }, 400);
+      return;
+    }
     const r = await apiPost("/api/business/orders", {
       action: "create",
       businessId: p.id,
@@ -126,7 +138,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
   }
 
   function quickAction() {
-    if (preview || !canOrder) return setContact(true);
+    if (preview || !(canOrder || demo)) return setContact(true);
     if (p.quick_action === "book") return openOrder(null, true);
     if (products.length === 1) return openOrder(products[0]);
     if (products.length > 1) {
@@ -165,7 +177,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
               <span className="text-gold text-2xl font-bold">{(p.name || "?").slice(0, 2).toUpperCase()}</span>
             )}
           </div>
-          {!preview && p.id && (
+          {!preview && !demo && p.id && (
             <button onClick={() => setReport("pick")} className="ml-auto text-muted text-xs border border-muted/60 rounded-full px-3 py-1.5">
               Пожаловаться
             </button>
@@ -190,7 +202,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
           )}
         </div>
 
-        <button onClick={() => (preview || !canOrder ? undefined : openOrder(null, false, true))} className="w-full mt-2 border border-gold/70 text-gold font-semibold rounded-full py-2.5 text-sm">
+        <button onClick={() => (preview || !(canOrder || demo) ? undefined : openOrder(null, false, true))} className="w-full mt-2 border border-gold/70 text-gold font-semibold rounded-full py-2.5 text-sm">
           🎁 Подарить участнице шоу
         </button>
 
@@ -249,7 +261,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {products.map((pr) => (
-                <button key={pr.id} onClick={() => (preview || !canOrder ? undefined : openOrder(pr))} className="text-left bg-bgSurface border border-muted rounded-xl overflow-hidden flex flex-col min-w-0">
+                <button key={pr.id} onClick={() => (preview || !(canOrder || demo) ? undefined : openOrder(pr))} className="text-left bg-bgSurface border border-muted rounded-xl overflow-hidden flex flex-col min-w-0">
                   <div className="aspect-square bg-bgPrimary flex items-center justify-center text-gold text-2xl font-bold overflow-hidden">
                     {pr.photo_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -292,7 +304,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
                 <p className="text-offwhite font-semibold mb-1">{book ? "Запрос на бронь отправлен" : gift ? "Подарок оформлен" : "Заказ оформлен"}</p>
                 <p className="text-muted text-sm mb-1">{book ? "Партнёр подтвердит бронь в чате." : gift ? `Сумма: ${money(oDone.total, cur)}. Договоритесь с магазином об оплате в чате. Когда магазин отметит оплату, подарок уйдёт участнице. Статус будет в «Заказы и подарки».` : `Сумма: ${money(oDone.total, cur)}. Партнёр свяжется с вами в чате и уточнит оплату и доставку.`}</p>
                 <p className="text-muted text-xs mb-4">Оплата идёт напрямую партнёру. VETOKS в оплате не участвует.</p>
-                <a href={`/my-orders?o=${oDone.id}`} className="block text-center bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm">Открыть заказ и чат</a>
+                {oDone.id ? <a href={`/my-orders?o=${oDone.id}`} className="block text-center bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm">Открыть заказ и чат</a> : <p className="text-gold text-xs text-center">Это предпросмотр: заказ никуда не отправлен.</p>}
                 <button onClick={closeOrder} className="w-full mt-2 border border-muted text-offwhite rounded-full py-2.5 text-sm">Закрыть</button>
               </>
             ) : (

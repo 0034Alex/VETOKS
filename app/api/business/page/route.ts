@@ -16,8 +16,12 @@ export async function POST(req: Request) {
   const { data: p } = await supabaseAdmin.from("business_profiles").select(BIZ_COLS).eq("id", id).maybeSingle();
   if (!p) return bad("not_found", 404);
   const mine = (p as any).user_id === uid;
-  if (!mine && (!(p as any).is_active || (p as any).is_hidden)) return bad("not_found", 404);
-  if (!mine && (p as any).country_id) {
+  // Сотрудники CRM открывают любую страницу партнёра, даже не опубликованную, для предпросмотра.
+  const { data: me } = await supabaseAdmin.from("users").select("role").eq("id", uid).maybeSingle();
+  const staff = ["moderator", "finance_admin", "super_admin"].includes((me as any)?.role);
+  const hidden = !(p as any).is_active || (p as any).is_hidden;
+  if (!mine && !staff && hidden) return bad("not_found", 404);
+  if (!mine && !staff && (p as any).country_id) {
     const cid = await countryOfUser(uid);
     if (cid && cid !== (p as any).country_id) return bad("not_found", 404);
   }
@@ -28,6 +32,9 @@ export async function POST(req: Request) {
     ok: true,
     profile: publicBiz(p),
     mine,
+    staffPreview: staff && !mine,
+    notPublished: hidden,
+    isHidden: !!(p as any).is_hidden,
     cur: await currencyOfCountry((p as any).country_id),
     products: ((pq.data as any[]) ?? []).map((x) => ({ id: x.id, sku: x.sku ?? "", name: x.name, description: x.description ?? "", price: Number(x.price), photo_url: x.photo_url ?? null, sizes: x.sizes ?? "", stock: x.stock })),
     offers: ((oq.data as any[]) ?? []).filter(offerLive).map(publicOffer),
