@@ -39,8 +39,9 @@ async function ensureRateAndSymbol() {
   }
   cachedSymbol = sym;
 
-  const m = await loadScoped(["usd_to_uah_rate"], mc.countryId);
-  const parsed = Number(m.usd_to_uah_rate);
+  // Множитель цен в монетах: coins_per_usd (не меняется ежедневно); если нет — старый курс.
+  const m = await loadScoped(["coins_per_usd", "usd_to_uah_rate"], mc.countryId);
+  const parsed = Number(m.coins_per_usd) > 0 ? Number(m.coins_per_usd) : Number(m.usd_to_uah_rate);
   cachedRate = Number.isFinite(parsed) && parsed > 0 ? parsed : 41;
 }
 

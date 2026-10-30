@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCrmCountry } from "@/lib/crmCountry";
 import { loadScoped, scopedKey } from "@/lib/scopedSettings";
 import { clearPricingCache } from "@/lib/currency";
+import { COIN_KEYS, coinSettingsFrom } from "@/lib/coins";
 import { ACT_DEFAULT, ACT_KEY, parseAct, type ActRules } from "@/lib/activityShared";
 
 const AMB_DEFAULT_KEY = "ambassador_bonus_default";
@@ -23,8 +24,9 @@ const TABS: { k: string; label: string }[] = [
 
 export default function AdminPayoutsPanel() {
   const cc = getCrmCountry() || null;
-  const [rate, setRate] = useState(41);
-  const [rateStr, setRateStr] = useState("41");
+  const [rate, setRate] = useState(41); // монет за $1 (множитель цен, не меняется ежедневно)
+  const [coinUsd, setCoinUsd] = useState(0.0122); // $ за 1 монету
+  const [fx, setFx] = useState(41); // сегодняшний курс $ к валюте страны
   const [sym, setSym] = useState("₴");
   const [gifts, setGifts] = useState<G[]>([]);
   const [tab, setTab] = useState("light");
@@ -36,11 +38,13 @@ export default function AdminPayoutsPanel() {
 
   async function load() {
     setLoading(true);
-    const m = await loadScoped(["usd_to_uah_rate"], cc);
-    const r = Number(m.usd_to_uah_rate);
-    const rt = Number.isFinite(r) && r > 0 ? r : 41;
+    const m = await loadScoped([...COIN_KEYS, "coins_per_usd"], cc);
+    const cs = coinSettingsFrom(m);
+    const kk = Number(m.coins_per_usd) > 0 ? Number(m.coins_per_usd) : cs.rate;
+    const rt = kk;
     setRate(rt);
-    setRateStr(String(rt));
+    setCoinUsd(cs.coinUsd);
+    setFx(cs.rate);
     if (cc) {
       const { data: c } = await supabase.from("countries").select("currency_symbol").eq("id", cc).maybeSingle();
       setSym(c?.currency_symbol ?? "₴");
@@ -109,15 +113,6 @@ export default function AdminPayoutsPanel() {
     setTimeout(() => setMsg(""), 2500);
   }
 
-  async function saveRate() {
-    const r = Number(rateStr);
-    if (!(r > 0)) return;
-    await supabase.from("platform_settings").upsert({ key: scopedKey("usd_to_uah_rate", cc), value: String(r) });
-    clearPricingCache();
-    setRate(r);
-    setMsg("Курс сохранён ✓");
-    setTimeout(() => setMsg(""), 2000);
-  }
   async function savePayouts() {
     const r: any = await apiPost("/api/admin/badges", { action: "amb_default", value: Number(amb) || 0 });
     if (!r?.ok) {
@@ -143,15 +138,11 @@ export default function AdminPayoutsPanel() {
     <div className="max-w-xl pb-24">
       <p className="text-muted text-xs mb-3">
         {cc ? "Цены правятся только для выбранной страны. " : "Общие цены (для стран без своих). "}
-        Цену вводишь в монетах, доллары считаются сами по курсу.
+        Цену вводишь в монетах. Рядом честно показано, сколько это в $ и в {sym} по сегодняшнему курсу.
       </p>
 
-      <div className="bg-bgSurface border border-gold/40 rounded-xl p-3 mb-5 flex flex-wrap items-center gap-2">
-        <span className="text-offwhite text-sm">Курс: $1 =</span>
-        <input value={rateStr} onChange={(e) => setRateStr(e.target.value)} className={`${cls} w-24`} />
-        <span className="text-muted text-sm">{sym}</span>
-        <button onClick={saveRate} className={ghost}>Сохранить курс</button>
-        <span className="text-muted text-xs basis-full">1 монета = 1 {sym} цены подарка. Пересчёт монет, Корон и пополнения — в «Монеты и Короны».</span>
+      <div className="bg-bgSurface border border-gold/40 rounded-xl p-3 mb-5 text-xs text-muted">
+        1 монета = <b className="text-offwhite">${coinUsd.toFixed(4)}</b> (меняется в «Монеты и Короны»). Курс сегодня: $1 = <b className="text-offwhite">{fx} {sym}</b> (меняется на Дашборде). Цена подарка в монетах от курса не зависит.
       </div>
 
       <h3 className="text-offwhite font-semibold mb-2">Цены подарков</h3>
@@ -175,7 +166,7 @@ export default function AdminPayoutsPanel() {
           <div key={g.id} className="grid grid-cols-[1fr_88px_1fr] gap-2 items-center py-2 border-t border-muted/40">
             <span className="text-offwhite text-sm min-w-0 truncate">{g.name}{!g.is_active && <span className="text-muted text-xs"> · скрыт</span>}</span>
             <input value={g.coins} inputMode="numeric" onChange={(e) => setCoins(g.id, e.target.value)} className={`${cls} w-full ${g.coins !== g.orig ? "border-gold" : ""}`} />
-            <span className="text-xs text-muted leading-tight"><b className="text-success font-semibold">${(g.coins / rate).toFixed(2)}</b> · {g.coins} {sym}</span>
+            <span className="text-xs text-muted leading-tight"><b className="text-success font-semibold">${(g.coins * coinUsd).toFixed(2)}</b> · ≈ {Math.round(g.coins * coinUsd * fx * 100) / 100} {sym}</span>
           </div>
         ))}
       </div>

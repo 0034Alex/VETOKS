@@ -6,14 +6,23 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 // Курс доллара у каждой страны свой (ключ usd_to_uah_rate:<id страны>);
 // если для страны не задан — берётся общий.
 export async function getUsdRate(countryId?: string | null): Promise<number> {
-  const keys = ["usd_to_uah_rate"];
-  if (countryId) keys.push(`usd_to_uah_rate:${countryId}`);
+  // Сколько монет стоит $1 в ценах приложения. Это число НЕ меняется с ежедневным курсом:
+  // ключ coins_per_usd; если его ещё нет — старый курс usd_to_uah_rate.
+  const keys = ["coins_per_usd", "usd_to_uah_rate"];
+  if (countryId) keys.push(`coins_per_usd:${countryId}`, `usd_to_uah_rate:${countryId}`);
   const { data } = await supabaseAdmin.from("platform_settings").select("key, value").in("key", keys);
   const m: Record<string, string> = {};
   (data ?? []).forEach((r: any) => (m[r.key] = r.value));
-  const own = countryId ? Number(m[`usd_to_uah_rate:${countryId}`]) : NaN;
-  const n = Number.isFinite(own) && own > 0 ? own : Number(m.usd_to_uah_rate);
-  return Number.isFinite(n) && n > 0 ? n : 41;
+  const pick = (k: string) => {
+    const own = countryId ? Number(m[`${k}:${countryId}`]) : NaN;
+    if (Number.isFinite(own) && own > 0) return own;
+    const g = Number(m[k]);
+    return Number.isFinite(g) && g > 0 ? g : NaN;
+  };
+  const n = pick("coins_per_usd");
+  if (Number.isFinite(n)) return n;
+  const legacy = pick("usd_to_uah_rate");
+  return Number.isFinite(legacy) ? legacy : 41;
 }
 
 // Цена и доля у каждой страны могут быть свои: строка "<ключ>:<id страны>",

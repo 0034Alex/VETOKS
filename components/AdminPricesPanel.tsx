@@ -61,8 +61,8 @@ export default function AdminPricesPanel() {
   async function load() {
     setLoading(true);
 
-    const m = await loadScoped(["usd_to_uah_rate", "free_votes_total", "test_topup_enabled", "user_gift_share_percent"], getCrmCountry() || null);
-    const r = Number(m.usd_to_uah_rate);
+    const m = await loadScoped(["coins_per_usd", "usd_to_uah_rate", "free_votes_total", "test_topup_enabled", "user_gift_share_percent"], getCrmCountry() || null);
+    const r = Number(m.coins_per_usd) > 0 ? Number(m.coins_per_usd) : Number(m.usd_to_uah_rate);
     setRate(Number.isFinite(r) && r > 0 ? r : 41);
     setRateStr(String(Number.isFinite(r) && r > 0 ? r : 41));
     setFreeVotes(m.free_votes_total ?? "3");
@@ -226,22 +226,8 @@ export default function AdminPricesPanel() {
       </p>
 
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
-        <p className="text-offwhite text-sm font-semibold mb-1">Курс доллара к местной валюте</p>
-        <p className="text-muted text-xs mb-3">Нужен только для пересчёта цен ниже, заданных в долларах. Свой у каждой страны.</p>
-        <div className="flex items-center gap-2">
-          <input value={rateStr} onChange={(e) => setRateStr(e.target.value)} placeholder="напр. 41.5" className={inputCls} />
-          <button
-            className={btnCls}
-            onClick={async () => {
-              await saveSetting("usd_to_uah_rate", rateStr);
-              const r = Number(rateStr);
-              if (Number.isFinite(r) && r > 0) setRate(r);
-            }}
-          >
-            Сохранить
-          </button>
-          {savedKey === "usd_to_uah_rate" && <span className="text-success text-sm">Сохранено!</span>}
-        </div>
+        <p className="text-offwhite text-sm font-semibold mb-1">Как считаются монеты</p>
+        <p className="text-muted text-xs">Здесь цена в долларах переводится в монеты по числу: $1 = {rate} монет. Оно не меняется каждый день. Ежедневный курс {sym} к $ теперь вводится на Дашборде, он влияет только на цену пакетов монет в {sym}. Цены подарков удобнее править в «Цены и выплаты».</p>
       </div>
 
       <h3 className="text-offwhite font-semibold mb-2">Основное</h3>

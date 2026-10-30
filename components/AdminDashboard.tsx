@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { apiPost } from "@/lib/authClient";
 import { getCrmCountry, crmCur } from "@/lib/crmCountry";
+import AdminRateCard from "@/components/AdminRateCard";
 
 type Stats = Record<string, number>;
 const PERIODS: [string, string][] = [
@@ -77,6 +78,7 @@ export default function AdminDashboard({ onGo }: { onGo: (tab: string) => void }
 
   return (
     <div className="max-w-3xl">
+      <AdminRateCard />
       <p className="text-muted text-sm mb-2">Требует действия</p>
       <div className="flex flex-col gap-2 mb-6">
         {attention.map(([label, count, tab]) => (

@@ -18,21 +18,32 @@ export default function AdminCoinsPanel() {
 
   useEffect(() => {
     (async () => {
-      const m = await loadScoped(COIN_KEYS, getCrmCountry() || null);
+      const m = await loadScoped([...COIN_KEYS, "coins_per_usd"], getCrmCountry() || null);
+      const s0 = coinSettingsFrom(m);
+      // Если цена монеты в $ ещё не задана — подставляем ту, что сейчас фактически действует.
+      if (!m.coin_usd) m.coin_usd = String(Math.round(s0.coinUsd * 1e6) / 1e6);
       setV(m);
-      setPacks(coinSettingsFrom(m).packs);
+      setPacks(s0.packs);
       setLoading(false);
     })();
   }, []);
 
   const set = (k: string, val: string) => setV((p) => ({ ...p, [k]: val }));
   const s = coinSettingsFrom({ ...v, coin_packs: JSON.stringify(packs) });
+  const rateNow = s.rate;
 
   async function save() {
-    const out: Record<string, string> = { ...v, coin_packs: JSON.stringify(packs) };
+    const cc = getCrmCountry() || null;
+    const out: Record<string, string> = { ...v, coin_packs: JSON.stringify(packs.map((p) => ({ coins: p.coins, usd: p.usd, price: p.price, bonus: p.bonus }))) };
+    // Курс $ тут не правится (он на Дашборде), поэтому его не записываем.
     await supabase
       .from("platform_settings")
-      .upsert(COIN_KEYS.map((k) => ({ key: scopedKey(k, getCrmCountry() || null), value: out[k] ?? "" })));
+      .upsert(COIN_KEYS.filter((k) => k !== "usd_to_uah_rate").map((k) => ({ key: scopedKey(k, cc), value: out[k] ?? "" })));
+    // Цены в приложении (в монетах) больше не зависят от ежедневного курса: фиксируем множитель, если он ещё не задан.
+    const fz = await loadScoped(["coins_per_usd", "usd_to_uah_rate"], cc);
+    if (!fz.coins_per_usd && Number(fz.usd_to_uah_rate) > 0) {
+      await supabase.from("platform_settings").upsert({ key: scopedKey("coins_per_usd", cc), value: String(fz.usd_to_uah_rate) });
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
@@ -56,7 +67,7 @@ export default function AdminCoinsPanel() {
 
       <div className="bg-bgSurface border border-muted rounded-xl p-4">
         <p className="text-offwhite font-semibold text-sm mb-3">Курсы</p>
-        <Field k="coins_per_unit" label={`Сколько монет за 1 ${cur} при пополнении`} ph="2" hint={`Сейчас: 1 ${cur} = ${f2(s.coinsPerUnit)} монет; 100 монет стоят ${f2(100 / s.coinsPerUnit)} ${cur}`} />
+        <Field k="coin_usd" label="Сколько $ стоит 1 монета" ph="0.0122" hint={`Сегодня курс $1 = ${f2(rateNow)} ${cur} (меняется на Дашборде). Значит 1 монета = ${f2(s.coinUsd * rateNow * 1000) / 1000} ${cur}, а за 1 ${cur} человек получает ${f2(s.coinsPerUnit)} монет. Цена монеты в $ не меняется, меняется только цена в ${cur}.`} />
         <Field k="crown_per_coin" label="Сколько Корон за 1 монету дохода участницы" ph={f2(1 / s.coinsPerUnit)} hint={`Сейчас: 1 монета = ${f2(s.crownPerCoin)} Короны (1 Корона = 1 ${cur} при выводе). Пусто — по курсу пополнения, участница получает ровно то, что стоила монета.`} />
         <Field k="coins_per_crown" label="Сколько монет за 1 Корону при обмене" ph={f2(s.coinsPerUnit)} hint={`Сейчас: 1 Корона = ${f2(s.coinsPerCrown)} монет. Обмен только в одну сторону (Короны → монеты).`} />
         <label className="flex items-center gap-2 text-offwhite text-sm">
@@ -70,21 +81,24 @@ export default function AdminCoinsPanel() {
 
       <div className="bg-bgSurface border border-muted rounded-xl p-4">
         <p className="text-offwhite font-semibold text-sm mb-3">Пакеты монет</p>
-        <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 text-muted text-[11px] mb-1">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 text-muted text-[11px] mb-1">
           <span>Монет</span>
-          <span>Цена, {cur}</span>
+          <span>Цена, $</span>
           <span>Бонус монет*</span>
           <span />
         </div>
         {packs.map((p, i) => (
-          <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 mb-2">
-            <input type="number" value={p.coins || ""} onChange={(e) => upd(i, { coins: Math.floor(Number(e.target.value)) })} className={inp} />
-            <input type="number" step="any" value={p.price || ""} onChange={(e) => upd(i, { price: Number(e.target.value) })} className={inp} />
-            <input type="number" value={p.bonus || ""} onChange={(e) => upd(i, { bonus: Math.floor(Number(e.target.value)) })} placeholder="0" className={inp} />
-            <button onClick={() => setPacks((a) => a.filter((_, j) => j !== i))} className="text-danger text-lg px-2" aria-label="Удалить">×</button>
+          <div key={i} className="mb-2">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2">
+              <input type="number" value={p.coins || ""} onChange={(e) => upd(i, { coins: Math.floor(Number(e.target.value)) })} className={`${inp} w-full min-w-0`} />
+              <input type="number" step="any" value={p.usd || ""} onChange={(e) => upd(i, { usd: Number(e.target.value), price: Math.round(Number(e.target.value) * rateNow * 100) / 100 })} className={`${inp} w-full min-w-0`} />
+              <input type="number" value={p.bonus || ""} onChange={(e) => upd(i, { bonus: Math.floor(Number(e.target.value)) })} placeholder="0" className={`${inp} w-full min-w-0`} />
+              <button onClick={() => setPacks((a) => a.filter((_, j) => j !== i))} className="text-danger text-lg px-2" aria-label="Удалить">×</button>
+            </div>
+            {(p.usd ?? 0) > 0 && <p className="text-muted text-[11px] mt-0.5">сегодня = {f2((p.usd ?? 0) * rateNow)} {cur}</p>}
           </div>
         ))}
-        <button onClick={() => setPacks((a) => [...a, { coins: 0, price: 0, bonus: 0 }])} className="text-gold text-sm underline">
+        <button onClick={() => setPacks((a) => [...a, { coins: 0, price: 0, usd: 0, bonus: 0 }])} className="text-gold text-sm underline">
           + Добавить пакет
         </button>
         <p className="text-muted text-xs mt-2">* Бонус даётся только на первую покупку в течение срока ниже. Пакеты с нулём в «монетах» или «цене» не сохраняются.</p>
