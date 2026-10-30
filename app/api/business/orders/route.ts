@@ -171,8 +171,9 @@ export async function POST(req: Request) {
     if (error || !created) return bad("failed", 500);
 
     if (product && ss) {
-      const next = { ...ss, [size]: Math.max(0, ss[size] - qty) };
-      await supabaseAdmin.from("business_products").update({ size_stock: next, stock: Object.values(next).reduce((x, y) => x + y, 0) }).eq("id", product.id);
+      const next: Record<string, number> = { ...ss, [size]: Math.max(0, ss[size] - qty) };
+      const sum = Object.values(next).reduce((x: number, y: number) => x + y, 0);
+      await supabaseAdmin.from("business_products").update({ size_stock: next, stock: sum }).eq("id", product.id);
     } else if (product && product.stock != null) {
       await supabaseAdmin.from("business_products").update({ stock: Math.max(0, Number(product.stock) - qty) }).eq("id", product.id);
     }
@@ -336,8 +337,9 @@ export async function POST(req: Request) {
       const pr: any = await loadProduct(String(oo.product_id), String(oo.business_id));
       const pss = pr ? sizeStockOf(pr) : null;
       if (pr && pss && oo.size && oo.size in pss) {
-        const next = { ...pss, [oo.size]: pss[oo.size] + Number(oo.qty) };
-        await supabaseAdmin.from("business_products").update({ size_stock: next, stock: Object.values(next).reduce((x, y) => x + y, 0) }).eq("id", oo.product_id);
+        const next: Record<string, number> = { ...pss, [String(oo.size)]: pss[String(oo.size)] + Number(oo.qty) };
+        const sum = Object.values(next).reduce((x: number, y: number) => x + y, 0);
+        await supabaseAdmin.from("business_products").update({ size_stock: next, stock: sum }).eq("id", oo.product_id);
       } else if (pr && pr.stock != null) {
         await supabaseAdmin.from("business_products").update({ stock: Number(pr.stock) + Number(oo.qty) }).eq("id", oo.product_id);
       }
