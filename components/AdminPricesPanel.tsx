@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCrmCountry } from "@/lib/crmCountry";
 import { loadScoped, scopedKey } from "@/lib/scopedSettings";
 import { clearPricingCache } from "@/lib/currency";
+import { COIN_KEYS, coinSettingsFrom } from "@/lib/coins";
 
 // CRM → «Цены»: всё платное в одном месте. У каждой позиции — цена в
 // долларах и доля участницы в процентах.
@@ -39,10 +40,12 @@ type GiftRow = {
   origName?: string;
 };
 
-export default function AdminPricesPanel() {
+export default function AdminPricesPanel({ hideGifts = false }: { hideGifts?: boolean }) {
   const cc = getCrmCountry() || null;
   const [sym, setSym] = useState("₴");
   const [rate, setRate] = useState(41);
+  const [coinUsd, setCoinUsd] = useState(0.0122);
+  const [fxNow, setFxNow] = useState(41);
   const [rateStr, setRateStr] = useState("41");
   const [rows, setRows] = useState<PriceRow[]>(PRICE_DEFAULTS);
   const [gifts, setGifts] = useState<GiftRow[]>([]);
@@ -65,6 +68,11 @@ export default function AdminPricesPanel() {
     const r = Number(m.coins_per_usd) > 0 ? Number(m.coins_per_usd) : Number(m.usd_to_uah_rate);
     setRate(Number.isFinite(r) && r > 0 ? r : 41);
     setRateStr(String(Number.isFinite(r) && r > 0 ? r : 41));
+    try {
+      const cs = coinSettingsFrom(await loadScoped(COIN_KEYS, getCrmCountry() || null));
+      setCoinUsd(cs.coinUsd);
+      setFxNow(cs.rate);
+    } catch {}
     setFreeVotes(m.free_votes_total ?? "3");
     setUserShare(m.user_gift_share_percent ?? "");
     setTopupOn(m.test_topup_enabled !== "false");
@@ -215,6 +223,7 @@ export default function AdminPricesPanel() {
 
   return (
     <div className="max-w-xl">
+      {!hideGifts && (
       <p className="text-muted text-xs mb-4">
         {cc
           ? "Вы правите цены ТОЛЬКО выбранной страны (другие страны не затрагиваются). Если для позиции ничего не сохранено, действует общая цена. "
@@ -224,11 +233,14 @@ export default function AdminPricesPanel() {
         сколько процентов от цены получает участница, которой подарили /
         купили. Остальное остаётся платформе.
       </p>
+      )}
 
+      {!hideGifts && (
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4 mb-6">
         <p className="text-offwhite text-sm font-semibold mb-1">Как считаются монеты</p>
         <p className="text-muted text-xs">Здесь цена в долларах переводится в монеты по числу: $1 = {rate} монет. Оно не меняется каждый день. Ежедневный курс {sym} к $ теперь вводится на Дашборде, он влияет только на цену пакетов монет в {sym}. Цены подарков удобнее править в «Цены и выплаты».</p>
       </div>
+      )}
 
       <h3 className="text-offwhite font-semibold mb-2">Основное</h3>
       <div className="flex flex-col gap-3 mb-8">
@@ -238,17 +250,18 @@ export default function AdminPricesPanel() {
             <div className="flex flex-wrap items-center gap-2">
               {row.hasPrice && (
                 <>
-                  <span className="text-muted text-sm">$</span>
                   <input
-                    value={row.usd}
+                    value={Math.round((Number(row.usd) || 0) * rate)}
+                    inputMode="numeric"
                     onChange={(e) => {
                       const n = [...rows];
-                      n[i] = { ...row, usd: e.target.value };
+                      const coins = Math.max(0, Math.round(Number(e.target.value) || 0));
+                      n[i] = { ...row, usd: String(Math.round((coins / rate) * 10000) / 10000) };
                       setRows(n);
                     }}
                     className={inputCls}
                   />
-                  <span className="text-muted text-xs">= {uah(row.usd)} {sym}</span>
+                  <span className="text-muted text-xs">монет = ${(Math.round((Number(row.usd) || 0) * rate) * coinUsd).toFixed(2)} ≈ {Math.round(Math.round((Number(row.usd) || 0) * rate) * coinUsd * fxNow * 100) / 100} {sym}</span>
                 </>
               )}
               {row.hasShare && (
@@ -274,6 +287,8 @@ export default function AdminPricesPanel() {
         ))}
       </div>
 
+      {!hideGifts && (
+        <>
       <h3 className="text-offwhite font-semibold mb-1">Подарки</h3>
       <label className="flex items-center gap-2 text-offwhite text-sm mb-2">
         <input
@@ -368,6 +383,8 @@ export default function AdminPricesPanel() {
           </div>
         ))}
       </div>
+        </>
+      )}
 
       <h3 className="text-offwhite font-semibold mb-2">Подарки обычным людям</h3>
       <div className="bg-bgSurface border border-muted rounded-xl p-4 mb-6">

@@ -126,7 +126,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "partners", label: "Партнёры" },
   { key: "partner-logos", label: "Витрина партнёров" },
   { key: "ad-space", label: "Рекламный кабинет" },
-  { key: "ad-prices", label: "Базовые цены" },
+  { key: "ad-prices", label: "Цены на рекламу" },
   { key: "support", label: "Поддержка" },
   { key: "cards", label: "Карточки" },
   { key: "goal", label: "Цель недели" },
@@ -144,7 +144,6 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "black-marks", label: "Чёрная метка" },
   { key: "countries", label: "Страны и регионы" },
   { key: "payouts", label: "Цены и выплаты" },
-  { key: "app-prices", label: "Цены (в долларах)" },
   { key: "coins", label: "Монеты и Короны" },
   { key: "shows", label: "Шаблоны шоу" },
   { key: "builder", label: "Конструктор шоу" },
@@ -187,7 +186,6 @@ const SEARCH_WORDS: Partial<Record<Tab, string>> = {
   posters: "афиши афіша постер",
   media: "материалы монтаж логотип рамки наклейки скачать",
   payouts: "цены подарков монеты амбассадор процент выплаты активность доля участницы курс",
-  "app-prices": "курс доллара гривна цены подарки голоса карточки валюта стоимость",
   coins: "монеты короны комиссия вывод курс баланс",
   shows: "шоу мисс таланты цвета тема баннер старт набор анкет предпросмотр",
   launches: "запуск страна очередь шоу старт пауза программа подсказки вопросы задания блоки включить выключить дата этап календарь",
@@ -249,11 +247,23 @@ function CrmSearch({ tabs, onGo }: { tabs: Tab[]; onGo: (t: Tab) => void }) {
   );
 }
 
+// Ссылка вместо копии настроек: цены и деньги живут в одном месте — «Деньги».
+function GoLink({ text, tab, label, onGo }: { text: string; tab: string; label: string; onGo: (t: any) => void }) {
+  return (
+    <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
+      <p className="text-muted text-sm mb-3">{text}</p>
+      <button onClick={() => onGo(tab)} className="bg-gold text-bgPrimary font-semibold px-4 py-2 rounded-full text-sm">
+        {label}
+      </button>
+    </div>
+  );
+}
+
 // Каждая галочка в «Персонал» открывает свой набор разделов.
 // Владелец (super_admin) видит всё независимо от галочек.
 const PERMISSION_TABS: Record<string, Tab[]> = {
   moderation: ["applications", "participants", "posters", "cards", "calendar", "media", "media-demo-upload", "tasks", "black-marks", "rating-admin", "reports", "content-mod", "official", "home-settings", "clan", "referrals", "badges", "translations", "mediafeed", "channels"],
-  finance: ["dashboard", "goal", "referrals"],
+  finance: ["dashboard", "goal", "referrals", "payouts", "coins"],
   partners: ["partners", "ad-stats", "partner-logos", "banners", "magazine-ads", "ad-space", "ad-prices", "social", "branding"],
   staff: ["staff", "users"],
   support: ["support", "documents"],
@@ -262,7 +272,7 @@ const PERMISSION_TABS: Record<string, Tab[]> = {
 // Эти разделы теперь живут внутри «Конструктора шоу» (на своих страницах и блоках).
 // Владельцу и тем, у кого есть конструктор, отдельными пунктами меню они не показываются, чтобы не двоилось.
 // Сотрудникам без доступа к конструктору пункты остаются, чтобы они не потеряли свою работу.
-const IN_BUILDER: Tab[] = ["stages", "banners", "magazine-ads", "partner-logos", "rating-admin", "goal", "tasks", "cards", "mediafeed", "coins", "app-prices", "referrals", "launches"];
+const IN_BUILDER: Tab[] = ["stages", "banners", "magazine-ads", "partner-logos", "rating-admin", "goal", "tasks", "cards", "mediafeed", "launches"];
 
 // Меню CRM: 8 групп по задачам. Каждая группа — набор вкладок.
 type Level = "r" | "w";
@@ -272,7 +282,7 @@ const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: 
   { key: "contest", ic: "👑", label: "Шоу страны", desc: "Запуск, страницы приложения, рейтинг, подарки, задания", tabs: ["builder", "shows", "launches", "awards", "stages", "rating-admin", "goal", "tasks", "cards"] },
   { key: "content", ic: "🎬", label: "Контент и связь", desc: "Материалы, афиши, рассылки, каналы", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "broadcast", "mediafeed", "channels", "banners"] },
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["content-mod", "reports", "story-reports", "clan"] },
-  { key: "money", ic: "💰", label: "Деньги", desc: "Цены, выплаты, рефералы", tabs: ["payouts", "coins", "app-prices", "referrals"] },
+  { key: "money", ic: "💰", label: "Деньги", desc: "Цены подарков и голосов, монеты, выплаты, рефералы", tabs: ["payouts", "coins", "referrals"] },
   { key: "ads", ic: "📣", label: "Реклама и партнёры", desc: "Всё, что приносит доход от партнёров", tabs: ["partners", "partner-logos", "ad-space", "ad-prices", "ad-stats", "magazine-ads", "branding"] },
   { key: "set", ic: "⚙️", label: "Общее", desc: "Страны, боты, языки, доступы, безопасность", tabs: ["countries", "translations", "social", "tgbots", "documents", "staff", "action-log", "security"] },
 ];
@@ -310,8 +320,7 @@ const TAB_DESC: Partial<Record<Tab, string>> = {
   shows: "Создать шоу, вид и проверка",
   awards: "Победители для зала славы",
   "story-reports": "Жалобы на истории",
-  payouts: "Подарки в монетах, амбассадоры, активность",
-  "app-prices": "Цены в приложении",
+  payouts: "Все цены, подарки, выплаты, амбассадоры",
   referrals: "Рефералы и комиссии",
   partners: "Партнёры и связь",
   "partner-logos": "Логотипы партнёров",
@@ -656,12 +665,12 @@ export default function AdminPage() {
               strip: <StripBlock />,
               rating: <AdminRatingPanel />,
               feed: <AdminMediaFeedPanel />,
-              prices: <AdminPricesPanel />,
-              coins: <AdminCoinsPanel />,
+              prices: <GoLink text="Цены подарков, голосов, буста и карточек больше не настраиваются здесь, чтобы не дублировать." tab="payouts" label="Открыть «Деньги → Цены и выплаты»" onGo={go} />,
+              coins: <GoLink text="Монеты, Короны и пакеты пополнения настраиваются в разделе «Деньги»." tab="coins" label="Открыть «Деньги → Монеты и Короны»" onGo={go} />,
               cards: <CardsTab />,
               goal: <GoalTab />,
               tasks: <TasksAdminTab />,
-              referrals: <AdminReferralsPanel />,
+              referrals: <GoLink text="Рефералы и награды настраиваются в разделе «Деньги»." tab="referrals" label="Открыть «Деньги → Рефералы»" onGo={go} />,
             }}
             launchesPanel={
               <AdminLaunchesPanel

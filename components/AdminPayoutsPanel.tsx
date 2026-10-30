@@ -10,11 +10,13 @@ import { ACT_DEFAULT, ACT_KEY, parseAct, type ActRules } from "@/lib/activitySha
 
 const AMB_DEFAULT_KEY = "ambassador_bonus_default";
 import { apiPost } from "@/lib/authClient";
+import AdminPricesPanel from "@/components/AdminPricesPanel";
 
 // CRM → Деньги → «Цены и выплаты»: цена подарков в монетах (доллары считаются сами)
 // и выплаты участницам: амбассадоры и повышение за активность.
 
-type G = { id: string; name: string; category: string; chat_only: boolean; coins: number; orig: number; share: string; is_active: boolean };
+type GO = { coins: number; share: string; is_active: boolean; fx: string; name: string };
+type G = GO & { id: string; category: string; chat_only: boolean; art: string | null; o: GO };
 const TABS: { k: string; label: string }[] = [
   { k: "light", label: "Лёгкие" },
   { k: "premium", label: "Премиум" },
@@ -33,6 +35,7 @@ export default function AdminPayoutsPanel() {
   const [pct, setPct] = useState("10");
   const [amb, setAmb] = useState("");
   const [act, setAct] = useState<ActRules>(ACT_DEFAULT);
+  const [fxSound, setFxSound] = useState(true);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
 
@@ -41,8 +44,7 @@ export default function AdminPayoutsPanel() {
     const m = await loadScoped([...COIN_KEYS, "coins_per_usd"], cc);
     const cs = coinSettingsFrom(m);
     const kk = Number(m.coins_per_usd) > 0 ? Number(m.coins_per_usd) : cs.rate;
-    const rt = kk;
-    setRate(rt);
+    setRate(kk);
     setCoinUsd(cs.coinUsd);
     setFx(cs.rate);
     if (cc) {
@@ -59,24 +61,23 @@ export default function AdminPayoutsPanel() {
       ((g ?? []) as any[]).map((x0) => {
         const o = ov.get(x0.id);
         const usd = o?.usd_price ?? x0.usd_price;
-        const coins = usd != null && Number(usd) > 0 ? Math.round(Number(usd) * rt) : Number(x0.price) || 0;
-        return {
-          id: x0.id,
-          name: x0.name,
-          category: x0.category,
-          chat_only: !!x0.chat_only,
+        const coins = usd != null && Number(usd) > 0 ? Math.round(Number(usd) * kk) : Number(x0.price) || 0;
+        const base: GO = {
           coins,
-          orig: coins,
           share: String(o?.participant_share_percent ?? x0.participant_share_percent ?? 50),
-          is_active: o?.is_active ?? x0.is_active,
-        } as G;
+          is_active: !!(o?.is_active ?? x0.is_active),
+          fx: x0.fx ?? "",
+          name: x0.name,
+        };
+        return { ...base, id: x0.id, category: x0.category, chat_only: !!x0.chat_only, art: x0.art ?? null, o: base } as G;
       })
     );
-    const { data: ps } = await supabase.from("platform_settings").select("key, value").in("key", [AMB_DEFAULT_KEY, ACT_KEY]);
+    const { data: ps } = await supabase.from("platform_settings").select("key, value").in("key", [AMB_DEFAULT_KEY, ACT_KEY, "gift_fx_sound"]);
     const by: Record<string, string> = {};
     (ps ?? []).forEach((x: any) => (by[x.key] = x.value));
     setAmb(by[AMB_DEFAULT_KEY] ?? "");
     setAct(by[ACT_KEY] ? parseAct(by[ACT_KEY]) : ACT_DEFAULT);
+    setFxSound(by.gift_fx_sound !== "false");
     setLoading(false);
   }
   useEffect(() => {
@@ -85,15 +86,25 @@ export default function AdminPayoutsPanel() {
 
   const inTab = (g: G) => (tab === "chat" ? g.chat_only : !g.chat_only && g.category === tab);
   const list = useMemo(() => gifts.filter(inTab), [gifts, tab]);
-  const changed = gifts.filter((g) => g.coins !== g.orig);
+  const isCh = (g: G) => g.coins !== g.o.coins || g.share !== g.o.share || g.is_active !== g.o.is_active || g.fx !== g.o.fx || g.name.trim() !== g.o.name;
+  const changed = gifts.filter(isCh);
 
-  function setCoins(id: string, v: string) {
-    const n = Math.max(0, Math.round(Number(v) || 0));
-    setGifts((a) => a.map((g) => (g.id === id ? { ...g, coins: n } : g)));
-  }
+  const patch = (id: string, p: Partial<GO>) => setGifts((a) => a.map((g) => (g.id === id ? { ...g, ...p } : g)));
   function bulk(sign: 1 | -1) {
     const p = (Number(pct) || 0) / 100;
     setGifts((a) => a.map((g) => (inTab(g) ? { ...g, coins: Math.max(1, Math.round(g.coins * (1 + sign * p))) } : g)));
+  }
+
+  // Название общее для всех стран. Рисунок остаётся: старое имя запоминается в колонке art.
+  async function saveName(g: G) {
+    const nm = g.name.trim();
+    if (!nm || nm === g.o.name) return true;
+    const upd: any = { name: nm };
+    if (!g.art) upd.art = g.o.name;
+    let { error } = await supabase.from("gift_catalog").update(upd).eq("id", g.id);
+    if (error && upd.art) ({ error } = await supabase.from("gift_catalog").update({ name: nm }).eq("id", g.id));
+    if (!error) await supabase.from("user_gifts").update({ gift_name: nm }).eq("gift_name", g.o.name);
+    return !error;
   }
 
   async function saveAll() {
@@ -101,14 +112,17 @@ export default function AdminPayoutsPanel() {
     let fail = 0;
     for (const g of changed) {
       const usd = Math.round((g.coins / rate) * 10000) / 10000;
+      const share = Math.min(100, Math.max(0, Number(g.share) || 0));
       const q = cc
-        ? supabase.from("gift_country_prices").upsert({ gift_id: g.id, country_id: cc, usd_price: usd > 0 ? usd : null, participant_share_percent: Number(g.share) || 0, is_active: g.is_active })
-        : supabase.from("gift_catalog").update({ usd_price: usd > 0 ? usd : null }).eq("id", g.id);
+        ? supabase.from("gift_country_prices").upsert({ gift_id: g.id, country_id: cc, usd_price: usd > 0 ? usd : null, participant_share_percent: share, is_active: g.is_active })
+        : supabase.from("gift_catalog").update({ usd_price: usd > 0 ? usd : null, participant_share_percent: share, is_active: g.is_active }).eq("id", g.id);
       const { error } = await q;
       if (error) fail++;
+      if (g.fx !== g.o.fx) await supabase.from("gift_catalog").update({ fx: g.fx || null }).eq("id", g.id);
+      if (!(await saveName(g))) fail++;
     }
     clearPricingCache();
-    if (!fail) setGifts((a) => a.map((g) => ({ ...g, orig: g.coins })));
+    if (!fail) setGifts((a) => a.map((g) => ({ ...g, name: g.name.trim(), o: { coins: g.coins, share: g.share, is_active: g.is_active, fx: g.fx, name: g.name.trim() } })));
     setMsg(fail ? `Не сохранилось: ${fail}` : "Сохранено ✓");
     setTimeout(() => setMsg(""), 2500);
   }
@@ -130,22 +144,29 @@ export default function AdminPayoutsPanel() {
   const ghost = "border border-gold text-gold px-3 py-1.5 rounded-full text-xs";
   if (loading) return <p className="text-muted">Загрузка...</p>;
 
-  const setRule = (i: number, patch: Partial<ActRules["rules"][number]>) =>
-    setAct((s) => ({ ...s, rules: s.rules.map((r, j) => (j === i ? { ...r, ...patch } : r)) }));
+  const setRule = (i: number, p: Partial<ActRules["rules"][number]>) =>
+    setAct((s) => ({ ...s, rules: s.rules.map((r, j) => (j === i ? { ...r, ...p } : r)) }));
   const exBonus = Math.min(act.max, act.rules.reduce((a, r) => a + r.bonus, 0));
 
   return (
     <div className="max-w-xl pb-24">
-      <p className="text-muted text-xs mb-3">
-        {cc ? "Цены правятся только для выбранной страны. " : "Общие цены (для стран без своих). "}
-        Цену вводишь в монетах. Рядом честно показано, сколько это в $ и в {sym} по сегодняшнему курсу.
-      </p>
-
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-3 mb-5 text-xs text-muted">
-        1 монета = <b className="text-offwhite">${coinUsd.toFixed(4)}</b> (меняется в «Монеты и Короны»). Курс сегодня: $1 = <b className="text-offwhite">{fx} {sym}</b> (меняется на Дашборде). Цена подарка в монетах от курса не зависит.
+        Все цены здесь в <b className="text-offwhite">монетах</b>. 1 монета = <b className="text-offwhite">${coinUsd.toFixed(4)}</b> (меняется в «Монеты и Короны»). Курс сегодня: $1 = <b className="text-offwhite">{fx} {sym}</b> (меняется на Дашборде). Цена в монетах от курса не зависит.
+        {cc ? " Цены правятся только для выбранной страны." : " Это общие цены (для стран без своих)."}
       </div>
 
-      <h3 className="text-offwhite font-semibold mb-2">Цены подарков</h3>
+      <h3 className="text-offwhite font-semibold mb-2">Подарки</h3>
+      <label className="flex items-center gap-2 text-offwhite text-sm mb-2">
+        <input
+          type="checkbox"
+          checked={fxSound}
+          onChange={async (e) => {
+            setFxSound(e.target.checked);
+            await supabase.from("platform_settings").upsert({ key: "gift_fx_sound", value: e.target.checked ? "true" : "false" });
+          }}
+        />
+        Звук эффектов подарков (для всех)
+      </label>
       <div className="flex gap-2 overflow-x-auto mb-3">
         {TABS.map((t) => (
           <button key={t.k} onClick={() => setTab(t.k)} className={`flex-none px-3 py-1.5 rounded-full text-sm border ${tab === t.k ? "bg-gold text-bgPrimary border-gold font-semibold" : "border-muted text-muted"}`}>
@@ -163,22 +184,43 @@ export default function AdminPayoutsPanel() {
         </div>
         {list.length === 0 && <p className="text-muted text-sm py-3">Здесь пока нет подарков.</p>}
         {list.map((g) => (
-          <div key={g.id} className="grid grid-cols-[1fr_88px_1fr] gap-2 items-center py-2 border-t border-muted/40">
-            <span className="text-offwhite text-sm min-w-0 truncate">{g.name}{!g.is_active && <span className="text-muted text-xs"> · скрыт</span>}</span>
-            <input value={g.coins} inputMode="numeric" onChange={(e) => setCoins(g.id, e.target.value)} className={`${cls} w-full ${g.coins !== g.orig ? "border-gold" : ""}`} />
-            <span className="text-xs text-muted leading-tight"><b className="text-success font-semibold">${(g.coins * coinUsd).toFixed(2)}</b> · ≈ {Math.round(g.coins * coinUsd * fx * 100) / 100} {sym}</span>
+          <div key={g.id} className={`py-2 border-t border-muted/40 ${isCh(g) ? "bg-gold/5" : ""}`}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <input value={g.name} onChange={(e) => patch(g.id, { name: e.target.value })} className={`${cls} flex-1 min-w-0 font-semibold`} />
+              <label className="text-muted text-xs flex items-center gap-1 flex-none">
+                <input type="checkbox" checked={g.is_active} onChange={(e) => patch(g.id, { is_active: e.target.checked })} /> в магазине
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <input value={g.coins} inputMode="numeric" onChange={(e) => patch(g.id, { coins: Math.max(0, Math.round(Number(e.target.value) || 0)) })} className={`${cls} w-24 ${g.coins !== g.o.coins ? "border-gold" : ""}`} />
+              <span className="text-muted text-xs">монет = <b className="text-success font-semibold">${(g.coins * coinUsd).toFixed(2)}</b> ≈ {Math.round(g.coins * coinUsd * fx * 100) / 100} {sym}</span>
+              <span className="text-muted text-xs ml-auto">доля участницы</span>
+              <input value={g.share} onChange={(e) => patch(g.id, { share: e.target.value })} className={`${cls} w-16`} />
+              <span className="text-muted text-sm">%</span>
+              <select value={g.fx} onChange={(e) => patch(g.id, { fx: e.target.value })} className={`${cls} py-1.5`} title="Эффект на экране">
+                <option value="">эффект по умолчанию</option>
+                <option value="off">без эффекта</option>
+                <option value="mini">лёгкий эффект</option>
+                <option value="full">на весь экран</option>
+              </select>
+            </div>
           </div>
         ))}
       </div>
 
+      <h3 className="text-offwhite font-semibold mb-2">Голоса, буст, карточки, донаты и прочее</h3>
+      <div className="mb-6">
+        <AdminPricesPanel hideGifts />
+      </div>
+
       <h3 className="text-offwhite font-semibold mb-2">Выплаты участницам</h3>
       <div className="bg-bgSurface border border-muted rounded-xl p-3 mb-3">
-        <p className="text-muted text-xs mb-2">Доля участницы у каждого подарка задаётся в «Цены в приложении». Здесь — добавки к ней.</p>
+        <p className="text-muted text-xs mb-2">Доля участницы у каждого подарка задаётся выше (в строке подарка). Здесь только добавки к ней.</p>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-offwhite text-sm">⭐ Амбассадор: к доле + </span>
           <input value={amb} onChange={(e) => setAmb(e.target.value)} placeholder="0" className={`${cls} w-20`} />
           <span className="text-muted text-sm">п.п.</span>
-          <span className="text-muted text-xs basis-full">Пример: доля подарка 50% + 10 = 60%. Отдельной амбассадору можно поставить своё число в «Галочки и статусы».</span>
+          <span className="text-muted text-xs basis-full">Пример: доля подарка 50% + 10 = 60%. Отдельной амбассадору можно поставить своё число в «Люди → Галочки и статусы».</span>
         </div>
       </div>
 
@@ -189,13 +231,13 @@ export default function AdminPayoutsPanel() {
           <label className="flex items-center gap-1"><input type="checkbox" checked={act.amb} onChange={(e) => setAct({ ...act, amb: e.target.checked })} /> амбассадоры</label>
         </div>
         {act.rules.map((r, i) => (
-          <div key={i} className="grid grid-cols-[1fr_64px_64px] gap-2 items-center py-1.5 border-t border-muted/40 text-sm">
-            <select value={r.kind} onChange={(e) => setRule(i, { kind: e.target.value as any })} className={`${cls} w-full`}>
+          <div key={i} className="grid grid-cols-[minmax(0,1fr)_64px_72px] gap-2 items-center py-1.5 border-t border-muted/40 text-sm">
+            <select value={r.kind} onChange={(e) => setRule(i, { kind: e.target.value as any })} className={`${cls} w-full min-w-0`}>
               <option value="posts">Постов ≥</option>
               <option value="invites">Приглашённых друзей ≥</option>
             </select>
-            <input value={r.min} onChange={(e) => setRule(i, { min: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} className={`${cls} w-full`} />
-            <span className="flex items-center gap-1 text-muted">+<input value={r.bonus} onChange={(e) => setRule(i, { bonus: Math.max(0, Number(e.target.value) || 0) })} className={`${cls} w-full`} />%</span>
+            <input value={r.min} onChange={(e) => setRule(i, { min: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} className={`${cls} w-full min-w-0`} />
+            <span className="flex items-center gap-1 text-muted">+<input value={r.bonus} onChange={(e) => setRule(i, { bonus: Math.max(0, Number(e.target.value) || 0) })} className={`${cls} w-full min-w-0`} />%</span>
           </div>
         ))}
         <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -211,8 +253,8 @@ export default function AdminPayoutsPanel() {
 
       <div className="fixed left-0 right-0 bottom-0 z-40 p-3 flex justify-center pointer-events-none">
         <div className="pointer-events-auto bg-bgSurface border border-gold rounded-2xl px-4 py-2 flex items-center gap-3 shadow-lg">
-          <span className="text-offwhite text-sm">{msg || `Изменено цен: ${changed.length}`}</span>
-          {changed.length > 0 && <button onClick={() => setGifts((a) => a.map((g) => ({ ...g, coins: g.orig })))} className={ghost}>Отменить</button>}
+          <span className="text-offwhite text-sm">{msg || `Изменено подарков: ${changed.length}`}</span>
+          {changed.length > 0 && <button onClick={() => setGifts((a) => a.map((g) => ({ ...g, ...g.o })))} className={ghost}>Отменить</button>}
           <button onClick={saveAll} disabled={!changed.length} className={`${btn} ${changed.length ? "" : "opacity-40"}`}>Сохранить всё</button>
         </div>
       </div>
