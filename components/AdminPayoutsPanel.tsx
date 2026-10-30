@@ -5,8 +5,9 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCrmCountry } from "@/lib/crmCountry";
 import { loadScoped, scopedKey } from "@/lib/scopedSettings";
 import { clearPricingCache } from "@/lib/currency";
-import { ACT_DEFAULT, ACT_KEY, parseAct, type ActRules } from "@/lib/activity";
-import { AMB_DEFAULT_KEY } from "@/lib/ambassador";
+import { ACT_DEFAULT, ACT_KEY, parseAct, type ActRules } from "@/lib/activityShared";
+
+const AMB_DEFAULT_KEY = "ambassador_bonus_default";
 import { apiPost } from "@/lib/authClient";
 
 // CRM → Деньги → «Цены и выплаты»: цена подарков в монетах (доллары считаются сами)
