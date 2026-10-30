@@ -4,7 +4,6 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import BottomNav from "@/components/BottomNav";
-import BusinessSwitch from "@/components/BusinessSwitch";
 import BusinessPageView, { BizPublic } from "@/components/BusinessPageView";
 import { apiPost, openSession } from "@/lib/authClient";
 import { supabase } from "@/lib/supabaseClient";
@@ -66,11 +65,23 @@ export default function BusinessCabinetPage() {
     setMsg("");
     const r = await apiPost("/api/business/enable");
     if (r?.ok && (await openSession(r.token_hash))) {
-      window.location.href = "/business";
+      window.location.replace("/profile");
       return;
     }
     setBusy(false);
     setMsg(ERR[r?.error] ?? "Не получилось. Попробуйте ещё раз.");
+  }
+
+  async function goBusiness() {
+    setBusy(true);
+    setMsg("");
+    const r = await apiPost("/api/accounts/switch", { targetId: st.businessUserId });
+    if (r?.status === "ok" && (await openSession(r.token_hash))) {
+      window.location.replace("/profile");
+      return;
+    }
+    setBusy(false);
+    setMsg("Не удалось переключиться. Попробуйте ещё раз.");
   }
 
   async function save(extra: Record<string, any> = {}) {
@@ -94,7 +105,7 @@ export default function BusinessCabinetPage() {
     setBusy(false);
     if (r?.ok) {
       setF(r.profile);
-      setMsg(extra.is_active === true ? "Страница включена. Её видят все." : extra.is_active === false ? "Страница выключена." : "Сохранено.");
+      setMsg(extra.is_active === true ? "Магазин включён. Его видят все: откройте свой профиль, там магазин." : extra.is_active === false ? "Страница выключена." : "Сохранено.");
     } else setMsg(ERR[r?.error] ?? "Не получилось сохранить.");
   }
 
@@ -124,8 +135,10 @@ export default function BusinessCabinetPage() {
       <PageHeader />
       <div className="max-w-3xl mx-auto px-5">
         <div className="flex items-center justify-between gap-3 mb-4">
-          <h1 className="text-xl font-semibold text-offwhite">Бизнес-аккаунт</h1>
-          <BusinessSwitch />
+          <h1 className="text-xl font-semibold text-offwhite">{st?.isBusinessNow ? "Настройки магазина" : "Бизнес-аккаунт"}</h1>
+          {st?.isBusinessNow && (
+            <a href="/profile" className="text-gold text-sm border border-gold/60 rounded-full px-3.5 py-1.5">← В профиль</a>
+          )}
         </div>
 
         {loading && <LoadingScreen inline />}
@@ -138,10 +151,12 @@ export default function BusinessCabinetPage() {
           <div className="bg-bgSurface border border-gold/50 rounded-2xl p-5">
             <p className="text-offwhite font-semibold">{st.hasBusiness ? "Ваш бизнес-аккаунт уже создан" : "Включить бизнес-аккаунт"}</p>
             <p className="text-muted text-sm mt-2">
-              Это отдельный аккаунт для вашего бизнеса: своя страница, синяя галочка «Официальный партнёр VETOKS», каталог, заказы и предложения для зрителей. Он занимает один из трёх мест на ваш номер. Личный аккаунт остаётся как есть, переключаться можно в любой момент.
+              Это отдельный аккаунт для вашего бизнеса: своя страница, синяя галочка «Официальный партнёр VETOKS», каталог, заказы и предложения для зрителей. Он занимает один из трёх мест на ваш номер. Личный аккаунт остаётся как есть, переключаться можно в любой момент через «Мои аккаунты» в профиле.
             </p>
             {st.hasBusiness ? (
-              <BusinessSwitchButton />
+              <button onClick={goBusiness} disabled={busy} className="w-full mt-4 bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm disabled:opacity-50">
+                {busy ? "Переходим..." : "Перейти в бизнес-аккаунт"}
+              </button>
             ) : (
               <button onClick={enable} disabled={busy} className="w-full mt-4 bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm disabled:opacity-50">
                 {busy ? "Создаём..." : "Включить бизнес-аккаунт"}
@@ -169,6 +184,9 @@ export default function BusinessCabinetPage() {
               <p className="text-muted text-xs mt-1">
                 {f.is_hidden ? "Страница скрыта администрацией VETOKS. Напишите в поддержку." : f.verified ? "Синяя галочка «Официальный партнёр VETOKS» у вас есть." : "Синяя галочка снята администрацией."}
               </p>
+              {f.is_active && (
+                <a href="/profile" className="inline-block mt-3 mr-2 px-5 py-2 rounded-full text-sm font-semibold bg-gold text-bgPrimary">Открыть мой магазин</a>
+              )}
               <button
                 onClick={() => save({ is_active: !f.is_active })}
                 disabled={busy}
@@ -224,14 +242,6 @@ export default function BusinessCabinetPage() {
       </div>
       <BottomNav />
     </main>
-  );
-}
-
-function BusinessSwitchButton() {
-  return (
-    <div className="mt-4">
-      <BusinessSwitch />
-    </div>
   );
 }
 

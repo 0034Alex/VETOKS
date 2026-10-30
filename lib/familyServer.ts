@@ -7,6 +7,7 @@ export type FamilyMember = {
   first_name: string | null;
   parent_user_id: string | null;
   is_banned: boolean;
+  is_business?: boolean | null;
 };
 
 // Главный аккаунт «семьи»: для основного это он сам, для дополнительного — родитель.
@@ -24,7 +25,7 @@ export async function familyRootId(userId: string): Promise<string | null> {
 export async function familyMembers(rootId: string): Promise<FamilyMember[]> {
   const { data } = await supabaseAdmin
     .from("users")
-    .select("id, first_name, parent_user_id, is_banned, created_at")
+    .select("id, first_name, parent_user_id, is_banned, is_business, created_at")
     .or(`id.eq.${rootId},parent_user_id.eq.${rootId}`)
     .order("created_at", { ascending: true });
   const list = (data ?? []) as any[];

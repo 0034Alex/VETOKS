@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { userIdFromBearer } from "@/lib/authServer";
 import { familyMembers, familyRootId, MAX_SUB_ACCOUNTS } from "@/lib/familyServer";
+import { businessContext } from "@/lib/businessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,8 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   const subs = members.filter((m) => m.id !== rootId).length;
+  const bc = await businessContext(userId);
+  const hasBusiness = members.some((m) => !!m.is_business);
   return NextResponse.json({
     status: "ok",
     accounts: members.map((m) => ({
@@ -28,8 +31,11 @@ export async function POST(req: NextRequest) {
       name: m.first_name || "Без имени",
       main: m.id === rootId,
       current: m.id === userId,
+      business: !!m.is_business,
     })),
     canAdd: !!root?.phone_verified && subs < MAX_SUB_ACCOUNTS,
     needVerify: !root?.phone_verified,
+    // Одобренный партнёр, у которого ещё нет бизнес-аккаунта: показываем «Создать бизнес-аккаунт».
+    canCreateBusiness: !!bc?.sponsor && !hasBusiness && !!root?.phone_verified && subs < MAX_SUB_ACCOUNTS,
   });
 }

@@ -10,6 +10,7 @@ export const BIZ_COLS =
 export function publicBiz(p: any) {
   return {
     id: p.id,
+    user_id: p.user_id ?? null,
     name: p.name,
     category: p.category ?? "",
     about: p.about ?? "",
@@ -132,4 +133,20 @@ export async function createBusinessAccount(
     await autoFollowOfficial(newId, (root as any).region_id as string);
   } catch {}
   return { ok: true, userId: newId };
+}
+
+// Краткое «о себе» для шапки профиля бизнес-аккаунта: сфера и начало описания.
+export function bizBio(p: { category?: string | null; about?: string | null }): string {
+  const parts = [p.category, p.about].map((x) => String(x ?? "").trim()).filter(Boolean);
+  return parts.join(" · ").slice(0, 160);
+}
+
+// Шапка профиля бизнес-аккаунта (фото, «о себе») берётся из страницы магазина.
+export async function syncBusinessToUser(userId: string, p: any) {
+  try {
+    const patch: Record<string, any> = { bio: bizBio(p) || null };
+    const photo = p.logo_url || p.cover_url || null;
+    if (photo) patch.photo_url = photo;
+    await supabaseAdmin.from("users").update(patch).eq("id", userId);
+  } catch {}
 }

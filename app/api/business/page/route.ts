@@ -11,10 +11,15 @@ export async function POST(req: Request) {
   const uid = await requireUser(req);
   if (uid instanceof NextResponse) return uid;
   const b = await req.json().catch(() => ({}));
-  const id = String(b.id ?? "");
-  if (!id) return bad("no_id");
-  const { data: p } = await supabaseAdmin.from("business_profiles").select(BIZ_COLS).eq("id", id).maybeSingle();
+  let id = String(b.id ?? "");
+  const byUser = String(b.userId ?? "");
+  if (!id && !byUser) return bad("no_id");
+  const { data: p } = await (id
+    ? supabaseAdmin.from("business_profiles").select(BIZ_COLS).eq("id", id)
+    : supabaseAdmin.from("business_profiles").select(BIZ_COLS).eq("user_id", byUser)
+  ).maybeSingle();
   if (!p) return bad("not_found", 404);
+  id = String((p as any).id);
   const mine = (p as any).user_id === uid;
   // Сотрудники CRM открывают любую страницу партнёра, даже не опубликованную, для предпросмотра.
   const { data: me } = await supabaseAdmin.from("users").select("role").eq("id", uid).maybeSingle();
@@ -32,6 +37,7 @@ export async function POST(req: Request) {
     ok: true,
     profile: publicBiz(p),
     mine,
+    userId: (p as any).user_id,
     staffPreview: staff && !mine,
     notPublished: hidden,
     isHidden: !!(p as any).is_hidden,

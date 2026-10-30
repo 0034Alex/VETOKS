@@ -10,6 +10,8 @@ import BottomNav from "@/components/BottomNav";
 import ProfileHero, { ProfileActions, BigBtn, TopBtn, shareLink } from "@/components/ProfileHero";
 import FollowsSheet from "@/components/FollowsSheet";
 import ProfileTabs from "@/components/ProfileTabs";
+import ShopSection from "@/components/ShopSection";
+import ShopLinkCard from "@/components/ShopLinkCard";
 
 type Data = {
   isSelf: boolean;
@@ -26,6 +28,8 @@ type Data = {
   posts: number;
   isFollowing: boolean;
   canWrite: boolean;
+  isBusiness?: boolean;
+  shop?: { id: string; user_id: string; name: string; logo_url: string | null } | null;
 };
 
 // Страница обычного человека (не участницы).
@@ -117,9 +121,12 @@ export default function PublicUserPage() {
             </TopBtn>
           }
         />
-        <div className="px-5 pt-5">
-          <GiftShowcase userId={id} />
-        </div>
+        {!d.isBusiness && (
+          <div className="px-5 pt-5">
+            <GiftShowcase userId={id} />
+          </div>
+        )}
+        {!d.isBusiness && <ShopLinkCard shop={d.shop ?? null} />}
         <ProfileActions>
           {d.canWrite ? (
             <BigBtn href={`/chats/${id}`}>✉️ Написать</BigBtn>
@@ -132,6 +139,7 @@ export default function PublicUserPage() {
             {isFollowing ? "Отписаться" : "＋ Подписаться"}
           </BigBtn>
         </ProfileActions>
+        {d.isBusiness && <ShopSection userId={id} />}
         <ProfileTabs userId={id} />
       </div>
 

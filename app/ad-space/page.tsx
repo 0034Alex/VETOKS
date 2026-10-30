@@ -110,6 +110,10 @@ export default function AdSpacePage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
+  const [myShopUserId, setMyShopUserId] = useState<string | null>(null);
+  useEffect(() => {
+    apiPost("/api/business/state").then((r: any) => r?.ok && r.hasBusiness && setMyShopUserId(r.businessUserId ?? null));
+  }, []);
   const [adText, setAdText] = useState("");
   const [message, setMessage] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -588,6 +592,15 @@ export default function AdSpacePage() {
                   placeholder="Ссылка, куда вести клиентов *"
                   className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
                 />
+                {myShopUserId && (
+                  <button
+                    type="button"
+                    onClick={() => setLinkUrl(`${window.location.origin}/u/${myShopUserId}`)}
+                    className="text-left text-gold text-xs border border-gold/60 rounded-lg px-3 py-2"
+                  >
+                    🏪 Вести баннер в мой магазин на платформе
+                  </button>
+                )}
                 <textarea
                   value={adText}
                   onChange={(e) => setAdText(e.target.value)}

@@ -50,6 +50,7 @@ export default function PartnersDirectoryPage() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
   const [biz, setBiz] = useState<any[]>([]);
+  const [tab, setTab] = useState<"partners" | "shops">("partners");
 
   useEffect(() => {
     (async () => {
@@ -85,23 +86,31 @@ export default function PartnersDirectoryPage() {
         🤝 Хотите стать партнёром? Оставить заявку
       </Link>
 
-      {loading && <LoadingScreen inline />}
-      {!loading && partners.length === 0 && (
+      <div className="px-6 mb-5 flex gap-2">
+        {([["partners", "Партнёры"], ["shops", "Магазины"]] as const).map(([k, l]) => (
+          <button key={k} onClick={() => setTab(k)} className={`flex-1 py-2 rounded-full text-sm border ${tab === k ? "bg-gold text-bgPrimary border-gold font-semibold" : "border-muted text-offwhite"}`}>{l}</button>
+        ))}
+      </div>
+
+      {tab === "partners" && loading && <LoadingScreen inline />}
+      {tab === "partners" && !loading && partners.length === 0 && (
         <p className="text-muted text-center px-6">Пока нет партнёров.</p>
       )}
 
+      {tab === "partners" && (
       <div className="px-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {partners.map((p, i) => (
           <DirItem key={p.id} p={p} index={i} />
         ))}
       </div>
+      )}
 
-      {biz.length > 0 && (
-        <div className="px-6 mt-8">
-          <h2 className="text-lg font-semibold text-offwhite mb-3">Магазины и сервисы</h2>
+      {tab === "shops" && (
+        <div className="px-6">
+          {biz.length === 0 && <p className="text-muted text-center">Пока нет открытых магазинов.</p>}
           <div className="flex flex-col gap-3">
             {biz.map((b) => (
-              <Link key={b.id} href={`/b/${b.id}`} className="flex items-center gap-3 bg-bgSurface border border-muted rounded-xl p-3">
+              <Link key={b.id} href={`/u/${b.user_id ?? ""}`} className="flex items-center gap-3 bg-bgSurface border border-muted rounded-xl p-3">
                 <div className="w-12 h-12 rounded-xl bg-bgPrimary overflow-hidden flex items-center justify-center flex-none text-gold font-bold">
                   {b.logo_url ? (
                     // eslint-disable-next-line @next/next/no-img-element

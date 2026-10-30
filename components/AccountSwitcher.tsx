@@ -4,13 +4,15 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { apiPost, openSession } from "@/lib/authClient";
 
-type Acc = { id: string; name: string; main: boolean; current: boolean };
+type Acc = { id: string; name: string; main: boolean; current: boolean; business?: boolean };
+const kind = (a: Acc) => (a.business ? "Бизнес" : a.main ? "Основной" : "Дополнительный");
 
 // Переключатель «Мои аккаунты» в профиле.
 export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
   const [accounts, setAccounts] = useState<Acc[]>([]);
   const [canAdd, setCanAdd] = useState(false);
   const [needVerify, setNeedVerify] = useState(false);
+  const [canBiz, setCanBiz] = useState(false);
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -22,7 +24,10 @@ export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
   async function load() {
     const r = await apiPost("/api/accounts/list");
     if (r.status === "ok") {
-      setAccounts(r.accounts);
+      // Порядок: основной, бизнес, дополнительные.
+      const rank = (a: Acc) => (a.main ? 0 : a.business ? 1 : 2);
+      setAccounts([...(r.accounts as Acc[])].sort((a, b) => rank(a) - rank(b)));
+      setCanBiz(!!r.canCreateBusiness);
       setCanAdd(!!r.canAdd);
       setNeedVerify(!!r.needVerify);
     }
@@ -33,7 +38,7 @@ export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
 
   async function enter(tokenHash: string) {
     if (await openSession(tokenHash)) {
-      window.location.href = "/profile";
+      window.location.replace("/profile");
     } else {
       setBusy(false);
       setMsg("Не удалось переключиться. Попробуйте ещё раз.");
@@ -51,6 +56,17 @@ export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
     }
   }
 
+  async function createBiz() {
+    setBusy(true);
+    setMsg("");
+    const r = await apiPost("/api/business/enable");
+    if (r?.ok && r.token_hash) await enter(r.token_hash);
+    else {
+      setBusy(false);
+      setMsg(r?.error === "need_phone" ? "Сначала подтвердите номер телефона в основном аккаунте." : r?.error === "no_slot" ? "Нет свободного места под бизнес-аккаунт." : "Не получилось создать бизнес-аккаунт.");
+    }
+  }
+
   async function create() {
     if (!name.trim()) return;
     setBusy(true);
@@ -64,7 +80,7 @@ export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
   }
 
   // Пока аккаунт один и добавить нельзя — не загромождаем профиль.
-  if (accounts.length <= 1 && !canAdd) return null;
+  if (accounts.length <= 1 && !canAdd && !canBiz) return null;
 
   const current = accounts.find((a) => a.current);
 
@@ -76,7 +92,7 @@ export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
           className="flex items-center gap-1.5 text-xs text-offwhite px-3 py-1.5 rounded-full bg-black/45 backdrop-blur border border-white/15"
         >
           <span className="text-gold">⇄</span>
-          {current?.name ?? "Аккаунт"}
+          {current?.business ? "🏪 " : ""}{current?.name ?? "Аккаунт"}
         </button>
       ) : (
       <button
@@ -86,7 +102,7 @@ export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
           <span className="text-sm text-offwhite">
             <span className="text-muted text-xs block">Мои аккаунты</span>
             {current?.name ?? "Аккаунт"}
-            {current && !current.main && <span className="text-muted text-xs"> · дополнительный</span>}
+            {current && <span className="text-muted text-xs"> · {kind(current).toLowerCase()}</span>}
           </span>
           <span className="text-gold text-lg">⇄</span>
         </button>
@@ -120,12 +136,22 @@ export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
                 >
                   <span className="text-offwhite text-sm">
                     {a.name}
-                    <span className="text-muted text-xs block">{a.main ? "Основной" : "Дополнительный"}</span>
+                    <span className="text-muted text-xs block">{kind(a)}</span>
                   </span>
                   {a.current && <span className="text-gold text-xs">сейчас</span>}
                 </button>
               ))}
             </div>
+
+            {canBiz && !adding && (
+              <button
+                onClick={createBiz}
+                disabled={busy}
+                className="w-full mb-2 bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm disabled:opacity-50"
+              >
+                {busy ? "Создаём..." : "🏪 Создать бизнес-аккаунт"}
+              </button>
+            )}
 
             {adding ? (
               <div className="flex flex-col gap-2">

@@ -18,7 +18,8 @@ import { parseLinks } from "@/lib/socialLinks";
 import { statusFor } from "@/lib/status";
 import { loadTitleBadges, TitleBadge } from "@/lib/profileExtras";
 import AccountSwitcher from "@/components/AccountSwitcher";
-import BusinessSwitch from "@/components/BusinessSwitch";
+import ShopSection from "@/components/ShopSection";
+import ShopLinkCard from "@/components/ShopLinkCard";
 import { getCurrencySymbol } from "@/lib/currency";
 import { useT } from "@/lib/i18n";
 import { useShow, hasBlock } from "@/lib/useShow";
@@ -51,6 +52,10 @@ export default function ProfilePage() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [isPartner, setIsPartner] = useState(false);
+  const [biz, setBiz] = useState<any>(null);
+  useEffect(() => {
+    apiPost("/api/business/state").then((r: any) => r?.ok && setBiz(r));
+  }, []);
   const [voteCount, setVoteCount] = useState(0);
   const [giftCount, setGiftCount] = useState(0);
   const [referralCount, setReferralCount] = useState(0);
@@ -346,19 +351,28 @@ export default function ProfilePage() {
   );
 
 
+  // Бизнес-аккаунт: шапка профиля берётся со страницы магазина.
+  const isBiz = !!biz?.isBusinessNow && !!biz?.profile;
+  const bp = isBiz ? biz.profile : null;
+  const shownName = bp?.name || initialsName;
+  const shownPhoto = (bp ? bp.logo_url || bp.cover_url : null) || photoUrl;
+  const shownBio = bp ? [bp.category, bp.about].map((x: any) => String(x ?? "").trim()).filter(Boolean).join(" · ").slice(0, 160) || bio : bio;
+  const shownSocials = bp?.site_url && !socials.includes(bp.site_url) ? [bp.site_url, ...socials] : socials;
+  const newOrders = Number(biz?.newOrders) || 0;
+
   return (
     <main className="min-h-screen pb-36">
       <div className="max-w-md mx-auto">
         <ProfileHero
-          photoUrl={photoUrl}
-          name={initialsName}
+          photoUrl={shownPhoto}
+          name={shownName}
           status={st?.text ?? null}
           statusTone={st?.tone}
           statusTalent={st?.talent}
           badges={titleBadges}
           city={user?.regions?.name ?? null}
-          bio={bio}
-          socials={socials}
+          bio={shownBio}
+          socials={shownSocials}
           channels={myChannels}
           stats={
             participant
@@ -385,12 +399,26 @@ export default function ProfilePage() {
           onShare={share}
           actions={
             <>
-              <Link
-                href="/edit-profile"
-                className="flex-1 min-w-0 h-11 rounded-xl border border-muted/60 bg-bgSurface text-offwhite text-[14px] font-semibold flex items-center justify-center"
-              >
-                Редактировать
-              </Link>
+              {isBiz ? (
+                <Link
+                  href="/business"
+                  className="relative flex-1 min-w-0 h-11 rounded-xl border border-gold/60 bg-bgSurface text-gold text-[14px] font-semibold flex items-center justify-center"
+                >
+                  Настройки магазина
+                  {newOrders > 0 && (
+                    <span className="absolute -top-1.5 -right-1 bg-danger text-white text-[10px] min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center">
+                      {newOrders > 9 ? "9+" : newOrders}
+                    </span>
+                  )}
+                </Link>
+              ) : (
+                <Link
+                  href="/edit-profile"
+                  className="flex-1 min-w-0 h-11 rounded-xl border border-muted/60 bg-bgSurface text-offwhite text-[14px] font-semibold flex items-center justify-center"
+                >
+                  Редактировать
+                </Link>
+              )}
               <Link
                 href="/chats"
                 className="relative flex-1 min-w-0 h-11 rounded-xl border border-muted/60 bg-bgSurface text-offwhite text-[14px] font-semibold flex items-center justify-center"
@@ -412,8 +440,8 @@ export default function ProfilePage() {
               </button>
             </>
           }
-          verified={badgeOn}
-          belowCrown={<div className="flex flex-col items-start gap-2"><AccountSwitcher chip /><BusinessSwitch /></div>}
+          verified={badgeOn || !!bp?.verified}
+          belowCrown={<AccountSwitcher chip />}
           topRight={
             <>
               <TopBtn href="/add-video" label="Новая публикация">
@@ -421,6 +449,11 @@ export default function ProfilePage() {
                   <path d="M12 5v14M5 12h14" />
                 </svg>
               </TopBtn>
+              {isBiz && (
+                <TopBtn href="/business" label="Настройки магазина" badge={newOrders}>
+                  <span className="text-lg leading-none">⚙</span>
+                </TopBtn>
+              )}
               <TopBtn href="/notifications" label="Уведомления" badge={unreadCount}>
                 <IconBell />
               </TopBtn>
@@ -438,8 +471,10 @@ export default function ProfilePage() {
               <p className="text-muted text-xs mt-0.5">Вас перенесли в новую страну. Укажите свой регион, чтобы попасть в нужный рейтинг и ленту.</p>
             </a>
           )}
-          <GiftShowcase className="mt-5" />
+          {!isBiz && <GiftShowcase className="mt-5" />}
         </div>
+        {!isBiz && <ShopLinkCard own />}
+        {isBiz && user && <ShopSection userId={user.id} owner />}
         <ProfileTabs />
       </div>
 
@@ -452,6 +487,14 @@ export default function ProfilePage() {
       {followSheet && <FollowsSheet kind={followSheet} onClose={() => setFollowSheet(null)} />}
 
       <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} title="Меню">
+        {isBiz && (
+          <div className="flex flex-col gap-2 mb-1">
+            <a href="/business" className="block bg-gold text-bgPrimary rounded-xl p-3.5 text-center font-semibold text-sm">⚙ Настройки магазина</a>
+            <a href="/business?tab=orders" className="block border border-gold/60 rounded-xl p-3 text-center text-gold text-sm">
+              Заказы магазина{newOrders > 0 ? ` · новых: ${newOrders}` : ""}
+            </a>
+          </div>
+        )}
         <div className="text-muted text-xs leading-relaxed mb-1">
           <div className="flex items-center justify-between">
             <span>

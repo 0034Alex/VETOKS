@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { rateLimit } from "@/lib/rateLimit";
-import { BIZ_COLS } from "@/lib/businessServer";
+import { BIZ_COLS, syncBusinessToUser } from "@/lib/businessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -53,5 +53,6 @@ export async function POST(req: Request) {
   const { data, error } = await supabaseAdmin.from("business_profiles").update(patch).eq("user_id", uid).select(BIZ_COLS).maybeSingle();
   if (error) return bad("failed", 500);
   if (patch.name) await supabaseAdmin.from("users").update({ first_name: patch.name }).eq("id", uid);
+  if (data) await syncBusinessToUser(uid, data);
   return NextResponse.json({ ok: true, profile: data });
 }

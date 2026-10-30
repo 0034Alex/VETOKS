@@ -4,9 +4,11 @@ import { useState } from "react";
 import { apiPost } from "@/lib/authClient";
 import { REPORT_REASONS } from "@/components/ReportSheet";
 import { money, splitSizes } from "@/lib/businessShared";
+import { shareLink } from "@/components/ProfileHero";
 
 export type BizPublic = {
   id?: string;
+  user_id?: string | null;
   name: string;
   category: string;
   about: string;
@@ -51,7 +53,7 @@ const ORDER_ERR: Record<string, string> = {
 };
 
 // Страница партнёра: так её видят зрители в приложении. Один и тот же вид для зрителей, владельца и предпросмотра в CRM.
-export default function BusinessPageView({ p, preview = false, products = [], offers = [], cur = "₴", canOrder = false, demo = false }: { p: BizPublic; preview?: boolean; products?: BizProduct[]; offers?: BizOffer[]; cur?: string; canOrder?: boolean; demo?: boolean }) {
+export default function BusinessPageView({ p, preview = false, products = [], offers = [], cur = "₴", canOrder = false, demo = false, bare = false }: { p: BizPublic; preview?: boolean; products?: BizProduct[]; offers?: BizOffer[]; cur?: string; canOrder?: boolean; demo?: boolean; bare?: boolean }) {
   const [contact, setContact] = useState(false);
   const [sel, setSel] = useState<BizProduct | null>(null);
   const [book, setBook] = useState(false);
@@ -70,6 +72,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
   const [details, setDetails] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [shared, setShared] = useState(false);
   const quick = p.quick_action === "book" ? "📅 Забронировать" : "🛒 Купить";
 
   async function findGirl(q: string) {
@@ -77,6 +80,15 @@ export default function BusinessPageView({ p, preview = false, products = [], of
     if (q.trim().length < 2) return setGFound([]);
     const r = await apiPost("/api/business/orders", { action: "gift_find", query: q });
     setGFound(r?.ok ? r.items : []);
+  }
+
+  async function shareShop() {
+    const url = window.location.origin + (p.user_id ? `/u/${p.user_id}` : `/b/${p.id}`);
+    const r = await shareLink(url, p.name);
+    if (r === "copied") {
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    }
   }
 
   function closeOrder() {
@@ -160,14 +172,17 @@ export default function BusinessPageView({ p, preview = false, products = [], of
 
   return (
     <div className="pb-6">
+      {!bare && (
       <div className="h-32 w-full overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.45), rgba(201,162,39,0.25))" }}>
         {p.cover_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={p.cover_url} alt="" className="w-full h-full object-cover" />
         )}
       </div>
-
-      <div className="px-5 -mt-8">
+      )}
+      <div className={bare ? "px-5 pt-5" : "px-5 -mt-8"}>
+        {!bare && (
+          <>
         <div className="flex items-end gap-3">
           <div className="w-20 h-20 rounded-2xl bg-bgSurface border border-gold/40 overflow-hidden flex items-center justify-center flex-none">
             {p.logo_url ? (
@@ -177,11 +192,18 @@ export default function BusinessPageView({ p, preview = false, products = [], of
               <span className="text-gold text-2xl font-bold">{(p.name || "?").slice(0, 2).toUpperCase()}</span>
             )}
           </div>
-          {!preview && !demo && p.id && (
-            <button onClick={() => setReport("pick")} className="ml-auto text-muted text-xs border border-muted/60 rounded-full px-3 py-1.5">
-              Пожаловаться
-            </button>
-          )}
+          <div className="ml-auto flex gap-2">
+            {p.id && (
+              <button onClick={shareShop} className="text-gold text-xs border border-gold/60 rounded-full px-3 py-1.5">
+                {shared ? "Ссылка скопирована" : "Поделиться"}
+              </button>
+            )}
+            {!preview && !demo && p.id && (
+              <button onClick={() => setReport("pick")} className="text-muted text-xs border border-muted/60 rounded-full px-3 py-1.5">
+                Пожаловаться
+              </button>
+            )}
+          </div>
         </div>
 
         <h1 className="text-offwhite text-xl font-semibold mt-3 flex items-center gap-2 flex-wrap">
@@ -190,8 +212,10 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         </h1>
         {p.verified && <p className="text-[#1d9bf0] text-xs mt-0.5">Официальный партнёр VETOKS</p>}
         {p.category && <p className="text-muted text-sm mt-1">{p.category}</p>}
+          </>
+        )}
 
-        <div className="flex gap-2 mt-4">
+        <div className={`flex gap-2 ${bare ? "" : "mt-4"}`}>
           <button onClick={quickAction} className="flex-1 bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm">
             {quick}
           </button>
@@ -202,13 +226,10 @@ export default function BusinessPageView({ p, preview = false, products = [], of
           )}
         </div>
 
-        <button onClick={() => (preview || !(canOrder || demo) ? undefined : openOrder(null, false, true))} className="w-full mt-2 border border-gold/70 text-gold font-semibold rounded-full py-2.5 text-sm">
-          🎁 Подарить участнице шоу
-        </button>
-
-        {p.about && <p className="text-offwhite text-sm mt-4 whitespace-pre-line">{p.about}</p>}
+        {!bare && p.about && <p className="text-offwhite text-sm mt-4 whitespace-pre-line">{p.about}</p>}
 
         <div className="bg-bgSurface border border-muted rounded-xl p-4 mt-4 flex flex-col gap-2 text-sm">
+          {bare && p.about && <p className="text-offwhite whitespace-pre-line">{p.about}</p>}
           {p.hours && <Row k="🕒" v={p.hours} />}
           {p.address && <Row k="📍" v={p.address} />}
           {p.phone && <Row k="📞" v={p.phone} />}
@@ -221,7 +242,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
               </a>
             </div>
           )}
-          {!p.hours && !p.address && !p.phone && !p.email && !p.site_url && <p className="text-muted">Контакты пока не заполнены.</p>}
+          {!p.hours && !p.address && !p.phone && !p.email && !p.site_url && !(bare && p.about) && <p className="text-muted">Контакты пока не заполнены.</p>}
         </div>
 
         {offers.length > 0 && (
@@ -260,28 +281,50 @@ export default function BusinessPageView({ p, preview = false, products = [], of
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {products.map((pr) => (
-                <button key={pr.id} onClick={() => (preview || !(canOrder || demo) ? undefined : openOrder(pr))} className="text-left bg-bgSurface border border-muted rounded-xl overflow-hidden flex flex-col min-w-0">
-                  <div className="aspect-square bg-bgPrimary flex items-center justify-center text-gold text-2xl font-bold overflow-hidden">
-                    {pr.photo_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={pr.photo_url} alt={pr.name} className="w-full h-full object-cover" />
-                    ) : (
-                      (pr.name || "?").slice(0, 2).toUpperCase()
+              {products.map((pr) => {
+                const can = !(preview || !(canOrder || demo));
+                const out = pr.stock === 0;
+                return (
+                  <div key={pr.id} className="bg-bgSurface border border-muted rounded-xl overflow-hidden flex flex-col min-w-0">
+                    <button onClick={() => (can && !out ? openOrder(pr) : undefined)} className="text-left flex flex-col min-w-0">
+                      <div className="aspect-square bg-bgPrimary flex items-center justify-center text-gold text-2xl font-bold overflow-hidden">
+                        {pr.photo_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={pr.photo_url} alt={pr.name} className="w-full h-full object-cover" />
+                        ) : (
+                          (pr.name || "?").slice(0, 2).toUpperCase()
+                        )}
+                      </div>
+                      <div className="p-2.5 flex flex-col gap-0.5">
+                        <p className="text-offwhite text-sm font-semibold break-words">{pr.name}</p>
+                        {pr.sku && <p className="text-muted text-[11px]">ID {pr.sku}</p>}
+                        <p className="text-gold text-sm font-semibold">{money(pr.price, cur)}</p>
+                        {out && <p className="text-danger text-[11px]">Нет в наличии</p>}
+                      </div>
+                    </button>
+                    {!out && (
+                      <div className="px-2.5 pb-2.5 mt-auto flex flex-col gap-1.5">
+                        <button onClick={() => (can ? openOrder(pr) : undefined)} className="w-full bg-gold text-bgPrimary font-semibold rounded-full py-2 text-xs">
+                          {p.quick_action === "book" ? "Выбрать" : "Купить"}
+                        </button>
+                        <button onClick={() => (can ? openOrder(pr, false, true) : undefined)} className="w-full border border-gold/70 text-gold font-semibold rounded-full py-2 text-xs">
+                          🎁 Подарить участнице
+                        </button>
+                      </div>
                     )}
                   </div>
-                  <div className="p-2.5 flex flex-col gap-0.5">
-                    <p className="text-offwhite text-sm font-semibold break-words">{pr.name}</p>
-                    {pr.sku && <p className="text-muted text-[11px]">ID {pr.sku}</p>}
-                    <p className="text-gold text-sm font-semibold">{money(pr.price, cur)}</p>
-                    {pr.stock === 0 && <p className="text-danger text-[11px]">Нет в наличии</p>}
-                  </div>
-                </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       </div>
+
+      {bare && !preview && !demo && p.id && (
+        <div className="px-5 mt-4">
+          <button onClick={() => setReport("pick")} className="text-muted text-xs underline">Пожаловаться на магазин</button>
+        </div>
+      )}
 
       {contact && (
         <div className="fixed inset-0 z-[120] bg-black/65 flex items-end justify-center" onClick={() => setContact(false)}>

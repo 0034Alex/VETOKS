@@ -2,7 +2,7 @@
 
 import LoadingScreen from "@/components/LoadingScreen";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import BottomNav from "@/components/BottomNav";
 import BusinessPageView, { BizPublic, BizProduct, BizOffer } from "@/components/BusinessPageView";
@@ -11,6 +11,7 @@ import { apiPost } from "@/lib/authClient";
 // Публичная страница партнёра.
 export default function BusinessPublicPage() {
   const params = useParams();
+  const router = useRouter();
   const id = String((params as any)?.id ?? "");
   const [p, setP] = useState<BizPublic | null>(null);
   const [extra, setExtra] = useState<{ products: BizProduct[]; offers: BizOffer[]; cur: string; mine: boolean; staff: boolean; notPublished: boolean; isHidden: boolean }>({ products: [], offers: [], cur: "₴", mine: false, staff: false, notPublished: false, isHidden: false });
@@ -20,6 +21,11 @@ export default function BusinessPublicPage() {
     (async () => {
       const r = await apiPost("/api/business/page", { id });
       if (r?.ok) {
+        // Для зрителей магазин живёт в профиле бизнес-аккаунта; здесь остаётся только предпросмотр для сотрудников.
+        if (!r.staffPreview && r.userId) {
+          router.replace(r.mine ? "/profile" : `/u/${r.userId}`);
+          return;
+        }
         setP(r.profile);
         setExtra({ products: r.products ?? [], offers: r.offers ?? [], cur: r.cur ?? "₴", mine: !!r.mine, staff: !!r.staffPreview, notPublished: !!r.notPublished, isHidden: !!r.isHidden });
         setState("ok");
@@ -27,6 +33,7 @@ export default function BusinessPublicPage() {
         window.location.href = `/login?redirect=/b/${id}`;
       } else setState("none");
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   return (
