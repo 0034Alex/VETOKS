@@ -10,7 +10,7 @@ import BottomNav from "@/components/BottomNav";
 import ProfileHero, { ProfileActions, BigBtn, TopBtn, shareLink } from "@/components/ProfileHero";
 import FollowsSheet from "@/components/FollowsSheet";
 import ProfileTabs from "@/components/ProfileTabs";
-import ShopSection from "@/components/ShopSection";
+import BusinessProfile from "@/components/BusinessProfile";
 import ShopLinkCard from "@/components/ShopLinkCard";
 
 type Data = {
@@ -97,6 +97,23 @@ export default function PublicUserPage() {
     }
   }
 
+  if (d.isBusiness)
+    return (
+      <main className="min-h-screen pb-36">
+        <div className="max-w-md mx-auto">
+          <BusinessProfile
+            userId={id}
+            topLeft={
+              <TopBtn onClick={() => router.back()} label="Назад">
+                <span className="text-xl leading-none">←</span>
+              </TopBtn>
+            }
+          />
+        </div>
+        <BottomNav />
+      </main>
+    );
+
   return (
     <main className="min-h-screen pb-36">
       <div className="max-w-md mx-auto">
@@ -139,7 +156,6 @@ export default function PublicUserPage() {
             {isFollowing ? "Отписаться" : "＋ Подписаться"}
           </BigBtn>
         </ProfileActions>
-        {d.isBusiness && <ShopSection userId={id} />}
         <ProfileTabs userId={id} />
       </div>
 

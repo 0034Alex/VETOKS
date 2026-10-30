@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { rateLimit } from "@/lib/rateLimit";
-import { PRODUCT_COLS, OFFER_COLS } from "@/lib/businessServer";
+import { OFFER_COLS, loadProducts, publicProduct, hasNewProductCols, generateSku } from "@/lib/businessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -26,8 +26,8 @@ export async function POST(req: Request) {
   const a = b.action;
 
   if (a === "products") {
-    const { data } = await supabaseAdmin.from("business_products").select(PRODUCT_COLS).eq("business_id", bid).order("created_at", { ascending: false }).limit(300);
-    return NextResponse.json({ ok: true, items: data ?? [] });
+    const rows = await loadProducts(bid, false);
+    return NextResponse.json({ ok: true, items: rows.map(publicProduct) });
   }
 
   if (a === "product_save") {
@@ -35,20 +35,44 @@ export async function POST(req: Request) {
     if (!name) return bad("empty_name");
     const price = Number(b.price);
     if (!isFinite(price) || price < 0) return bad("bad_price");
+    const newCols = await hasNewProductCols();
+
+    // Фото: до 5, первое показывается в магазине.
+    const photos: string[] = Array.isArray(b.photos) ? b.photos.map((u: any) => s(u, 500)).filter(Boolean).slice(0, 5) : b.photo_url ? [s(b.photo_url, 500)] : [];
+    // Остаток по размерам: {S: 3, M: 0}. Нет размеров: общий остаток, пусто = без ограничения.
+    let sizeStock: Record<string, number> | null = null;
+    if (b.size_stock && typeof b.size_stock === "object" && !Array.isArray(b.size_stock)) {
+      const o: Record<string, number> = {};
+      for (const [k, v] of Object.entries(b.size_stock)) {
+        const key = s(k, 30).replace(/,/g, " ");
+        if (key) o[key] = Math.max(0, Math.floor(Number(v) || 0));
+      }
+      if (Object.keys(o).length) sizeStock = o;
+    }
+    const total = sizeStock ? Object.values(sizeStock).reduce((x, y) => x + y, 0) : intOrNull(b.stock);
     const row: Record<string, any> = {
-      sku: s(b.sku, 40) || null,
       name,
       description: s(b.description, 1000) || null,
       price: Math.round(price * 100) / 100,
-      photo_url: s(b.photo_url, 500) || null,
-      sizes: s(b.sizes, 200) || null,
-      stock: intOrNull(b.stock),
+      photo_url: photos[0] ?? null,
+      sizes: sizeStock ? Object.keys(sizeStock).join(", ") : null,
+      stock: total,
       is_active: b.is_active === undefined ? true : !!b.is_active,
     };
+    if (newCols) {
+      row.photos = photos;
+      row.size_stock = sizeStock;
+      row.details = s(b.details, 600) || null;
+    }
     if (b.id) {
+      // Артикул у существующего товара не меняем. Если его не было, выдаём.
+      const { data: old } = await supabaseAdmin.from("business_products").select("sku").eq("id", String(b.id)).eq("business_id", bid).maybeSingle();
+      if (!old) return bad("not_found", 404);
+      if (!(old as any).sku) row.sku = await generateSku();
       const { error } = await supabaseAdmin.from("business_products").update(row).eq("id", String(b.id)).eq("business_id", bid);
       if (error) return bad("failed", 500);
     } else {
+      row.sku = await generateSku();
       const { error } = await supabaseAdmin.from("business_products").insert({ ...row, business_id: bid });
       if (error) return bad("failed", 500);
     }

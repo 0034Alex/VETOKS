@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from "crypto";
+import { randomBytes, randomInt, randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { autoFollowOfficial } from "@/lib/officialFollow";
 import { familyMembers, familyRootId, MAX_SUB_ACCOUNTS } from "@/lib/familyServer";
@@ -27,6 +27,76 @@ export function publicBiz(p: any) {
 }
 
 export const PRODUCT_COLS = "id, business_id, sku, name, description, price, photo_url, sizes, stock, is_active";
+export const PRODUCT_COLS_NEW = PRODUCT_COLS + ", photos, size_stock, details";
+
+// Новые колонки товара (несколько фото, остаток по размерам) появятся после SQL. Пока их нет, работаем по-старому.
+let newProdCols = false;
+export async function hasNewProductCols(): Promise<boolean> {
+  if (newProdCols) return true;
+  const r = await supabaseAdmin.from("business_products").select("photos").limit(1);
+  if (!r.error) newProdCols = true;
+  return newProdCols;
+}
+
+// Товары магазина (для зрителей только включённые).
+export async function loadProducts(bid: string, onlyActive: boolean, limit = 300): Promise<any[]> {
+  const cols = (await hasNewProductCols()) ? PRODUCT_COLS_NEW : PRODUCT_COLS;
+  let q = supabaseAdmin.from("business_products").select(cols).eq("business_id", bid);
+  if (onlyActive) q = q.eq("is_active", true);
+  const { data } = await q.order("created_at", { ascending: false }).limit(limit);
+  return (data as any[]) ?? [];
+}
+
+// Один товар для заказа.
+export async function loadProduct(id: string, bid: string): Promise<any | null> {
+  const cols = (await hasNewProductCols()) ? PRODUCT_COLS_NEW : PRODUCT_COLS;
+  const { data } = await supabaseAdmin.from("business_products").select(cols).eq("id", id).eq("business_id", bid).maybeSingle();
+  return (data as any) ?? null;
+}
+
+// Остаток по размерам в удобном виде: {S: 3, M: 0} или null.
+export function sizeStockOf(x: any): Record<string, number> | null {
+  const v = x?.size_stock;
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const out: Record<string, number> = {};
+  for (const [k, n] of Object.entries(v)) {
+    const key = String(k).trim().slice(0, 30);
+    if (key) out[key] = Math.max(0, Math.floor(Number(n) || 0));
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+// Товар как его видят клиенты и владелец.
+export function publicProduct(x: any) {
+  const ss = sizeStockOf(x);
+  const photos: string[] = Array.isArray(x.photos) ? x.photos.filter((u: any) => typeof u === "string" && u).slice(0, 5) : [];
+  if (!photos.length && x.photo_url) photos.push(x.photo_url);
+  const total = ss ? Object.values(ss).reduce((a, b) => a + b, 0) : x.stock ?? null;
+  return {
+    id: x.id,
+    sku: x.sku ?? "",
+    name: x.name,
+    description: x.description ?? "",
+    details: x.details ?? "",
+    price: Number(x.price),
+    photos,
+    photo_url: photos[0] ?? null,
+    sizes: ss ? Object.keys(ss).join(", ") : x.sizes ?? "",
+    size_stock: ss,
+    stock: total === null ? null : Number(total),
+    is_active: x.is_active !== false,
+  };
+}
+
+// Артикул даём сами: уникальный на всю платформу, владелец его не вводит.
+export async function generateSku(): Promise<string> {
+  for (let i = 0; i < 15; i++) {
+    const sku = `VT-${randomInt(100000, 1000000)}`;
+    const { data } = await supabaseAdmin.from("business_products").select("id").eq("sku", sku).limit(1);
+    if (!data || data.length === 0) return sku;
+  }
+  return `VT-${Date.now().toString().slice(-8)}`;
+}
 export const OFFER_COLS = "id, business_id, title, description, promo_code, discount_percent, valid_until, usage_limit, used_count, is_active";
 
 // Предложение действует: включено, срок не вышел, лимит не исчерпан.

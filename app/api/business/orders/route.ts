@@ -4,7 +4,7 @@ import { bad, requireUser, notify } from "@/lib/shopServer";
 import { rateLimit } from "@/lib/rateLimit";
 import { countryOfUser, countryOfRegion } from "@/lib/countryServer";
 import { familyRootId } from "@/lib/familyServer";
-import { offerLive } from "@/lib/businessServer";
+import { offerLive, loadProduct, sizeStockOf } from "@/lib/businessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -36,31 +36,32 @@ export async function POST(req: Request) {
   const a = b.action;
   const COLS = await orderCols();
 
-  // Поиск участницы для подарка (своя страна, только совершеннолетние).
+  // Поиск получателя подарка: любой пользователь VETOKS своей страны (кроме несовершеннолетних и себя).
   if (a === "gift_find") {
     const q = s(b.query, 40);
     if (q.length < 2) return NextResponse.json({ ok: true, items: [] });
     const cid = await countryOfUser(uid);
-    const { data } = await supabaseAdmin
-      .from("participants")
-      .select("id, user_id, display_name, photo_url, region_id")
-      .ilike("display_name", `%${q}%`)
-      .limit(25);
-    const rows = ((data as any[]) ?? []).filter((x) => x.user_id);
-    const uids = rows.map((x) => x.user_id);
-    const ages: Record<string, string | null> = {};
-    if (uids.length) {
-      const { data: us } = await supabaseAdmin.from("users").select("id, age_category").in("id", uids);
-      ((us as any[]) ?? []).forEach((u) => (ages[u.id] = u.age_category));
-    }
+    const myRoot = await familyRootId(uid);
+    const { data: ps } = await supabaseAdmin.from("participants").select("user_id, display_name, photo_url").ilike("display_name", `%${q}%`).limit(25);
+    const { data: us0 } = await supabaseAdmin.from("users").select("id").ilike("first_name", `%${q}%`).limit(25);
+    const partBy: Record<string, any> = {};
+    ((ps as any[]) ?? []).forEach((x) => x.user_id && (partBy[x.user_id] = x));
+    const ids = Array.from(new Set([...Object.keys(partBy), ...((us0 as any[]) ?? []).map((x) => x.id)])).filter((x) => x !== uid);
+    if (!ids.length) return NextResponse.json({ ok: true, items: [] });
+    const { data: us } = await supabaseAdmin.from("users").select("id, first_name, photo_url, age_category, region_id, is_banned, is_business, parent_user_id").in("id", ids);
+    const regionCountry: Record<string, string | null> = {};
     const out: any[] = [];
-    for (const x of rows) {
-      if (BLOCK_TEEN_GIFTS && ages[x.user_id] === "teen") continue;
+    for (const x of ((us as any[]) ?? [])) {
+      if (x.is_banned || x.is_business) continue;
+      if (BLOCK_TEEN_GIFTS && x.age_category === "teen") continue;
+      if (myRoot && (x.parent_user_id ?? x.id) === myRoot) continue;
       if (cid && x.region_id) {
-        const c = await countryOfRegion(x.region_id);
+        if (!(x.region_id in regionCountry)) regionCountry[x.region_id] = await countryOfRegion(x.region_id);
+        const c = regionCountry[x.region_id];
         if (c && c !== cid) continue;
       }
-      out.push({ id: x.id, name: x.display_name, photo_url: x.photo_url ?? null });
+      const p = partBy[x.id];
+      out.push({ id: x.id, name: p?.display_name || x.first_name || "Без имени", photo_url: p?.photo_url ?? x.photo_url ?? null });
       if (out.length >= 10) break;
     }
     return NextResponse.json({ ok: true, items: out });
@@ -90,37 +91,39 @@ export async function POST(req: Request) {
     let recipientUid: string | null = null;
     if (kind === "gift") {
       if (!giftCols) return bad("gifts_unavailable", 503);
-      const { data: pa } = await supabaseAdmin.from("participants").select("id, user_id, display_name").eq("id", String(b.recipientId ?? "")).maybeSingle();
-      if (!pa || !(pa as any).user_id) return bad("no_recipient", 404);
-      recipientPid = String((pa as any).id);
-      recipientUid = String((pa as any).user_id);
+      const rid = String(b.recipientId ?? "");
+      const { data: ru } = await supabaseAdmin.from("users").select("id, age_category, is_banned, is_business, parent_user_id").eq("id", rid).maybeSingle();
+      if (!ru || (ru as any).is_banned || (ru as any).is_business) return bad("no_recipient", 404);
+      recipientUid = String((ru as any).id);
       const myRoot = await familyRootId(uid);
-      const herRoot = await familyRootId(recipientUid);
-      if (myRoot && herRoot && myRoot === herRoot) return bad("self_gift");
-      const { data: ru } = await supabaseAdmin.from("users").select("age_category").eq("id", recipientUid).maybeSingle();
+      const herRoot = ((ru as any).parent_user_id as string | null) ?? recipientUid;
+      if (myRoot && myRoot === herRoot) return bad("self_gift");
       if (BLOCK_TEEN_GIFTS && (ru as any)?.age_category === "teen") return bad("teen_gift");
       const cid = await countryOfUser(uid);
       const rc = await countryOfUser(recipientUid);
       if (cid && rc && cid !== rc) return bad("no_recipient", 404);
+      const { data: pa } = await supabaseAdmin.from("participants").select("id").eq("user_id", recipientUid).maybeSingle();
+      recipientPid = pa ? String((pa as any).id) : null;
     }
 
     let product: any = null;
+    let ss: Record<string, number> | null = null;
+    const size = s(b.size, 30);
     if (b.productId) {
-      const { data: pr } = await supabaseAdmin
-        .from("business_products")
-        .select("id, sku, name, price, sizes, stock, is_active, business_id")
-        .eq("id", String(b.productId))
-        .eq("business_id", (bp as any).id)
-        .maybeSingle();
-      if (!pr || !(pr as any).is_active) return bad("no_product", 404);
-      product = pr;
-      if (product.stock != null && Number(product.stock) < qty) return bad("no_stock");
+      product = await loadProduct(String(b.productId), (bp as any).id);
+      if (!product || !product.is_active) return bad("no_product", 404);
+      ss = sizeStockOf(product);
+      if (ss) {
+        if (!(size in ss)) return bad("need_size");
+        if (ss[size] < qty) return bad("no_stock");
+      } else {
+        if (product.stock != null && Number(product.stock) < qty) return bad("no_stock");
+        const sizes = String(product?.sizes ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+        if (sizes.length && !sizes.includes(size)) return bad("need_size");
+      }
     } else if (kind !== "book") {
       return bad("no_product");
     }
-    const sizes = String(product?.sizes ?? "").split(",").map((x) => x.trim()).filter(Boolean);
-    const size = s(b.size, 30);
-    if (sizes.length && !sizes.includes(size)) return bad("need_size");
 
     let pct = 0;
     let usedCode: string | null = null;
@@ -167,7 +170,10 @@ export async function POST(req: Request) {
     const { data: created, error } = await supabaseAdmin.from("business_orders").insert(row).select("id").maybeSingle();
     if (error || !created) return bad("failed", 500);
 
-    if (product && product.stock != null) {
+    if (product && ss) {
+      const next = { ...ss, [size]: Math.max(0, ss[size] - qty) };
+      await supabaseAdmin.from("business_products").update({ size_stock: next, stock: Object.values(next).reduce((x, y) => x + y, 0) }).eq("id", product.id);
+    } else if (product && product.stock != null) {
       await supabaseAdmin.from("business_products").update({ stock: Math.max(0, Number(product.stock) - qty) }).eq("id", product.id);
     }
     if (offerId) {
@@ -176,7 +182,7 @@ export async function POST(req: Request) {
     }
     await notify(
       (bp as any).user_id,
-      kind === "gift" ? `🎁 Новый подарок участнице: ${product?.name}. Ждите оплату от дарителя и отметьте её в «Заказах».` : `🛍 Новый ${kind === "book" ? "запрос на бронь" : "заказ"}: ${product ? product.name : "бронь"}. Откройте «Заказы».`,
+      kind === "gift" ? `🎁 Новый подарок: ${product?.name}. Ждите оплату от дарителя и отметьте её в «Заказах».` : `🛍 Новый ${kind === "book" ? "запрос на бронь" : "заказ"}: ${product ? product.name : "бронь"}. Откройте «Заказы».`,
       `/business?tab=orders&o=${(created as any).id}`,
       "other"
     );
@@ -192,13 +198,15 @@ export async function POST(req: Request) {
       const { data: bs } = await supabaseAdmin.from("business_profiles").select("id, name").in("id", ids);
       ((bs as any[]) ?? []).forEach((x) => (names[x.id] = x.name));
     }
-    const pids = Array.from(new Set(rows.map((r) => r.recipient_participant_id).filter(Boolean)));
+    const ruids = Array.from(new Set(rows.map((r) => r.recipient_user_id).filter(Boolean)));
     const rnames: Record<string, string> = {};
-    if (pids.length) {
-      const { data: ps } = await supabaseAdmin.from("participants").select("id, display_name").in("id", pids);
-      ((ps as any[]) ?? []).forEach((x) => (rnames[String(x.id)] = x.display_name));
+    if (ruids.length) {
+      const { data: us } = await supabaseAdmin.from("users").select("id, first_name").in("id", ruids);
+      ((us as any[]) ?? []).forEach((x) => (rnames[String(x.id)] = x.first_name || ""));
+      const { data: ps } = await supabaseAdmin.from("participants").select("user_id, display_name").in("user_id", ruids);
+      ((ps as any[]) ?? []).forEach((x) => x.display_name && (rnames[String(x.user_id)] = x.display_name));
     }
-    return NextResponse.json({ ok: true, items: rows.map((r) => ({ ...r, business_name: names[r.business_id] ?? "", recipient_name: rnames[String(r.recipient_participant_id)] ?? "" })) });
+    return NextResponse.json({ ok: true, items: rows.map((r) => ({ ...r, business_name: names[r.business_id] ?? "", recipient_name: rnames[String(r.recipient_user_id)] ?? "" })) });
   }
 
   // Подарки, которые подарили мне. Пока даритель не оплатил, участница ничего не видит.
@@ -265,9 +273,13 @@ export async function POST(req: Request) {
     const { data: msgs } = await msgsQ;
     const { data: bu } = await supabaseAdmin.from("users").select("first_name").eq("id", oo.buyer_id).maybeSingle();
     let recipientName = "";
-    if (oo.recipient_participant_id) {
-      const { data: rp } = await supabaseAdmin.from("participants").select("display_name").eq("id", oo.recipient_participant_id).maybeSingle();
+    if (oo.recipient_user_id) {
+      const { data: rp } = await supabaseAdmin.from("participants").select("display_name").eq("user_id", oo.recipient_user_id).maybeSingle();
       recipientName = (rp as any)?.display_name ?? "";
+      if (!recipientName) {
+        const { data: ru2 } = await supabaseAdmin.from("users").select("first_name").eq("id", oo.recipient_user_id).maybeSingle();
+        recipientName = (ru2 as any)?.first_name ?? "";
+      }
     }
     const base = { ...oo, business_name: (bp2 as any)?.name ?? "", buyer_name: (bu as any)?.first_name ?? "Покупатель", recipient_name: recipientName };
     // Получательнице не показываем телефон и имя анонимного дарителя.
@@ -321,9 +333,13 @@ export async function POST(req: Request) {
 
     await supabaseAdmin.from("business_orders").update({ status: st, updated_at: new Date().toISOString() }).eq("id", oid);
     if (st === "cancelled" && oo.product_id) {
-      const { data: pr } = await supabaseAdmin.from("business_products").select("stock").eq("id", oo.product_id).maybeSingle();
-      if (pr && (pr as any).stock != null) {
-        await supabaseAdmin.from("business_products").update({ stock: Number((pr as any).stock) + Number(oo.qty) }).eq("id", oo.product_id);
+      const pr: any = await loadProduct(String(oo.product_id), String(oo.business_id));
+      const pss = pr ? sizeStockOf(pr) : null;
+      if (pr && pss && oo.size && oo.size in pss) {
+        const next = { ...pss, [oo.size]: pss[oo.size] + Number(oo.qty) };
+        await supabaseAdmin.from("business_products").update({ size_stock: next, stock: Object.values(next).reduce((x, y) => x + y, 0) }).eq("id", oo.product_id);
+      } else if (pr && pr.stock != null) {
+        await supabaseAdmin.from("business_products").update({ stock: Number(pr.stock) + Number(oo.qty) }).eq("id", oo.product_id);
       }
     }
 

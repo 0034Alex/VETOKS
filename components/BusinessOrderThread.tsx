@@ -36,7 +36,7 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
     if (r?.ok) {
       setText("");
       load();
-    } else setErr(r?.error === "not_accepted" ? "Чат с участницей откроется, когда она примет подарок." : "Не отправилось. Попробуйте ещё раз.");
+    } else setErr(r?.error === "not_accepted" ? "Чат с получателем откроется, когда он примет подарок." : "Не отправилось. Попробуйте ещё раз.");
   }
 
   async function setStatus(st: string, ask?: string) {
@@ -76,7 +76,7 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
   const canCancel =
     !closed && ((role === "buyer" && o.status === "new") || (role === "owner" && (gift ? ["new", "paid"].includes(o.status) : true)));
 
-  // Чат: у партнёра два канала (даритель и участница), у остальных один.
+  // Чат: у партнёра два канала (даритель и получатель), у остальных один.
   const ownerTwo = gift && role === "owner";
   const activeChan = ownerTwo ? chan : role === "recipient" ? "recipient" : "main";
   const msgs = (d.messages as any[]).filter((m) => !gift || !ownerTwo || (m.channel ?? "main") === activeChan);
@@ -112,7 +112,7 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
         ) : (
           <>
             <p className="text-muted text-xs">{role === "owner" ? `Покупатель: ${o.buyer_name}` : `Партнёр: ${o.business_name}`}</p>
-            {gift && <p className="text-offwhite text-sm">Подарок для: {o.recipient_name || "участницы"} · {o.gift_anon ? "анонимно" : "с именем дарителя"}</p>}
+            {gift && <p className="text-offwhite text-sm">Подарок для: {o.recipient_name || "получателя"} · {o.gift_anon ? "анонимно" : "с именем дарителя"}</p>}
             {gift && o.gift_message && <p className="text-muted text-sm">Открытка: «{o.gift_message}»</p>}
             {o.sku && <p className="text-muted text-xs">Артикул {o.sku}</p>}
             {o.size && <p className="text-offwhite text-sm">Размер: {o.size}</p>}
@@ -121,9 +121,9 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
             {o.when_text && <p className="text-offwhite text-sm">Когда: {o.when_text}</p>}
             {o.note && <p className="text-muted text-sm">«{o.note}»</p>}
             {role === "owner" && o.phone && <p className="text-offwhite text-sm">📞 {o.phone}</p>}
-            {gift && role === "buyer" && o.status === "new" && <p className="text-gold text-xs mt-1">Оплатите подарок магазину напрямую: договоритесь о способе оплаты в чате. Магазин отметит оплату, и подарок уйдёт участнице.</p>}
-            {gift && role === "buyer" && o.status === "paid" && <p className="text-muted text-xs mt-1">Ждём, пока участница примет подарок.</p>}
-            {gift && role === "owner" && o.status === "paid" && <p className="text-muted text-xs mt-1">Ждём ответа участницы. Адрес спрашивайте только после того, как она примет подарок.</p>}
+            {gift && role === "buyer" && o.status === "new" && <p className="text-gold text-xs mt-1">Оплатите подарок магазину напрямую: договоритесь о способе оплаты в чате. Магазин отметит оплату, и подарок уйдёт получателю.</p>}
+            {gift && role === "buyer" && o.status === "paid" && <p className="text-muted text-xs mt-1">Ждём, пока получатель примет подарок.</p>}
+            {gift && role === "owner" && o.status === "paid" && <p className="text-muted text-xs mt-1">Ждём ответа получателя. Адрес спрашивайте только после того, как он примет подарок.</p>}
             {gift && role === "owner" && o.status === "declined" && <p className="text-danger text-xs mt-1">Участница отказалась. Верните оплату дарителю и отмените заказ.</p>}
           </>
         )}
@@ -152,7 +152,7 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
           <p className="text-offwhite text-sm font-semibold">{role === "recipient" ? "Чат с магазином" : gift ? "Чат с магазином" : "Чат по заказу"}</p>
         )}
         {!chatOpen ? (
-          <p className="text-muted text-xs">{role === "owner" ? "Чат с участницей откроется, когда она примет подарок." : "Чат откроется, когда вы примете подарок."}</p>
+          <p className="text-muted text-xs">{role === "owner" ? "Чат с получателем откроется, когда он примет подарок." : "Чат откроется, когда вы примете подарок."}</p>
         ) : (
           <>
             <div className="flex flex-col gap-1.5 max-h-72 overflow-y-auto">

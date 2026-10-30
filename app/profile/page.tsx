@@ -18,7 +18,7 @@ import { parseLinks } from "@/lib/socialLinks";
 import { statusFor } from "@/lib/status";
 import { loadTitleBadges, TitleBadge } from "@/lib/profileExtras";
 import AccountSwitcher from "@/components/AccountSwitcher";
-import ShopSection from "@/components/ShopSection";
+import BusinessProfile from "@/components/BusinessProfile";
 import ShopLinkCard from "@/components/ShopLinkCard";
 import { getCurrencySymbol } from "@/lib/currency";
 import { useT } from "@/lib/i18n";
@@ -363,6 +363,25 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen pb-36">
       <div className="max-w-md mx-auto">
+        {isBiz && user ? (
+          <BusinessProfile
+            userId={user.id}
+            owner
+            newOrders={newOrders}
+            topLeft={<AccountSwitcher chip />}
+            topRight={
+              <>
+                <TopBtn href="/notifications" label="Уведомления" badge={unreadCount}>
+                  <IconBell />
+                </TopBtn>
+                <TopBtn onClick={() => setMenuOpen(true)} label="Меню" badge={menuBadge}>
+                  <IconMenu />
+                </TopBtn>
+              </>
+            }
+          />
+        ) : (
+          <>
         <ProfileHero
           photoUrl={shownPhoto}
           name={shownName}
@@ -474,8 +493,9 @@ export default function ProfilePage() {
           {!isBiz && <GiftShowcase className="mt-5" />}
         </div>
         {!isBiz && <ShopLinkCard own />}
-        {isBiz && user && <ShopSection userId={user.id} owner />}
         <ProfileTabs />
+          </>
+        )}
       </div>
 
       {toast && (
