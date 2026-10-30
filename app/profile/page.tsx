@@ -589,7 +589,7 @@ export default function ProfilePage() {
         </div>
 
         <a href="/my-orders" className="block border border-gold/60 rounded-xl p-3.5 mt-5 text-center">
-          <span className="text-gold font-semibold text-sm">🛍 Мои заказы у партнёров</span>
+          <span className="text-gold font-semibold text-sm">🛍 Заказы и подарки</span>
         </a>
 
         {!onR("r_partner") ? null : isPartner ? (

@@ -42,6 +42,10 @@ const ORDER_ERR: Record<string, string> = {
   need_size: "Выберите размер.",
   no_stock: "Столько нет в наличии.",
   promo_invalid: "Промокод не подходит или закончился.",
+  no_recipient: "Участница не найдена. Выберите из списка.",
+  self_gift: "Подарок самой себе оформить нельзя, закажите его как обычную покупку.",
+  teen_gift: "Подарки доступны только совершеннолетним участницам.",
+  gifts_unavailable: "Подарки пока недоступны. Попробуйте позже.",
   own_business: "Нельзя заказывать у самого себя.",
   no_product: "Товар недоступен.",
 };
@@ -55,6 +59,12 @@ export default function BusinessPageView({ p, preview = false, products = [], of
   const [oBusy, setOBusy] = useState(false);
   const [oErr, setOErr] = useState("");
   const [oDone, setODone] = useState<{ id: string; total: number } | null>(null);
+  const [gift, setGift] = useState(false);
+  const [gq, setGq] = useState("");
+  const [gFound, setGFound] = useState<{ id: string; name: string; photo_url: string | null }[]>([]);
+  const [gPick, setGPick] = useState<{ id: string; name: string } | null>(null);
+  const [anon, setAnon] = useState(false);
+  const [gmsg, setGmsg] = useState("");
   const [report, setReport] = useState<"" | "pick" | "done">("");
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
@@ -62,7 +72,26 @@ export default function BusinessPageView({ p, preview = false, products = [], of
   const [busy, setBusy] = useState(false);
   const quick = p.quick_action === "book" ? "📅 Забронировать" : "🛒 Купить";
 
-  function openOrder(pr: BizProduct | null, asBook = false) {
+  async function findGirl(q: string) {
+    setGq(q);
+    if (q.trim().length < 2) return setGFound([]);
+    const r = await apiPost("/api/business/orders", { action: "gift_find", query: q });
+    setGFound(r?.ok ? r.items : []);
+  }
+
+  function closeOrder() {
+    setSel(null);
+    setBook(false);
+    setGift(false);
+  }
+
+  function openOrder(pr: BizProduct | null, asBook = false, asGift = false) {
+    setGift(asGift);
+    setGq("");
+    setGFound([]);
+    setGPick(null);
+    setAnon(false);
+    setGmsg("");
     setO({ size: "", qty: 1, promo: "", phone: "", note: "", whenText: "", service: "" });
     setOErr("");
     setODone(null);
@@ -71,12 +100,17 @@ export default function BusinessPageView({ p, preview = false, products = [], of
   }
 
   async function sendOrder() {
+    if (gift && !gPick) return setOErr("Выберите участницу, которой дарите.");
+    if (gift && !sel) return setOErr("Выберите подарок.");
     setOBusy(true);
     setOErr("");
     const r = await apiPost("/api/business/orders", {
       action: "create",
       businessId: p.id,
-      kind: book ? "book" : "buy",
+      kind: book ? "book" : gift ? "gift" : "buy",
+      recipientId: gPick?.id,
+      anon,
+      message: gmsg,
       productId: sel?.id,
       size: o.size,
       qty: o.qty,
@@ -155,6 +189,10 @@ export default function BusinessPageView({ p, preview = false, products = [], of
             </a>
           )}
         </div>
+
+        <button onClick={() => (preview || !canOrder ? undefined : openOrder(null, false, true))} className="w-full mt-2 border border-gold/70 text-gold font-semibold rounded-full py-2.5 text-sm">
+          🎁 Подарить участнице шоу
+        </button>
 
         {p.about && <p className="text-offwhite text-sm mt-4 whitespace-pre-line">{p.about}</p>}
 
@@ -246,23 +284,69 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         </div>
       )}
 
-      {(sel || book) && (
-        <div className="fixed inset-0 z-[120] bg-black/65 flex items-end justify-center" onClick={() => { if (!oBusy) { setSel(null); setBook(false); } }}>
+      {(sel || book || gift) && (
+        <div className="fixed inset-0 z-[120] bg-black/65 flex items-end justify-center" onClick={() => { if (!oBusy) closeOrder(); }}>
           <div className="w-full max-w-md bg-bgSurface rounded-t-3xl p-5 max-h-[88dvh] overflow-y-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }} onClick={(e) => e.stopPropagation()}>
             {oDone ? (
               <>
-                <p className="text-offwhite font-semibold mb-1">{book ? "Запрос на бронь отправлен" : "Заказ оформлен"}</p>
-                <p className="text-muted text-sm mb-1">{book ? "Партнёр подтвердит бронь в чате." : `Сумма: ${money(oDone.total, cur)}. Партнёр свяжется с вами в чате и уточнит оплату и доставку.`}</p>
+                <p className="text-offwhite font-semibold mb-1">{book ? "Запрос на бронь отправлен" : gift ? "Подарок оформлен" : "Заказ оформлен"}</p>
+                <p className="text-muted text-sm mb-1">{book ? "Партнёр подтвердит бронь в чате." : gift ? `Сумма: ${money(oDone.total, cur)}. Договоритесь с магазином об оплате в чате. Когда магазин отметит оплату, подарок уйдёт участнице. Статус будет в «Заказы и подарки».` : `Сумма: ${money(oDone.total, cur)}. Партнёр свяжется с вами в чате и уточнит оплату и доставку.`}</p>
                 <p className="text-muted text-xs mb-4">Оплата идёт напрямую партнёру. VETOKS в оплате не участвует.</p>
                 <a href={`/my-orders?o=${oDone.id}`} className="block text-center bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm">Открыть заказ и чат</a>
-                <button onClick={() => { setSel(null); setBook(false); }} className="w-full mt-2 border border-muted text-offwhite rounded-full py-2.5 text-sm">Закрыть</button>
+                <button onClick={closeOrder} className="w-full mt-2 border border-muted text-offwhite rounded-full py-2.5 text-sm">Закрыть</button>
               </>
             ) : (
               <>
-                <p className="text-offwhite font-semibold">{book ? "Забронировать" : sel?.name}</p>
+                <p className="text-offwhite font-semibold">{book ? "Забронировать" : gift ? "Подарить участнице" : sel?.name}</p>
                 {sel && <p className="text-gold text-sm mb-3">{money(sel.price, cur)}{sel.sku ? ` · ID ${sel.sku}` : ""}</p>}
                 {sel?.description && <p className="text-muted text-sm mb-3">{sel.description}</p>}
                 <div className="flex flex-col gap-3">
+                  {!book && (
+                    <div className="flex gap-2">
+                      {([[false, "Купить себе"], [true, "🎁 Подарить участнице"]] as const).map(([k, l]) => (
+                        <button key={String(k)} onClick={() => setGift(k)} className={`flex-1 px-3 py-2 rounded-full text-sm border ${gift === k ? "bg-gold text-bgPrimary border-gold font-semibold" : "border-muted text-offwhite"}`}>{l}</button>
+                      ))}
+                    </div>
+                  )}
+                  {gift && !sel && (
+                    <label className="text-muted text-xs flex flex-col gap-1">Что дарим
+                      <select value="" onChange={(e) => setSel(products.find((x) => x.id === e.target.value) ?? null)} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite">
+                        <option value="">Выберите товар</option>
+                        {products.filter((x) => x.stock !== 0).map((x) => <option key={x.id} value={x.id}>{x.name} · {money(x.price, cur)}</option>)}
+                      </select>
+                    </label>
+                  )}
+                  {gift && (
+                    <div className="flex flex-col gap-2">
+                      <label className="text-muted text-xs flex flex-col gap-1">Кому (найдите участницу по имени)
+                        <input value={gq} onChange={(e) => findGirl(e.target.value)} placeholder="Имя участницы" className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" />
+                      </label>
+                      {gPick && <p className="text-gold text-sm">Получательница: {gPick.name}</p>}
+                      {gFound.length > 0 && (
+                        <div className="flex flex-col gap-1.5">
+                          {gFound.map((x) => (
+                            <button key={x.id} onClick={() => { setGPick({ id: x.id, name: x.name }); setGFound([]); setGq(x.name); }} className="flex items-center gap-2.5 text-left bg-bgPrimary rounded-lg p-2">
+                              <span className="w-9 h-9 rounded-full overflow-hidden bg-bgSurface flex items-center justify-center text-gold text-sm flex-none">
+                                {x.photo_url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={x.photo_url} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  (x.name || "?").slice(0, 1)
+                                )}
+                              </span>
+                              <span className="text-offwhite text-sm">{x.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <label className="flex items-center gap-2 text-offwhite text-sm"><input type="checkbox" checked={anon} onChange={(e) => setAnon(e.target.checked)} /> Подарить анонимно</label>
+                      <p className="text-muted text-xs">{anon ? "Участница увидит: «подарок от тайного поклонника». Магазин знает, кто даритель." : "Участница увидит ваше имя."}</p>
+                      <label className="text-muted text-xs flex flex-col gap-1">Открытка
+                        <textarea value={gmsg} onChange={(e) => setGmsg(e.target.value)} rows={2} maxLength={300} placeholder="Пара тёплых слов" className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" />
+                      </label>
+                      <p className="text-muted text-xs">Адрес вы не вводите. После вашей оплаты участница решит, принять ли подарок, и магазин сам уточнит у неё адрес. Адрес увидит только магазин.</p>
+                    </div>
+                  )}
                   {book && products.length > 0 && (
                     <label className="text-muted text-xs flex flex-col gap-1">Что бронируем
                       <select value={o.service} onChange={(e) => setO({ ...o, service: e.target.value })} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite">
@@ -296,15 +380,15 @@ export default function BusinessPageView({ p, preview = false, products = [], of
                     </div>
                   )}
                   {sel && <label className="text-muted text-xs flex flex-col gap-1">Промокод (если есть)<input value={o.promo} onChange={(e) => setO({ ...o, promo: e.target.value })} maxLength={30} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite uppercase" /></label>}
-                  <label className="text-muted text-xs flex flex-col gap-1">Ваш телефон<input value={o.phone} onChange={(e) => setO({ ...o, phone: e.target.value })} inputMode="tel" maxLength={40} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" /></label>
+                  <label className="text-muted text-xs flex flex-col gap-1">Ваш телефон{gift ? " (для связи магазина с вами)" : ""}<input value={o.phone} onChange={(e) => setO({ ...o, phone: e.target.value })} inputMode="tel" maxLength={40} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" /></label>
                   <label className="text-muted text-xs flex flex-col gap-1">Комментарий<textarea value={o.note} onChange={(e) => setO({ ...o, note: e.target.value })} rows={2} maxLength={500} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" /></label>
                 </div>
                 <p className="text-muted text-[11px] mt-3">Оплата идёт напрямую партнёру. VETOKS в оплате не участвует и комиссию не берёт.</p>
                 {oErr && <p className="text-danger text-xs mt-2">{oErr}</p>}
                 <button onClick={sendOrder} disabled={oBusy || (book && !o.whenText.trim())} className="w-full mt-3 bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm disabled:opacity-50">
-                  {oBusy ? "Отправляем..." : book ? "Отправить запрос" : sel ? `Оформить · ${money(sel.price * o.qty, cur)}` : "Оформить"}
+                  {oBusy ? "Отправляем..." : book ? "Отправить запрос" : sel ? `${gift ? "Оформить подарок" : "Оформить"} · ${money(sel.price * o.qty, cur)}` : "Оформить"}
                 </button>
-                <button onClick={() => { setSel(null); setBook(false); }} className="w-full mt-2 text-muted text-sm py-2">Отмена</button>
+                <button onClick={closeOrder} className="w-full mt-2 text-muted text-sm py-2">Отмена</button>
               </>
             )}
           </div>
