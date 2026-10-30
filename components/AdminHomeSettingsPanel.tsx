@@ -6,11 +6,11 @@ import { getCrmCountry, crmCur } from "@/lib/crmCountry";
 import { loadScoped, scopedKey } from "@/lib/scopedSettings";
 import { apiPost } from "@/lib/authClient";
 
-const KEYS = ["publishing_enabled", "strip_enabled", "strip_text", "fanzone_enabled", "fanzone_min_amount", "cards_enabled", "media_season_id", "survey_question"];
+const KEYS = ["publishing_enabled", "fanzone_enabled", "fanzone_min_amount", "cards_enabled", "media_season_id", "survey_question"];
 
 type SeasonOpt = { id: string; title: string };
 
-// CRM → «Главная»: красная полоса, объявления, приём публикаций и др.
+// CRM → «Переключатели приложения»: приём публикаций, карточки, фан-зона, какое шоу в «Медиа», опрос.
 export default function AdminHomeSettingsPanel() {
   const [v, setV] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -55,19 +55,9 @@ export default function AdminHomeSettingsPanel() {
 
   return (
     <div className="max-w-lg flex flex-col gap-5">
-      <div className="bg-bgSurface border border-muted rounded-xl p-4">
-        <p className="text-offwhite font-semibold text-sm mb-2">Яркая полоса «До отсева недели»</p>
-        <Toggle k="strip_enabled" label="Показывать на главной (только в последние 3 часа перед отсевом)" />
-        <input
-          value={v.strip_text ?? ""}
-          onChange={(e) => set("strip_text", e.target.value)}
-          placeholder="🔥 До отсева недели: {time}"
-          className="w-full bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm"
-        />
-        <p className="text-muted text-xs mt-1">Вместо {"{time}"} подставится обратный отсчёт. Пусто — стандартный текст.</p>
-      </div>
-
-      <AnnouncementsBlock />
+      <p className="text-muted text-xs">
+        Яркая полоса и объявления теперь только в «Шоу страны → Конструктор шоу → Главная». Здесь остались переключатели, которых нет в конструкторе.
+      </p>
 
       <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
         <p className="text-offwhite font-semibold text-sm mb-2">📤 Приём публикаций (фото и видео)</p>

@@ -67,7 +67,7 @@ export default function AdminCoinsPanel() {
 
       <div className="bg-bgSurface border border-muted rounded-xl p-4">
         <p className="text-offwhite font-semibold text-sm mb-3">Курсы</p>
-        <Field k="coin_usd" label="Сколько $ стоит 1 монета" ph="0.0122" hint={`Сегодня курс $1 = ${f2(rateNow)} ${cur} (меняется на Дашборде). Значит 1 монета = ${f2(s.coinUsd * rateNow * 1000) / 1000} ${cur}, а за 1 ${cur} человек получает ${f2(s.coinsPerUnit)} монет. Цена монеты в $ не меняется, меняется только цена в ${cur}.`} />
+        <Field k="coin_usd" label="Сколько $ стоит 1 монета" ph="0.0122" hint={`Сегодня курс $1 = ${f2(rateNow)} ${cur} (меняется на Дашборде). Значит 1 монета = ${Math.round(s.coinUsd * rateNow * 1000) / 1000} ${cur}, а за 1 ${cur} человек получает ${f2(s.coinsPerUnit)} монет. Цена монеты в $ не меняется, меняется только цена в ${cur}.`} />
         <Field k="crown_per_coin" label="Сколько Корон за 1 монету дохода участницы" ph={f2(1 / s.coinsPerUnit)} hint={`Сейчас: 1 монета = ${f2(s.crownPerCoin)} Короны (1 Корона = 1 ${cur} при выводе). Пусто — по курсу пополнения, участница получает ровно то, что стоила монета.`} />
         <Field k="coins_per_crown" label="Сколько монет за 1 Корону при обмене" ph={f2(s.coinsPerUnit)} hint={`Сейчас: 1 Корона = ${f2(s.coinsPerCrown)} монет. Обмен только в одну сторону (Короны → монеты).`} />
         <label className="flex items-center gap-2 text-offwhite text-sm">
