@@ -71,12 +71,18 @@ export async function pay(
     const { parentConsentOk } = await import("@/lib/parentServer");
     if (!(await parentConsentOk(userId))) return { ok: false, error: "need_parent" };
   }
-  // Амбассадорам к доле добавляется их бонус (только если доля вообще положена).
+  // Амбассадор шоу получает фиксированный процент вместо обычной доли (если доля вообще положена);
+  // обычной участнице к доле добавляется бонус за активность за сезон.
   let finalShare = share;
   if (participantId && share > 0) {
-    const { ambassadorBonus } = await import("@/lib/ambassador");
-    const { activityBonus } = await import("@/lib/activity");
-    finalShare = Math.min(100, share + (await ambassadorBonus(participantId)) + (await activityBonus(participantId)));
+    const { ambassadorShare } = await import("@/lib/ambassador");
+    const amb = await ambassadorShare(participantId);
+    if (amb !== null) {
+      finalShare = amb;
+    } else {
+      const { activityBonus } = await import("@/lib/activity");
+      finalShare = Math.min(100, share + (await activityBonus(participantId)));
+    }
   }
   // Доля участнице считается в Коронах: курс «монета → Корона» из CRM.
   let rate = 1;

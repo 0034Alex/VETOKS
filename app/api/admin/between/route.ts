@@ -30,6 +30,7 @@ export async function POST(req: Request) {
       { key: `between_mode:${cid}`, value: mode },
       { key: `between_off:${cid}`, value: off },
       { key: `between_question:${cid}`, value: String(b.question ?? "").trim().slice(0, 300) },
+      { key: `early_days:${cid}`, value: String(Math.max(0, Math.min(30, Math.floor(Number(b.early_days) || 0)))) },
     ];
     const { error } = await supabaseAdmin.from("platform_settings").upsert(rows, { onConflict: "key" });
     if (error) return NextResponse.json({ ok: false, message: "Не получилось сохранить." });
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const keys = ["between_mode", "between_off", "between_question"].map((k) => `${k}:${cid}`);
+  const keys = ["between_mode", "between_off", "between_question", "early_days"].map((k) => `${k}:${cid}`);
   const { data: st } = await supabaseAdmin.from("platform_settings").select("key, value").in("key", keys);
   const g = (k: string) => String(((st ?? []) as any[]).find((r) => r.key === `${k}:${cid}`)?.value ?? "");
   const { data: ans, error } = await supabaseAdmin
@@ -55,6 +56,7 @@ export async function POST(req: Request) {
     mode: g("between_mode") || "auto",
     off: g("between_off").split(",").filter(Boolean),
     question: g("between_question"),
+    early_days: g("early_days") === "" ? 3 : Math.max(0, Math.min(30, Number(g("early_days")) || 0)),
     answers: ((ans ?? []) as any[]).map((a) => {
       const u = um.get(a.user_id);
       const r = Array.isArray(u?.regions) ? u.regions[0] : u?.regions;

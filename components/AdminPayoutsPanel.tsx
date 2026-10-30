@@ -6,9 +6,9 @@ import { getCrmCountry } from "@/lib/crmCountry";
 import { loadScoped, scopedKey } from "@/lib/scopedSettings";
 import { clearPricingCache } from "@/lib/currency";
 import { COIN_KEYS, coinSettingsFrom } from "@/lib/coins";
-import { ACT_DEFAULT, ACT_KEY, parseAct, type ActRules } from "@/lib/activityShared";
+import { ACT_DEFAULT, ACT_KEY, ACT_KINDS, parseAct, type ActKind, type ActRules } from "@/lib/activityShared";
 
-const AMB_DEFAULT_KEY = "ambassador_bonus_default";
+const AMB_SHARE_KEY = "ambassador_share";
 import { apiPost } from "@/lib/authClient";
 import AdminPricesPanel from "@/components/AdminPricesPanel";
 
@@ -72,10 +72,10 @@ export default function AdminPayoutsPanel() {
         return { ...base, id: x0.id, category: x0.category, chat_only: !!x0.chat_only, art: x0.art ?? null, o: base } as G;
       })
     );
-    const { data: ps } = await supabase.from("platform_settings").select("key, value").in("key", [AMB_DEFAULT_KEY, ACT_KEY, "gift_fx_sound"]);
+    const { data: ps } = await supabase.from("platform_settings").select("key, value").in("key", [AMB_SHARE_KEY, ACT_KEY, "gift_fx_sound"]);
     const by: Record<string, string> = {};
     (ps ?? []).forEach((x: any) => (by[x.key] = x.value));
-    setAmb(by[AMB_DEFAULT_KEY] ?? "");
+    setAmb(by[AMB_SHARE_KEY] ?? "");
     setAct(by[ACT_KEY] ? parseAct(by[ACT_KEY]) : ACT_DEFAULT);
     setFxSound(by.gift_fx_sound !== "false");
     setLoading(false);
@@ -128,13 +128,13 @@ export default function AdminPayoutsPanel() {
   }
 
   async function savePayouts() {
-    const r: any = await apiPost("/api/admin/badges", { action: "amb_default", value: Number(amb) || 0 });
+    const r: any = await apiPost("/api/admin/badges", { action: "amb_share", value: Number(amb) || 0 });
     if (!r?.ok) {
-      setMsg(r?.error === "owner_only" ? "Бонус амбассадора может менять только владелец" : "Не удалось сохранить бонус амбассадора");
+      setMsg(r?.error === "owner_only" ? "Процент амбассадора может менять только владелец" : "Не удалось сохранить процент амбассадора");
       setTimeout(() => setMsg(""), 3500);
       return;
     }
-    await supabase.from("platform_settings").upsert({ key: ACT_KEY, value: JSON.stringify(act) });
+    await supabase.from("platform_settings").upsert({ key: ACT_KEY, value: JSON.stringify({ ...act, amb: false }) });
     setMsg("Выплаты сохранены ✓");
     setTimeout(() => setMsg(""), 2500);
   }
@@ -215,39 +215,39 @@ export default function AdminPayoutsPanel() {
 
       <h3 className="text-offwhite font-semibold mb-2">Выплаты участницам</h3>
       <div className="bg-bgSurface border border-muted rounded-xl p-3 mb-3">
-        <p className="text-muted text-xs mb-2">Доля участницы у каждого подарка задаётся выше (в строке подарка). Здесь только добавки к ней.</p>
+        <p className="text-offwhite text-sm font-semibold mb-1">Обычная участница</p>
+        <p className="text-muted text-xs">Получает долю, которая указана у каждой позиции (в строке подарка выше, у голосов и карточек в блоке ниже). Плюс бонусы за активность, они ниже.</p>
+        <p className="text-offwhite text-sm font-semibold mt-3 mb-1">⭐ Амбассадор шоу</p>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-offwhite text-sm">⭐ Амбассадор: к доле + </span>
-          <input value={amb} onChange={(e) => setAmb(e.target.value)} placeholder="0" className={`${cls} w-20`} />
-          <span className="text-muted text-sm">п.п.</span>
-          <span className="text-muted text-xs basis-full">Пример: доля подарка 50% + 10 = 60%. Отдельной амбассадору можно поставить своё число в «Люди → Галочки и статусы».</span>
+          <span className="text-offwhite text-sm">Фиксированный процент выплат: </span>
+          <input value={amb} onChange={(e) => setAmb(e.target.value)} placeholder="не задан" className={`${cls} w-20`} />
+          <span className="text-muted text-sm">%</span>
+          <span className="text-muted text-xs basis-full">Этот процент заменяет обычную долю на всё до конца шоу, бонусов активности у амбассадора нет. Статус назначается на одно шоу и снимается сам, когда оно закончится; на следующее шоу выдаётся заново в «Люди → Галочки и статусы».</span>
         </div>
       </div>
 
       <div className="bg-bgSurface border border-muted rounded-xl p-3 mb-3">
-        <p className="text-offwhite text-sm font-semibold mb-1">Повышение за активность <span className="text-muted text-xs font-normal">· за последние 30 дней</span></p>
-        <div className="flex gap-4 mb-2 text-sm text-offwhite">
-          <label className="flex items-center gap-1"><input type="checkbox" checked={act.regular} onChange={(e) => setAct({ ...act, regular: e.target.checked })} /> обычные участницы</label>
-          <label className="flex items-center gap-1"><input type="checkbox" checked={act.amb} onChange={(e) => setAct({ ...act, amb: e.target.checked })} /> амбассадоры</label>
-        </div>
+        <p className="text-offwhite text-sm font-semibold mb-1">Бонусы за активность <span className="text-muted text-xs font-normal">· только обычным участницам, за весь сезон шоу</span></p>
+        <label className="flex items-center gap-1 mb-2 text-sm text-offwhite"><input type="checkbox" checked={act.regular} onChange={(e) => setAct({ ...act, regular: e.target.checked })} /> включить бонусы</label>
         {act.rules.map((r, i) => (
-          <div key={i} className="grid grid-cols-[minmax(0,1fr)_64px_72px] gap-2 items-center py-1.5 border-t border-muted/40 text-sm">
-            <select value={r.kind} onChange={(e) => setRule(i, { kind: e.target.value as any })} className={`${cls} w-full min-w-0`}>
-              <option value="posts">Постов ≥</option>
-              <option value="invites">Приглашённых друзей ≥</option>
+          <div key={i} className="grid grid-cols-[minmax(0,1fr)_80px_72px] gap-2 items-center py-1.5 border-t border-muted/40 text-sm">
+            <select value={r.kind} onChange={(e) => setRule(i, { kind: e.target.value as ActKind })} className={`${cls} w-full min-w-0`}>
+              {ACT_KINDS.map((k) => (
+                <option key={k.kind} value={k.kind}>{k.label}, не меньше ({k.unit})</option>
+              ))}
             </select>
-            <input value={r.min} onChange={(e) => setRule(i, { min: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} className={`${cls} w-full min-w-0`} />
+            <input value={r.min} onChange={(e) => setRule(i, { min: Math.max(0, Math.floor(Number(e.target.value.replace(/\D/g, "")) || 0)) })} className={`${cls} w-full min-w-0`} />
             <span className="flex items-center gap-1 text-muted">+<input value={r.bonus} onChange={(e) => setRule(i, { bonus: Math.max(0, Number(e.target.value) || 0) })} className={`${cls} w-full min-w-0`} />%</span>
           </div>
         ))}
         <div className="flex flex-wrap items-center gap-2 mt-2">
-          <button onClick={() => setAct({ ...act, rules: [...act.rules, { kind: "posts", min: 5, bonus: 1 }] })} className={ghost}>+ ступень</button>
-          {act.rules.length > 0 && <button onClick={() => setAct({ ...act, rules: act.rules.slice(0, -1) })} className={ghost}>− убрать последнюю</button>}
-          <span className="text-muted text-xs ml-2">Максимум за активность: +</span>
+          <button onClick={() => setAct({ ...act, rules: [...act.rules, { kind: "subscribers", min: 100, bonus: 1 }] })} className={ghost}>+ пункт</button>
+          {act.rules.length > 0 && <button onClick={() => setAct({ ...act, rules: act.rules.slice(0, -1) })} className={ghost}>− убрать последний</button>}
+          <span className="text-muted text-xs ml-2">Потолок всех бонусов: +</span>
           <input value={act.max} onChange={(e) => setAct({ ...act, max: Math.max(0, Number(e.target.value) || 0) })} className={`${cls} w-16`} />
           <span className="text-muted text-sm">%</span>
         </div>
-        <p className="text-muted text-xs mt-2">Если выполнены все ступени, добавится +{exBonus}% к доле подарка. Пока обе галочки выключены, активность ничего не меняет.</p>
+        <p className="text-muted text-xs mt-2">Выполнила минимум по пункту, получает +% к своей доле. Бонусы разных пунктов складываются, но не больше потолка. Если выполнить все пункты, будет +{exBonus}%.</p>
       </div>
       <button onClick={savePayouts} className={btn}>Сохранить выплаты</button>
 

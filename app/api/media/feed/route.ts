@@ -5,6 +5,7 @@ import { rateLimit } from "@/lib/rateLimit";
 import { countryOfRegion } from "@/lib/countryServer";
 import { cleanContest } from "@/lib/contest";
 import { pickPack, fallbackIds } from "@/lib/mediaFeed";
+import { preStartHold } from "@/lib/launchServer";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -36,6 +37,9 @@ export async function POST(req: Request) {
     countryId = (c?.id as string) ?? null;
   }
   if (!countryId) return NextResponse.json({ ok: true, posts: [], likes: {}, comments: {}, liked: [], followed: [] });
+
+  // До старта первого шоу ролики в «Медиа» не показываем никому (автор видит свои в своём профиле).
+  if (await preStartHold(countryId)) return NextResponse.json({ ok: true, posts: [], likes: {}, comments: {}, liked: [], followed: [] });
 
   const tab = b.tab === "following" || b.tab === "country" ? b.tab : "region";
   const cats = Array.isArray(b.cats) ? b.cats.map(String).slice(0, 3) : [];

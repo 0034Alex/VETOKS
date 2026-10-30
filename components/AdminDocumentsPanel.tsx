@@ -146,17 +146,28 @@ export default function AdminDocumentsPanel() {
                       </option>
                     ))}
                   </select>
-                  <select
-                    value={(d as any).show_at ?? ""}
-                    onChange={(e) => act({ action: "show_at", id: d.id, value: e.target.value })}
-                    className="text-xs px-2 py-1 rounded-full bg-bgPrimary border border-gold text-offwhite"
-                    title="Где показывать этот документ рядом с галочкой согласия"
-                  >
-                    <option value="">Не показывать при входе</option>
-                    <option value="register">При регистрации</option>
-                    <option value="apply">При подаче анкеты</option>
-                    <option value="both">В обоих местах</option>
-                  </select>
+                  <div className="basis-full border border-gold/50 rounded-xl px-3 py-2 text-xs text-offwhite">
+                    <p className="text-gold font-semibold mb-1">Где показать ссылку на этот документ</p>
+                    {(() => {
+                      const v = String((d as any).show_at ?? "");
+                      const reg = v === "register" || v === "both";
+                      const app = v === "apply" || v === "both";
+                      const set = async (r: boolean, p: boolean) => {
+                        const res = await act({ action: "show_at", id: d.id, value: r && p ? "both" : r ? "register" : p ? "apply" : "" });
+                        if (res && res.ok === false) alert("Не сохранилось. Нужна колонка show_at в таблице documents: напиши мне, пришлю SQL.");
+                      };
+                      return (
+                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                          <label className="flex items-center gap-1.5">
+                            <input type="checkbox" checked={reg} onChange={(e) => set(e.target.checked, app)} /> Под кнопкой регистрации
+                          </label>
+                          <label className="flex items-center gap-1.5">
+                            <input type="checkbox" checked={app} onChange={(e) => set(reg, e.target.checked)} /> Под кнопкой подачи анкеты
+                          </label>
+                        </div>
+                      );
+                    })()}
+                  </div>
                   <button onClick={() => confirm("Удалить документ вместе с историей?") && act({ action: "delete", id: d.id })} className="text-xs px-3 py-1 rounded-full bg-danger text-bgPrimary">Удалить</button>
                 </div>
               </>

@@ -17,6 +17,7 @@ export default function AdminBetweenPanel() {
   const [mode, setMode] = useState("auto");
   const [off, setOff] = useState<string[]>([]);
   const [question, setQuestion] = useState("");
+  const [early, setEarly] = useState("3");
   const [answers, setAnswers] = useState<{ id: string; name: string; region: string; question: string; answer: string; at: string }[]>([]);
   const [msg, setMsg] = useState("");
   const [noTable, setNoTable] = useState(false);
@@ -28,6 +29,7 @@ export default function AdminBetweenPanel() {
     setMode(r.mode);
     setOff(r.off ?? []);
     setQuestion(r.question ?? "");
+    setEarly(String(r.early_days ?? 3));
     setAnswers(r.answers ?? []);
     setNoTable(!!r.noTable);
   }
@@ -36,7 +38,7 @@ export default function AdminBetweenPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cid]);
   async function save() {
-    const r = await apiPost("/api/admin/between", { action: "save", country_id: cid, mode, off, question });
+    const r = await apiPost("/api/admin/between", { action: "save", country_id: cid, mode, off, question, early_days: Number(early) || 0 });
     setMsg(r?.ok ? "Сохранено." : r?.message || "Не получилось.");
     setTimeout(() => setMsg(""), 2500);
   }
@@ -52,6 +54,11 @@ export default function AdminBetweenPanel() {
           <option value="on">Всегда включена</option>
           <option value="off">Выключена</option>
         </select>
+      </label>
+      <label className="text-[11px] text-muted block space-y-1">
+        Ранний доступ: за сколько дней до старта первого шоу открыть приложение одобренным участницам и амбассадорам (0 — не открывать)
+        <input className={`${inp} w-24`} inputMode="numeric" value={early} onChange={(e) => setEarly(e.target.value.replace(/\D/g, ""))} />
+        <span className="block">Остальные люди до старта видят только отсчёт. Ролики до старта видит только их автор, в «Медиа» они появятся в момент старта.</span>
       </label>
       {BLOCKS.map(([k, label, note]) => (
         <div key={k} className="border border-muted/40 rounded-xl p-2.5">

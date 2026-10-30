@@ -48,7 +48,7 @@ export function useShow(): { show: ActiveShow; ready: boolean } {
 }
 
 // «Между шоу»: в стране нет идущего шоу. off — выключенные блоки главной, question — вопрос недели.
-export type Between = { on: boolean; off: string[]; question: string; prestart?: number | null } | null;
+export type Between = { on: boolean; off: string[]; question: string; prestart?: number | null; early?: number | null } | null;
 let between: Between = null;
 const BEVT = "vetoks-between";
 const BSTORE = "vt_between";

@@ -27,12 +27,11 @@ export default function AdminBadgesPanel() {
   const [bulkAsk, setBulkAsk] = useState(false);
   const [ambDef, setAmbDef] = useState("0");
   const [ambList, setAmbList] = useState<{ id: string; name: string; nick: string | null; bonus: number | null }[]>([]);
-  const [ambBonus, setAmbBonus] = useState<Record<string, string>>({});
 
   async function loadAmb() {
     const r = await apiPost("/api/admin/badges", { action: "amb_info" });
     if (r?.ok) {
-      setAmbDef(String(r.def ?? 0));
+      setAmbDef(String(r.share ?? 0));
       setAmbList(r.items);
     }
   }
@@ -40,21 +39,15 @@ export default function AdminBadgesPanel() {
     loadAmb();
   }, []);
 
-  async function saveAmbDef() {
-    const r = await apiPost("/api/admin/badges", { action: "amb_default", value: Number(ambDef) });
-    flash(r?.ok ? "Общий процент сохранён." : "Это может только владелец.");
-  }
-
   async function setAmb(it: Item, on: boolean) {
     if (!it.participant) return;
-    const raw = ambBonus[it.userId] ?? (it.participant.ambBonus !== null ? String(it.participant.ambBonus) : "");
-    const r = await apiPost("/api/admin/badges", { action: "set_ambassador", participantId: it.participant.id, on, bonus: raw === "" ? null : Number(raw) });
+    const r = await apiPost("/api/admin/badges", { action: "set_ambassador", participantId: it.participant.id, on, bonus: null });
     if (r?.ok) {
       flash(on ? "Назначена амбассадором, галочка выдана." : "Амбассадор снят.");
       setItems((arr) =>
         arr.map((i) =>
           i.userId === it.userId && i.participant
-            ? { ...i, badge: on ? true : i.badge, participant: { ...i.participant, ambassador: on, ambBonus: on && raw !== "" ? Number(raw) : null } }
+            ? { ...i, badge: on ? true : i.badge, participant: { ...i.participant, ambassador: on, ambBonus: null } }
             : i
         )
       );
@@ -178,19 +171,12 @@ export default function AdminBadgesPanel() {
           {it.participant && (
             <div className="border-t border-muted/40 pt-3">
               <p className="text-offwhite text-sm mb-1">Амбассадор шоу {it.participant.ambassador && <span className="text-gold">✔</span>}</p>
-              <p className="text-muted text-xs mb-2">Повышенный процент выплат + золотая галочка сразу. Пусто = общий процент ({ambDef}%).</p>
+              <p className="text-muted text-xs mb-2">Фиксированный процент выплат ({ambDef}%, меняется в «Цены и выплаты») + золотая галочка сразу. Действует до конца этого шоу.</p>
               <div className="flex gap-2 items-center">
-                <input
-                  value={ambBonus[it.userId] ?? (it.participant.ambBonus !== null ? String(it.participant.ambBonus) : "")}
-                  onChange={(e) => setAmbBonus((n) => ({ ...n, [it.userId]: e.target.value }))}
-                  type="number"
-                  placeholder="+ %"
-                  className="w-24 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite"
-                />
                 {it.participant.ambassador ? (
                   <>
                     <button onClick={() => setAmb(it, true)} className="border border-gold text-gold rounded-lg px-4 py-2 text-xs">
-                      Сохранить %
+                      Обновить
                     </button>
                     <button onClick={() => setAmb(it, false)} className="border border-danger text-danger rounded-lg px-4 py-2 text-xs">
                       Снять
@@ -241,15 +227,8 @@ export default function AdminBadgesPanel() {
       <div className="bg-bgSurface border border-muted rounded-xl p-4">
         <p className="text-offwhite font-semibold text-sm mb-1">Амбассадоры шоу ({ambList.length})</p>
         <p className="text-muted text-xs mb-3">
-          Бонус прибавляется к обычной доле участницы: с подарков, донатов, бустов и с бонуса за приведённого рекламодателя. Начисляется на внутренний баланс.
+          Амбассадор получает фиксированный процент выплат: <b className="text-offwhite">{ambDef}%</b> вместо обычной доли (меняется в «Цены и выплаты»). Начисляется на внутренний баланс. Статус действует на одно шоу.
         </p>
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-offwhite text-sm">Общий бонус, +%</span>
-          <input value={ambDef} onChange={(e) => setAmbDef(e.target.value)} type="number" className="w-20 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" />
-          <button onClick={saveAmbDef} className="bg-gold text-bgPrimary font-semibold rounded-lg px-4 py-2 text-sm">
-            Сохранить
-          </button>
-        </div>
         {ambList.length === 0 ? (
           <p className="text-muted text-xs">Пока никого.</p>
         ) : (
@@ -260,7 +239,7 @@ export default function AdminBadgesPanel() {
                 {a.name}
                 <span className="text-muted text-xs">{a.nick ? ` · @${a.nick}` : ""}</span>
               </span>
-              <span className="text-muted text-xs">+{a.bonus ?? ambDef}%{a.bonus === null ? " (общий)" : ""}</span>
+              <span className="text-muted text-xs">{ambDef}%</span>
             </div>
           ))
         )}

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { userIdFromBearer } from "@/lib/authServer";
 import { countryOfUser } from "@/lib/countryServer";
-import { countryView } from "@/lib/launchServer";
+import { countryView, earlyAccessOpen } from "@/lib/launchServer";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +54,10 @@ export async function POST(req: Request) {
     const uid2 = await userIdFromBearer(req);
     const cid = uid2 ? await countryOfUser(uid2) : null;
     const cv = cid ? await countryView(cid) : null;
+    if (cv && uid2 && cid && cv.between.prestart && cv.between.prestart > now && (await earlyAccessOpen(uid2, cid, cv.between.prestart, now))) {
+      // ранний доступ: экран отсчёта снимается, но срок старта показываем плашкой
+      cv.between = { ...cv.between, early: cv.between.prestart, prestart: null };
+    }
     if (cv) {
       const byKey = (k: string | null) => (k ? rows.find((s) => s.key === k) : undefined);
       const lv = byKey(cv.liveKey);

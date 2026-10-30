@@ -3,7 +3,7 @@ import { regionIdsOfCountry } from "@/lib/countryServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff, logAction } from "@/lib/staffServer";
 import { notify } from "@/lib/shopServer";
-import { ambassadorDefault, AMB_DEFAULT_KEY } from "@/lib/ambassador";
+import { ambassadorDefault, AMB_DEFAULT_KEY, AMB_SHARE_KEY, ambassadorShareValue } from "@/lib/ambassador";
 import { CONTESTS, STAGE_OPTIONS } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
@@ -105,6 +105,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       def: await ambassadorDefault(),
+      share: await ambassadorShareValue(),
       items: (data ?? []).map((p: any) => ({
         id: p.id,
         name: p.display_name,
@@ -120,6 +121,14 @@ export async function POST(req: Request) {
     await supabaseAdmin.from("platform_settings").upsert({ key: AMB_DEFAULT_KEY, value: String(v) });
     await logAction(uid, "ambassador_default", null, { value: v });
     return NextResponse.json({ ok: true, def: v });
+  }
+
+  if (a === "amb_share") {
+    if (!isOwner) return NextResponse.json({ ok: false, error: "owner_only" }, { status: 403 });
+    const v = Math.min(100, Math.max(0, Number(body.value) || 0));
+    await supabaseAdmin.from("platform_settings").upsert({ key: AMB_SHARE_KEY, value: String(v) });
+    await logAction(uid, "ambassador_share", null, { value: v });
+    return NextResponse.json({ ok: true, share: v });
   }
 
   // Назначить или снять «амбассадора шоу». Галочка выдаётся автоматически.

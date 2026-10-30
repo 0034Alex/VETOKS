@@ -11,6 +11,26 @@ import { useBetween } from "@/lib/useShow";
 
 type W = { id: string; name: string; photo: string | null; region?: string };
 
+// Плашка раннего доступа: старт шоу ещё впереди, а приложение уже открыто для участниц.
+function EarlyStrip({ to }: { to: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
+  const m = Math.max(0, Math.floor((to - now) / 60000));
+  const d = Math.floor(m / 1440);
+  const h = Math.floor((m % 1440) / 60);
+  return (
+    <div className="mx-6 mb-4 bg-bgSurface border border-gold/60 rounded-2xl p-3 text-center">
+      <p className="text-gold text-sm font-semibold">Ранний доступ</p>
+      <p className="text-offwhite text-xs mt-1">
+        До старта шоу: {d} дн {h} ч. Заполните страницу и загрузите ролики: зрители увидят их в момент старта.
+      </p>
+    </div>
+  );
+}
+
 // Главная, когда в стране нет идущего шоу: баннер набора, Зал славы, вопрос недели, реклама.
 export default function BetweenHome() {
   const b = useBetween();
@@ -77,6 +97,7 @@ export default function BetweenHome() {
           <Logo size={28} />
         </div>
       </div>
+      {b?.early ? <EarlyStrip to={b.early} /> : null}
       {!off.includes("recruit") && <RecruitBanner />}
 
       {!off.includes("hall") && (

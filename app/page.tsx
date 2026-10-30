@@ -1177,7 +1177,7 @@ export default function Home() {
   const betweenOn = !!between?.on && !show;
   useEffect(() => {
     // Между шоу приложение при входе открывается на «Медиа»; «Главная» потом показывает свой экран.
-    if (!betweenOn) return;
+    if (!betweenOn || between?.early) return;
     try {
       if (sessionStorage.getItem("vt_between_seen")) return;
       sessionStorage.setItem("vt_between_seen", "1");
@@ -1185,7 +1185,7 @@ export default function Home() {
       return;
     }
     homeRouter.replace("/media");
-  }, [betweenOn, homeRouter]);
+  }, [betweenOn, between?.early, homeRouter]);
   if (betweenOn && between?.prestart && between.prestart > Date.now()) return <PreStartScreen />;
   if (betweenOn) return <BetweenHome />;
   if (show?.contest === "talent") return <TalentHome show={show} />;

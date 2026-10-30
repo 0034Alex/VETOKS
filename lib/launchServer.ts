@@ -8,7 +8,7 @@ export type CountryView = {
   recruitKey: string | null;
   blocksOff: string[];
   blockOrder: string[];
-  between: { on: boolean; off: string[]; question: string; prestart: number | null }; // блоки, заданные в запуске, но сегодня выключенные
+  between: { on: boolean; off: string[]; question: string; prestart: number | null; early?: number | null }; // блоки, заданные в запуске, но сегодня выключенные
   banner: { apply?: boolean; poll_question?: string; poll_id?: string };
   info: { stage: string; day: number; total: number; tips: string[]; tasks: string[]; stageEndsAt: number | null } | null;
 };
@@ -86,4 +86,33 @@ export async function countryView(countryId: string, now: number = Date.now()): 
 import { todayIdx } from "@/lib/launch";
 function todayIdxOf(l: LaunchRow, now: number) {
   return todayIdx(l.tz, now);
+}
+
+// До старта первого шоу страны ролики видит только автор: в «Медиа» и на чужих страницах их нет.
+export async function preStartHold(countryId: string | null | undefined, now: number = Date.now()): Promise<boolean> {
+  if (!countryId) return false;
+  try {
+    const cv = await countryView(countryId, now);
+    return !!cv?.between.prestart && cv.between.prestart > now;
+  } catch {
+    return false;
+  }
+}
+
+// Ранний доступ: одобренной участнице страны приложение открывается за N дней до старта.
+export async function earlyAccessOpen(userId: string, countryId: string, prestart: number, now: number = Date.now()): Promise<boolean> {
+  const { data: st } = await supabaseAdmin.from("platform_settings").select("value").eq("key", `early_days:${countryId}`).maybeSingle();
+  const raw = st?.value;
+  const days = raw === null || raw === undefined || raw === "" ? 3 : Math.max(0, Math.min(30, Number(raw) || 0));
+  if (!days || now < prestart - days * 86400000) return false;
+  const { data: regs } = await supabaseAdmin.from("regions").select("id").eq("country_id", countryId);
+  const ids = (regs ?? []).map((r: any) => r.id as string);
+  if (!ids.length) return false;
+  const { count } = await supabaseAdmin
+    .from("participants")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .in("region_id", ids)
+    .eq("is_eliminated", false);
+  return (count ?? 0) > 0;
 }

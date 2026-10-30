@@ -1,4 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { countryOfUser } from "@/lib/countryServer";
+import { preStartHold } from "@/lib/launchServer";
 
 // Видимость публикации: all — все, followers — только подписчики автора, me — только автор.
 export type Visibility = "all" | "followers" | "me";
@@ -39,6 +41,8 @@ export async function filterVisible<T>(
   ownerOf: (r: T) => string | undefined,
   visOf: (r: T) => string | null | undefined
 ): Promise<T[]> {
+  // До старта первого шоу страны чужие ролики не показываем: каждый видит только свои.
+  if (await preStartHold(await countryOfUser(viewer))) rows = rows.filter((r) => ownerOf(r) === viewer);
   const need = rows.filter((r) => {
     const v = visOf(r);
     return v === "followers" && ownerOf(r) && ownerOf(r) !== viewer;
