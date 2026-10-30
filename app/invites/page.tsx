@@ -9,24 +9,63 @@ import { getCurrencySymbol } from "@/lib/currency";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 
-const ERR: Record<string, string> = {
-  already: "Приглашение уже привязано к вашему аккаунту.",
-  too_old: "Код можно ввести только в первые 7 дней после регистрации.",
-  bad_code: "Такого кода или ника нет. Проверьте и попробуйте ещё раз.",
-  self: "Свой код вводить нельзя.",
-  limit: "У этого человека сегодня закончился лимит приглашений. Попробуйте завтра.",
-  other_country: "Этот человек из другой страны.",
-  disabled: "Приглашения сейчас отключены.",
-};
+// Карточка со ссылкой: копирование, «Поделиться» и QR-код.
+function LinkCard({ title, link, shareText, note }: { title: string; link: string; shareText: string; note?: string }) {
+  const [copied, setCopied] = useState(false);
+  const [qr, setQr] = useState("");
+  const [showQr, setShowQr] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
+  function share() {
+    if (navigator.share) navigator.share({ title: "VETOKS", text: shareText, url: link }).catch(() => {});
+    else window.open(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`, "_blank");
+  }
+  async function toggleQr() {
+    if (!showQr && !qr) {
+      try {
+        const mod: any = await import("qrcode");
+        const QR = mod.default ?? mod;
+        setQr(await QR.toDataURL(link, { margin: 1, width: 240 }));
+      } catch {}
+    }
+    setShowQr((v) => !v);
+  }
+  return (
+    <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
+      <p className="text-muted text-xs mb-2">{title}</p>
+      <p className="text-offwhite text-sm break-all mb-3">{link}</p>
+      <div className="flex gap-2">
+        <button onClick={copy} className="flex-1 border border-gold text-gold font-semibold py-2 rounded-full text-sm">
+          {copied ? "Скопировано ✓" : "Скопировать"}
+        </button>
+        <button onClick={share} className="flex-1 bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm">
+          Поделиться
+        </button>
+      </div>
+      <button onClick={toggleQr} className="w-full mt-2 border border-muted text-offwhite py-2 rounded-full text-sm">
+        {showQr ? "Скрыть QR-код" : "Показать QR-код"}
+      </button>
+      {showQr && qr && (
+        <div className="flex justify-center mt-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={qr} alt="QR-код ссылки" width={240} height={240} className="rounded-lg bg-white p-2" />
+        </div>
+      )}
+      {note && <p className="text-muted text-[11px] mt-3">{note}</p>}
+    </div>
+  );
+}
 
 export default function InvitesPage() {
   const router = useRouter();
   const [d, setD] = useState<any>(null);
   const [cur, setCur] = useState("\uE000");
-  const [copied, setCopied] = useState<"" | "tg" | "web">("");
-  const [code, setCode] = useState("");
-  const [msg, setMsg] = useState("");
-  const [sending, setSending] = useState(false);
 
   async function load() {
     setD(await apiPost("/api/referral/my", {}));
@@ -51,33 +90,10 @@ export default function InvitesPage() {
   const webLink = typeof window !== "undefined" ? `${window.location.origin}/r/${who}` : "";
   const tgLink = d.bot ? `https://t.me/${d.bot}?start=ref_${who}` : "";
   const text = "Присоединяйся к VETOKS — голосуй за участниц конкурса!";
+  const advText = "Реклама в VETOKS: приложение конкурса красоты. Регистрируйтесь и размещайте рекламу.";
 
-  async function copy(kind: "tg" | "web") {
-    try {
-      await navigator.clipboard.writeText(kind === "tg" ? tgLink : webLink);
-      setCopied(kind);
-      setTimeout(() => setCopied(""), 2000);
-    } catch {}
-  }
-  function share() {
-    const url = tgLink || webLink;
-    if (navigator.share) navigator.share({ title: "VETOKS", text, url }).catch(() => {});
-    else window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, "_blank");
-  }
-  async function enterCode() {
-    if (!code.trim() || sending) return;
-    setSending(true);
-    setMsg("");
-    const r = await apiPost("/api/referral/claim", { code: code.trim() });
-    setSending(false);
-    if (r?.ok) {
-      setMsg(r.referrerName ? `Готово! Вас пригласил: ${r.referrerName} 🎉` : "Готово! Приглашение принято 🎉");
-      setCode("");
-      load();
-    } else {
-      setMsg(ERR[r?.error as string] ?? "Не получилось. Попробуйте ещё раз.");
-    }
-  }
+  const advWebLink = webLink ? `${webLink}?a=1` : "";
+  const advTgLink = d.bot ? `https://t.me/${d.bot}?start=adv_${who}` : "";
 
   return (
     <main className="min-h-screen pb-28">
@@ -90,54 +106,17 @@ export default function InvitesPage() {
             <p className="text-muted text-sm">Приглашения сейчас отключены.</p>
           ) : (
             <>
-              <div className="bg-bgSurface border border-gold/40 rounded-xl p-4">
-                <p className="text-muted text-xs mb-2">Ваша ссылка в Telegram</p>
-                <p className="text-offwhite text-sm break-all mb-3">{tgLink || webLink}</p>
-                <div className="flex gap-2">
-                  <button onClick={() => copy(tgLink ? "tg" : "web")} className="flex-1 border border-gold text-gold font-semibold py-2 rounded-full text-sm">
-                    {copied ? "Скопировано ✓" : "Скопировать"}
-                  </button>
-                  <button onClick={share} className="flex-1 bg-gold text-bgPrimary font-semibold py-2 rounded-full text-sm">
-                    Поделиться
-                  </button>
-                </div>
-                <p className="text-muted text-[11px] mt-3">
-                  Друг считается приглашённым, когда зарегистрируется по вашей ссылке и подтвердит номер в Telegram.
-                  {d.rewardReferrer > 0 ? ` За каждого вы получите ${Math.round(d.rewardReferrer)} ${cur}.` : ""}
-                  {d.rewardInvited > 0 ? ` Друг получит ${Math.round(d.rewardInvited)} ${cur}.` : ""}
-                  {d.percent > 0 ? ` Плюс ${d.percent}% от его покупок в течение ${d.percentDays} дн. — бонус платит VETOKS, другу ничего не теряется.` : ""}
-                </p>
-              </div>
-
-              {d.invitedBy && (
-                <p className="text-muted text-sm">
-                  Вас пригласил: <span className="text-offwhite">{d.invitedBy}</span>
-                </p>
-              )}
-
-              {d.canEnterCode && (
-                <div className="bg-bgSurface border border-muted rounded-xl p-4">
-                  <p className="text-offwhite text-sm font-semibold mb-1">Вас пригласил друг?</p>
-                  <p className="text-muted text-xs mb-3">Введите его ник или код — это можно сделать в первые 7 дней после регистрации.</p>
-                  <div className="flex gap-2">
-                    <input
-                      value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      placeholder="Ник или код друга"
-                      maxLength={40}
-                      className="flex-1 min-w-0 bg-bgPrimary border border-muted rounded-full px-4 py-2 text-sm text-offwhite"
-                    />
-                    <button
-                      onClick={enterCode}
-                      disabled={sending || !code.trim()}
-                      className="bg-gold text-bgPrimary font-semibold px-4 rounded-full text-sm disabled:opacity-40"
-                    >
-                      {sending ? "..." : "Ввести"}
-                    </button>
-                  </div>
-                  {msg && <p className="text-gold text-xs mt-2">{msg}</p>}
-                </div>
-              )}
+              <LinkCard
+                title="Ваша ссылка для друзей"
+                link={tgLink || webLink}
+                shareText={text}
+                note={
+                  "Друг считается приглашённым, когда зарегистрируется по вашей ссылке и подтвердит номер в Telegram." +
+                  (d.rewardReferrer > 0 ? ` За каждого вы получите ${Math.round(d.rewardReferrer)} ${cur}.` : "") +
+                  (d.rewardInvited > 0 ? ` Друг получит ${Math.round(d.rewardInvited)} ${cur}.` : "") +
+                  (d.percent > 0 ? ` Плюс ${d.percent}% от его покупок в течение ${d.percentDays} дн.` : "")
+                }
+              />
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-bgSurface border border-muted rounded-xl p-3 text-center">
@@ -153,6 +132,26 @@ export default function InvitesPage() {
                   <p className="text-muted text-[11px]">Заработано</p>
                 </div>
               </div>
+
+              {d.canInviteAdvertisers && (
+                <>
+                  <LinkCard
+                    title="Ссылка для рекламодателя"
+                    link={advTgLink || advWebLink}
+                    shareText={advText}
+                    note="Отправьте владельцу бизнеса. Он зарегистрируется по этой ссылке, получит рекламный кабинет и будет закреплён за вами. Вы получите бонус один раз, с его первой оплаты рекламы."
+                  />
+                  {(d.advertisers?.length ?? 0) > 0 && (
+                    <div className="bg-bgSurface border border-muted rounded-xl p-4">
+                      <p className="text-offwhite text-sm font-semibold mb-2">Ваши рекламодатели</p>
+                      {d.advertisers.map((a: any, i: number) => (
+                        <p key={i} className="text-offwhite text-sm py-1 border-t border-muted/40 first:border-t-0">{a.name}</p>
+                      ))}
+                      {d.advEarned > 0 && <p className="text-gold text-xs mt-2">Бонусов получено: {Math.round(d.advEarned * 100) / 100} {cur}</p>}
+                    </div>
+                  )}
+                </>
+              )}
 
               {d.list.length > 0 && (
                 <div className="bg-bgSurface border border-muted rounded-xl divide-y divide-muted">

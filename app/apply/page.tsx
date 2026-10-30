@@ -3,9 +3,9 @@
 import ConsentLinks from "@/components/ConsentLinks";
 import { apiPost } from "@/lib/authClient";
 import { cleanImage } from "@/lib/imageClean";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { getCurrentUser } from "@/lib/currentUser";
+import { getCurrentUser, resetCurrentUserCache } from "@/lib/currentUser";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import { getMyCountry } from "@/lib/myCountry";
@@ -22,6 +22,28 @@ export default function ApplyPage() {
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [agreed, setAgreed] = useState(false);
+  // Подать анкету можно только с подтверждённым номером (null — ещё проверяем).
+  const [phoneOk, setPhoneOk] = useState<boolean | null>(null);
+  useEffect(() => {
+    let stop = false;
+    const check = async () => {
+      try {
+        resetCurrentUserCache();
+        const u = await getCurrentUser();
+        if (!stop && u) setPhoneOk(!!u.phone_verified);
+      } catch {}
+    };
+    check();
+    const id = setInterval(() => {
+      if (phoneOkRef.current !== true) check();
+    }, 5000);
+    return () => {
+      stop = true;
+      clearInterval(id);
+    };
+  }, []);
+  const phoneOkRef = useRef<boolean | null>(null);
+  phoneOkRef.current = phoneOk;
 
   // Черновик анкеты: после чтения документов поля остаются заполненными (фото выберите заново).
   useEffect(() => {
@@ -64,6 +86,13 @@ export default function ApplyPage() {
     if (!currentUser) {
       setStatus("error");
       setErrorMessage("Сначала войдите в аккаунт.");
+      return;
+    }
+
+    if (!currentUser.phone_verified) {
+      setStatus("error");
+      setPhoneOk(false);
+      setErrorMessage("Сначала подтвердите номер в Telegram: без него анкету подать нельзя.");
       return;
     }
 
@@ -147,7 +176,7 @@ export default function ApplyPage() {
 
     if (error) {
       setStatus("error");
-      setErrorMessage(error.message);
+      setErrorMessage(/phone_not_verified/i.test(error.message) ? "Сначала подтвердите номер в Telegram: без него анкету подать нельзя." : error.message);
     } else {
       await apiPost("/api/consent/record", { place: "apply" });
       try {
@@ -263,9 +292,23 @@ export default function ApplyPage() {
             </span>
           </label>
 
+          {phoneOk === false && (
+            <div className="rounded-xl p-4 border border-gold bg-gradient-to-r from-sec/30 to-sec2/30 text-center">
+              <p className="text-offwhite font-semibold text-sm mb-1">Подтвердите номер</p>
+              <p className="text-muted text-xs mb-3">Анкету можно подать только с подтверждённым номером. Это быстро: откроется Telegram, нажмите «Поделиться номером».</p>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new Event("vetoks:verify-phone"))}
+                className="bg-gold text-bgPrimary font-semibold px-5 py-2 rounded-full text-sm"
+              >
+                Подтвердить номер в Telegram
+              </button>
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={status === "loading" || !agreed}
+            disabled={status === "loading" || !agreed || phoneOk === false}
             className="bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full hover:bg-goldSoft transition-colors disabled:opacity-50"
           >
             {status === "loading" ? "Отправляем..." : "Отправить анкету"}

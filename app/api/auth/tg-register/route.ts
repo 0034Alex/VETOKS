@@ -1,6 +1,7 @@
 import { autoFollowOfficial } from "@/lib/officialFollow";
 import { recordConsents } from "@/lib/consents";
 import { checkBirthForSignup } from "@/lib/ageServer";
+import { claimReferral } from "@/lib/referral";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -109,6 +110,11 @@ export async function POST(req: NextRequest) {
 
   await autoFollowOfficial(created.user.id, regionId);
   await recordConsents(created.user.id, "register");
+  // Приглашение по ссылке фиксируем сразу при регистрации (не теряется при смене браузера).
+  {
+    const rf = typeof (body as any)?.ref === "string" ? String((body as any).ref).trim() : "";
+    if (rf) await claimReferral(created.user.id, rf, (body as any).ref_kind === "advertiser" ? "advertiser" : "friend").catch(() => null);
+  }
 
   if (loginToken) {
     await supabaseAdmin.from("tg_login_tokens").update({ used: true }).eq("token", loginToken);

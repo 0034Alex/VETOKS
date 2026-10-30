@@ -14,14 +14,19 @@ export default function AdminReferralsPanel() {
     const r = await apiPost("/api/admin/referrals", { action: "get", countryId: getCrmCountry() });
     setD(r);
     if (r?.settings) {
+      const st = r.settings;
       setV({
-        referral_enabled: r.settings.enabled ? "true" : "false",
-        referral_reward_referrer: String(r.settings.rewardReferrer),
-        referral_reward_invited: String(r.settings.rewardInvited),
-        referral_daily_limit: String(r.settings.dailyLimit),
-        referral_max_rewarded: String(r.settings.maxRewarded),
-        referral_percent: String(r.settings.percent),
-        referral_percent_days: String(r.settings.percentDays),
+        referral_enabled: st.enabled ? "true" : "false",
+        referral_rewards_on: st.rewardsOn ? "true" : "false",
+        referral_reward_referrer: String(st.raw.rewardReferrer),
+        referral_reward_invited: String(st.raw.rewardInvited),
+        referral_max_on: st.maxOn ? "true" : "false",
+        referral_max_rewarded: String(st.raw.maxRewarded),
+        referral_percent_on: st.percentOn ? "true" : "false",
+        referral_percent: String(st.raw.percent),
+        referral_percent_days: String(st.percentDays),
+        adv_referral_on: st.advOn ? "true" : "false",
+        adv_referral_percent: String(st.advPercent),
       });
     }
   }
@@ -41,6 +46,13 @@ export default function AdminReferralsPanel() {
   }
 
   if (!d?.ok) return <p className="text-muted">Загрузка...</p>;
+
+  const Toggle = ({ k, label }: { k: string; label: string }) => (
+    <label className="flex items-center gap-2 text-offwhite text-sm mb-3">
+      <input type="checkbox" checked={v[k] === "true"} onChange={(e) => setV((p) => ({ ...p, [k]: e.target.checked ? "true" : "false" }))} />
+      {label}
+    </label>
+  );
 
   const Field = ({ k, label, hint }: { k: string; label: string; hint?: string }) => (
     <label className="block mb-3">
@@ -63,12 +75,26 @@ export default function AdminReferralsPanel() {
           <input type="checkbox" checked={v.referral_enabled === "true"} onChange={(e) => setV((p) => ({ ...p, referral_enabled: e.target.checked ? "true" : "false" }))} />
           Приглашения включены
         </label>
-        <Field k="referral_reward_referrer" label={`Награда пригласившему, ${crmCur}`} hint="0 — без награды. Начисляется, когда друг подтвердил номер." />
-        <Field k="referral_reward_invited" label={`Бонус приглашённому, ${crmCur}`} hint="0 — без бонуса. Начисляется при подтверждении номера." />
-        <Field k="referral_percent" label="Процент от покупок друга, %" hint="0 — выключено. Пригласивший получает этот процент от каждой траты друга. Платит платформа, друг ничего не теряет." />
-        <Field k="referral_percent_days" label="Сколько дней после подтверждения номера друга" hint="Например 30. Потом процент перестаёт начисляться." />
-        <Field k="referral_daily_limit" label="Новых приглашений в сутки на человека" hint="Защита от накрутки." />
-        <Field k="referral_max_rewarded" label="Максимум оплачиваемых приглашений на человека" hint="После лимита приглашения считаются, но награда не платится." />
+        <p className="text-muted text-[11px] mb-4">Ссылки и учёт работают всегда, пока это включено. Лимита приглашений в сутки нет. Монеты платятся только после подтверждения номера в Telegram.</p>
+
+        <div className="border border-muted/60 rounded-xl p-3 mb-3">
+          <Toggle k="referral_rewards_on" label="Награды монетами (пригласившему и другу)" />
+          <Field k="referral_reward_referrer" label={`Награда пригласившему, ${crmCur}`} hint="Начисляется, когда друг подтвердил номер." />
+          <Field k="referral_reward_invited" label={`Бонус приглашённому, ${crmCur}`} hint="Начисляется при подтверждении номера." />
+          <Toggle k="referral_max_on" label="Ограничить число оплачиваемых приглашений" />
+          <Field k="referral_max_rewarded" label="Максимум оплачиваемых приглашений на человека" hint="Сверх этого числа приглашения считаются, но монеты не платятся. Если выключено, ограничения нет." />
+        </div>
+
+        <div className="border border-muted/60 rounded-xl p-3 mb-3">
+          <Toggle k="referral_percent_on" label="Процент от покупок друга" />
+          <Field k="referral_percent" label="Процент, %" hint="Пригласивший получает этот процент от трат друга. Платит платформа, друг ничего не теряет." />
+          <Field k="referral_percent_days" label="Сколько дней после подтверждения номера друга" hint="Например 30. Потом процент перестаёт начисляться." />
+        </div>
+
+        <div className="border border-muted/60 rounded-xl p-3 mb-3">
+          <Toggle k="adv_referral_on" label="Бонус за привёденного рекламодателя" />
+          <Field k="adv_referral_percent" label="Процент от первой оплаты рекламы, %" hint="Платится один раз, с первой оплаты рекламодателя, участнице или амбассадору, которая его привела. Повторные оплаты и докупки ничего не дают. Условия одинаковы для всех." />
+        </div>
         <button onClick={save} className="w-full bg-gold text-bgPrimary font-semibold py-2.5 rounded-full text-sm">
           {saved ? "Сохранено ✓" : "Сохранить"}
         </button>

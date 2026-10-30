@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { rateLimit } from "@/lib/rateLimit";
 import { countryOfUser } from "@/lib/countryServer";
+import { attachAdvertiserReferrer } from "@/lib/referral";
 
 export const dynamic = "force-dynamic";
 
@@ -22,14 +23,20 @@ export async function POST(req: Request) {
 
   const { data: u } = await supabaseAdmin.from("users").select("region_id").eq("id", uid).maybeSingle();
   const regionId = b.regionId ? String(b.regionId) : (u as any)?.region_id ?? null;
-  const { error } = await supabaseAdmin.from("sponsors").insert({
-    country_id: await countryOfUser(uid),
-    name,
-    status: "lead",
-    region_id: regionId,
-    contact_info: { phone, email, message },
-    user_id: uid,
-  });
+  const { data: created, error } = await supabaseAdmin
+    .from("sponsors")
+    .insert({
+      country_id: await countryOfUser(uid),
+      name,
+      status: "lead",
+      region_id: regionId,
+      contact_info: { phone, email, message },
+      user_id: uid,
+    })
+    .select("id")
+    .maybeSingle();
   if (error) return bad("failed", 500);
+  // Пришёл по ссылке «для рекламодателя»: записываем, кто его привёл, и процент из CRM.
+  if (created?.id) await attachAdvertiserReferrer(created.id as string, uid);
   return NextResponse.json({ ok: true });
 }

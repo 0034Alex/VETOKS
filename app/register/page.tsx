@@ -112,6 +112,17 @@ function RegisterForm() {
     return "";
   }
 
+  // Код приглашения из ссылки: отправляем вместе с регистрацией, чтобы он не потерялся при смене браузера/окна.
+  function refInfo(): { ref?: string; ref_kind?: string } {
+    try {
+      const ref = localStorage.getItem("vt_ref") || "";
+      if (!ref) return {};
+      return { ref, ref_kind: localStorage.getItem("vt_ref_kind") === "advertiser" ? "advertiser" : "friend" };
+    } catch {
+      return {};
+    }
+  }
+
   async function handleTelegramSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrorMessage("");
@@ -126,6 +137,7 @@ function RegisterForm() {
       regionId,
       birthDate: birth,
       agreed,
+      ...refInfo(),
     });
     if (r.status !== "ok" || !(await openSession(r.token_hash))) {
       setStatus("error");
@@ -157,6 +169,7 @@ function RegisterForm() {
       region_id: regionId,
       birth_date: birth,
       turnstile: captcha,
+      ...refInfo(),
     });
     // Токен капчи одноразовый: после любой попытки просим новый.
     setCaptcha("");

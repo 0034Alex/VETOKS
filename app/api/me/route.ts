@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   const { data } = await supabaseAdmin
     .from("users")
     .select(
-      "id, first_name, phone, phone_verified, email, region_id, referral_code, role, is_banned, permissions, staff_countries, region_pending, telegram_id, region_changed_at, photo_url, bio, birth_date, age_category, is_official, last_login_at, regions(name)"
+      "id, first_name, phone, phone_verified, email, region_id, referral_code, role, is_banned, permissions, staff_countries, region_pending, telegram_id, region_changed_at, photo_url, bio, birth_date, age_category, is_official, is_advertiser, last_login_at, regions(name)"
     )
     .eq("id", uid)
     .maybeSingle();

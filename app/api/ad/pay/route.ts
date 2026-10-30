@@ -5,6 +5,7 @@ import { rateLimit } from "@/lib/rateLimit";
 import { countryOfUser } from "@/lib/countryServer";
 import { isSeatCat, slotFree } from "@/lib/adServer";
 import { publishAd } from "@/lib/adPublish";
+import { advertiserReferralBonus, attachAdvertiserReferrer } from "@/lib/referral";
 
 export const dynamic = "force-dynamic";
 
@@ -87,11 +88,14 @@ export async function POST(req: Request) {
     await supabaseAdmin.from("sponsors").update({ status: "approved" }).eq("id", sponsorId);
   }
   if (sponsorId) {
+    await attachAdvertiserReferrer(sponsorId, uid);
     await supabaseAdmin.from("sponsor_payments").insert({ sponsor_id: sponsorId, amount: price, note: `Реклама в приложении: ${slot.title}` });
     const { data: all } = await supabaseAdmin.from("sponsor_payments").select("amount").eq("sponsor_id", sponsorId);
     const total = (all ?? []).reduce((t: number, p: any) => t + Number(p.amount), 0);
     await supabaseAdmin.from("sponsors").update({ amount: total }).eq("id", sponsorId);
   }
+  // Привела участница: бонус один раз, с первой оплаты (процент и выключатель в CRM «Рефералы»).
+  await advertiserReferralBonus(uid, price, "ad_pay");
   await notify(uid, `✅ Оплата получена. Ваше рекламное место «${slot.title}» закреплено. Материалы можно загрузить в «Кабинете партнёра».`, "/partner-cabinet", "other");
   // Реклама встаёт на место автоматически (жюри и заявки без картинки — вручную).
   let pub: { ok: boolean; manual?: boolean; until?: string } = { ok: false };

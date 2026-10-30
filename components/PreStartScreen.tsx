@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import { applyOpen, useBetween, useRecruit } from "@/lib/useShow";
+import { supabase } from "@/lib/supabaseClient";
+import { apiPost } from "@/lib/authClient";
+import { getCurrentUser } from "@/lib/currentUser";
 
 const p2 = (n: number) => String(n).padStart(2, "0");
 
@@ -15,6 +18,29 @@ export default function PreStartScreen() {
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
+  }, []);
+  // Кнопки до старта: рекламный кабинет (только рекламодателям) и «Мои приглашения» (одобренным участницам).
+  const [isAdv, setIsAdv] = useState(false);
+  const [isPart, setIsPart] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const u = await getCurrentUser();
+        if (!u) return;
+        let adv = !!u.is_advertiser;
+        if (!adv) {
+          const { data: sp } = await supabase.from("sponsors").select("id").eq("user_id", u.id).eq("status", "approved").maybeSingle();
+          adv = !!sp;
+        }
+        if (!adv) {
+          const mine = await apiPost("/api/ad/mine");
+          adv = !!mine?.ok && (mine.items ?? []).length > 0;
+        }
+        setIsAdv(adv);
+        const { data: pp } = await supabase.from("participants").select("id").eq("user_id", u.id).limit(1).maybeSingle();
+        setIsPart(!!pp);
+      } catch {}
+    })();
   }, []);
   const to = b?.prestart ?? 0;
   const s = Math.max(0, Math.floor((to - now) / 1000));
@@ -47,6 +73,16 @@ export default function PreStartScreen() {
       {r && applyOpen(r.banner) && (
         <Link href="/apply" className="bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full">
           Подать анкету
+        </Link>
+      )}
+      {isAdv && (
+        <Link href="/ad-space" className="mt-3 border border-gold text-gold font-semibold px-8 py-3 rounded-full">
+          Рекламный кабинет
+        </Link>
+      )}
+      {isPart && (
+        <Link href="/invites" className="mt-3 border border-gold text-gold font-semibold px-8 py-3 rounded-full">
+          Мои приглашения
         </Link>
       )}
     </main>

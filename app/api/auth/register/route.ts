@@ -6,6 +6,7 @@ import { recordActivity } from "@/lib/security";
 import { autoFollowOfficial } from "@/lib/officialFollow";
 import { recordConsents } from "@/lib/consents";
 import { checkBirthForSignup } from "@/lib/ageServer";
+import { claimReferral } from "@/lib/referral";
 
 export const dynamic = "force-dynamic";
 
@@ -68,5 +69,9 @@ export async function POST(req: NextRequest) {
   await autoFollowOfficial(created.user.id, regionId);
   await recordConsents(created.user.id, "register");
   await recordActivity(req, created.user.id, "register");
+  // Приглашение по ссылке фиксируем сразу при регистрации (не теряется при смене браузера).
+  if (typeof b.ref === "string" && b.ref.trim()) {
+    await claimReferral(created.user.id, b.ref, b.ref_kind === "advertiser" ? "advertiser" : "friend").catch(() => null);
+  }
   return NextResponse.json({ ok: true });
 }

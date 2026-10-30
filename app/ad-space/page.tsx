@@ -87,6 +87,24 @@ export default function AdSpacePage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Slot | null>(null);
   const [allowed, setAllowed] = useState(false);
+  const [leadName, setLeadName] = useState("");
+  const [leadContact, setLeadContact] = useState("");
+  const [leadMsg, setLeadMsg] = useState("");
+  const [leadErr, setLeadErr] = useState("");
+  const [leadBusy, setLeadBusy] = useState(false);
+  const [leadSent, setLeadSent] = useState(false);
+
+  async function sendLead() {
+    if (leadBusy) return;
+    if (!leadName.trim() || !leadContact.trim()) return setLeadErr("Укажите название и контакт.");
+    setLeadErr("");
+    setLeadBusy(true);
+    const isMail = leadContact.includes("@");
+    const r = await apiPost("/api/partner/apply", { name: leadName, phone: isMail ? "" : leadContact, email: isMail ? leadContact : "", message: leadMsg });
+    setLeadBusy(false);
+    if (r?.ok) setLeadSent(true);
+    else setLeadErr("Не получилось отправить. Попробуйте позже.");
+  }
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -134,8 +152,21 @@ export default function AdSpacePage() {
         return;
       }
 
-      // Кабинет открыт любому вошедшему: выбираешь места, отправляешь заявку, после одобрения оплачиваешь.
-      setAllowed(true);
+      // Места и цены видят только рекламодатели: пришедшие по ссылке участницы, одобренные партнёры и те, у кого уже есть заявка.
+      let ok = !!u.is_advertiser;
+      if (!ok) {
+        const { data: sp0 } = await supabase.from("sponsors").select("id").eq("user_id", u.id).eq("status", "approved").maybeSingle();
+        ok = !!sp0;
+      }
+      if (!ok) {
+        const mine0 = await apiPost("/api/ad/mine");
+        ok = !!mine0?.ok && (mine0.items ?? []).length > 0;
+      }
+      setAllowed(ok);
+      if (!ok) {
+        setLoading(false);
+        return;
+      }
       loadMine();
       loadReserved();
 
@@ -268,11 +299,22 @@ export default function AdSpacePage() {
         <PageHeader />
         <div className="px-6 py-12 flex flex-col items-center justify-center text-center min-h-[60vh]">
         <h1 className="text-2xl font-semibold text-gold mb-4">Рекламный кабинет</h1>
-        <p className="text-muted max-w-sm">
-          Этот раздел доступен только одобренным партнёрам VETOKS. Если вы
-          хотите разместить рекламу — оставьте заявку на странице «Стать
-          партнёром», и мы откроем вам доступ.
+        <p className="text-muted max-w-sm mb-5">
+          Реклама в VETOKS доступна по приглашению. Если хотите разместить рекламу, оставьте заявку, и мы откроем вам доступ.
         </p>
+        {leadSent ? (
+          <p className="text-gold text-sm">Заявка отправлена. Мы свяжемся с вами.</p>
+        ) : (
+          <div className="w-full max-w-sm flex flex-col gap-2 text-left">
+            <input value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Название бизнеса или имя" maxLength={120} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-base text-offwhite" />
+            <input value={leadContact} onChange={(e) => setLeadContact(e.target.value)} placeholder="Телефон или почта" maxLength={120} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-base text-offwhite" />
+            <textarea value={leadMsg} onChange={(e) => setLeadMsg(e.target.value)} placeholder="Что хотите рекламировать" maxLength={1500} rows={3} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-base text-offwhite" />
+            {leadErr && <p className="text-danger text-xs">{leadErr}</p>}
+            <button onClick={sendLead} disabled={leadBusy} className="bg-gold text-bgPrimary font-semibold py-2.5 rounded-full text-sm disabled:opacity-40">
+              {leadBusy ? "..." : "Отправить заявку"}
+            </button>
+          </div>
+        )}
         </div>
         <BottomNav />
       </main>

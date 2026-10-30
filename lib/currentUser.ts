@@ -21,6 +21,7 @@ export type CurrentUser = {
   birth_date?: string | null;
   age_category?: string | null;
   is_official?: boolean | null;
+  is_advertiser?: boolean | null;
   regions: { name: string } | null;
 };
 

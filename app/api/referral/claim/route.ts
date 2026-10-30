@@ -14,6 +14,6 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const code = String(body.code ?? "");
   if (!code.trim()) return bad("no_code");
-  const r = await claimReferral(uid, code);
+  const r = await claimReferral(uid, code, body.kind === "advertiser" ? "advertiser" : "friend");
   return NextResponse.json({ ok: r.ok, error: r.error, referrerName: r.referrerName ?? null });
 }

@@ -3,7 +3,19 @@ import { notify } from "@/lib/shopServer";
 import { countryOfUser, sameCountry } from "@/lib/countryServer";
 import { familyRootId } from "@/lib/familyServer";
 
-export const REF_KEYS = ["referral_enabled", "referral_reward_referrer", "referral_reward_invited", "referral_daily_limit", "referral_max_rewarded", "referral_percent", "referral_percent_days"];
+export const REF_KEYS = [
+  "referral_enabled",
+  "referral_rewards_on",
+  "referral_reward_referrer",
+  "referral_reward_invited",
+  "referral_max_on",
+  "referral_max_rewarded",
+  "referral_percent_on",
+  "referral_percent",
+  "referral_percent_days",
+  "adv_referral_on",
+  "adv_referral_percent",
+];
 
 // Награды и лимиты у каждой страны свои (ключ "<ключ>:<id страны>"), иначе общие.
 export async function getRefSettings(countryId?: string | null) {
@@ -22,14 +34,29 @@ export async function getRefSettings(countryId?: string | null) {
     const n = Number(m[k]);
     return m[k] !== undefined && m[k] !== "" && isFinite(n) ? n : d;
   };
+  // Награды монетами, потолок наград и процент с покупок включаются отдельными переключателями (по умолчанию выключены).
+  const rewardsOn = m.referral_rewards_on === "true";
+  const maxOn = m.referral_max_on === "true";
+  const percentOn = m.referral_percent_on === "true";
   return {
     enabled: m.referral_enabled !== "false",
-    rewardReferrer: num("referral_reward_referrer", 0),
-    rewardInvited: num("referral_reward_invited", 0),
-    dailyLimit: num("referral_daily_limit", 20),
-    maxRewarded: num("referral_max_rewarded", 50),
-    percent: Math.min(100, Math.max(0, num("referral_percent", 0))),
+    rewardsOn,
+    rewardReferrer: rewardsOn ? num("referral_reward_referrer", 0) : 0,
+    rewardInvited: rewardsOn ? num("referral_reward_invited", 0) : 0,
+    maxOn,
+    maxRewarded: maxOn ? num("referral_max_rewarded", 50) : 1000000000,
+    percentOn,
+    percent: percentOn ? Math.min(100, Math.max(0, num("referral_percent", 0))) : 0,
     percentDays: Math.max(1, Math.floor(num("referral_percent_days", 30))),
+    advOn: m.adv_referral_on === "true",
+    advPercent: Math.min(100, Math.max(0, num("adv_referral_percent", 0))),
+    // значения полей как введены в CRM (чтобы при выключенном переключателе они не терялись)
+    raw: {
+      rewardReferrer: num("referral_reward_referrer", 0),
+      rewardInvited: num("referral_reward_invited", 0),
+      maxRewarded: num("referral_max_rewarded", 50),
+      percent: Math.min(100, Math.max(0, num("referral_percent", 0))),
+    },
   };
 }
 
@@ -66,7 +93,8 @@ export async function qualifyReferral(userId: string) {
 // Общая точка для ссылки, Telegram-бота и ручного ввода кода.
 export async function claimReferral(
   uid: string,
-  rawCode: string
+  rawCode: string,
+  kind: "friend" | "advertiser" = "friend"
 ): Promise<{ ok: boolean; error?: string; referrerName?: string | null }> {
   let code = String(rawCode ?? "").trim().slice(0, 40);
   if (!code) return { ok: false, error: "no_code" };
@@ -92,10 +120,14 @@ export async function claimReferral(
   if (a && b && a === b) return { ok: false, error: "self" };
   const s = await getRefSettings(await countryOfUser(uid));
   if (!s.enabled) return { ok: false, error: "disabled" };
-  const { data } = await supabaseAdmin.rpc("vt_claim_referral", { p_user: uid, p_code: code, p_daily: s.dailyLimit });
+  const { data } = await supabaseAdmin.rpc("vt_claim_referral", { p_user: uid, p_code: code, p_daily: 1000000000 });
   const r = data as any;
   if (!r?.ok) return { ok: false, error: r?.error ?? "error" };
 
+  // Пришёл по ссылке «для рекламодателя»: открываем ему рекламный кабинет (метка в профиле).
+  if (kind === "advertiser") {
+    await supabaseAdmin.from("users").update({ is_advertiser: true }).eq("id", uid);
+  }
   const { data: me } = await supabaseAdmin.from("users").select("first_name, phone_verified").eq("id", uid).maybeSingle();
   await notify(
     refId,
@@ -132,5 +164,64 @@ export async function referralCommission(spenderId: string, amount: number, type
     });
   } catch {
     /* бонус не должен ломать покупку */
+  }
+}
+
+// Участница привела рекламодателя: один раз, с первой оплаты, процент из CRM («Рефералы»).
+// Платит платформа в монетах пригласившей. Повторные оплаты этого рекламодателя ничего не дают.
+export async function advertiserReferralBonus(advertiserId: string, amount: number, via: string) {
+  try {
+    if (!(amount > 0)) return;
+    const { data: u } = await supabaseAdmin.from("users").select("referred_by, is_advertiser, adv_bonus_paid_at").eq("id", advertiserId).maybeSingle();
+    if (!u || !(u as any).is_advertiser || !(u as any).referred_by || (u as any).adv_bonus_paid_at) return;
+    const refId = (u as any).referred_by as string;
+    const s = await getRefSettings(await countryOfUser(refId));
+    if (!s.advOn || s.advPercent <= 0) return;
+    // уже заплатили вручную из CRM («Партнёры»): второй раз не платим
+    const { data: paidSp } = await supabaseAdmin.from("sponsors").select("id").eq("user_id", advertiserId).not("referral_paid_at", "is", null).limit(1);
+    if ((paidSp ?? []).length > 0) return;
+    // «один раз»: занимаем отметку раньше, чем платим
+    const { data: claimed } = await supabaseAdmin
+      .from("users")
+      .update({ adv_bonus_paid_at: new Date().toISOString() })
+      .eq("id", advertiserId)
+      .is("adv_bonus_paid_at", null)
+      .select("id");
+    if (!claimed || claimed.length === 0) return;
+    const bonus = Math.round(amount * s.advPercent) / 100;
+    if (bonus <= 0) return;
+    const { error } = await supabaseAdmin.rpc("vt_credit", {
+      p_user: refId,
+      p_amount: bonus,
+      p_type: "advertiser_bonus",
+      p_meta: { advertiser: advertiserId, paid: amount, percent: s.advPercent, via },
+    });
+    if (error) {
+      await supabaseAdmin.from("users").update({ adv_bonus_paid_at: null }).eq("id", advertiserId);
+      return;
+    }
+    await notify(refId, `💰 Привёденный вами рекламодатель оплатил рекламу. Вам начислено ${Math.round(bonus * 100) / 100} монет`, "/history", "other");
+  } catch {
+    /* бонус не должен ломать оплату */
+  }
+}
+
+// Карточка партнёра рекламодателя, пришедшего по ссылке участницы: записываем, кто привёл, и процент из CRM.
+// Уже вписанное вручную не затираем.
+export async function attachAdvertiserReferrer(sponsorId: string, userId: string) {
+  try {
+    const { data: me } = await supabaseAdmin.from("users").select("referred_by, is_advertiser").eq("id", userId).maybeSingle();
+    if (!(me as any)?.is_advertiser || !(me as any)?.referred_by) return;
+    const { data: sp } = await supabaseAdmin.from("sponsors").select("referrer_participant_id").eq("id", sponsorId).maybeSingle();
+    if ((sp as any)?.referrer_participant_id) return;
+    const { data: part } = await supabaseAdmin.from("participants").select("id").eq("user_id", (me as any).referred_by).limit(1).maybeSingle();
+    if (!(part as any)?.id) return;
+    const s = await getRefSettings(await countryOfUser((me as any).referred_by as string));
+    await supabaseAdmin
+      .from("sponsors")
+      .update({ referrer_participant_id: (part as any).id, referral_percent: s.advOn ? s.advPercent : 0 })
+      .eq("id", sponsorId);
+  } catch {
+    /* не мешает заявке или оплате */
   }
 }

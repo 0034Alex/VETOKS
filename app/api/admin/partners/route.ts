@@ -87,7 +87,14 @@ export async function POST(req: Request) {
   if (a === "set_referrer") {
     const { data: cur } = await supabaseAdmin.from("sponsors").select("referral_paid_at").eq("id", id).maybeSingle();
     if (cur?.referral_paid_at) return NextResponse.json({ ok: false, error: "already_paid" }, { status: 400 });
-    const pct = Math.min(100, Math.max(0, Number(body.percent) || 0));
+    let pct = Math.min(100, Math.max(0, Number(body.percent) || 0));
+    if (!(body.percent !== undefined && body.percent !== null && body.percent !== "") && body.participantId) {
+      // процент не вписан: берём общий из CRM «Рефералы» (если включён)
+      const { getRefSettings } = await import("@/lib/referral");
+      const { data: sc } = await supabaseAdmin.from("sponsors").select("country_id").eq("id", id).maybeSingle();
+      const gs = await getRefSettings(((sc as any)?.country_id as string | null) ?? null);
+      pct = gs.advOn ? gs.advPercent : 0;
+    }
     await supabaseAdmin
       .from("sponsors")
       .update({ referrer_participant_id: body.participantId ? String(body.participantId) : null, referral_percent: pct })
@@ -111,9 +118,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "no_referrer" }, { status: 400 });
     }
     if (sp.referral_paid_at) return NextResponse.json({ ok: false, error: "already_paid" }, { status: 400 });
-    const total = Number(sp.amount) || 0;
-    const { ambassadorBonus } = await import("@/lib/ambassador");
-    const effPct = Math.min(100, Number(sp.referral_percent) + (await ambassadorBonus(String(sp.referrer_participant_id))));
+    // Бонус считается только с ПЕРВОГО платежа этого партнёра; докупки и повторные оплаты пригласившей ничего не дают.
+    const { data: firstPay } = await supabaseAdmin
+      .from("sponsor_payments")
+      .select("amount")
+      .eq("sponsor_id", id)
+      .order("paid_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const total = Number((firstPay as any)?.amount) || 0;
+    // Если этот рекламодатель уже принёс бонус автоматически (оплата с баланса), второй раз не платим.
+    const { data: spUser } = await supabaseAdmin.from("sponsors").select("user_id").eq("id", id).maybeSingle();
+    if ((spUser as any)?.user_id) {
+      const { data: au } = await supabaseAdmin.from("users").select("adv_bonus_paid_at").eq("id", (spUser as any).user_id).maybeSingle();
+      if ((au as any)?.adv_bonus_paid_at) return NextResponse.json({ ok: false, error: "already_paid" }, { status: 400 });
+    }
+    const effPct = Math.min(100, Number(sp.referral_percent));
     const bonus = Math.round(((total * effPct) / 100) * 100) / 100;
     if (!(bonus > 0)) return NextResponse.json({ ok: false, error: "no_payments" }, { status: 400 });
 
@@ -126,6 +146,9 @@ export async function POST(req: Request) {
       .select("id");
     if (!claimed || claimed.length === 0) return NextResponse.json({ ok: false, error: "already_paid" }, { status: 400 });
 
+    if ((spUser as any)?.user_id) {
+      await supabaseAdmin.from("users").update({ adv_bonus_paid_at: new Date().toISOString() }).eq("id", (spUser as any).user_id);
+    }
     const { data: part } = await supabaseAdmin
       .from("participants")
       .select("user_id")

@@ -12,6 +12,9 @@ export default function RefLanding() {
   useEffect(() => {
     try {
       localStorage.setItem("vt_ref", String(code));
+      // ссылка «для рекламодателя»: /r/код?a=1
+      if (new URLSearchParams(window.location.search).get("a") === "1") localStorage.setItem("vt_ref_kind", "advertiser");
+      else localStorage.removeItem("vt_ref_kind");
     } catch {}
     (async () => {
       const { data } = await supabase.auth.getSession();

@@ -86,8 +86,15 @@ export default function AdminPartnersPanel() {
     setPQuery("");
   }
 
+  // Бонус пригласившей считается только с первого платежа партнёра.
+  const firstPayAmount = (mine: any[]) => {
+    if (!mine.length) return 0;
+    const first = mine.reduce((a, p) => (new Date(p.paid_at).getTime() < new Date(a.paid_at).getTime() ? p : a), mine[0]);
+    return Number(first.amount) || 0;
+  };
+
   async function payReferrer(s: any, mine: any[]) {
-    const total = mine.reduce((t, p) => t + Number(p.amount), 0);
+    const total = firstPayAmount(mine);
     const bonus = Math.round(((total * Number(s.referral_percent)) / 100) * 100) / 100;
     if (!confirm(`Зачислить ${bonus} ${crmCur} участнице ${refNames[s.referrer_participant_id] ?? ""}? Это делается один раз.`)) return;
     const r = await apiPost("/api/admin/partners", { action: "pay_referrer", id: s.id });
@@ -263,10 +270,10 @@ export default function AdminPartnersPanel() {
                             onClick={() => payReferrer(s, mine)}
                             className="bg-success text-bgPrimary px-4 py-2 rounded-full text-xs font-semibold"
                           >
-                            Зачислить {Math.round((mine.reduce((t, p) => t + Number(p.amount), 0) * Number(s.referral_percent)) ) / 100} {crmCur} участнице (один раз)
+                            Зачислить {Math.round(firstPayAmount(mine) * Number(s.referral_percent)) / 100} {crmCur} участнице (один раз)
                           </button>
                         )}
-                        <p className="text-muted text-[11px]">Нажмите «Зачислить», когда договорились и оплата прошла. Сумма считается от внесённых платежей на момент нажатия, начисляется один раз, без продлений.</p>
+                        <p className="text-muted text-[11px]">Нажмите «Зачислить», когда договорились и оплата прошла. Сумма считается только от первого платежа партнёра, начисляется один раз, докупки и продления ничего не добавляют.</p>
                       </div>
                     )}
                     {msg && <p className="text-gold text-xs mt-1">{msg}</p>}

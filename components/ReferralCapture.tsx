@@ -18,6 +18,10 @@ export default function ReferralCapture() {
       const fromTg = sp && sp.startsWith("ref_") ? sp.slice(4) : null;
       const code = q || fromTg;
       if (code) localStorage.setItem("vt_ref", code);
+      const a = new URLSearchParams(window.location.search).get("a") === "1" || (sp ? sp.startsWith("adv_") : false);
+      const fromAdv = sp && sp.startsWith("adv_") ? sp.slice(4) : null;
+      if (fromAdv) localStorage.setItem("vt_ref", fromAdv);
+      if (a) localStorage.setItem("vt_ref_kind", "advertiser");
     } catch {}
 
     let stop = false;
@@ -37,19 +41,24 @@ export default function ReferralCapture() {
       busy = true;
       let r: any = null;
       try {
-        r = await apiPost("/api/referral/claim", { code });
+        let kind = "friend";
+        try {
+          kind = localStorage.getItem("vt_ref_kind") === "advertiser" ? "advertiser" : "friend";
+        } catch {}
+        r = await apiPost("/api/referral/claim", { code, kind });
       } catch {}
       busy = false;
       if (stop) return;
       if (r?.ok) {
         try {
           localStorage.removeItem("vt_ref");
+          localStorage.removeItem("vt_ref_kind");
         } catch {}
-        setToast(r.referrerName ? `Вы пришли по приглашению: ${r.referrerName} 🎉` : "Приглашение принято 🎉");
-        setTimeout(() => setToast(""), 5000);
+        
       } else if (r && FINAL.includes(r.error)) {
         try {
           localStorage.removeItem("vt_ref");
+          localStorage.removeItem("vt_ref_kind");
         } catch {}
       } else if (tries < 5) {
         // профиль мог ещё не создаться (регистрация по почте) или сбой сети — пробуем ещё
