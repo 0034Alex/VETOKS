@@ -75,7 +75,8 @@ export async function pay(
   let finalShare = share;
   if (participantId && share > 0) {
     const { ambassadorBonus } = await import("@/lib/ambassador");
-    finalShare = Math.min(100, share + (await ambassadorBonus(participantId)));
+    const { activityBonus } = await import("@/lib/activity");
+    finalShare = Math.min(100, share + (await ambassadorBonus(participantId)) + (await activityBonus(participantId)));
   }
   // Доля участнице считается в Коронах: курс «монета → Корона» из CRM.
   let rate = 1;

@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, isStaff, CurrentUser } from "@/lib/currentUser";
 import AdminPricesPanel from "@/components/AdminPricesPanel";
+import AdminPayoutsPanel from "@/components/AdminPayoutsPanel";
 import AdminCoinsPanel from "@/components/AdminCoinsPanel";
 import AdminShowsPanel from "@/components/AdminShowsPanel";
 import AdminLaunchesPanel from "@/components/AdminLaunchesPanel";
@@ -92,6 +93,7 @@ type Tab =
   | "black-marks"
   | "countries"
   | "app-prices"
+  | "payouts"
   | "coins"
   | "shows"
   | "launches"
@@ -141,6 +143,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "tasks", label: "Задания" },
   { key: "black-marks", label: "Чёрная метка" },
   { key: "countries", label: "Страны и регионы" },
+  { key: "payouts", label: "Цены и выплаты" },
   { key: "app-prices", label: "Цены (в долларах)" },
   { key: "coins", label: "Монеты и Короны" },
   { key: "shows", label: "Шаблоны шоу" },
@@ -183,6 +186,7 @@ const SEARCH_WORDS: Partial<Record<Tab, string>> = {
   documents: "договор договоры оферта правила политика конфиденциальность тексты",
   posters: "афиши афіша постер",
   media: "материалы монтаж логотип рамки наклейки скачать",
+  payouts: "цены подарков монеты амбассадор процент выплаты активность доля участницы курс",
   "app-prices": "курс доллара гривна цены подарки голоса карточки валюта стоимость",
   coins: "монеты короны комиссия вывод курс баланс",
   shows: "шоу мисс таланты цвета тема баннер старт набор анкет предпросмотр",
@@ -268,7 +272,7 @@ const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: 
   { key: "contest", ic: "👑", label: "Шоу страны", desc: "Запуск, страницы приложения, рейтинг, подарки, задания", tabs: ["builder", "shows", "launches", "awards", "stages", "rating-admin", "goal", "tasks", "cards"] },
   { key: "content", ic: "🎬", label: "Контент и связь", desc: "Материалы, афиши, рассылки, каналы", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "broadcast", "mediafeed", "channels", "banners"] },
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Порядок и безопасность", tabs: ["content-mod", "reports", "story-reports", "clan"] },
-  { key: "money", ic: "💰", label: "Деньги", desc: "Цены и рефералы", tabs: ["coins", "app-prices", "referrals"] },
+  { key: "money", ic: "💰", label: "Деньги", desc: "Цены, выплаты, рефералы", tabs: ["payouts", "coins", "app-prices", "referrals"] },
   { key: "ads", ic: "📣", label: "Реклама и партнёры", desc: "Всё, что приносит доход от партнёров", tabs: ["partners", "partner-logos", "ad-space", "ad-prices", "ad-stats", "magazine-ads", "branding"] },
   { key: "set", ic: "⚙️", label: "Общее", desc: "Страны, боты, языки, доступы, безопасность", tabs: ["countries", "translations", "social", "tgbots", "documents", "staff", "action-log", "security"] },
 ];
@@ -306,6 +310,7 @@ const TAB_DESC: Partial<Record<Tab, string>> = {
   shows: "Создать шоу, вид и проверка",
   awards: "Победители для зала славы",
   "story-reports": "Жалобы на истории",
+  payouts: "Подарки в монетах, амбассадоры, активность",
   "app-prices": "Цены в приложении",
   referrals: "Рефералы и комиссии",
   partners: "Партнёры и связь",
@@ -636,6 +641,7 @@ export default function AdminPage() {
         {tab === "action-log" && <AdminActionLogPanel />}
         {tab === "security" && <AdminSecurityPanel />}
         {tab === "countries" && <CountriesTab />}
+        {tab === "payouts" && <AdminPayoutsPanel />}
         {tab === "app-prices" && <AdminPricesPanel />}
         {tab === "coins" && <AdminCoinsPanel />}
         {tab === "shows" && <AdminShowsPanel />}
