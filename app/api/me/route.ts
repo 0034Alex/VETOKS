@@ -14,13 +14,14 @@ export async function POST(req: Request) {
   const r = await rateHit(`me:${uid}`, 60, 300);
   if (!r.ok) return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
 
-  const { data } = await supabaseAdmin
-    .from("users")
-    .select(
-      "id, first_name, phone, phone_verified, email, region_id, referral_code, role, is_banned, permissions, staff_countries, region_pending, telegram_id, region_changed_at, photo_url, bio, birth_date, age_category, is_official, is_advertiser, last_login_at, regions(name)"
-    )
-    .eq("id", uid)
-    .maybeSingle();
+  const BASE =
+    "id, first_name, phone, phone_verified, email, region_id, referral_code, role, is_banned, permissions, staff_countries, region_pending, telegram_id, region_changed_at, photo_url, bio, birth_date, age_category, is_official, last_login_at, regions(name)";
+  let { data } = await supabaseAdmin.from("users").select(BASE + ", is_advertiser").eq("id", uid).maybeSingle();
+  if (!data) {
+    // колонки is_advertiser ещё нет в базе (SQL не выполнен) — работаем без неё, чтобы вход не ломался
+    const r2 = await supabaseAdmin.from("users").select(BASE).eq("id", uid).maybeSingle();
+    data = r2.data as any;
+  }
   if (!data) return NextResponse.json({ ok: false, error: "no_user" }, { status: 404 });
 
   // Отметка последнего захода — не чаще раза в 10 минут.
