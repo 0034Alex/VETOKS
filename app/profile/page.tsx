@@ -588,6 +588,10 @@ export default function ProfilePage() {
           <Row href="/support" label={t("profile.support")} />
         </div>
 
+        <a href="/my-orders" className="block border border-gold/60 rounded-xl p-3.5 mt-5 text-center">
+          <span className="text-gold font-semibold text-sm">🛍 Мои заказы у партнёров</span>
+        </a>
+
         {!onR("r_partner") ? null : isPartner ? (
           <a href="/partner-cabinet" className="block bg-gradient-to-r from-sec to-sec2 rounded-xl p-4 mt-5 text-center">
             <span className="text-white font-semibold text-sm">{t("profile.partnerCabinet")}</span>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { apiPost } from "@/lib/authClient";
 import { REPORT_REASONS } from "@/components/ReportSheet";
+import { money, splitSizes } from "@/lib/businessShared";
 
 export type BizPublic = {
   id?: string;
@@ -33,15 +34,73 @@ export function BlueCheck({ size = 18 }: { size?: number }) {
   );
 }
 
+export type BizProduct = { id: string; sku: string; name: string; description: string; price: number; photo_url: string | null; sizes: string; stock: number | null };
+export type BizOffer = { id: string; title: string; description: string; promo_code: string; discount_percent: number | null; valid_until: string | null };
+
+const ORDER_ERR: Record<string, string> = {
+  need_phone: "Укажите телефон, чтобы партнёр мог связаться.",
+  need_size: "Выберите размер.",
+  no_stock: "Столько нет в наличии.",
+  promo_invalid: "Промокод не подходит или закончился.",
+  own_business: "Нельзя заказывать у самого себя.",
+  no_product: "Товар недоступен.",
+};
+
 // Страница партнёра: так её видят зрители в приложении. Один и тот же вид для зрителей, владельца и предпросмотра в CRM.
-export default function BusinessPageView({ p, preview = false }: { p: BizPublic; preview?: boolean }) {
+export default function BusinessPageView({ p, preview = false, products = [], offers = [], cur = "₴", canOrder = false }: { p: BizPublic; preview?: boolean; products?: BizProduct[]; offers?: BizOffer[]; cur?: string; canOrder?: boolean }) {
   const [contact, setContact] = useState(false);
+  const [sel, setSel] = useState<BizProduct | null>(null);
+  const [book, setBook] = useState(false);
+  const [o, setO] = useState({ size: "", qty: 1, promo: "", phone: "", note: "", whenText: "", service: "" });
+  const [oBusy, setOBusy] = useState(false);
+  const [oErr, setOErr] = useState("");
+  const [oDone, setODone] = useState<{ id: string; total: number } | null>(null);
   const [report, setReport] = useState<"" | "pick" | "done">("");
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const quick = p.quick_action === "book" ? "📅 Забронировать" : "🛒 Купить";
+
+  function openOrder(pr: BizProduct | null, asBook = false) {
+    setO({ size: "", qty: 1, promo: "", phone: "", note: "", whenText: "", service: "" });
+    setOErr("");
+    setODone(null);
+    setSel(pr);
+    setBook(asBook);
+  }
+
+  async function sendOrder() {
+    setOBusy(true);
+    setOErr("");
+    const r = await apiPost("/api/business/orders", {
+      action: "create",
+      businessId: p.id,
+      kind: book ? "book" : "buy",
+      productId: sel?.id,
+      size: o.size,
+      qty: o.qty,
+      promo: o.promo,
+      phone: o.phone,
+      note: o.note,
+      whenText: o.whenText,
+      service: o.service,
+    });
+    setOBusy(false);
+    if (r?.ok) setODone({ id: r.id, total: r.total });
+    else setOErr(ORDER_ERR[r?.error] ?? "Не получилось оформить. Попробуйте ещё раз.");
+  }
+
+  function quickAction() {
+    if (preview || !canOrder) return setContact(true);
+    if (p.quick_action === "book") return openOrder(null, true);
+    if (products.length === 1) return openOrder(products[0]);
+    if (products.length > 1) {
+      document.getElementById("biz-catalog")?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+    setContact(true);
+  }
 
   async function sendReport() {
     if (!reason) return;
@@ -87,7 +146,7 @@ export default function BusinessPageView({ p, preview = false }: { p: BizPublic;
         {p.category && <p className="text-muted text-sm mt-1">{p.category}</p>}
 
         <div className="flex gap-2 mt-4">
-          <button onClick={() => setContact(true)} className="flex-1 bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm">
+          <button onClick={quickAction} className="flex-1 bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm">
             {quick}
           </button>
           {p.phone && (
@@ -115,9 +174,62 @@ export default function BusinessPageView({ p, preview = false }: { p: BizPublic;
           {!p.hours && !p.address && !p.phone && !p.email && !p.site_url && <p className="text-muted">Контакты пока не заполнены.</p>}
         </div>
 
-        <div className="bg-bgSurface border border-muted/60 rounded-xl p-4 mt-3">
-          <p className="text-offwhite text-sm font-semibold">Товары и предложения для зрителей</p>
-          <p className="text-muted text-xs mt-1">Каталог, заказы и спецпредложения появятся здесь в следующем обновлении.</p>
+        {offers.length > 0 && (
+          <div className="mt-4 flex flex-col gap-2">
+            <p className="text-offwhite text-sm font-semibold">Для зрителей VETOKS</p>
+            {offers.map((x) => (
+              <div key={x.id} className="border border-gold/50 rounded-xl p-3 bg-gold/5">
+                <p className="text-offwhite text-sm font-semibold">{x.title}{x.discount_percent ? ` · −${x.discount_percent}%` : ""}</p>
+                {x.description && <p className="text-muted text-xs mt-0.5">{x.description}</p>}
+                <div className="flex items-center justify-between gap-2 mt-2">
+                  <span className="text-gold text-sm font-semibold tracking-wide">{x.promo_code}</span>
+                  {x.promo_code && (
+                    <button
+                      onClick={() => {
+                        try {
+                          navigator.clipboard?.writeText(x.promo_code);
+                        } catch {}
+                      }}
+                      className="text-xs border border-gold text-gold rounded-full px-3 py-1"
+                    >
+                      Скопировать
+                    </button>
+                  )}
+                </div>
+                {x.valid_until && <p className="text-muted text-[11px] mt-1">до {new Date(x.valid_until).toLocaleDateString("ru-RU")}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div id="biz-catalog" className="mt-4">
+          <p className="text-offwhite text-sm font-semibold mb-2">{p.quick_action === "book" ? "Услуги" : "Товары"}</p>
+          {products.length === 0 ? (
+            <div className="bg-bgSurface border border-muted/60 rounded-xl p-4">
+              <p className="text-muted text-xs">Каталог пока пуст.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {products.map((pr) => (
+                <button key={pr.id} onClick={() => (preview || !canOrder ? undefined : openOrder(pr))} className="text-left bg-bgSurface border border-muted rounded-xl overflow-hidden flex flex-col min-w-0">
+                  <div className="aspect-square bg-bgPrimary flex items-center justify-center text-gold text-2xl font-bold overflow-hidden">
+                    {pr.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={pr.photo_url} alt={pr.name} className="w-full h-full object-cover" />
+                    ) : (
+                      (pr.name || "?").slice(0, 2).toUpperCase()
+                    )}
+                  </div>
+                  <div className="p-2.5 flex flex-col gap-0.5">
+                    <p className="text-offwhite text-sm font-semibold break-words">{pr.name}</p>
+                    {pr.sku && <p className="text-muted text-[11px]">ID {pr.sku}</p>}
+                    <p className="text-gold text-sm font-semibold">{money(pr.price, cur)}</p>
+                    {pr.stock === 0 && <p className="text-danger text-[11px]">Нет в наличии</p>}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -125,11 +237,76 @@ export default function BusinessPageView({ p, preview = false }: { p: BizPublic;
         <div className="fixed inset-0 z-[120] bg-black/65 flex items-end justify-center" onClick={() => setContact(false)}>
           <div className="w-full max-w-md bg-bgSurface rounded-t-3xl p-5" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }} onClick={(e) => e.stopPropagation()}>
             <p className="text-offwhite font-semibold mb-1">{quick.replace(/^\S+\s/, "")}: {p.name}</p>
-            <p className="text-muted text-xs mb-3">Оформление заказа внутри приложения появится в следующем обновлении. Пока свяжитесь с партнёром напрямую.</p>
+            <p className="text-muted text-xs mb-3">Свяжитесь с партнёром напрямую.</p>
             {p.phone && <p className="text-offwhite text-sm">📞 {p.phone}</p>}
             {p.email && <p className="text-offwhite text-sm mt-1">✉️ {p.email}</p>}
             {!p.phone && !p.email && <p className="text-muted text-sm">Контакты не указаны.</p>}
             <button onClick={() => setContact(false)} className="w-full mt-4 border border-muted text-offwhite rounded-full py-2.5 text-sm">Закрыть</button>
+          </div>
+        </div>
+      )}
+
+      {(sel || book) && (
+        <div className="fixed inset-0 z-[120] bg-black/65 flex items-end justify-center" onClick={() => { if (!oBusy) { setSel(null); setBook(false); } }}>
+          <div className="w-full max-w-md bg-bgSurface rounded-t-3xl p-5 max-h-[88dvh] overflow-y-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }} onClick={(e) => e.stopPropagation()}>
+            {oDone ? (
+              <>
+                <p className="text-offwhite font-semibold mb-1">{book ? "Запрос на бронь отправлен" : "Заказ оформлен"}</p>
+                <p className="text-muted text-sm mb-1">{book ? "Партнёр подтвердит бронь в чате." : `Сумма: ${money(oDone.total, cur)}. Партнёр свяжется с вами в чате и уточнит оплату и доставку.`}</p>
+                <p className="text-muted text-xs mb-4">Оплата идёт напрямую партнёру. VETOKS в оплате не участвует.</p>
+                <a href={`/my-orders?o=${oDone.id}`} className="block text-center bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm">Открыть заказ и чат</a>
+                <button onClick={() => { setSel(null); setBook(false); }} className="w-full mt-2 border border-muted text-offwhite rounded-full py-2.5 text-sm">Закрыть</button>
+              </>
+            ) : (
+              <>
+                <p className="text-offwhite font-semibold">{book ? "Забронировать" : sel?.name}</p>
+                {sel && <p className="text-gold text-sm mb-3">{money(sel.price, cur)}{sel.sku ? ` · ID ${sel.sku}` : ""}</p>}
+                {sel?.description && <p className="text-muted text-sm mb-3">{sel.description}</p>}
+                <div className="flex flex-col gap-3">
+                  {book && products.length > 0 && (
+                    <label className="text-muted text-xs flex flex-col gap-1">Что бронируем
+                      <select value={o.service} onChange={(e) => setO({ ...o, service: e.target.value })} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite">
+                        <option value="">Выберите</option>
+                        {products.map((x) => <option key={x.id} value={x.name}>{x.name}</option>)}
+                      </select>
+                    </label>
+                  )}
+                  {book && products.length === 0 && (
+                    <label className="text-muted text-xs flex flex-col gap-1">Что бронируем<input value={o.service} onChange={(e) => setO({ ...o, service: e.target.value })} maxLength={120} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" /></label>
+                  )}
+                  {book && (
+                    <label className="text-muted text-xs flex flex-col gap-1">Когда (дата и время)<input value={o.whenText} onChange={(e) => setO({ ...o, whenText: e.target.value })} placeholder="Например, 5 ноября, 15:00" maxLength={80} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" /></label>
+                  )}
+                  {sel && splitSizes(sel.sizes).length > 0 && (
+                    <div>
+                      <p className="text-muted text-xs mb-1">Размер</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {splitSizes(sel.sizes).map((z) => (
+                          <button key={z} onClick={() => setO({ ...o, size: z })} className={`px-3.5 py-1.5 rounded-full text-sm border ${o.size === z ? "bg-gold text-bgPrimary border-gold font-semibold" : "border-muted text-offwhite"}`}>{z}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {sel && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-muted text-xs">Количество</span>
+                      <button onClick={() => setO({ ...o, qty: Math.max(1, o.qty - 1) })} className="w-8 h-8 rounded-full border border-muted text-offwhite">−</button>
+                      <span className="text-offwhite w-6 text-center">{o.qty}</span>
+                      <button onClick={() => setO({ ...o, qty: Math.min(99, o.qty + 1) })} className="w-8 h-8 rounded-full border border-muted text-offwhite">+</button>
+                    </div>
+                  )}
+                  {sel && <label className="text-muted text-xs flex flex-col gap-1">Промокод (если есть)<input value={o.promo} onChange={(e) => setO({ ...o, promo: e.target.value })} maxLength={30} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite uppercase" /></label>}
+                  <label className="text-muted text-xs flex flex-col gap-1">Ваш телефон<input value={o.phone} onChange={(e) => setO({ ...o, phone: e.target.value })} inputMode="tel" maxLength={40} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" /></label>
+                  <label className="text-muted text-xs flex flex-col gap-1">Комментарий<textarea value={o.note} onChange={(e) => setO({ ...o, note: e.target.value })} rows={2} maxLength={500} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" /></label>
+                </div>
+                <p className="text-muted text-[11px] mt-3">Оплата идёт напрямую партнёру. VETOKS в оплате не участвует и комиссию не берёт.</p>
+                {oErr && <p className="text-danger text-xs mt-2">{oErr}</p>}
+                <button onClick={sendOrder} disabled={oBusy || (book && !o.whenText.trim())} className="w-full mt-3 bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm disabled:opacity-50">
+                  {oBusy ? "Отправляем..." : book ? "Отправить запрос" : sel ? `Оформить · ${money(sel.price * o.qty, cur)}` : "Оформить"}
+                </button>
+                <button onClick={() => { setSel(null); setBook(false); }} className="w-full mt-2 text-muted text-sm py-2">Отмена</button>
+              </>
+            )}
           </div>
         </div>
       )}

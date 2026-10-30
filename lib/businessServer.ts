@@ -23,6 +23,36 @@ export function publicBiz(p: any) {
   };
 }
 
+export const PRODUCT_COLS = "id, business_id, sku, name, description, price, photo_url, sizes, stock, is_active";
+export const OFFER_COLS = "id, business_id, title, description, promo_code, discount_percent, valid_until, usage_limit, used_count, is_active";
+
+// Предложение действует: включено, срок не вышел, лимит не исчерпан.
+export function offerLive(o: any): boolean {
+  if (!o?.is_active) return false;
+  if (o.valid_until && String(o.valid_until) < new Date().toISOString().slice(0, 10)) return false;
+  if (o.usage_limit != null && Number(o.used_count) >= Number(o.usage_limit)) return false;
+  return true;
+}
+
+// Зрителю промокод не отдаём целиком только в виде значения: код виден, он нужен для ввода.
+export function publicOffer(o: any) {
+  return {
+    id: o.id,
+    title: o.title,
+    description: o.description ?? "",
+    promo_code: o.promo_code ?? "",
+    discount_percent: o.discount_percent ?? null,
+    valid_until: o.valid_until ?? null,
+  };
+}
+
+// Символ валюты страны партнёра.
+export async function currencyOfCountry(countryId: string | null | undefined): Promise<string> {
+  if (!countryId) return "₴";
+  const { data } = await supabaseAdmin.from("countries").select("currency_symbol").eq("id", countryId).maybeSingle();
+  return ((data as any)?.currency_symbol as string) || "₴";
+}
+
 // Бизнес-режим доступен только одобренным партнёрам: смотрим заявки всех аккаунтов «семьи».
 export async function businessContext(uid: string) {
   const rootId = await familyRootId(uid);

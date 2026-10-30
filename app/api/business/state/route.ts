@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { bad, requireUser } from "@/lib/shopServer";
-import { businessContext } from "@/lib/businessServer";
+import { businessContext, currencyOfCountry } from "@/lib/businessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -21,5 +21,6 @@ export async function POST(req: Request) {
     rootId: c.rootId,
     sponsorName: c.sponsor?.name ?? null,
     profile: own, // полные данные только владельцу
+    cur: own ? await currencyOfCountry(own.country_id) : "₴",
   });
 }

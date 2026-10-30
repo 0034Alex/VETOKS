@@ -9,6 +9,9 @@ import BusinessPageView, { BizPublic } from "@/components/BusinessPageView";
 import { apiPost, openSession } from "@/lib/authClient";
 import { supabase } from "@/lib/supabaseClient";
 import { cleanImage } from "@/lib/imageClean";
+import BusinessCatalogTab from "@/components/BusinessCatalogTab";
+import BusinessOrdersTab from "@/components/BusinessOrdersTab";
+import BusinessOffersTab from "@/components/BusinessOffersTab";
 
 const ERR: Record<string, string> = {
   need_phone: "Сначала подтвердите номер телефона в личном аккаунте.",
@@ -26,6 +29,9 @@ export default function BusinessCabinetPage() {
   const [msg, setMsg] = useState("");
   const [f, setF] = useState<any>(null);
   const [view, setView] = useState(false);
+  const [tab, setTab] = useState<"page" | "catalog" | "orders" | "offers">("page");
+  const [openOrder, setOpenOrder] = useState<string | null>(null);
+  const [pv, setPv] = useState<{ products: any[]; offers: any[] }>({ products: [], offers: [] });
 
   async function load() {
     const r = await apiPost("/api/business/state");
@@ -41,7 +47,19 @@ export default function BusinessCabinetPage() {
   }
   useEffect(() => {
     load();
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const t = q.get("tab");
+      if (t === "orders" || t === "catalog" || t === "offers") setTab(t);
+      if (q.get("o")) setOpenOrder(q.get("o"));
+    } catch {}
   }, []);
+
+  async function loadPreview() {
+    if (!st?.profile?.id) return;
+    const r = await apiPost("/api/business/page", { id: st.profile.id });
+    if (r?.ok) setPv({ products: r.products ?? [], offers: r.offers ?? [] });
+  }
 
   async function enable() {
     setBusy(true);
@@ -120,7 +138,7 @@ export default function BusinessCabinetPage() {
           <div className="bg-bgSurface border border-gold/50 rounded-2xl p-5">
             <p className="text-offwhite font-semibold">{st.hasBusiness ? "Ваш бизнес-аккаунт уже создан" : "Включить бизнес-аккаунт"}</p>
             <p className="text-muted text-sm mt-2">
-              Это отдельный аккаунт для вашего бизнеса: своя страница, синяя галочка «Официальный партнёр VETOKS», позже каталог и заказы. Он занимает один из трёх мест на ваш номер. Личный аккаунт остаётся как есть, переключаться можно в любой момент.
+              Это отдельный аккаунт для вашего бизнеса: своя страница, синяя галочка «Официальный партнёр VETOKS», каталог, заказы и предложения для зрителей. Он занимает один из трёх мест на ваш номер. Личный аккаунт остаётся как есть, переключаться можно в любой момент.
             </p>
             {st.hasBusiness ? (
               <BusinessSwitchButton />
@@ -134,6 +152,17 @@ export default function BusinessCabinetPage() {
         )}
 
         {!loading && st?.isBusinessNow && f && (
+          <div className="flex gap-2 mb-4 overflow-x-auto">
+            {([["page", "Страница"], ["catalog", "Каталог"], ["orders", "Заказы"], ["offers", "Предложения"]] as const).map(([k, l]) => (
+              <button key={k} onClick={() => { setTab(k); setOpenOrder(null); }} className={`px-4 py-2 rounded-full text-sm border whitespace-nowrap ${tab === k ? "bg-gold text-bgPrimary border-gold font-semibold" : "border-muted text-offwhite"}`}>{l}</button>
+            ))}
+          </div>
+        )}
+        {!loading && st?.isBusinessNow && f && tab === "catalog" && <BusinessCatalogTab cur={st.cur ?? "₴"} userId={st.businessUserId} />}
+        {!loading && st?.isBusinessNow && f && tab === "orders" && <BusinessOrdersTab key={openOrder ?? "list"} mode="biz" cur={st.cur ?? "₴"} openId={openOrder} />}
+        {!loading && st?.isBusinessNow && f && tab === "offers" && <BusinessOffersTab />}
+
+        {!loading && st?.isBusinessNow && f && tab === "page" && (
           <div className="flex flex-col gap-4">
             <div className={`rounded-xl border p-4 ${f.is_active ? "border-success/50 bg-success/10" : "border-gold/50 bg-bgSurface"}`}>
               <p className="text-offwhite text-sm font-semibold">{f.is_active ? "Страница включена, её видят все" : "Страница пока скрыта от зрителей"}</p>
@@ -181,19 +210,15 @@ export default function BusinessCabinetPage() {
             </button>
             {msg && <p className="text-gold text-sm">{msg}</p>}
 
-            <button onClick={() => setView((v) => !v)} className="border border-gold text-gold rounded-full py-2.5 text-sm">
+            <button onClick={() => { if (!view) loadPreview(); setView((v) => !v); }} className="border border-gold text-gold rounded-full py-2.5 text-sm">
               {view ? "Скрыть предпросмотр" : "Посмотреть как зритель"}
             </button>
             {view && (
               <div className="border border-muted rounded-2xl overflow-hidden bg-bgPrimary">
-                <BusinessPageView preview p={{ ...(f as BizPublic), category: f.category ?? "", about: f.about ?? "", hours: f.hours ?? "", address: f.address ?? "", phone: f.phone ?? "", email: f.email ?? "", site_url: f.site_url ?? "" }} />
+                <BusinessPageView preview products={pv.products} offers={pv.offers} cur={st.cur ?? "₴"} p={{ ...(f as BizPublic), category: f.category ?? "", about: f.about ?? "", hours: f.hours ?? "", address: f.address ?? "", phone: f.phone ?? "", email: f.email ?? "", site_url: f.site_url ?? "" }} />
               </div>
             )}
 
-            <div className="bg-bgSurface border border-muted/60 rounded-xl p-4">
-              <p className="text-offwhite text-sm font-semibold">Скоро в кабинете</p>
-              <p className="text-muted text-xs mt-1">Каталог товаров, заказы с чатом, предложения для зрителей, подарки участницам, статистика.</p>
-            </div>
           </div>
         )}
       </div>

@@ -187,6 +187,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, amount: bonus });
   }
 
+  // Предпросмотр: каталог и предложения партнёра для окна «как в приложении».
+  if (a === "biz_preview") {
+    const { data: bp } = await supabaseAdmin.from("business_profiles").select("id").eq("sponsor_id", id).maybeSingle();
+    if (!bp) return NextResponse.json({ ok: true, products: [], offers: [] });
+    const pq = await supabaseAdmin.from("business_products").select("id, sku, name, description, price, photo_url, sizes, stock").eq("business_id", (bp as any).id).eq("is_active", true).order("created_at", { ascending: true }).limit(100);
+    const oq = await supabaseAdmin.from("business_offers").select("id, title, description, promo_code, discount_percent, valid_until").eq("business_id", (bp as any).id).eq("is_active", true).limit(20);
+    return NextResponse.json({ ok: true, products: pq.data ?? [], offers: oq.data ?? [] });
+  }
+
   // Бизнес-страница партнёра: скрыть от зрителей, дать или снять синюю галочку, закрыть жалобы.
   if (a === "biz_set") {
     const patch: Record<string, any> = {};

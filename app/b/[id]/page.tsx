@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import BottomNav from "@/components/BottomNav";
-import BusinessPageView, { BizPublic } from "@/components/BusinessPageView";
+import BusinessPageView, { BizPublic, BizProduct, BizOffer } from "@/components/BusinessPageView";
 import { apiPost } from "@/lib/authClient";
 
 // Публичная страница партнёра.
@@ -13,6 +13,7 @@ export default function BusinessPublicPage() {
   const params = useParams();
   const id = String((params as any)?.id ?? "");
   const [p, setP] = useState<BizPublic | null>(null);
+  const [extra, setExtra] = useState<{ products: BizProduct[]; offers: BizOffer[]; cur: string; mine: boolean }>({ products: [], offers: [], cur: "₴", mine: false });
   const [state, setState] = useState<"load" | "ok" | "none">("load");
 
   useEffect(() => {
@@ -20,6 +21,7 @@ export default function BusinessPublicPage() {
       const r = await apiPost("/api/business/page", { id });
       if (r?.ok) {
         setP(r.profile);
+        setExtra({ products: r.products ?? [], offers: r.offers ?? [], cur: r.cur ?? "₴", mine: !!r.mine });
         setState("ok");
       } else if (r?.error === "auth") {
         window.location.href = `/login?redirect=/b/${id}`;
@@ -33,7 +35,7 @@ export default function BusinessPublicPage() {
       <div className="max-w-3xl mx-auto">
         {state === "load" && <LoadingScreen inline />}
         {state === "none" && <p className="text-muted text-center px-6 py-10">Страница не найдена или пока недоступна.</p>}
-        {state === "ok" && p && <BusinessPageView p={{ ...p, id }} />}
+        {state === "ok" && p && <BusinessPageView p={{ ...p, id }} products={extra.products} offers={extra.offers} cur={extra.cur} canOrder={!extra.mine} />}
       </div>
       <BottomNav />
     </main>

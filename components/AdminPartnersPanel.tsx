@@ -118,7 +118,7 @@ export default function AdminPartnersPanel() {
   return (
     <div className="max-w-3xl">
       <button
-        onClick={() => setPrev({ name: "Lumi Beauty", category: "Косметика · Киев", about: "Уход за кожей и профессиональные кисти. Доставка по Украине.", logo_url: null, cover_url: null, hours: "Ежедневно 10:00–20:00", address: "Киев, ул. Хрещатик, 22", phone: "+380 44 000 00 00", email: "hello@lumi.example", site_url: "", quick_action: "buy", verified: true })}
+        onClick={() => setPrev({ name: "Lumi Beauty", category: "Косметика · Киев", about: "Уход за кожей и профессиональные кисти. Доставка по Украине.", logo_url: null, cover_url: null, hours: "Ежедневно 10:00–20:00", address: "Киев, ул. Хрещатик, 22", phone: "+380 44 000 00 00", email: "hello@lumi.example", site_url: "", quick_action: "buy", verified: true, _products: [{ id: "1", sku: "SK-1042", name: "Сыворотка с витамином C", description: "", price: 890, photo_url: null, sizes: "30 мл, 50 мл", stock: 14 }, { id: "2", sku: "SK-1043", name: "Крем для лица SPF 30", description: "", price: 640, photo_url: null, sizes: "", stock: 6 }], _offers: [{ id: "o1", title: "Скидка для зрителей VETOKS", description: "На весь каталог", promo_code: "VETOKS15", discount_percent: 15, valid_until: null }] })}
         className="mb-4 border border-gold text-gold px-4 py-2 rounded-full text-xs font-semibold"
       >
         👁 Пример страницы партнёра
@@ -246,7 +246,7 @@ export default function AdminPartnersPanel() {
                           </p>
                           {rc > 0 && <p className="text-danger text-xs">Открытых жалоб: {rc}</p>}
                           <div className="flex flex-wrap gap-2">
-                            <button onClick={() => setPrev(b)} className="bg-gold text-bgPrimary px-4 py-1.5 rounded-full text-xs font-semibold">👁 Предпросмотр как в приложении</button>
+                            <button onClick={async () => { const x = await apiPost("/api/admin/partners", { action: "biz_preview", id: s.id }); setPrev({ ...b, _products: x?.products ?? [], _offers: x?.offers ?? [] }); }} className="bg-gold text-bgPrimary px-4 py-1.5 rounded-full text-xs font-semibold">👁 Предпросмотр как в приложении</button>
                             <button onClick={() => act({ action: "biz_set", id: s.id, hidden: !b.is_hidden })} className="border border-muted text-offwhite px-3 py-1.5 rounded-full text-xs">{b.is_hidden ? "Показать зрителям" : "Скрыть от зрителей"}</button>
                             <button onClick={() => act({ action: "biz_set", id: s.id, verified: !b.verified })} className="border border-muted text-offwhite px-3 py-1.5 rounded-full text-xs">{b.verified ? "Снять галочку" : "Вернуть галочку"}</button>
                             {rc > 0 && <button onClick={() => act({ action: "biz_set", id: s.id, resolveReports: true })} className="border border-success text-success px-3 py-1.5 rounded-full text-xs">Закрыть жалобы</button>}
@@ -352,7 +352,7 @@ export default function AdminPartnersPanel() {
               <button onClick={() => setPrev(null)} className="text-offwhite text-lg" aria-label="Закрыть">✕</button>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <BusinessPageView preview p={{ ...prev, category: prev.category ?? "", about: prev.about ?? "", hours: prev.hours ?? "", address: prev.address ?? "", phone: prev.phone ?? "", email: prev.email ?? "", site_url: prev.site_url ?? "" }} />
+              <BusinessPageView preview products={prev._products ?? []} offers={prev._offers ?? []} cur={crmCur} p={{ ...prev, category: prev.category ?? "", about: prev.about ?? "", hours: prev.hours ?? "", address: prev.address ?? "", phone: prev.phone ?? "", email: prev.email ?? "", site_url: prev.site_url ?? "" }} />
             </div>
           </div>
         </div>
