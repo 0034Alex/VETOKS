@@ -100,7 +100,7 @@ export default function AdSpacePage() {
     setLeadErr("");
     setLeadBusy(true);
     const isMail = leadContact.includes("@");
-    const r = await apiPost("/api/partner/apply", { name: leadName, phone: isMail ? "" : leadContact, email: isMail ? leadContact : "", message: leadMsg });
+    const r = await apiPost("/api/partner/apply", { name: leadName, phone: isMail ? "" : leadContact, email: isMail ? leadContact : "", message: "[Реклама] " + leadMsg });
     setLeadBusy(false);
     if (r?.ok) setLeadSent(true);
     else setLeadErr("Не получилось отправить. Попробуйте позже.");
@@ -338,6 +338,14 @@ export default function AdSpacePage() {
       <p className="text-muted text-sm mb-6 px-6">
         Выберите место, заполните данные и отправьте заявку. После одобрения вы получите уведомление и оплатите с баланса.
       </p>
+
+      <a href="/business-apply" className="mx-6 mb-6 flex items-center justify-between gap-3 rounded-xl border border-gold bg-gold/10 p-4">
+        <span>
+          <span className="block text-offwhite font-semibold text-sm">🏪 Открыть бизнес-страницу</span>
+          <span className="block text-muted text-xs mt-0.5">Своя страница, синяя галочка, каталог, заказы. Это не реклама и платить не нужно.</span>
+        </span>
+        <span className="text-gold text-lg">›</span>
+      </a>
 
       {mine.length > 0 && (
         <div className="mx-6 mb-6 rounded-xl border border-gold/50 bg-bgSurface p-4">

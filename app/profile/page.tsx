@@ -601,6 +601,11 @@ export default function ProfilePage() {
             <span className="text-white font-semibold text-sm">{t("profile.becomePartner")}</span>
           </a>
         )}
+        {!isPartner && (
+          <a href="/business-apply" className="block border border-gold/60 rounded-xl p-3.5 mt-3 text-center">
+            <span className="text-gold font-semibold text-sm">🏪 Открыть бизнес-страницу</span>
+          </a>
+        )}
 
         <button
           onClick={installAndroid}

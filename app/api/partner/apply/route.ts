@@ -21,6 +21,10 @@ export async function POST(req: Request) {
   if (!name) return bad("empty_name");
   if (!phone && !email) return bad("empty_contact");
 
+  // Уже есть активная заявка или одобренный партнёр: вторую не создаём.
+  const { data: ex } = await supabaseAdmin.from("sponsors").select("id, status").eq("user_id", uid).in("status", ["lead", "approved"]).limit(1);
+  if ((ex ?? []).length) return bad("already", 409);
+
   const { data: u } = await supabaseAdmin.from("users").select("region_id").eq("id", uid).maybeSingle();
   const regionId = b.regionId ? String(b.regionId) : (u as any)?.region_id ?? null;
   const { data: created, error } = await supabaseAdmin
