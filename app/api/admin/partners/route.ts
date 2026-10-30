@@ -3,6 +3,8 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireStaff, logAction } from "@/lib/staffServer";
 import { notify } from "@/lib/shopServer";
 import { currencyOfUser } from "@/lib/countryServer";
+import { familyRootId } from "@/lib/familyServer";
+import { createBusinessAccount } from "@/lib/businessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -185,6 +187,43 @@ export async function POST(req: Request) {
     await notify(part.user_id as string, `💰 Вам начислено ${bonus} Корон — бонус за приведённого рекламодателя`, "/history", "other");
     await logAction(uid, "partner_bonus", part.user_id as string, { sponsor: id, amount: bonus });
     return NextResponse.json({ ok: true, amount: bonus });
+  }
+
+  // Создать бизнес-страницу партнёра из CRM (для проверки и предпросмотра): нужен одобренный партнёр с привязанным аккаунтом.
+  if (a === "biz_create") {
+    const { data: sp } = await supabaseAdmin.from("sponsors").select("id, name, country_id, status, user_id, contact_info").eq("id", id).maybeSingle();
+    if (!sp?.user_id) return NextResponse.json({ ok: false, error: "no_user" }, { status: 400 });
+    if ((sp as any).status !== "approved") return NextResponse.json({ ok: false, error: "not_approved" }, { status: 400 });
+    const { data: ex } = await supabaseAdmin.from("business_profiles").select("id").eq("sponsor_id", id).maybeSingle();
+    if (ex) return NextResponse.json({ ok: true });
+    const rootId = await familyRootId(String((sp as any).user_id));
+    if (!rootId) return NextResponse.json({ ok: false, error: "no_user" }, { status: 400 });
+    const ci = ((sp as any).contact_info ?? {}) as any;
+    const res = await createBusinessAccount(rootId, { id: String((sp as any).id), name: (sp as any).name, country_id: (sp as any).country_id ?? null }, { phone: ci.phone || "", email: ci.email || "" });
+    if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 400 });
+    await logAction(uid, "partner_business_create", String((sp as any).user_id), { sponsor: id });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Удалить партнёра (например, пробного). Платежи и бонус участнице защищены от случайного удаления.
+  if (a === "delete") {
+    const { data: sp } = await supabaseAdmin.from("sponsors").select("id, name, referral_paid_at").eq("id", id).maybeSingle();
+    if (!sp) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
+    if ((sp as any).referral_paid_at) return NextResponse.json({ ok: false, error: "referral_paid" }, { status: 400 });
+    const { count: payCount } = await supabaseAdmin.from("sponsor_payments").select("id", { count: "exact", head: true }).eq("sponsor_id", id);
+    if ((payCount ?? 0) > 0 && !body.force) return NextResponse.json({ ok: false, error: "has_payments", count: payCount }, { status: 400 });
+    const { data: bp } = await supabaseAdmin.from("business_profiles").select("id, user_id").eq("sponsor_id", id).maybeSingle();
+    if (bp) {
+      const { count: oc } = await supabaseAdmin.from("business_orders").select("id", { count: "exact", head: true }).eq("business_id", (bp as any).id);
+      if ((oc ?? 0) > 0) return NextResponse.json({ ok: false, error: "has_orders", count: oc }, { status: 400 });
+      await supabaseAdmin.from("business_profiles").delete().eq("id", (bp as any).id);
+      await supabaseAdmin.from("users").update({ is_business: false }).eq("id", (bp as any).user_id);
+    }
+    await supabaseAdmin.from("sponsor_payments").delete().eq("sponsor_id", id);
+    const { error } = await supabaseAdmin.from("sponsors").delete().eq("id", id);
+    if (error) return NextResponse.json({ ok: false, error: "failed" }, { status: 500 });
+    await logAction(uid, "partner_delete", null, { sponsor: id, name: (sp as any).name });
+    return NextResponse.json({ ok: true });
   }
 
   // Предпросмотр: каталог и предложения партнёра для окна «как в приложении».

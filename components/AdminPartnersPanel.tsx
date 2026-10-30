@@ -115,6 +115,7 @@ export default function AdminPartnersPanel() {
 
   return (
     <div className="max-w-3xl">
+      {msg && <p className="bg-bgSurface border border-gold rounded-lg px-3 py-2 text-gold text-sm mb-3">{msg}</p>}
       <form onSubmit={create} className="bg-bgSurface border border-muted rounded-xl p-4 mb-5 flex flex-col md:flex-row gap-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Название партнёра" required className="flex-1 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm" />
         <input value={pkg} onChange={(e) => setPkg(e.target.value)} placeholder="Пакет (необязательно)" className="md:w-52 bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm" />
@@ -157,6 +158,8 @@ export default function AdminPartnersPanel() {
                     </p>
                   )}
                 </div>
+                <div className="flex flex-col items-end gap-0.5">
+                  <span className="text-muted text-[10px]">Этап сделки</span>
                 <select
                   value={s.stage ?? "lead"}
                   onChange={(e) => act({ action: "update", id: s.id, stage: e.target.value })}
@@ -166,7 +169,26 @@ export default function AdminPartnersPanel() {
                     <option key={k} value={k}>{label}</option>
                   ))}
                 </select>
+                </div>
               </div>
+
+              {(() => {
+                const pb = biz.find((x) => String(x.sponsor_id) === String(s.id));
+                return (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {pb ? (
+                      <a href={`/b/${pb.id}`} target="_blank" rel="noopener noreferrer" className="bg-gold text-bgPrimary px-4 py-1.5 rounded-full text-xs font-semibold">👁 Предпросмотр страницы</a>
+                    ) : s.status === "approved" && s.user_id ? (
+                      <>
+                        <button onClick={async () => { const r = await apiPost("/api/admin/partners", { action: "biz_create", id: s.id }); setMsg(r?.ok ? "" : r?.error === "need_phone" ? "У аккаунта партнёра не подтверждён номер." : r?.error === "no_slot" ? "У аккаунта партнёра нет свободного места из 3." : "Не получилось создать страницу."); await load(); }} className="border border-gold text-gold px-4 py-1.5 rounded-full text-xs font-semibold">Создать страницу партнёра</button>
+                        <span className="text-muted text-[11px]">Страницы ещё нет. Создайте её и откройте предпросмотр.</span>
+                      </>
+                    ) : (
+                      <span className="text-muted text-[11px]">Предпросмотр страницы появится после «Одобрить» и привязки аккаунта.</span>
+                    )}
+                  </div>
+                );
+              })()}
 
               {s.status === "lead" && s.user_id && (
                 <div className="mt-3 border border-gold rounded-lg p-3 bg-bgPrimary">
@@ -238,8 +260,7 @@ export default function AdminPartnersPanel() {
                           </p>
                           {rc > 0 && <p className="text-danger text-xs">Открытых жалоб: {rc}</p>}
                           <div className="flex flex-wrap gap-2">
-                            <a href={`/b/${b.id}`} target="_blank" rel="noopener noreferrer" className="bg-gold text-bgPrimary px-4 py-1.5 rounded-full text-xs font-semibold">👁 Открыть страницу как в приложении</a>
-                            <button onClick={() => act({ action: "biz_set", id: s.id, hidden: !b.is_hidden })} className="border border-muted text-offwhite px-3 py-1.5 rounded-full text-xs">{b.is_hidden ? "Показать зрителям" : "Скрыть от зрителей"}</button>
+                                                        <button onClick={() => act({ action: "biz_set", id: s.id, hidden: !b.is_hidden })} className="border border-muted text-offwhite px-3 py-1.5 rounded-full text-xs">{b.is_hidden ? "Показать зрителям" : "Скрыть от зрителей"}</button>
                             <button onClick={() => act({ action: "biz_set", id: s.id, verified: !b.verified })} className="border border-muted text-offwhite px-3 py-1.5 rounded-full text-xs">{b.verified ? "Снять галочку" : "Вернуть галочку"}</button>
                             {rc > 0 && <button onClick={() => act({ action: "biz_set", id: s.id, resolveReports: true })} className="border border-success text-success px-3 py-1.5 rounded-full text-xs">Закрыть жалобы</button>}
                           </div>
@@ -328,6 +349,26 @@ export default function AdminPartnersPanel() {
                         )}
                       </div>
                     )}
+                  </div>
+                  <div className="border-t border-muted/40 pt-3">
+                    <p className="text-offwhite text-xs font-semibold mb-1">Удалить партнёра</p>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Удалить партнёра «${s.name}»? Бизнес-страница, каталог и предложения тоже удалятся.`)) return;
+                        let r = await apiPost("/api/admin/partners", { action: "delete", id: s.id });
+                        if (r?.error === "has_payments") {
+                          if (!confirm(`У партнёра есть платежи (${r.count}). Удалить вместе с платежами?`)) return;
+                          r = await apiPost("/api/admin/partners", { action: "delete", id: s.id, force: true });
+                        }
+                        setMsg(r?.ok ? "Партнёр удалён." : r?.error === "has_orders" ? "Нельзя удалить: у партнёра есть заказы. Скройте страницу." : r?.error === "referral_paid" ? "Нельзя удалить: бонус за него уже выплачен. Поставьте этап «Отказ»." : "Не получилось удалить.");
+                        setOpen(null);
+                        await load();
+                      }}
+                      className="border border-danger text-danger px-4 py-1.5 rounded-full text-xs font-semibold"
+                    >
+                      🗑 Удалить партнёра
+                    </button>
+                    <p className="text-muted text-[11px] mt-1">Нужно для пробных партнёров. Аккаунт человека не удаляется.</p>
                   </div>
                 </div>
               )}
