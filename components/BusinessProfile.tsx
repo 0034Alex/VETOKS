@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/authClient";
 import { shareLink, TopBtn } from "@/components/ProfileHero";
-import { SocialIcon, socialKind } from "@/lib/socialLinks";
 import FollowsSheet from "@/components/FollowsSheet";
 import ProductEditor from "@/components/ProductEditor";
 import BusinessPageView, { BizPublic, BizProduct, BizOffer, BlueCheck } from "@/components/BusinessPageView";
 import ShopReportSheet from "@/components/ShopReportSheet";
+import CartButton from "@/components/CartButton";
 
 type Extra = { followers: number; following: number; purchases: number; isFollowing: boolean; socials: string[]; canWrite: boolean };
 type Data = { p: BizPublic; products: BizProduct[]; offers: BizOffer[]; cur: string; mine: boolean; notPublished: boolean; staff: boolean; extra: Extra };
@@ -119,6 +119,7 @@ export default function BusinessProfile({
             )}
             {!owner && (
               <>
+                <CartButton />
                 <TopBtn onClick={share} label="Поделиться">
                   <span className="text-lg leading-none">↗</span>
                 </TopBtn>
@@ -190,16 +191,6 @@ export default function BusinessProfile({
         </button>
       </div>
 
-      {extra.socials.length > 0 && (
-        <div className="px-5 mt-4 flex flex-wrap gap-2.5">
-          {extra.socials.map((u) => (
-            <a key={u} href={u} target="_blank" rel="noopener noreferrer nofollow" aria-label={socialKind(u)} className="w-[44px] h-[44px] rounded-full bg-bgSurface border border-gold/30 flex items-center justify-center text-offwhite">
-              <SocialIcon kind={socialKind(u)} />
-            </a>
-          ))}
-        </div>
-      )}
-
       {owner && d.notPublished && (
         <div className="mx-5 mt-4 rounded-xl border border-gold bg-gold/10 p-4">
           <p className="text-offwhite text-sm font-semibold">Магазин пока скрыт от зрителей</p>
@@ -221,6 +212,7 @@ export default function BusinessProfile({
         cur={d.cur}
         preview={owner}
         owner={owner}
+        socials={extra.socials}
         canOrder={!owner && !d.mine && !d.staff}
         demo={d.staff && !owner}
         onEdit={(pr) => setEdit(pr)}

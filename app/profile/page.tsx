@@ -656,7 +656,8 @@ export default function ProfilePage() {
           <Row href="/support" label={t("profile.support")} />
         </div>
 
-        <a href="/partners-directory?tab=shops" className="block bg-gold text-bgPrimary rounded-xl p-3.5 mt-5 text-center font-semibold">🏪 Магазины платформы</a>
+        <a href="/cart" className="block border border-gold/60 rounded-xl p-3.5 mt-5 text-center text-gold font-semibold text-sm">🛒 Корзина</a>
+        <a href="/partners-directory?tab=shops" className="block bg-gold text-bgPrimary rounded-xl p-3.5 mt-3 text-center font-semibold">🏪 Магазины платформы</a>
         <a href="/my-orders" className="block border border-gold/60 rounded-xl p-3.5 mt-3 text-center">
           <span className="text-gold font-semibold text-sm">🛍 Заказы и подарки</span>
         </a>

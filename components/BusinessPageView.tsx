@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { apiPost } from "@/lib/authClient";
 import ShopReportSheet from "@/components/ShopReportSheet";
+import { SocialIcon, socialKind } from "@/lib/socialLinks";
 import { money, splitSizes, ShopProduct, stockInfo, sizeInfo, productTotal } from "@/lib/businessShared";
 import { shareLink } from "@/components/ProfileHero";
 
@@ -65,7 +66,7 @@ const ORDER_ERR: Record<string, string> = {
 };
 
 // Страница партнёра: так её видят зрители в приложении. Один и тот же вид для зрителей, владельца и предпросмотра в CRM.
-export default function BusinessPageView({ p, preview = false, products = [], offers = [], cur = "₴", canOrder = false, demo = false, bare = false, owner = false, onEdit }: { p: BizPublic; preview?: boolean; products?: BizProduct[]; offers?: BizOffer[]; cur?: string; canOrder?: boolean; demo?: boolean; bare?: boolean; owner?: boolean; onEdit?: (p: BizProduct) => void }) {
+export default function BusinessPageView({ p, preview = false, products = [], offers = [], cur = "₴", canOrder = false, demo = false, bare = false, owner = false, onEdit, socials = [] }: { p: BizPublic; preview?: boolean; products?: BizProduct[]; offers?: BizOffer[]; cur?: string; canOrder?: boolean; demo?: boolean; bare?: boolean; owner?: boolean; onEdit?: (p: BizProduct) => void; socials?: string[] }) {
   const [contact, setContact] = useState(false);
   const [sel, setSel] = useState<BizProduct | null>(null);
   const [book, setBook] = useState(false);
@@ -81,6 +82,8 @@ export default function BusinessPageView({ p, preview = false, products = [], of
   const [gmsg, setGmsg] = useState("");
   const [report, setReport] = useState<"" | "pick">("");
   const [shared, setShared] = useState(false);
+  const [allContacts, setAllContacts] = useState(false);
+  const [cartMsg, setCartMsg] = useState("");
   const [tab, setTab] = useState<"shop" | "feed" | "about">("shop");
   const [sheetP, setSheetP] = useState<BizProduct | null>(null);
   const [gi, setGi] = useState(0);
@@ -194,14 +197,33 @@ export default function BusinessPageView({ p, preview = false, products = [], of
     if (out) return <button disabled className="w-full border border-muted text-muted rounded-full py-2 text-xs opacity-60">Нет в наличии</button>;
     return (
       <>
-        <button onClick={() => openProduct(pr)} className="w-full bg-gold text-bgPrimary font-semibold rounded-full py-2 text-xs">
-          {p.quick_action === "book" ? "Выбрать" : "Купить"}
-        </button>
+        <div className="flex gap-1.5">
+          <button onClick={() => openProduct(pr)} className="flex-1 bg-gold text-bgPrimary font-semibold rounded-full py-2 text-xs">
+            {p.quick_action === "book" ? "Выбрать" : "Купить"}
+          </button>
+          {p.quick_action !== "book" && (
+            <button onClick={() => addCart(pr)} aria-label="В корзину" className="flex-none w-10 border border-gold text-gold rounded-full text-sm">🛒</button>
+          )}
+        </div>
         <button onClick={() => (can ? openOrder(pr, false, true) : openProduct(pr))} className="w-full border border-gold/70 text-gold font-semibold rounded-full py-2 text-xs">
           🎁 Подарить
         </button>
       </>
     );
+  }
+
+  async function addCart(pr: BizProduct, size = "") {
+    if (!can) return openProduct(pr);
+    const hasSizes = pr.size_stock ? Object.keys(pr.size_stock).length > 0 : splitSizes(pr.sizes).length > 0;
+    if (hasSizes && !size) return openProduct(pr);
+    const r = await apiPost("/api/business/cart", { action: "add", productId: pr.id, size, qty: 1 });
+    if (r?.ok) {
+      setCartMsg("Добавлено в корзину");
+      try {
+        window.dispatchEvent(new Event("vetoks:cart"));
+      } catch {}
+    } else setCartMsg(r?.error === "no_stock" ? "Этого нет в наличии" : r?.error === "cart_unavailable" ? "Корзина ещё настраивается" : r?.error === "cart_full" ? "Корзина заполнена" : "Не получилось добавить");
+    setTimeout(() => setCartMsg(""), 2200);
   }
 
   function openProduct(pr: BizProduct) {
@@ -254,36 +276,38 @@ export default function BusinessPageView({ p, preview = false, products = [], of
           </>
         )}
 
-        <div className="bg-bgSurface border border-gold/30 rounded-2xl p-4 mt-4 flex flex-col gap-2 text-sm">
-          {phoneOn && <Row k="📞" v={p.phone} />}
-          {p.address && <Row k="📍" v={p.address} />}
-          {p.hours && <Row k="🕒" v={p.hours} />}
-          {p.email && <Row k="✉️" v={p.email} />}
-          {p.site_url && (
-            <div className="flex gap-3">
-              <span>🌐</span>
-              <a href={p.site_url} target="_blank" rel="noopener noreferrer" className="text-gold break-all">
-                {p.site_url.replace(/^https?:\/\//, "")}
-              </a>
+        <div className="border border-gold/40 rounded-2xl p-3.5 mt-4 bg-gradient-to-br from-gold/10 via-bgSurface to-bgSurface">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-start">
+            <div className="flex flex-col gap-2 text-[13px] min-w-0">
+              {phoneOn && <CRow k="phone" v={p.phone} href={owner || preview ? undefined : `tel:${p.phone}`} />}
+              {p.address && <CRow k="pin" v={p.address} />}
+              {p.email && <CRow k="mail" v={p.email} />}
+              {p.site_url && <CRow k="globe" v={p.site_url.replace(/^https?:\/\//, "")} href={p.site_url} ext />}
+              {!phoneOn && !p.address && !p.email && !p.site_url && !p.hours && <p className="text-muted">Контакты пока не заполнены.</p>}
+              {p.hours && !phoneOn && !p.address && !p.email && !p.site_url && <CRow k="clock" v={p.hours} />}
             </div>
-          )}
-          {!p.hours && !p.address && !phoneOn && !p.email && !p.site_url && <p className="text-muted">Контакты пока не заполнены.</p>}
-          {(p.user_id || phoneOn) && (
-            <div className="flex gap-2 mt-1">
-              {p.user_id && (owner || preview ? (
-                <span className="flex-1 text-center bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm">✉ Написать</span>
-              ) : (
-                <a href={`/chats/${p.user_id}`} className="flex-1 text-center bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm">✉ Написать</a>
-              ))}
-              {phoneOn && (owner || preview ? (
-                <span className="flex-1 text-center border border-gold text-gold font-semibold rounded-full py-2.5 text-sm">📞 Позвонить</span>
-              ) : (
-                <a href={`tel:${p.phone}`} className="flex-1 text-center border border-gold text-gold font-semibold rounded-full py-2.5 text-sm">📞 Позвонить</a>
-              ))}
+            <div className="flex flex-col items-end gap-2">
+              {socials.length > 0 && (
+                <div className="flex gap-1.5">
+                  {socials.slice(0, 3).map((u) => (
+                    <a key={u} href={u} target="_blank" rel="noopener noreferrer nofollow" aria-label={socialKind(u)} className="w-9 h-9 rounded-full border border-gold/50 bg-black/30 flex items-center justify-center text-offwhite">
+                      <SocialIcon kind={socialKind(u)} size={17} />
+                    </a>
+                  ))}
+                </div>
+              )}
+              <button onClick={() => setAllContacts(true)} className="text-gold text-xs border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap">Все контакты ›</button>
             </div>
+          </div>
+          {phoneOn && (
+            owner || preview ? (
+              <span className="block text-center border border-gold text-gold font-semibold rounded-full py-2.5 text-sm mt-3">📞 Позвонить</span>
+            ) : (
+              <a href={`tel:${p.phone}`} className="block text-center border border-gold text-gold font-semibold rounded-full py-2.5 text-sm mt-3">📞 Позвонить</a>
+            )
           )}
           {p.quick_action === "book" && !owner && !preview && (
-            <button onClick={quickAction} className="w-full border border-gold text-gold font-semibold rounded-full py-2.5 text-sm">📅 Забронировать</button>
+            <button onClick={quickAction} className="w-full bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm mt-2">📅 Забронировать</button>
           )}
         </div>
 
@@ -465,18 +489,29 @@ export default function BusinessPageView({ p, preview = false, products = [], of
                       <span className="text-offwhite">{st.label}{total !== null && total > 0 && st.state === "low" ? `, осталось ${total}` : ""}</span>
                     </div>
                     {st.state !== "out" && (
-                      <div className="flex gap-2 mt-4">
-                        <button
-                          disabled={!can || needSize}
-                          onClick={() => openOrder(pr, false, false, sheetSize)}
-                          className="flex-1 bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm disabled:opacity-50"
-                        >
-                          {needSize ? "Выберите размер" : p.quick_action === "book" ? "Выбрать" : "Купить"}
-                        </button>
+                      <div className="flex flex-col gap-2 mt-4">
+                        <div className="flex gap-2">
+                          <button
+                            disabled={!can || needSize}
+                            onClick={() => openOrder(pr, false, false, sheetSize)}
+                            className="flex-1 bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm disabled:opacity-50"
+                          >
+                            {needSize ? "Выберите размер" : p.quick_action === "book" ? "Выбрать" : "Купить"}
+                          </button>
+                          {p.quick_action !== "book" && (
+                            <button
+                              disabled={!can || needSize}
+                              onClick={() => addCart(pr, sheetSize)}
+                              className="flex-1 border border-gold text-gold font-semibold rounded-full py-3 text-sm disabled:opacity-50"
+                            >
+                              🛒 В корзину
+                            </button>
+                          )}
+                        </div>
                         <button
                           disabled={!can || needSize}
                           onClick={() => openOrder(pr, false, true, sheetSize)}
-                          className="flex-1 border border-gold text-gold font-semibold rounded-full py-3 text-sm disabled:opacity-50"
+                          className="w-full border border-gold/60 text-gold font-semibold rounded-full py-2.5 text-sm disabled:opacity-50"
                         >
                           🎁 Подарить
                         </button>
@@ -625,8 +660,67 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         </div>
       )}
 
+      {allContacts && (
+        <div className="fixed inset-0 z-[125] bg-black/70 flex items-end justify-center" onClick={() => setAllContacts(false)}>
+          <div className="w-full max-w-md bg-bgSurface rounded-t-3xl p-5 max-h-[85dvh] overflow-y-auto border-t border-gold/50" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-offwhite font-semibold">Контакты · {p.name}</p>
+              <button onClick={() => setAllContacts(false)} className="text-muted text-xl">✕</button>
+            </div>
+            <div className="flex flex-col gap-3 text-sm">
+              {phoneOn && <CRow k="phone" v={p.phone} href={owner || preview ? undefined : `tel:${p.phone}`} />}
+              {p.address && <CRow k="pin" v={p.address} />}
+              {p.hours && <CRow k="clock" v={p.hours} />}
+              {p.email && <CRow k="mail" v={p.email} />}
+              {p.site_url && <CRow k="globe" v={p.site_url.replace(/^https?:\/\//, "")} href={p.site_url} ext />}
+            </div>
+            {socials.length > 0 && (
+              <div className="mt-4 flex flex-col gap-2">
+                <p className="text-muted text-xs">Соцсети</p>
+                {socials.map((u) => (
+                  <a key={u} href={u} target="_blank" rel="noopener noreferrer nofollow" className="flex items-center gap-3 border border-muted rounded-xl p-2.5">
+                    <span className="w-9 h-9 rounded-full border border-gold/50 flex items-center justify-center text-offwhite flex-none"><SocialIcon kind={socialKind(u)} size={18} /></span>
+                    <span className="text-offwhite text-sm truncate">{u.replace(/^https?:\/\//, "")}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {cartMsg && (
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-28 z-[150] bg-bgSurface border border-gold text-gold text-sm px-4 py-2 rounded-full flex items-center gap-3">
+          {cartMsg}
+          {cartMsg === "Добавлено в корзину" && <a href="/cart" className="underline">Открыть</a>}
+        </div>
+      )}
       {p.id && <ShopReportSheet open={!!report} onClose={() => setReport("")} businessId={p.id} />}
     </div>
+  );
+}
+
+const ICON: Record<string, string> = {
+  phone: "M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z",
+  pin: "M12 21s7-6.2 7-11.5A7 7 0 005 9.5C5 14.8 12 21 12 21zM12 12a2.5 2.5 0 100-5 2.5 2.5 0 000 5z",
+  mail: "M4 6h16v12H4zM4 7l8 6 8-6",
+  globe: "M12 21a9 9 0 100-18 9 9 0 000 18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18",
+  clock: "M12 21a9 9 0 100-18 9 9 0 000 18zM12 7v5l3 2",
+};
+
+// Строка контактов с золотым значком.
+function CRow({ k, v, href, ext }: { k: string; v: string; href?: string; ext?: boolean }) {
+  const inner = (
+    <>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgb(var(--c-goldSoft))" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="flex-none mt-0.5">
+        <path d={ICON[k]} />
+      </svg>
+      <span className="min-w-0 break-words text-offwhite">{v}</span>
+    </>
+  );
+  return href ? (
+    <a href={href} {...(ext ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="flex gap-2.5 items-start">{inner}</a>
+  ) : (
+    <div className="flex gap-2.5 items-start">{inner}</div>
   );
 }
 
