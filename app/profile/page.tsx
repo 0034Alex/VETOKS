@@ -130,7 +130,12 @@ export default function ProfilePage() {
     (async () => {
       setCurrencySymbol(await getCurrencySymbol());
 
-      const u = await getCurrentUser();
+      let u = await getCurrentUser();
+      if (!u) {
+        // Сразу после смены аккаунта вход бывает ещё не сохранён: пробуем второй раз.
+        await new Promise((r) => setTimeout(r, 700));
+        u = await getCurrentUser();
+      }
       if (!u) {
         router.push("/login?redirect=/profile");
         return;
@@ -482,6 +487,7 @@ export default function ProfilePage() {
             </>
           }
         />
+        <ShopLinkCard own />
 
         <div className="px-5">
           {user?.region_pending && (
@@ -492,7 +498,6 @@ export default function ProfilePage() {
           )}
           {!isBiz && <GiftShowcase className="mt-5" />}
         </div>
-        {!isBiz && <ShopLinkCard own />}
         <ProfileTabs />
           </>
         )}

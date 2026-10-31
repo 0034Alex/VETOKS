@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { countryOfUser } from "@/lib/countryServer";
-import { BIZ_COLS, OFFER_COLS, publicBiz, publicOffer, offerLive, currencyOfCountry, loadProducts, publicProduct } from "@/lib/businessServer";
+import { BIZ_COLS, OFFER_COLS, publicBiz, publicOffer, offerLive, currencyOfCountry, loadProducts, publicProduct, getShowCall } from "@/lib/businessServer";
 import { parseLinks } from "@/lib/socialLinks";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   const oq = await supabaseAdmin.from("business_offers").select(OFFER_COLS).eq("business_id", id).eq("is_active", true).order("created_at", { ascending: false }).limit(20);
   return NextResponse.json({
     ok: true,
-    profile: publicBiz(p),
+    profile: await withCall(publicBiz(p), id, mine || staff),
     mine,
     userId: (p as any).user_id,
     staffPreview: staff && !mine,
@@ -68,4 +68,10 @@ async function ownerExtra(me: string, ownerId: string, bizId: string, siteUrl: s
   if (siteUrl && !socials.includes(siteUrl)) socials = [siteUrl, ...socials];
   const priv = (((u as any)?.privacy ?? {}) as Record<string, boolean>) || {};
   return { followers, following: f1 + f2, purchases, isFollowing: !!fRow, socials, canWrite: priv.dm !== false };
+}
+
+// Телефон и кнопка «Позвонить» видны зрителям, только если владелец это разрешил.
+async function withCall(pub: any, bizId: string, seeAll: boolean) {
+  const show = await getShowCall(bizId);
+  return { ...pub, show_call: show, phone: show || seeAll ? pub.phone : "" };
 }

@@ -138,12 +138,12 @@ export default function PublicUserPage() {
             </TopBtn>
           }
         />
+        {!d.isBusiness && <ShopLinkCard shop={d.shop ?? null} />}
         {!d.isBusiness && (
           <div className="px-5 pt-5">
             <GiftShowcase userId={id} />
           </div>
         )}
-        {!d.isBusiness && <ShopLinkCard shop={d.shop ?? null} />}
         <ProfileActions>
           {d.canWrite ? (
             <BigBtn href={`/chats/${id}`}>✉️ Написать</BigBtn>

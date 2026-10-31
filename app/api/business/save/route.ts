@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { rateLimit } from "@/lib/rateLimit";
-import { BIZ_COLS, syncBusinessToUser } from "@/lib/businessServer";
+import { BIZ_COLS, syncBusinessToUser, getShowCall } from "@/lib/businessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +52,8 @@ export async function POST(req: Request) {
   }
   const { data, error } = await supabaseAdmin.from("business_profiles").update(patch).eq("user_id", uid).select(BIZ_COLS).maybeSingle();
   if (error) return bad("failed", 500);
+  if (b.show_call !== undefined) await supabaseAdmin.from("business_profiles").update({ show_call: !!b.show_call }).eq("user_id", uid);
   if (patch.name) await supabaseAdmin.from("users").update({ first_name: patch.name }).eq("id", uid);
   if (data) await syncBusinessToUser(uid, data);
-  return NextResponse.json({ ok: true, profile: data });
+  return NextResponse.json({ ok: true, profile: data ? { ...(data as any), show_call: await getShowCall((data as any).id) } : data });
 }

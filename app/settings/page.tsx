@@ -13,6 +13,7 @@ import { useCountryLangs } from "@/lib/useCountryLangs";
 import { apiPost } from "@/lib/authClient";
 import { cleanNick, nickProblem, NICK_MESSAGES } from "@/lib/nick";
 import { SocialIcon, socialKind, normalizeLink, parseLinks } from "@/lib/socialLinks";
+import ShopLinkCard from "@/components/ShopLinkCard";
 
 const TOGGLES: string[] = ["gifts", "votes", "rating", "tasks", "support"];
 
@@ -309,6 +310,8 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
+
+          <ShopLinkCard picker />
 
           <div className="bg-bgSurface border border-muted rounded-xl p-4">
             <p className="text-offwhite font-semibold text-sm mb-3">Приватность</p>

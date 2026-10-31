@@ -5,7 +5,7 @@ import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
-const REASONS = ["spam", "nudity", "violence", "hate", "scam", "fake", "minor", "illegal", "selfharm", "ip", "other"];
+const REASONS = ["not_shipped", "not_as_described", "fraud", "no_refund", "rude", "price_changed", "fake_goods", "false_info", "spam", "other", "nudity", "violence", "hate", "scam", "fake", "minor", "illegal", "selfharm", "ip"];
 
 // Жалоба на страницу партнёра. Страница не скрывается сама: решает владелец VETOKS в CRM.
 export async function POST(req: Request) {

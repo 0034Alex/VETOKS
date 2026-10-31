@@ -8,7 +8,8 @@ import { shareLink, TopBtn } from "@/components/ProfileHero";
 import { SocialIcon, socialKind } from "@/lib/socialLinks";
 import FollowsSheet from "@/components/FollowsSheet";
 import ProductEditor from "@/components/ProductEditor";
-import BusinessPageView, { BizPublic, BizProduct, BizOffer, BlueCheck } from "@/components/BusinessPageView";
+import BusinessPageView, { BizPublic, BizProduct, BizOffer, BlueCheck, BizMark } from "@/components/BusinessPageView";
+import ShopReportSheet from "@/components/ShopReportSheet";
 
 type Extra = { followers: number; following: number; purchases: number; isFollowing: boolean; socials: string[]; canWrite: boolean };
 type Data = { p: BizPublic; products: BizProduct[]; offers: BizOffer[]; cur: string; mine: boolean; notPublished: boolean; staff: boolean; extra: Extra };
@@ -41,6 +42,7 @@ export default function BusinessProfile({
   const [toast, setToast] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [reportOpen, setReportOpen] = useState(false);
 
   async function load() {
     const r = await apiPost("/api/business/page", { userId });
@@ -116,9 +118,16 @@ export default function BusinessProfile({
               </>
             )}
             {!owner && (
-              <TopBtn onClick={share} label="Поделиться">
-                <span className="text-lg leading-none">↗</span>
-              </TopBtn>
+              <>
+                <TopBtn onClick={share} label="Поделиться">
+                  <span className="text-lg leading-none">↗</span>
+                </TopBtn>
+                {!d.staff && p.id && (
+                  <TopBtn onClick={() => setReportOpen(true)} label="Пожаловаться на магазин">
+                    <span className="text-base leading-none">⚑</span>
+                  </TopBtn>
+                )}
+              </>
             )}
             {topRight}
           </div>
@@ -139,7 +148,7 @@ export default function BusinessProfile({
             <span className="min-w-0 break-words">{p.name}</span>
             {p.verified && <BlueCheck />}
           </h1>
-          <p className="text-muted text-xs mt-1">💼 Бизнес-аккаунт{p.verified ? " · Официальный партнёр" : ""}</p>
+          <p className="text-gold text-xs mt-1 flex items-center gap-1.5"><BizMark size={14} /> Бизнес-аккаунт{p.verified ? " · Официальный партнёр" : ""}</p>
         </div>
       </div>
       {p.category && <p className="px-5 mt-2 text-offwhite text-sm">{p.category}</p>}
@@ -219,6 +228,7 @@ export default function BusinessProfile({
         onEdit={(pr) => setEdit(pr)}
       />
 
+      {p.id && <ShopReportSheet open={reportOpen} onClose={() => setReportOpen(false)} businessId={p.id} />}
       {sheet && <FollowsSheet userId={userId} kind={sheet} onClose={() => setSheet(null)} />}
       {edit && (
         <ProductEditor

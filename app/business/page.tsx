@@ -9,6 +9,7 @@ import { apiPost, openSession } from "@/lib/authClient";
 import { supabase } from "@/lib/supabaseClient";
 import { cleanImage } from "@/lib/imageClean";
 import BusinessCatalogTab from "@/components/BusinessCatalogTab";
+import SocialLinksEditor from "@/components/SocialLinksEditor";
 import BusinessOrdersTab from "@/components/BusinessOrdersTab";
 import BusinessOffersTab from "@/components/BusinessOffersTab";
 
@@ -25,6 +26,7 @@ export default function BusinessCabinetPage() {
   const [st, setSt] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<"buy" | "book">("buy");
   const [msg, setMsg] = useState("");
   const [f, setF] = useState<any>(null);
   const [view, setView] = useState(false);
@@ -63,7 +65,7 @@ export default function BusinessCabinetPage() {
   async function enable() {
     setBusy(true);
     setMsg("");
-    const r = await apiPost("/api/business/enable");
+    const r = await apiPost("/api/business/enable", { mode });
     if (r?.ok && (await openSession(r.token_hash))) {
       window.location.replace("/profile");
       return;
@@ -100,6 +102,7 @@ export default function BusinessCabinetPage() {
       email: f.email,
       site_url: f.site_url,
       quick_action: f.quick_action,
+      show_call: f.show_call !== false,
       ...extra,
     });
     setBusy(false);
@@ -114,7 +117,7 @@ export default function BusinessCabinetPage() {
     try {
       const up = await cleanImage(file);
       const ext = up.name.split(".").pop();
-      const path = `biz-${st?.businessUserId ?? "x"}-${key}-${Date.now()}.${ext}`;
+      const path = `${st?.businessUserId ?? "x"}-${Date.now()}-${key === "logo_url" ? "logo" : "cover"}.${ext}`;
       const { error } = await supabase.storage.from("participant-photos").upload(path, up);
       if (error) {
         setMsg("Ошибка загрузки: " + error.message);
@@ -158,9 +161,21 @@ export default function BusinessCabinetPage() {
                 {busy ? "Переходим..." : "Перейти в бизнес-аккаунт"}
               </button>
             ) : (
-              <button onClick={enable} disabled={busy} className="w-full mt-4 bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm disabled:opacity-50">
-                {busy ? "Создаём..." : "Включить бизнес-аккаунт"}
-              </button>
+              <>
+                <p className="text-offwhite text-sm font-semibold mt-4">Что у вас?</p>
+                <div className="flex flex-col gap-2 mt-2">
+                  {([["buy", "🛍 Магазин", "Продаёте товары. Клиенты нажимают «Купить»."], ["book", "📅 Услуги", "Записываете или бронируете. Клиенты нажимают «Забронировать»."]] as const).map(([k, l, h]) => (
+                    <button key={k} onClick={() => setMode(k)} className={`text-left rounded-xl px-4 py-2.5 border ${mode === k ? "border-gold bg-gold/10" : "border-muted"}`}>
+                      <span className="text-offwhite text-sm font-semibold block">{l}</span>
+                      <span className="text-muted text-xs">{h}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-muted text-xs mt-2">Выбор можно поменять позже в настройках.</p>
+                <button onClick={enable} disabled={busy} className="w-full mt-4 bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm disabled:opacity-50">
+                  {busy ? "Создаём..." : "Включить бизнес-аккаунт"}
+                </button>
+              </>
             )}
             {msg && <p className="text-danger text-sm mt-3">{msg}</p>}
           </div>
@@ -210,12 +225,14 @@ export default function BusinessCabinetPage() {
             </div>
             <label className="text-muted text-xs flex flex-col gap-1">Адрес<input className={input} value={f.address ?? ""} onChange={set("address")} /></label>
             <label className="text-muted text-xs flex flex-col gap-1">Почта<input className={input} value={f.email ?? ""} onChange={set("email")} inputMode="email" /></label>
-            <label className="text-muted text-xs flex flex-col gap-1">Сайт или страница в соцсети<input className={input} value={f.site_url ?? ""} onChange={set("site_url")} /></label>
+            <label className="text-muted text-xs flex flex-col gap-1">Сайт магазина (одна ссылка, покажется в контактах)<input className={input} value={f.site_url ?? ""} onChange={set("site_url")} /></label>
+            <label className="flex items-start gap-2 text-offwhite text-sm"><input type="checkbox" className="mt-1" checked={f.show_call !== false} onChange={(e) => setF((o: any) => ({ ...o, show_call: e.target.checked }))} /><span>Показывать кнопку «Позвонить»<span className="block text-muted text-xs">Если выключить, телефон и кнопка не видны никому, клиенты смогут только написать вам в чат.</span></span></label>
+            {st?.businessUserId && <SocialLinksEditor userId={st.businessUserId} />}
 
             <div>
-              <p className="text-muted text-xs mb-1">Быстрая кнопка на странице</p>
+              <p className="text-muted text-xs mb-1">Тип страницы (какая кнопка у клиентов)</p>
               <div className="flex gap-2">
-                {[["buy", "🛒 Купить"], ["book", "📅 Забронировать"]].map(([k, l]) => (
+                {[["buy", "🛍 Магазин · Купить"], ["book", "📅 Услуги · Забронировать"]].map(([k, l]) => (
                   <button key={k} onClick={() => setF((o: any) => ({ ...o, quick_action: k }))} className={`px-4 py-2 rounded-full text-sm border ${f.quick_action === k ? "bg-gold text-bgPrimary border-gold font-semibold" : "border-muted text-offwhite"}`}>
                     {l}
                   </button>

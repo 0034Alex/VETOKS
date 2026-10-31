@@ -24,7 +24,8 @@ export async function POST(req: Request) {
   }
   if (!c.sponsor) return bad("not_partner", 403);
 
-  const r = await createBusinessAccount(c.rootId, c.sponsor);
+  const body = await req.json().catch(() => ({}));
+  const r = await createBusinessAccount(c.rootId, c.sponsor, { quick_action: body?.mode === "book" ? "book" : "buy" });
   if (!r.ok) return bad(r.error, r.error === "create_failed" || r.error === "save_failed" ? 500 : 400);
   const th = await tokenHashForUser(r.userId);
   if (!th) return bad("login_failed", 500);

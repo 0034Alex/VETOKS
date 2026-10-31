@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { apiPost, openSession } from "@/lib/authClient";
+import { supabase } from "@/lib/supabaseClient";
 
 type Acc = { id: string; name: string; main: boolean; current: boolean; business?: boolean };
 const kind = (a: Acc) => (a.business ? "Бизнес" : a.main ? "Основной" : "Дополнительный");
@@ -38,6 +39,11 @@ export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
 
   async function enter(tokenHash: string) {
     if (await openSession(tokenHash)) {
+      // Даём браузеру сохранить вход и только потом открываем профиль, иначе бывает белый экран.
+      try {
+        await supabase.auth.getSession();
+      } catch {}
+      await new Promise((r) => setTimeout(r, 350));
       window.location.replace("/profile");
     } else {
       setBusy(false);
@@ -56,15 +62,9 @@ export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
     }
   }
 
-  async function createBiz() {
-    setBusy(true);
-    setMsg("");
-    const r = await apiPost("/api/business/enable");
-    if (r?.ok && r.token_hash) await enter(r.token_hash);
-    else {
-      setBusy(false);
-      setMsg(r?.error === "need_phone" ? "Сначала подтвердите номер телефона в основном аккаунте." : r?.error === "no_slot" ? "Нет свободного места под бизнес-аккаунт." : "Не получилось создать бизнес-аккаунт.");
-    }
+  // Бизнес-аккаунт создаётся на странице «Бизнес-аккаунт»: там выбирают, магазин это или услуги.
+  function createBiz() {
+    window.location.href = "/business";
   }
 
   async function create() {
@@ -149,7 +149,7 @@ export default function AccountSwitcher({ chip = false }: { chip?: boolean }) {
                 disabled={busy}
                 className="w-full mb-2 bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm disabled:opacity-50"
               >
-                {busy ? "Создаём..." : "🏪 Создать бизнес-аккаунт"}
+                🏪 Создать бизнес-аккаунт
               </button>
             )}
 

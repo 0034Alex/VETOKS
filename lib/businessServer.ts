@@ -147,7 +147,7 @@ export async function businessContext(uid: string) {
 export async function createBusinessAccount(
   rootId: string,
   sponsor: { id: string; name: string; country_id: string | null },
-  prefill: { phone?: string; email?: string } = {}
+  prefill: { phone?: string; email?: string; quick_action?: "buy" | "book" } = {}
 ): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const members = await familyMembers(rootId);
   const { data: root } = await supabaseAdmin
@@ -192,6 +192,7 @@ export async function createBusinessAccount(
     name,
     phone: prefill.phone || null,
     email: prefill.email || null,
+    quick_action: prefill.quick_action === "book" ? "book" : "buy",
     verified: true, // синяя галочка сразу: партнёр уже подтверждён в CRM
   });
   if (pe) {
@@ -219,4 +220,11 @@ export async function syncBusinessToUser(userId: string, p: any) {
     if (photo) patch.photo_url = photo;
     await supabaseAdmin.from("users").update(patch).eq("id", userId);
   } catch {}
+}
+
+// Показывать ли кнопку «Позвонить» и телефон. Пока SQL не выполнен, колонки нет: считаем «да».
+export async function getShowCall(bizId: string): Promise<boolean> {
+  const r = await supabaseAdmin.from("business_profiles").select("show_call").eq("id", bizId).maybeSingle();
+  if (r.error) return true;
+  return (r.data as any)?.show_call !== false;
 }

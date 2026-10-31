@@ -32,7 +32,7 @@ export default function ProductEditor({ cur, userId, product, onClose, onSaved }
     setUpBusy(true);
     try {
       const up = await cleanImage(file);
-      const path = `biz-${userId}-prod-${Date.now()}.${up.name.split(".").pop()}`;
+      const path = `${userId}-${Date.now()}-prod.${(up.name.split(".").pop() || "jpg").toLowerCase()}`;
       const { error } = await supabase.storage.from("participant-photos").upload(path, up);
       if (error) {
         setMsg("Ошибка загрузки: " + error.message);

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { apiPost } from "@/lib/authClient";
-import { REPORT_REASONS } from "@/components/ReportSheet";
+import ShopReportSheet from "@/components/ShopReportSheet";
 import { money, splitSizes, ShopProduct, stockInfo, sizeInfo, productTotal } from "@/lib/businessShared";
 import { shareLink } from "@/components/ProfileHero";
 
@@ -21,17 +21,29 @@ export type BizPublic = {
   site_url: string;
   quick_action: "buy" | "book";
   verified: boolean;
+  show_call?: boolean;
 };
 
-// Синяя галочка «Официальный партнёр VETOKS».
+// Значок бизнес-аккаунта VETOKS: витрина магазина с короной над входом.
+export function BizMark({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="flex-none">
+      <path d="M7 3.2l1.6 1.8L12 2.6 15.4 5 17 3.2l.6 3.3H6.4z" />
+      <path d="M4 9l1-2.5h14L20 9a2.3 2.3 0 01-4 1.4 2.3 2.3 0 01-4 0A2.3 2.3 0 018 10.4 2.3 2.3 0 014 9z" />
+      <path d="M5.5 11.5V20h13v-8.5M10 20v-4.5h4V20" />
+    </svg>
+  );
+}
+
+// Знак «Официальный партнёр VETOKS» рядом с названием магазина.
 export function BlueCheck({ size = 18 }: { size?: number }) {
   return (
     <span
       title="Официальный партнёр VETOKS"
       className="inline-flex items-center justify-center rounded-full flex-none align-middle"
-      style={{ width: size, height: size, background: "#1d9bf0", color: "#fff", fontSize: size * 0.62, fontWeight: 700 }}
+      style={{ width: size + 4, height: size + 4, background: "linear-gradient(135deg,#f2d792,#c9a227)", color: "#1a1405" }}
     >
-      ✓
+      <BizMark size={size - 3} />
     </span>
   );
 }
@@ -67,11 +79,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
   const [gPick, setGPick] = useState<{ id: string; name: string } | null>(null);
   const [anon, setAnon] = useState(false);
   const [gmsg, setGmsg] = useState("");
-  const [report, setReport] = useState<"" | "pick" | "done">("");
-  const [reason, setReason] = useState("");
-  const [details, setDetails] = useState("");
-  const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [report, setReport] = useState<"" | "pick">("");
   const [shared, setShared] = useState(false);
   const [tab, setTab] = useState<"shop" | "feed" | "about">("shop");
   const [sheetP, setSheetP] = useState<BizProduct | null>(null);
@@ -165,17 +173,9 @@ export default function BusinessPageView({ p, preview = false, products = [], of
     setContact(true);
   }
 
-  async function sendReport() {
-    if (!reason) return;
-    setBusy(true);
-    setErr("");
-    const r = await apiPost("/api/business/report", { id: p.id, reason, details });
-    setBusy(false);
-    if (r?.ok) setReport("done");
-    else setErr("Не получилось отправить. Попробуйте ещё раз.");
-  }
 
   const can = !(preview || !(canOrder || demo));
+  const phoneOn = !!p.phone && p.show_call !== false;
   const statusPill = (pr: BizProduct) => {
     const st = stockInfo(productTotal(pr));
     const cls = st.state === "ok" ? "text-success border-success/70" : st.state === "low" ? "text-gold border-gold/70" : "text-danger border-danger/70";
@@ -249,14 +249,14 @@ export default function BusinessPageView({ p, preview = false, products = [], of
           <span className="min-w-0 break-words">{p.name}</span>
           {p.verified && <BlueCheck />}
         </h1>
-        {p.verified && <p className="text-[#1d9bf0] text-xs mt-0.5">Официальный партнёр VETOKS</p>}
+        {p.verified && <p className="text-gold text-xs mt-0.5">Официальный партнёр VETOKS</p>}
         {p.category && <p className="text-muted text-sm mt-1">{p.category}</p>}
         {p.about && <p className="text-offwhite text-sm mt-3 whitespace-pre-line">{p.about}</p>}
           </>
         )}
 
         <div className="bg-bgSurface border border-gold/30 rounded-2xl p-4 mt-4 flex flex-col gap-2 text-sm">
-          {p.phone && <Row k="📞" v={p.phone} />}
+          {phoneOn && <Row k="📞" v={p.phone} />}
           {p.address && <Row k="📍" v={p.address} />}
           {p.hours && <Row k="🕒" v={p.hours} />}
           {p.email && <Row k="✉️" v={p.email} />}
@@ -268,12 +268,15 @@ export default function BusinessPageView({ p, preview = false, products = [], of
               </a>
             </div>
           )}
-          {!p.hours && !p.address && !p.phone && !p.email && !p.site_url && <p className="text-muted">Контакты пока не заполнены.</p>}
-          {(p.phone || p.email) && (
+          {!p.hours && !p.address && !phoneOn && !p.email && !p.site_url && <p className="text-muted">Контакты пока не заполнены.</p>}
+          {!owner && !preview && (p.user_id || phoneOn) && (
             <div className="flex gap-2 mt-1">
-              {p.phone && <a href={`tel:${p.phone}`} className="flex-1 text-center border border-gold text-gold font-semibold rounded-full py-2 text-xs">Позвонить</a>}
-              <button onClick={quickAction} className="flex-1 bg-gold text-bgPrimary font-semibold rounded-full py-2 text-xs">{quick}</button>
+              {p.user_id && <a href={`/chats/${p.user_id}`} className="flex-1 text-center bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm">✉ Написать</a>}
+              {phoneOn && <a href={`tel:${p.phone}`} className="flex-1 text-center border border-gold text-gold font-semibold rounded-full py-2.5 text-sm">📞 Позвонить</a>}
             </div>
+          )}
+          {p.quick_action === "book" && !owner && !preview && (
+            <button onClick={quickAction} className="w-full border border-gold text-gold font-semibold rounded-full py-2.5 text-sm">📅 Забронировать</button>
           )}
         </div>
 
@@ -619,36 +622,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         </div>
       )}
 
-      {report && (
-        <div className="fixed inset-0 z-[120] bg-black/65 flex items-end justify-center" onClick={() => !busy && setReport("")}>
-          <div className="w-full max-w-md bg-bgSurface rounded-t-3xl p-5 max-h-[85dvh] overflow-y-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }} onClick={(e) => e.stopPropagation()}>
-            {report === "done" ? (
-              <>
-                <p className="text-offwhite font-semibold mb-2">Спасибо, жалоба отправлена</p>
-                <p className="text-muted text-sm mb-4">Мы проверим страницу и примем решение.</p>
-                <button onClick={() => setReport("")} className="w-full bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm">Готово</button>
-              </>
-            ) : (
-              <>
-                <p className="text-offwhite font-semibold mb-3">Пожаловаться на страницу</p>
-                <div className="flex flex-col gap-2">
-                  {REPORT_REASONS.map((r) => (
-                    <button key={r.key} onClick={() => setReason(r.key)} className={`text-left rounded-xl px-4 py-2.5 border ${reason === r.key ? "border-gold bg-gold/10" : "border-muted"}`}>
-                      <span className="text-offwhite text-sm block">{r.title}</span>
-                      <span className="text-muted text-xs">{r.hint}</span>
-                    </button>
-                  ))}
-                </div>
-                <textarea value={details} onChange={(e) => setDetails(e.target.value)} rows={2} placeholder="Что не так (по желанию)" className="w-full bg-bgPrimary border border-muted rounded-xl px-3 py-2 text-sm mt-3" />
-                {err && <p className="text-danger text-xs mt-2">{err}</p>}
-                <button onClick={sendReport} disabled={!reason || busy} className="w-full mt-3 bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm disabled:opacity-50">
-                  {busy ? "Отправляем..." : "Отправить"}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {p.id && <ShopReportSheet open={!!report} onClose={() => setReport("")} businessId={p.id} />}
     </div>
   );
 }
