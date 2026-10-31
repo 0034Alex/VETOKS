@@ -9,7 +9,6 @@ import FollowsSheet from "@/components/FollowsSheet";
 import ProductEditor from "@/components/ProductEditor";
 import BusinessPageView, { BizPublic, BizProduct, BizOffer, BlueCheck } from "@/components/BusinessPageView";
 import ShopReportSheet from "@/components/ShopReportSheet";
-import CartButton from "@/components/CartButton";
 
 type Extra = { followers: number; following: number; purchases: number; isFollowing: boolean; socials: string[]; canWrite: boolean };
 type Data = { p: BizPublic; products: BizProduct[]; offers: BizOffer[]; cur: string; mine: boolean; notPublished: boolean; staff: boolean; extra: Extra };
@@ -119,7 +118,6 @@ export default function BusinessProfile({
             )}
             {!owner && (
               <>
-                <CartButton />
                 <TopBtn onClick={share} label="Поделиться">
                   <span className="text-lg leading-none">↗</span>
                 </TopBtn>

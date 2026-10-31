@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   const oq = await supabaseAdmin.from("business_offers").select(OFFER_COLS).eq("business_id", id).eq("is_active", true).order("created_at", { ascending: false }).limit(20);
   return NextResponse.json({
     ok: true,
-    profile: await withCall(publicBiz(p), id, mine || staff),
+    profile: { ...(await withCall(publicBiz(p), id, mine || staff)), city: await cityOf(p) },
     mine,
     userId: (p as any).user_id,
     staffPreview: staff && !mine,
@@ -65,7 +65,7 @@ async function ownerExtra(me: string, ownerId: string, bizId: string, siteUrl: s
   const { data: fRow } = await supabaseAdmin.from("user_follows").select("id").eq("follower_id", me).eq("followed_id", ownerId).maybeSingle();
   const { data: u } = await supabaseAdmin.from("users").select("social_links, privacy").eq("id", ownerId).maybeSingle();
   let socials = parseLinks((u as any)?.social_links);
-  if (siteUrl && !socials.includes(siteUrl)) socials = [siteUrl, ...socials];
+  if (siteUrl && !socials.includes(siteUrl)) socials = [...socials, siteUrl];
   const priv = (((u as any)?.privacy ?? {}) as Record<string, boolean>) || {};
   return { followers, following: f1 + f2, purchases, isFollowing: !!fRow, socials, canWrite: priv.dm !== false };
 }
@@ -74,4 +74,13 @@ async function ownerExtra(me: string, ownerId: string, bizId: string, siteUrl: s
 async function withCall(pub: any, bizId: string, seeAll: boolean) {
   const show = await getShowCall(bizId);
   return { ...pub, show_call: show, phone: show || seeAll ? pub.phone : "" };
+}
+
+// Город для закрытой части контактов: регион страницы, иначе первое слово адреса.
+async function cityOf(p: any): Promise<string> {
+  if (p.region_id) {
+    const { data } = await supabaseAdmin.from("regions").select("name").eq("id", p.region_id).maybeSingle();
+    if ((data as any)?.name) return String((data as any).name);
+  }
+  return String(p.address ?? "").split(",")[0].trim().slice(0, 60);
 }

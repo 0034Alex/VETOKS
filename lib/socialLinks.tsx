@@ -10,6 +10,7 @@ export type SocialKind =
   | "facebook"
   | "vk"
   | "x"
+  | "vetoks"
   | "link";
 
 export function socialKind(url: string): SocialKind {
@@ -21,6 +22,7 @@ export function socialKind(url: string): SocialKind {
   if (/facebook\.com|fb\.com|fb\.me/.test(u)) return "facebook";
   if (/(^|\/\/|\.)vk\.com/.test(u)) return "vk";
   if (/twitter\.com|(^|\/\/|\.)x\.com/.test(u)) return "x";
+  if (/(^|\/\/|\.)vetoks\.|xn--e1ajcu1d/.test(u)) return "vetoks";
   return "link";
 }
 
@@ -86,6 +88,18 @@ export function SocialIcon({ kind, size = 20 }: { kind: SocialKind; size?: numbe
     x: (
       <svg {...common}>
         <path d="M5 5l14 14M19 5L5 19" />
+      </svg>
+    ),
+    vetoks: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+        <defs>
+          <linearGradient id="vkGold" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#f2d792" />
+            <stop offset="1" stopColor="#c9a227" />
+          </linearGradient>
+        </defs>
+        <path d="M3 17.5L4.6 7l4.2 4.6L12 4.5l3.2 7.1L19.4 7 21 17.5z" fill="url(#vkGold)" stroke="url(#vkGold)" strokeWidth="1.2" strokeLinejoin="round" />
+        <path d="M4.5 20h15" stroke="url(#vkGold)" strokeWidth="1.8" strokeLinecap="round" />
       </svg>
     ),
     link: (

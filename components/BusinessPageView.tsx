@@ -23,6 +23,7 @@ export type BizPublic = {
   quick_action: "buy" | "book";
   verified: boolean;
   show_call?: boolean;
+  city?: string;
 };
 
 // Значок бизнес-аккаунта VETOKS: витрина магазина с короной над входом.
@@ -179,6 +180,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
 
   const can = !(preview || !(canOrder || demo));
   const phoneOn = !!p.phone && p.show_call !== false;
+  const city = (p.city || String(p.address ?? "").split(",")[0]).trim();
   const statusPill = (pr: BizProduct) => {
     const st = stockInfo(productTotal(pr));
     const cls = st.state === "ok" ? "text-success border-success/70" : st.state === "low" ? "text-gold border-gold/70" : "text-danger border-danger/70";
@@ -279,12 +281,9 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         <div className="border border-gold/40 rounded-2xl p-3.5 mt-4 bg-gradient-to-br from-gold/10 via-bgSurface to-bgSurface">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-start">
             <div className="flex flex-col gap-2 text-[13px] min-w-0">
-              {phoneOn && <CRow k="phone" v={p.phone} href={owner || preview ? undefined : `tel:${p.phone}`} />}
-              {p.address && <CRow k="pin" v={p.address} />}
-              {p.email && <CRow k="mail" v={p.email} />}
-              {p.site_url && <CRow k="globe" v={p.site_url.replace(/^https?:\/\//, "")} href={p.site_url} ext />}
-              {!phoneOn && !p.address && !p.email && !p.site_url && !p.hours && <p className="text-muted">Контакты пока не заполнены.</p>}
-              {p.hours && !phoneOn && !p.address && !p.email && !p.site_url && <CRow k="clock" v={p.hours} />}
+              {city && <CRow k="pin" v={city} />}
+              {p.hours && <CRow k="clock" v={p.hours} />}
+              {!city && !p.hours && <p className="text-muted text-xs">Нажмите «Подробнее», там все контакты.</p>}
             </div>
             <div className="flex flex-col items-end gap-2">
               {socials.length > 0 && (
@@ -296,7 +295,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
                   ))}
                 </div>
               )}
-              <button onClick={() => setAllContacts(true)} className="text-gold text-xs border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap">Все контакты ›</button>
+              <button onClick={() => setAllContacts(true)} className="text-gold text-xs border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap">Подробнее ›</button>
             </div>
           </div>
           {phoneOn && (
@@ -664,7 +663,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         <div className="fixed inset-0 z-[125] bg-black/70 flex items-end justify-center" onClick={() => setAllContacts(false)}>
           <div className="w-full max-w-md bg-bgSurface rounded-t-3xl p-5 max-h-[85dvh] overflow-y-auto border-t border-gold/50" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-offwhite font-semibold">Контакты · {p.name}</p>
+              <p className="text-offwhite font-semibold">Подробнее · {p.name}</p>
               <button onClick={() => setAllContacts(false)} className="text-muted text-xl">✕</button>
             </div>
             <div className="flex flex-col gap-3 text-sm">
