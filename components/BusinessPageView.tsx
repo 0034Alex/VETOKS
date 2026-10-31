@@ -249,7 +249,6 @@ export default function BusinessPageView({ p, preview = false, products = [], of
           <span className="min-w-0 break-words">{p.name}</span>
           {p.verified && <BlueCheck />}
         </h1>
-        {p.verified && <p className="text-gold text-xs mt-0.5">Официальный партнёр VETOKS</p>}
         {p.category && <p className="text-muted text-sm mt-1">{p.category}</p>}
         {p.about && <p className="text-offwhite text-sm mt-3 whitespace-pre-line">{p.about}</p>}
           </>
@@ -269,10 +268,18 @@ export default function BusinessPageView({ p, preview = false, products = [], of
             </div>
           )}
           {!p.hours && !p.address && !phoneOn && !p.email && !p.site_url && <p className="text-muted">Контакты пока не заполнены.</p>}
-          {!owner && !preview && (p.user_id || phoneOn) && (
+          {(p.user_id || phoneOn) && (
             <div className="flex gap-2 mt-1">
-              {p.user_id && <a href={`/chats/${p.user_id}`} className="flex-1 text-center bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm">✉ Написать</a>}
-              {phoneOn && <a href={`tel:${p.phone}`} className="flex-1 text-center border border-gold text-gold font-semibold rounded-full py-2.5 text-sm">📞 Позвонить</a>}
+              {p.user_id && (owner || preview ? (
+                <span className="flex-1 text-center bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm">✉ Написать</span>
+              ) : (
+                <a href={`/chats/${p.user_id}`} className="flex-1 text-center bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm">✉ Написать</a>
+              ))}
+              {phoneOn && (owner || preview ? (
+                <span className="flex-1 text-center border border-gold text-gold font-semibold rounded-full py-2.5 text-sm">📞 Позвонить</span>
+              ) : (
+                <a href={`tel:${p.phone}`} className="flex-1 text-center border border-gold text-gold font-semibold rounded-full py-2.5 text-sm">📞 Позвонить</a>
+              ))}
             </div>
           )}
           {p.quick_action === "book" && !owner && !preview && (
@@ -383,7 +390,6 @@ export default function BusinessPageView({ p, preview = false, products = [], of
             <p className="text-gold font-semibold">О магазине</p>
             {p.category && <p className="text-muted">{p.category}</p>}
             {p.about ? <p className="text-offwhite whitespace-pre-line">{p.about}</p> : <p className="text-muted">Описание пока не заполнено.</p>}
-            <p className="text-muted text-xs mt-1">Оплата идёт напрямую магазину. VETOKS в оплате не участвует и комиссию не берёт.</p>
           </div>
         )}
       </div>
@@ -480,7 +486,6 @@ export default function BusinessPageView({ p, preview = false, products = [], of
                     {owner && onEdit && (
                       <button onClick={() => { setSheetP(null); onEdit(pr); }} className="w-full mt-3 border border-muted text-offwhite rounded-full py-2.5 text-sm">✎ Изменить товар и остатки</button>
                     )}
-                    <p className="text-muted text-[11px] mt-3 text-center">Оплата идёт напрямую магазину. VETOKS в оплате не участвует.</p>
                   </div>
                 </>
               );
@@ -515,7 +520,6 @@ export default function BusinessPageView({ p, preview = false, products = [], of
               <>
                 <p className="text-offwhite font-semibold mb-1">{book ? "Запрос на бронь отправлен" : gift ? "Подарок оформлен" : "Заказ оформлен"}</p>
                 <p className="text-muted text-sm mb-1">{book ? "Партнёр подтвердит бронь в чате." : gift ? `Сумма: ${money(oDone.total, cur)}. Договоритесь с магазином об оплате в чате. Когда магазин отметит оплату, подарок уйдёт получателю. Статус будет в «Заказы и подарки».` : `Сумма: ${money(oDone.total, cur)}. Партнёр свяжется с вами в чате и уточнит оплату и доставку.`}</p>
-                <p className="text-muted text-xs mb-4">Оплата идёт напрямую партнёру. VETOKS в оплате не участвует.</p>
                 {oDone.id ? <a href={`/my-orders?o=${oDone.id}`} className="block text-center bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm">Открыть заказ и чат</a> : <p className="text-gold text-xs text-center">Это предпросмотр: заказ никуда не отправлен.</p>}
                 <button onClick={closeOrder} className="w-full mt-2 border border-muted text-offwhite rounded-full py-2.5 text-sm">Закрыть</button>
               </>
@@ -610,7 +614,6 @@ export default function BusinessPageView({ p, preview = false, products = [], of
                   <label className="text-muted text-xs flex flex-col gap-1">Ваш телефон{gift ? " (для связи магазина с вами)" : ""}<input value={o.phone} onChange={(e) => setO({ ...o, phone: e.target.value })} inputMode="tel" maxLength={40} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" /></label>
                   <label className="text-muted text-xs flex flex-col gap-1">Комментарий<textarea value={o.note} onChange={(e) => setO({ ...o, note: e.target.value })} rows={2} maxLength={500} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" /></label>
                 </div>
-                <p className="text-muted text-[11px] mt-3">Оплата идёт напрямую партнёру. VETOKS в оплате не участвует и комиссию не берёт.</p>
                 {oErr && <p className="text-danger text-xs mt-2">{oErr}</p>}
                 <button onClick={sendOrder} disabled={oBusy || (book && !o.whenText.trim())} className="w-full mt-3 bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm disabled:opacity-50">
                   {oBusy ? "Отправляем..." : book ? "Отправить запрос" : sel ? `${gift ? "Оформить подарок" : "Оформить"} · ${money(sel.price * o.qty, cur)}` : "Оформить"}

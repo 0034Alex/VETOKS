@@ -53,6 +53,9 @@ export default function PartnersDirectoryPage() {
   const [tab, setTab] = useState<"partners" | "shops">("partners");
 
   useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("tab") === "shops") setTab("shops");
+    } catch {}
     (async () => {
       const mc = await getMyCountry();
       const { data } = await orCountry(

@@ -8,7 +8,7 @@ import { shareLink, TopBtn } from "@/components/ProfileHero";
 import { SocialIcon, socialKind } from "@/lib/socialLinks";
 import FollowsSheet from "@/components/FollowsSheet";
 import ProductEditor from "@/components/ProductEditor";
-import BusinessPageView, { BizPublic, BizProduct, BizOffer, BlueCheck, BizMark } from "@/components/BusinessPageView";
+import BusinessPageView, { BizPublic, BizProduct, BizOffer, BlueCheck } from "@/components/BusinessPageView";
 import ShopReportSheet from "@/components/ShopReportSheet";
 
 type Extra = { followers: number; following: number; purchases: number; isFollowing: boolean; socials: string[]; canWrite: boolean };
@@ -148,7 +148,6 @@ export default function BusinessProfile({
             <span className="min-w-0 break-words">{p.name}</span>
             {p.verified && <BlueCheck />}
           </h1>
-          <p className="text-gold text-xs mt-1 flex items-center gap-1.5"><BizMark size={14} /> Бизнес-аккаунт{p.verified ? " · Официальный партнёр" : ""}</p>
         </div>
       </div>
       {p.category && <p className="px-5 mt-2 text-offwhite text-sm">{p.category}</p>}
@@ -156,8 +155,7 @@ export default function BusinessProfile({
       <div className="px-5 mt-4 flex gap-2">
         {owner ? (
           <>
-            <button onClick={() => setEdit("new")} className={`${btn} bg-gold text-bgPrimary`}>＋ Выставить товар</button>
-            <Link href="/business?tab=orders" className={`${btn} relative border border-gold/60 text-gold bg-bgSurface`}>
+            <Link href="/business?tab=orders" className={`${btn} relative bg-gold text-bgPrimary`}>
               Заказы
               {newOrders > 0 && <span className="absolute -top-1.5 -right-1 bg-danger text-white text-[10px] min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center">{newOrders > 9 ? "9+" : newOrders}</span>}
             </Link>

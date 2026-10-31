@@ -127,7 +127,6 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
             {gift && role === "owner" && o.status === "declined" && <p className="text-danger text-xs mt-1">Участница отказалась. Верните оплату дарителю и отмените заказ.</p>}
           </>
         )}
-        <p className="text-muted text-[11px] mt-1">Оплата идёт напрямую партнёру. VETOKS в оплате не участвует.</p>
       </div>
 
       {(actions.length > 0 || canCancel || (gift && role === "owner" && o.status === "declined")) && (
