@@ -3,17 +3,18 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
-import { applyOpen, useBetween, useRecruit } from "@/lib/useShow";
+import { useBetween } from "@/lib/useShow";
 import { supabase } from "@/lib/supabaseClient";
 import { apiPost } from "@/lib/authClient";
 import { getCurrentUser } from "@/lib/currentUser";
+import { useT } from "@/lib/i18n";
 
 const p2 = (n: number) => String(n).padStart(2, "0");
 
 // Страна ещё не начала первое шоу: человек видит только отсчёт до старта (и «Подать анкету», если набор открыт).
 export default function PreStartScreen() {
+  const { t } = useT();
   const b = useBetween();
-  const r = useRecruit();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -52,16 +53,16 @@ export default function PreStartScreen() {
     }
   }, [now, to]);
   const units: [number, string][] = [
-    [Math.floor(s / 86400), "дн"],
-    [Math.floor((s % 86400) / 3600), "ч"],
-    [Math.floor((s % 3600) / 60), "мин"],
-    [s % 60, "сек"],
+    [Math.floor(s / 86400), t("prestart.d")],
+    [Math.floor((s % 86400) / 3600), t("prestart.h")],
+    [Math.floor((s % 3600) / 60), t("prestart.m")],
+    [s % 60, t("prestart.s")],
   ];
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-bgPrimary">
       <Logo size={48} />
-      <h1 className="text-2xl font-semibold text-gold mt-6 mb-2">Скоро старт!</h1>
-      <p className="text-muted text-sm mb-6 max-w-sm">До старта шоу осталось:</p>
+      <h1 className="text-2xl font-semibold text-gold mt-6 mb-2">{t("prestart.title")}</h1>
+      <p className="text-muted text-sm mb-6 max-w-sm">{t("prestart.until")}</p>
       <div className="flex items-center gap-3 mb-8">
         {units.map(([v, l]) => (
           <div key={l} className="bg-bgSurface border border-gold/40 rounded-xl px-3 py-2 min-w-[64px]">
@@ -72,15 +73,16 @@ export default function PreStartScreen() {
       </div>
       {!isPart && (
         <Link href="/apply" className="bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full">
-          Подать анкету на участие
+          {t("prestart.apply")}
         </Link>
       )}
-      <Link href="/ad-space" className="mt-3 border border-gold text-gold font-semibold px-8 py-3 rounded-full">
-        {isAdv ? "Рекламный кабинет" : "Реклама"}
+      <Link href="/ad-space" className="mt-3 border border-gold text-gold font-semibold px-8 py-3 rounded-full flex flex-col items-center">
+        <span>{isAdv ? t("prestart.advCab") : t("prestart.adv")}</span>
+        {!isAdv && <span className="text-[11px] text-muted font-normal mt-0.5 max-w-[240px]">{t("prestart.advSub")}</span>}
       </Link>
       {isPart && (
         <Link href="/invites" className="mt-3 border border-gold text-gold font-semibold px-8 py-3 rounded-full">
-          Мои приглашения
+          {t("prestart.invites")}
         </Link>
       )}
     </main>

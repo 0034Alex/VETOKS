@@ -10,6 +10,17 @@ export const LANGS: { code: Lang; label: string }[] = ALL_LANGS.map((code) => ({
 type Dict = Record<string, string>;
 
 const ru: Dict = {
+  "prestart.title": "Скоро старт!",
+  "prestart.until": "До старта шоу осталось:",
+  "prestart.d": "дн",
+  "prestart.h": "ч",
+  "prestart.m": "мин",
+  "prestart.s": "сек",
+  "prestart.apply": "📝 Подать анкету на участие",
+  "prestart.adv": "💼 Для рекламодателей и партнёров",
+  "prestart.advSub": "Баннеры, журнал, жюри: покажите бренд зрителям шоу",
+  "prestart.advCab": "💼 Рекламный кабинет",
+  "prestart.invites": "🎁 Мои приглашения",
   "nav.home": "Главная",
   "nav.participants": "Участницы",
   "nav.media": "Медиа",
@@ -102,6 +113,17 @@ const ru: Dict = {
 };
 
 const uk: Dict = {
+  "prestart.title": "Скоро старт!",
+  "prestart.until": "До старту шоу залишилось:",
+  "prestart.d": "дн",
+  "prestart.h": "год",
+  "prestart.m": "хв",
+  "prestart.s": "сек",
+  "prestart.apply": "📝 Подати анкету на участь",
+  "prestart.adv": "💼 Для рекламодавців і партнерів",
+  "prestart.advSub": "Банери, журнал, журі: покажіть бренд глядачам шоу",
+  "prestart.advCab": "💼 Рекламний кабінет",
+  "prestart.invites": "🎁 Мої запрошення",
   "nav.home": "Головна",
   "nav.participants": "Учасниці",
   "nav.media": "Медіа",
@@ -194,6 +216,17 @@ const uk: Dict = {
 };
 
 const en: Dict = {
+  "prestart.title": "Starting soon!",
+  "prestart.until": "Time until the show starts:",
+  "prestart.d": "d",
+  "prestart.h": "h",
+  "prestart.m": "min",
+  "prestart.s": "sec",
+  "prestart.apply": "📝 Apply to take part",
+  "prestart.adv": "💼 For advertisers and partners",
+  "prestart.advSub": "Banners, magazine, jury: show your brand to the show's audience",
+  "prestart.advCab": "💼 Advertiser cabinet",
+  "prestart.invites": "🎁 My invitations",
   "nav.home": "Home",
   "nav.participants": "Contestants",
   "nav.media": "Media",
