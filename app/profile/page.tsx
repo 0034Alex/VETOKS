@@ -22,7 +22,7 @@ import BusinessProfile from "@/components/BusinessProfile";
 import ShopLinkCard from "@/components/ShopLinkCard";
 import { getCurrencySymbol } from "@/lib/currency";
 import { useT } from "@/lib/i18n";
-import { useShow, hasBlock } from "@/lib/useShow";
+import { useShow, hasBlock, useBetween } from "@/lib/useShow";
 import { apiPost } from "@/lib/authClient";
 import GiftShowcase from "@/components/GiftShowcase";
 
@@ -45,6 +45,8 @@ function maskEmail(email: string | null | undefined): string {
 }
 
 export default function ProfilePage() {
+  const betwP = useBetween();
+  const preLockedP = !!betwP?.prestart && betwP.prestart > Date.now();
   const router = useRouter();
   const { t } = useT();
   const { show: curShowR } = useShow();
@@ -671,7 +673,7 @@ export default function ProfilePage() {
             <span className="text-white font-semibold text-sm">{t("profile.becomePartner")}</span>
           </a>
         )}
-        {!isPartner && (
+        {!isPartner && !preLockedP && (
           <a href="/business-apply" className="block border border-gold/60 rounded-xl p-3.5 mt-3 text-center">
             <span className="text-gold font-semibold text-sm">🏪 Открыть бизнес-страницу</span>
           </a>

@@ -12,6 +12,7 @@ import { apiPost } from "@/lib/authClient";
 import { cleanImage } from "@/lib/imageClean";
 import { payAdRequest } from "@/lib/adPayClient";
 import { adHintFor } from "@/lib/adHints";
+import { useBetween } from "@/lib/useShow";
 
 type Slot = {
   id: string;
@@ -82,6 +83,8 @@ function PriceBlock({ slot }: { slot: Slot }) {
 }
 
 export default function AdSpacePage() {
+  const betw = useBetween();
+  const preLocked = !!betw?.prestart && betw.prestart > Date.now();
   const router = useRouter();
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -343,13 +346,13 @@ export default function AdSpacePage() {
         Выберите место, заполните данные и отправьте заявку. После одобрения вы получите уведомление и оплатите с баланса.
       </p>
 
-      <a href="/business-apply" className="mx-6 mb-6 flex items-center justify-between gap-3 rounded-xl border border-gold bg-gold/10 p-4">
+      {!preLocked && <a href="/business-apply" className="mx-6 mb-6 flex items-center justify-between gap-3 rounded-xl border border-gold bg-gold/10 p-4">
         <span>
           <span className="block text-offwhite font-semibold text-sm">🏪 Открыть бизнес-страницу</span>
           <span className="block text-muted text-xs mt-0.5">Своя страница, синяя галочка, каталог, заказы. Это не реклама и платить не нужно.</span>
         </span>
         <span className="text-gold text-lg">›</span>
-      </a>
+      </a>}
 
       {mine.length > 0 && (
         <div className="mx-6 mb-6 rounded-xl border border-gold/50 bg-bgSurface p-4">

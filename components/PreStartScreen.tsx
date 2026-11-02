@@ -70,16 +70,14 @@ export default function PreStartScreen() {
           </div>
         ))}
       </div>
-      {r && applyOpen(r.banner) && (
+      {!isPart && (
         <Link href="/apply" className="bg-gold text-bgPrimary font-semibold px-8 py-3 rounded-full">
-          Подать анкету
+          Подать анкету на участие
         </Link>
       )}
-      {isAdv && (
-        <Link href="/ad-space" className="mt-3 border border-gold text-gold font-semibold px-8 py-3 rounded-full">
-          Рекламный кабинет
-        </Link>
-      )}
+      <Link href="/ad-space" className="mt-3 border border-gold text-gold font-semibold px-8 py-3 rounded-full">
+        {isAdv ? "Рекламный кабинет" : "Реклама"}
+      </Link>
       {isPart && (
         <Link href="/invites" className="mt-3 border border-gold text-gold font-semibold px-8 py-3 rounded-full">
           Мои приглашения
