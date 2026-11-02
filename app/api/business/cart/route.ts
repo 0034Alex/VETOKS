@@ -11,6 +11,18 @@ export const dynamic = "force-dynamic";
 const s = (v: any, n: number) => String(v ?? "").trim().slice(0, n);
 const MAX_ITEMS = 50;
 
+// Видео, из которого товар попал в корзину: пост участника, где этот товар отмечен, и это не сам покупатель.
+async function cartSource(postId: string, productId: string, uid: string): Promise<string | null> {
+  if (!postId) return null;
+  const probe = await supabaseAdmin.from("shop_cart_items").select("source_post_id").limit(1);
+  if (probe.error) return null;
+  const { data: tag } = await supabaseAdmin.from("post_products").select("id").eq("post_id", postId).eq("product_id", productId).maybeSingle();
+  if (!tag) return null;
+  const { data: post } = await supabaseAdmin.from("content_posts").select("user_id, participant_id").eq("id", postId).maybeSingle();
+  if (!post || !(post as any).participant_id || (post as any).user_id === uid) return null;
+  return postId;
+}
+
 // Корзина: товары из разных магазинов. Покупка: каждому магазину уходит свой заказ со своими товарами.
 export async function POST(req: Request) {
   const uid = await requireUser(req);
@@ -50,16 +62,19 @@ export async function POST(req: Request) {
     if (!ss && product.stock != null && Number(product.stock) <= 0) return bad("no_stock");
     const qty = Math.min(99, Math.max(1, Math.floor(Number(b.qty) || 1)));
 
+    const srcPost = await cartSource(s(b.postId, 60), productId, uid);
     const all = await tbl().select("id, product_id, size, qty").eq("user_id", uid);
     if (all.error) return bad("cart_unavailable", 503);
     const rows = (all.data as any[]) ?? [];
     const same = rows.find((r) => r.product_id === productId && (r.size ?? "") === size);
     if (same) {
       await tbl().update({ qty: Math.min(99, Number(same.qty) + qty) }).eq("id", same.id);
+      if (srcPost) await tbl().update({ source_post_id: srcPost }).eq("id", same.id);
     } else {
       if (rows.length >= MAX_ITEMS) return bad("cart_full");
-      const { error } = await tbl().insert({ user_id: uid, business_id: bid, product_id: productId, size: size || null, qty });
-      if (error) return bad("failed", 500);
+      const ins = await tbl().insert({ user_id: uid, business_id: bid, product_id: productId, size: size || null, qty }).select("id").maybeSingle();
+      if (ins.error) return bad("failed", 500);
+      if (srcPost && ins.data) await tbl().update({ source_post_id: srcPost }).eq("id", String((ins.data as any).id));
     }
     return NextResponse.json({ ok: true });
   }
@@ -189,6 +204,20 @@ export async function POST(req: Request) {
       }).select("id").maybeSingle();
       if (error || !created) { res.error = "failed"; continue; }
       const newId = String((created as any).id);
+
+      // Откуда пришла покупка: видео участника (для будущих начислений).
+      let srcPost: string | null = null;
+      for (const tk of taken) {
+        const sp = await supabaseAdmin.from("shop_cart_items").select("source_post_id").eq("id", tk.ln.id).maybeSingle();
+        const v = !sp.error ? (sp.data as any)?.source_post_id : null;
+        if (v) { srcPost = String(v); break; }
+      }
+      if (srcPost) {
+        const { data: post } = await supabaseAdmin.from("content_posts").select("user_id, participant_id").eq("id", srcPost).maybeSingle();
+        if (post && (post as any).participant_id && (post as any).user_id !== uid) {
+          await supabaseAdmin.from("business_orders").update({ source_participant_id: (post as any).participant_id, source_post_id: srcPost }).eq("id", newId);
+        }
+      }
 
       // Списываем остатки и убираем купленное из корзины.
       for (const tk of taken) {

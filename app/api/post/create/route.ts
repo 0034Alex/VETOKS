@@ -1,3 +1,4 @@
+import { setPostProducts } from "@/lib/postProducts";
 import { verifyStoredFile } from "@/lib/fileCheck";
 import { hasBadWords } from "@/lib/badWords";
 import { checkImageNsfw } from "@/lib/nsfw";
@@ -139,6 +140,9 @@ export async function POST(req: Request) {
     .maybeSingle();
   if (error || !row) return bad("insert_failed", 500);
   await setPostTheme(row.id as string, part?.id ?? null);
+  if (part?.id && Array.isArray(b.productIds) && b.productIds.length) {
+    await setPostProducts(uid, row.id as string, b.productIds.map(String).slice(0, 10)).catch(() => null);
+  }
 
   if (held) {
     // Отдельным запросом: если колонки ещё нет, публикация всё равно создана.

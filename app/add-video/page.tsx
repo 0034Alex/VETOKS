@@ -11,6 +11,7 @@ import { bunnyUpload, videoDuration } from "@/lib/bunnyUpload";
 import BottomNav from "@/components/BottomNav";
 import StoryComposer, { type StoryDraft } from "@/components/StoryComposer";
 import { useShow } from "@/lib/useShow";
+import ProductTagSheet, { type TagProduct } from "@/components/ProductTagSheet";
 
 const MAX_ITEMS = 10;
 type Vis = "all" | "followers" | "me";
@@ -25,7 +26,7 @@ type Item = {
 };
 type Place = { id?: string; name: string };
 type Person = { nick: string; name: string };
-type Sheet = null | "vis" | "place" | "people";
+type Sheet = null | "vis" | "place" | "people" | "prods";
 
 const VIS: { v: Vis; t: string; d: string }[] = [
   { v: "all", t: "Все", d: "Лента, профиль и поиск" },
@@ -54,6 +55,7 @@ function Inner() {
   const [error, setError] = useState("");
   const [queued, setQueued] = useState(false);
   const [isPart, setIsPart] = useState(false);
+  const [prods, setProds] = useState<TagProduct[]>([]);
   const libRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -170,6 +172,7 @@ function Inner() {
       allowReposts,
       draftId,
       tags: people.map((p) => p.nick),
+      productIds: isPart ? prods.map((x) => x.id) : undefined,
     });
     if (r?.ok && r.queued) {
       setBusy(false);
@@ -428,6 +431,15 @@ function Inner() {
           active={people.length > 0}
           onClick={() => setSheet("people")}
         />
+        {isPart && (
+          <Row
+            icon={<path d="M6 7h12l-1 13H7L6 7zM9 7a3 3 0 016 0" />}
+            label="Товары из магазинов"
+            value={prods.length ? prods.map((x) => x.name).join(", ") : "Не выбраны"}
+            active={prods.length > 0}
+            onClick={() => setSheet("prods")}
+          />
+        )}
         <Row
           icon={<path d="M12 21s7-6.2 7-11.5A7 7 0 005 9.5C5 14.8 12 21 12 21zM12 12a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />}
           label="Добавить место"
@@ -491,6 +503,7 @@ function Inner() {
           }}
         />
       )}
+      {sheet === "prods" && <ProductTagSheet value={prods} onChange={setProds} onClose={() => setSheet(null)} />}
       {sheet === "people" && <PeopleSheet people={people} onChange={setPeople} onClose={() => setSheet(null)} />}
       <BottomNav />
     </main>

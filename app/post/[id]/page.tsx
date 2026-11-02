@@ -12,6 +12,7 @@ import BottomNav from "@/components/BottomNav";
 import ReportSheet from "@/components/ReportSheet";
 import ShareSheet from "@/components/ShareSheet";
 import { IconRepost } from "@/components/ProfileIcons";
+import PostBuyButton from "@/components/PostBuyButton";
 
 type P = {
   id: string;
@@ -472,6 +473,7 @@ export default function PostFeedPage() {
               <div className="flex items-center gap-2 mt-2 text-[12px]">
                 {p.kind === "video" && <span className="bg-white/15 rounded-full px-2.5 py-1 text-offwhite">▶ {p.views.toLocaleString("ru-RU")} просмотров</span>}
                 <span className="bg-white/15 rounded-full px-2.5 py-1 text-offwhite">{fmtDate(p.createdAt)}</span>
+                <PostBuyButton postId={p.id} />
                 {p.comments > 0 && p.allowComments !== false && (
                   <button onClick={() => openComments(p.id)} className="bg-white/15 rounded-full px-2.5 py-1 text-offwhite">
                     Комментарии ({p.comments})
