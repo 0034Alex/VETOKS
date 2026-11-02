@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPost, openSession } from "@/lib/authClient";
+import { supabase } from "@/lib/supabaseClient";
 
 // Переключатель «Личный / Бизнес». Виден только одобренным партнёрам.
 export default function BusinessSwitch({ className = "" }: { className?: string }) {
@@ -32,7 +33,12 @@ export default function BusinessSwitch({ className = "" }: { className?: string 
       r = await apiPost("/api/accounts/switch", { targetId: st.rootId });
     }
     if (r?.status === "ok" && (await openSession(r.token_hash))) {
-      window.location.href = toBusiness ? "/business" : "/profile";
+      // Даём браузеру сохранить вход и только потом открываем страницу, иначе бывает белый экран.
+      try {
+        await supabase.auth.getSession();
+      } catch {}
+      await new Promise((res) => setTimeout(res, 350));
+      window.location.replace(toBusiness ? "/business" : "/profile");
     } else setBusy(false);
   }
 
