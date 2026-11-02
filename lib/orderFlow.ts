@@ -53,6 +53,7 @@ export function orderText(o: any, shopName: string, cur: string): string {
   }
   if (o.kind === "buy") lines.push(`Итого: ${money(o.total, cur)}`);
   if (o.when_text) lines.push(`Когда: ${o.when_text}`);
+  if (o.master_name) lines.push(`Мастер: ${o.master_name}`);
   const who = [o.ship_name, o.phone].filter(Boolean).join(", ");
   if (who) lines.push(`Получатель: ${who}`);
   if (o.ship_method) lines.push(`Доставка: ${[METHODS[o.ship_method] ?? o.ship_method, o.ship_city, o.ship_point].filter(Boolean).join(", ")}`);

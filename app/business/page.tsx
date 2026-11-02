@@ -13,6 +13,7 @@ import SocialLinksEditor from "@/components/SocialLinksEditor";
 import BusinessOrdersTab from "@/components/BusinessOrdersTab";
 import ShopAccounting from "@/components/ShopAccounting";
 import ShopPayTab from "@/components/ShopPayTab";
+import ServicesTab from "@/components/ServicesTab";
 import BusinessOffersTab from "@/components/BusinessOffersTab";
 
 const ERR: Record<string, string> = {
@@ -32,7 +33,7 @@ export default function BusinessCabinetPage() {
   const [msg, setMsg] = useState("");
   const [f, setF] = useState<any>(null);
   const [view, setView] = useState(false);
-  const [tab, setTab] = useState<"page" | "catalog" | "orders" | "offers" | "stats" | "pay">("page");
+  const [tab, setTab] = useState<"page" | "catalog" | "orders" | "offers" | "stats" | "pay" | "services">("page");
   const [openOrder, setOpenOrder] = useState<string | null>(null);
   const [pv, setPv] = useState<{ products: any[]; offers: any[] }>({ products: [], offers: [] });
 
@@ -53,7 +54,7 @@ export default function BusinessCabinetPage() {
     try {
       const q = new URLSearchParams(window.location.search);
       const t = q.get("tab");
-      if (t === "orders" || t === "catalog" || t === "offers" || t === "stats" || t === "pay") setTab(t);
+      if (t === "orders" || t === "catalog" || t === "offers" || t === "stats" || t === "pay" || t === "services") setTab(t);
       if (q.get("o")) setOpenOrder(q.get("o"));
     } catch {}
   }, []);
@@ -185,7 +186,7 @@ export default function BusinessCabinetPage() {
 
         {!loading && st?.isBusinessNow && f && (
           <div className="flex gap-2 mb-4 overflow-x-auto">
-            {([["page", "Страница"], ["catalog", "Каталог"], ["orders", "Заказы"], ["stats", "Учёт"], ["pay", "Оплата"], ["offers", "Предложения"]] as const).map(([k, l]) => (
+            {((([["page", "Страница"], f.quick_action === "book" ? ["services", "Услуги и мастера"] : ["catalog", "Каталог"], ["orders", f.quick_action === "book" ? "Записи и заказы" : "Заказы"], ["stats", "Учёт"], ["pay", "Оплата"], ["offers", "Предложения"]]) as ["page" | "catalog" | "orders" | "offers" | "stats" | "pay" | "services", string][])).map(([k, l]) => (
               <button key={k} onClick={() => { setTab(k); setOpenOrder(null); }} className={`px-4 py-2 rounded-full text-sm border whitespace-nowrap ${tab === k ? "bg-gold text-bgPrimary border-gold font-semibold" : "border-muted text-offwhite"}`}>{l}</button>
             ))}
           </div>
@@ -193,6 +194,7 @@ export default function BusinessCabinetPage() {
         {!loading && st?.isBusinessNow && f && tab === "catalog" && <BusinessCatalogTab cur={st.cur ?? "₴"} userId={st.businessUserId} />}
         {!loading && st?.isBusinessNow && f && tab === "orders" && <BusinessOrdersTab key={openOrder ?? "list"} mode="biz" cur={st.cur ?? "₴"} openId={openOrder} />}
         {!loading && st?.isBusinessNow && f && tab === "offers" && <BusinessOffersTab />}
+        {!loading && st?.isBusinessNow && f && tab === "services" && <ServicesTab cur={st.cur ?? "₴"} userId={st.businessUserId} />}
         {!loading && st?.isBusinessNow && f && tab === "stats" && <ShopAccounting cur={st.cur ?? "₴"} />}
         {!loading && st?.isBusinessNow && f && tab === "pay" && <ShopPayTab />}
 

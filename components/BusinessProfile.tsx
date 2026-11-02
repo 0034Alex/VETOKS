@@ -11,7 +11,7 @@ import BusinessPageView, { BizPublic, BizProduct, BizOffer, BlueCheck } from "@/
 import ShopReportSheet from "@/components/ShopReportSheet";
 
 type Extra = { followers: number; following: number; purchases: number; isFollowing: boolean; socials: string[]; canWrite: boolean };
-type Data = { p: BizPublic; products: BizProduct[]; offers: BizOffer[]; cur: string; mine: boolean; notPublished: boolean; staff: boolean; extra: Extra };
+type Data = { p: BizPublic; services: any[]; masters: any[]; products: BizProduct[]; offers: BizOffer[]; cur: string; mine: boolean; notPublished: boolean; staff: boolean; extra: Extra };
 
 const fmt = (n: number) => (n >= 10000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K` : n.toLocaleString("ru-RU"));
 
@@ -47,7 +47,7 @@ export default function BusinessProfile({
     const r = await apiPost("/api/business/page", { userId });
     if (r?.ok) {
       const ex: Extra = r.extra ?? { followers: 0, following: 0, purchases: 0, isFollowing: false, socials: [], canWrite: true };
-      setD({ p: { ...r.profile, user_id: r.userId }, products: r.products ?? [], offers: r.offers ?? [], cur: r.cur ?? "₴", mine: !!r.mine, notPublished: !!r.notPublished, staff: !!r.staffPreview, extra: ex });
+      setD({ p: { ...r.profile, user_id: r.userId }, services: r.services ?? [], masters: r.masters ?? [], products: r.products ?? [], offers: r.offers ?? [], cur: r.cur ?? "₴", mine: !!r.mine, notPublished: !!r.notPublished, staff: !!r.staffPreview, extra: ex });
       setFollow(ex.isFollowing);
       setFollowers(ex.followers);
     } else setMissing(true);
@@ -206,6 +206,8 @@ export default function BusinessProfile({
         bare
         p={p}
         products={d.products}
+        services={d.services}
+        masters={d.masters}
         offers={d.offers}
         cur={d.cur}
         preview={owner}

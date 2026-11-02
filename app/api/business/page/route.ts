@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { countryOfUser } from "@/lib/countryServer";
 import { BIZ_COLS, OFFER_COLS, publicBiz, publicOffer, offerLive, currencyOfCountry, loadProducts, publicProduct, getShowCall } from "@/lib/businessServer";
+import { bookingReady, loadCatalog } from "@/lib/bookingServer";
 import { parseLinks } from "@/lib/socialLinks";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +34,14 @@ export async function POST(req: Request) {
   }
   // Каталог и предложения: если SQL ещё не выполнен, просто пусто.
   const prods = (await loadProducts(id, true, 200)).map(publicProduct);
+  // Услуги и мастера для записи: если SQL ещё не выполнен, просто пусто.
+  let services: any[] = [];
+  let masters: any[] = [];
+  if ((p as any).quick_action === "book" && (await bookingReady())) {
+    const cat = await loadCatalog(id, true);
+    services = cat.services.map((x) => ({ id: x.id, name: x.name, category: x.category, price: x.price, duration_min: x.duration_min, description: x.description, master_ids: x.master_ids }));
+    masters = cat.masters.map((m) => ({ id: m.id, name: m.name, role: m.role, photo_url: m.photo_url }));
+  }
   const oq = await supabaseAdmin.from("business_offers").select(OFFER_COLS).eq("business_id", id).eq("is_active", true).order("created_at", { ascending: false }).limit(20);
   return NextResponse.json({
     ok: true,
@@ -44,6 +53,8 @@ export async function POST(req: Request) {
     isHidden: !!(p as any).is_hidden,
     cur: await currencyOfCountry((p as any).country_id),
     products: prods,
+    services,
+    masters,
     extra: await ownerExtra(uid, (p as any).user_id, id, (p as any).site_url),
     offers: ((oq.data as any[]) ?? []).filter(offerLive).map(publicOffer),
   });

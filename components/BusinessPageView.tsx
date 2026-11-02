@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { apiPost } from "@/lib/authClient";
 import ShopReportSheet from "@/components/ShopReportSheet";
+import BookingSheet from "@/components/BookingSheet";
 import { SocialIcon, socialKind } from "@/lib/socialLinks";
 import { money, splitSizes, ShopProduct, stockInfo, sizeInfo, productTotal } from "@/lib/businessShared";
 import { shareLink } from "@/components/ProfileHero";
@@ -23,6 +24,7 @@ export type BizPublic = {
   quick_action: "buy" | "book";
   verified: boolean;
   show_call?: boolean;
+  city?: string;
 };
 
 // Значок бизнес-аккаунта VETOKS: витрина магазина с короной над входом.
@@ -66,8 +68,9 @@ const ORDER_ERR: Record<string, string> = {
 };
 
 // Страница партнёра: так её видят зрители в приложении. Один и тот же вид для зрителей, владельца и предпросмотра в CRM.
-export default function BusinessPageView({ p, preview = false, products = [], offers = [], cur = "₴", canOrder = false, demo = false, bare = false, owner = false, onEdit, socials = [] }: { p: BizPublic; preview?: boolean; products?: BizProduct[]; offers?: BizOffer[]; cur?: string; canOrder?: boolean; demo?: boolean; bare?: boolean; owner?: boolean; onEdit?: (p: BizProduct) => void; socials?: string[] }) {
+export default function BusinessPageView({ p, preview = false, products = [], offers = [], cur = "₴", canOrder = false, demo = false, bare = false, owner = false, onEdit, socials = [], services = [], masters = [] }: { services?: any[]; masters?: any[]; p: BizPublic; preview?: boolean; products?: BizProduct[]; offers?: BizOffer[]; cur?: string; canOrder?: boolean; demo?: boolean; bare?: boolean; owner?: boolean; onEdit?: (p: BizProduct) => void; socials?: string[] }) {
   const [contact, setContact] = useState(false);
+  const [bookOpen, setBookOpen] = useState<string | null>(null);
   const [sel, setSel] = useState<BizProduct | null>(null);
   const [book, setBook] = useState(false);
   const [o, setO] = useState({ size: "", qty: 1, promo: "", phone: "", note: "", whenText: "", service: "" });
@@ -178,7 +181,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
 
   function quickAction() {
     if (preview || !(canOrder || demo)) return setContact(true);
-    if (p.quick_action === "book") return openOrder(null, true);
+    if (p.quick_action === "book") return services.length ? setBookOpen("") : openOrder(null, true);
     if (products.length === 1) return openOrder(products[0]);
     if (products.length > 1) {
       document.getElementById("biz-catalog")?.scrollIntoView({ behavior: "smooth" });
@@ -190,6 +193,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
 
   const can = !(preview || !(canOrder || demo));
   const phoneOn = !!p.phone && p.show_call !== false;
+  const city = (p.city || String(p.address ?? "").split(",")[0]).trim();
   const statusPill = (pr: BizProduct) => {
     const st = stockInfo(productTotal(pr));
     const cls = st.state === "ok" ? "text-success border-success/70" : st.state === "low" ? "text-gold border-gold/70" : "text-danger border-danger/70";
@@ -290,12 +294,9 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         <div className="border border-gold/40 rounded-2xl p-3.5 mt-4 bg-gradient-to-br from-gold/10 via-bgSurface to-bgSurface">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-start">
             <div className="flex flex-col gap-2 text-[13px] min-w-0">
-              {phoneOn && <CRow k="phone" v={p.phone} href={owner || preview ? undefined : `tel:${p.phone}`} />}
-              {p.address && <CRow k="pin" v={p.address} />}
-              {p.email && <CRow k="mail" v={p.email} />}
-              {p.site_url && <CRow k="globe" v={p.site_url.replace(/^https?:\/\//, "")} href={p.site_url} ext />}
-              {!phoneOn && !p.address && !p.email && !p.site_url && !p.hours && <p className="text-muted">Контакты пока не заполнены.</p>}
-              {p.hours && !phoneOn && !p.address && !p.email && !p.site_url && <CRow k="clock" v={p.hours} />}
+              {city && <CRow k="pin" v={city} />}
+              {p.hours && <CRow k="clock" v={p.hours} />}
+              {!city && !p.hours && <p className="text-muted text-xs">Нажмите «Подробнее», там все контакты.</p>}
             </div>
             <div className="flex flex-col items-end gap-2">
               {socials.length > 0 && (
@@ -307,7 +308,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
                   ))}
                 </div>
               )}
-              <button onClick={() => setAllContacts(true)} className="text-gold text-xs border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap">Все контакты ›</button>
+              <button onClick={() => setAllContacts(true)} className="text-gold text-xs border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap">Подробнее ›</button>
             </div>
           </div>
           {phoneOn && (
@@ -323,7 +324,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         </div>
 
         <div className="flex gap-1 mt-4 border border-gold/30 rounded-full p-1 bg-bgSurface">
-          {([["shop", "🛍 Магазин"], ["feed", "Лента"], ["about", "О магазине"]] as const).map(([k, l]) => (
+          {([["shop", services.length > 0 ? "📅 Услуги" : "🛍 Магазин"], ["feed", "Лента"], ["about", "О магазине"]] as const).map(([k, l]) => (
             <button key={k} onClick={() => setTab(k)} className={`flex-1 py-2 rounded-full text-[13px] ${tab === k ? "bg-gold/20 text-gold font-bold ring-1 ring-gold" : "text-offwhite"}`}>{l}</button>
           ))}
         </div>
@@ -358,12 +359,36 @@ export default function BusinessPageView({ p, preview = false, products = [], of
               </div>
             )}
 
+            {services.length > 0 && (
+              <div className="mt-4 flex flex-col gap-4">
+                {Array.from(new Set(services.map((x: any) => x.category || ""))).map((c) => (
+                  <div key={c || "all"}>
+                    {c && <p className="text-gold text-xs font-semibold uppercase tracking-wide mb-2">{c}</p>}
+                    <div className="flex flex-col gap-2">
+                      {services.filter((x: any) => (x.category || "") === c).map((x: any) => (
+                        <div key={x.id} className="bg-bgSurface border border-gold/25 rounded-xl p-3 flex items-center gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-offwhite text-sm font-semibold break-words">{x.name}</p>
+                            <p className="text-muted text-xs">{x.duration_min < 60 ? `${x.duration_min} мин` : x.duration_min % 60 === 0 ? `${x.duration_min / 60} ч` : `${Math.floor(x.duration_min / 60)} ч ${x.duration_min % 60} мин`}{x.description ? ` · ${x.description}` : ""}</p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1.5 flex-none">
+                            <span className="text-gold text-sm font-bold">{money(x.price, cur)}</span>
+                            {!owner && !preview && <button onClick={() => (canOrder ? setBookOpen(x.id) : setContact(true))} className="bg-gold text-bgPrimary font-semibold rounded-full px-3.5 py-1.5 text-xs">Записаться</button>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div id="biz-catalog" className="mt-4">
-              {products.length === 0 ? (
+              {products.length === 0 ? (services.length > 0 ? null : (
                 <div className="bg-bgSurface border border-muted/60 rounded-xl p-4">
                   <p className="text-muted text-xs">{owner ? "Пока нет товаров. Нажмите «＋ Выставить товар»." : "Товаров пока нет."}</p>
                 </div>
-              ) : (
+              )) : (
                 <div className="grid grid-cols-2 gap-3">
                   {products.map((pr) => {
                     const out = stockInfo(productTotal(pr)).state === "out";
@@ -429,6 +454,9 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         )}
       </div>
 
+      {bookOpen !== null && (
+        <BookingSheet businessId={p.id} shopName={p.name} services={services} masters={masters} cur={cur} presetServiceId={bookOpen} onClose={() => setBookOpen(null)} />
+      )}
       {sheetP && (
         <div className="fixed inset-0 z-[120] bg-black/70 flex items-end justify-center" onClick={() => setSheetP(null)}>
           <div className="w-full max-w-md bg-bgSurface rounded-t-3xl max-h-[92dvh] overflow-y-auto border-t border-gold/50" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }} onClick={(e) => e.stopPropagation()}>
@@ -676,7 +704,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         <div className="fixed inset-0 z-[125] bg-black/70 flex items-end justify-center" onClick={() => setAllContacts(false)}>
           <div className="w-full max-w-md bg-bgSurface rounded-t-3xl p-5 max-h-[85dvh] overflow-y-auto border-t border-gold/50" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-offwhite font-semibold">Контакты · {p.name}</p>
+              <p className="text-offwhite font-semibold">Подробнее · {p.name}</p>
               <button onClick={() => setAllContacts(false)} className="text-muted text-xl">✕</button>
             </div>
             <div className="flex flex-col gap-3 text-sm">

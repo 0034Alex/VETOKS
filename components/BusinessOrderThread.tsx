@@ -155,6 +155,7 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
             {!hasItems && o.size && <p className="text-offwhite text-sm">Размер: {o.size}</p>}
             {!hasItems && o.kind !== "book" && <p className="text-offwhite text-sm">{o.qty} шт. · {money(o.unit_price, cur)}{o.discount_percent ? ` · скидка ${o.discount_percent}% (${o.promo_code})` : ""}</p>}
             {o.kind !== "book" && <p className="text-gold text-sm font-semibold">Итого: {money(o.total, cur)}</p>}
+            {o.master_name && <p className="text-offwhite text-sm">Мастер: {o.master_name}</p>}
             {o.when_text && <p className="text-offwhite text-sm">Когда: {o.when_text}</p>}
             {o.note && <p className="text-muted text-sm">«{o.note}»</p>}
             {role === "owner" && o.phone && <p className="text-offwhite text-sm">📞 {o.phone}</p>}
