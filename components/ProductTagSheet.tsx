@@ -63,7 +63,7 @@ export default function ProductTagSheet({ value, onChange, onClose }: { value: T
         <button onClick={onClose} className="mt-4 w-full bg-gold text-bgPrimary font-semibold py-3 rounded-full">
           Готово
         </button>
-        <p className="text-muted text-xs mt-3">Под видео появится кнопка «Купить». До {MAX_P} товаров из {MAX_S} магазинов.</p>
+        <p className="text-muted text-xs mt-3">Под видео появится кнопка «Купить». До 5 товаров из 2 магазинов.</p>
       </div>
     </div>
   );

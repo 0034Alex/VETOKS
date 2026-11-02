@@ -78,7 +78,6 @@ export default function PreStartScreen() {
       )}
       <Link href="/ad-space" className="mt-3 border border-gold text-gold font-semibold px-8 py-3 rounded-full flex flex-col items-center">
         <span>{isAdv ? t("prestart.advCab") : t("prestart.adv")}</span>
-        {!isAdv && <span className="text-[11px] text-muted font-normal mt-0.5 max-w-[240px]">{t("prestart.advSub")}</span>}
       </Link>
       {isPart && (
         <Link href="/invites" className="mt-3 border border-gold text-gold font-semibold px-8 py-3 rounded-full">
