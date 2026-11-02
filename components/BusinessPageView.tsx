@@ -4,6 +4,8 @@ import { useState } from "react";
 import { apiPost } from "@/lib/authClient";
 import ShopReportSheet from "@/components/ShopReportSheet";
 import BookingSheet from "@/components/BookingSheet";
+import CarSheet from "@/components/CarSheet";
+import { carTitle, carPrice, km, CAR_STATUS, Car } from "@/lib/carsShared";
 import { SocialIcon, socialKind } from "@/lib/socialLinks";
 import { money, splitSizes, ShopProduct, stockInfo, sizeInfo, productTotal } from "@/lib/businessShared";
 import { shareLink } from "@/components/ProfileHero";
@@ -25,6 +27,7 @@ export type BizPublic = {
   verified: boolean;
   show_call?: boolean;
   city?: string;
+  biz_type?: string;
 };
 
 // Значок бизнес-аккаунта VETOKS: витрина магазина с короной над входом.
@@ -68,9 +71,11 @@ const ORDER_ERR: Record<string, string> = {
 };
 
 // Страница партнёра: так её видят зрители в приложении. Один и тот же вид для зрителей, владельца и предпросмотра в CRM.
-export default function BusinessPageView({ p, preview = false, products = [], offers = [], cur = "₴", canOrder = false, demo = false, bare = false, owner = false, onEdit, socials = [], services = [], masters = [] }: { services?: any[]; masters?: any[]; p: BizPublic; preview?: boolean; products?: BizProduct[]; offers?: BizOffer[]; cur?: string; canOrder?: boolean; demo?: boolean; bare?: boolean; owner?: boolean; onEdit?: (p: BizProduct) => void; socials?: string[] }) {
+export default function BusinessPageView({ p, preview = false, products = [], offers = [], cur = "₴", canOrder = false, demo = false, bare = false, owner = false, onEdit, socials = [], services = [], masters = [], cars = [] }: { services?: any[]; masters?: any[]; cars?: Car[]; p: BizPublic; preview?: boolean; products?: BizProduct[]; offers?: BizOffer[]; cur?: string; canOrder?: boolean; demo?: boolean; bare?: boolean; owner?: boolean; onEdit?: (p: BizProduct) => void; socials?: string[] }) {
   const [contact, setContact] = useState(false);
   const [bookOpen, setBookOpen] = useState<string | null>(null);
+  const [carOpen, setCarOpen] = useState<Car | null>(null);
+  const isAuto = p.biz_type === "auto";
   const [sel, setSel] = useState<BizProduct | null>(null);
   const [book, setBook] = useState(false);
   const [o, setO] = useState({ size: "", qty: 1, promo: "", phone: "", note: "", whenText: "", service: "" });
@@ -181,6 +186,11 @@ export default function BusinessPageView({ p, preview = false, products = [], of
 
   function quickAction() {
     if (preview || !(canOrder || demo)) return setContact(true);
+    if (isAuto) {
+      if (cars.length === 1) return setCarOpen(cars[0]);
+      document.getElementById("biz-cars")?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
     if (p.quick_action === "book") return services.length ? setBookOpen("") : openOrder(null, true);
     if (products.length === 1) return openOrder(products[0]);
     if (products.length > 1) {
@@ -324,7 +334,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         </div>
 
         <div className="flex gap-1 mt-4 border border-gold/30 rounded-full p-1 bg-bgSurface">
-          {([["shop", services.length > 0 ? "📅 Услуги" : "🛍 Магазин"], ["feed", "Лента"], ["about", "О магазине"]] as const).map(([k, l]) => (
+          {([["shop", isAuto ? "🚗 Авто" : services.length > 0 ? "📅 Услуги" : "🛍 Магазин"], ["feed", "Лента"], ["about", "О магазине"]] as const).map(([k, l]) => (
             <button key={k} onClick={() => setTab(k)} className={`flex-1 py-2 rounded-full text-[13px] ${tab === k ? "bg-gold/20 text-gold font-bold ring-1 ring-gold" : "text-offwhite"}`}>{l}</button>
           ))}
         </div>
@@ -359,6 +369,36 @@ export default function BusinessPageView({ p, preview = false, products = [], of
               </div>
             )}
 
+            {isAuto && (
+              <div id="biz-cars" className="mt-4 flex flex-col gap-3">
+                {cars.length === 0 && (
+                  <div className="bg-bgSurface border border-muted/60 rounded-xl p-4">
+                    <p className="text-muted text-xs">{owner ? "Пока нет автомобилей. Откройте «Автомобили» в настройках и нажмите «＋ Выставить автомобиль»." : "Автомобилей пока нет."}</p>
+                  </div>
+                )}
+                {cars.map((c) => (
+                  <button key={c.id} onClick={() => setCarOpen(c)} className="text-left bg-bgSurface border border-gold/25 rounded-2xl overflow-hidden">
+                    <div className="relative aspect-video bg-bgPrimary flex items-center justify-center overflow-hidden">
+                      {c.photos[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={c.photos[0]} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-4xl">🚗</span>
+                      )}
+                      {c.status !== "available" && <span className="absolute left-2 top-2 bg-gold text-bgPrimary text-xs font-bold rounded-full px-2.5 py-0.5">{CAR_STATUS[c.status]}</span>}
+                    </div>
+                    <div className="p-3">
+                      <div className="flex justify-between gap-2 items-start">
+                        <p className="text-offwhite text-sm font-semibold break-words">{carTitle(c)}</p>
+                        <p className="text-gold text-sm font-bold flex-none">{carPrice(c.price, c.currency)}</p>
+                      </div>
+                      <p className="text-muted text-xs mt-1">{[c.year, km(c.mileage_km), c.engine_vol ? `${c.engine_vol.toFixed(1)} л` : "", c.gearbox].filter(Boolean).join(" · ")}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {services.length > 0 && (
               <div className="mt-4 flex flex-col gap-4">
                 {Array.from(new Set(services.map((x: any) => x.category || ""))).map((c) => (
@@ -384,7 +424,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
             )}
 
             <div id="biz-catalog" className="mt-4">
-              {products.length === 0 ? (services.length > 0 ? null : (
+              {products.length === 0 ? ((services.length > 0 || isAuto) ? null : (
                 <div className="bg-bgSurface border border-muted/60 rounded-xl p-4">
                   <p className="text-muted text-xs">{owner ? "Пока нет товаров. Нажмите «＋ Выставить товар»." : "Товаров пока нет."}</p>
                 </div>
@@ -454,8 +494,11 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         )}
       </div>
 
+      {carOpen && (
+        <CarSheet car={carOpen} businessId={String(p.id)} ownerUserId={p.user_id ?? null} phone={phoneOn ? p.phone : ""} canAct={canOrder} onClose={() => setCarOpen(null)} />
+      )}
       {bookOpen !== null && (
-        <BookingSheet businessId={p.id} shopName={p.name} services={services} masters={masters} cur={cur} presetServiceId={bookOpen} onClose={() => setBookOpen(null)} />
+        <BookingSheet businessId={String(p.id)} shopName={p.name} services={services} masters={masters} cur={cur} presetServiceId={bookOpen} onClose={() => setBookOpen(null)} />
       )}
       {sheetP && (
         <div className="fixed inset-0 z-[120] bg-black/70 flex items-end justify-center" onClick={() => setSheetP(null)}>
@@ -734,7 +777,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
           {cartMsg === "Добавлено в корзину" && <a href="/cart" className="underline">Открыть</a>}
         </div>
       )}
-      {p.id && <ShopReportSheet open={!!report} onClose={() => setReport("")} businessId={p.id} />}
+      {p.id && <ShopReportSheet open={!!report} onClose={() => setReport("")} businessId={String(p.id)} />}
     </div>
   );
 }

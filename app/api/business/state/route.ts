@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { bad, requireUser } from "@/lib/shopServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { businessContext, currencyOfCountry, getShowCall } from "@/lib/businessServer";
+import { getBizType } from "@/lib/carsServer";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     businessUserId: c.profile?.user_id ?? null,
     rootId: c.rootId,
     sponsorName: c.sponsor?.name ?? null,
-    profile: own ? { ...own, show_call: await getShowCall(own.id) } : null, // полные данные только владельцу
+    profile: own ? { ...own, show_call: await getShowCall(own.id), biz_type: await getBizType(own.id) } : null, // полные данные только владельцу
     cur: own ? await currencyOfCountry(own.country_id) : "₴",
   });
 }

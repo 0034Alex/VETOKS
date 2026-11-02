@@ -4,6 +4,7 @@ import { bad, requireUser } from "@/lib/shopServer";
 import { countryOfUser } from "@/lib/countryServer";
 import { BIZ_COLS, OFFER_COLS, publicBiz, publicOffer, offerLive, currencyOfCountry, loadProducts, publicProduct, getShowCall } from "@/lib/businessServer";
 import { bookingReady, loadCatalog } from "@/lib/bookingServer";
+import { carsReady, loadCars, getBizType } from "@/lib/carsServer";
 import { parseLinks } from "@/lib/socialLinks";
 
 export const dynamic = "force-dynamic";
@@ -42,10 +43,13 @@ export async function POST(req: Request) {
     services = cat.services.map((x) => ({ id: x.id, name: x.name, category: x.category, price: x.price, duration_min: x.duration_min, description: x.description, master_ids: x.master_ids }));
     masters = cat.masters.map((m) => ({ id: m.id, name: m.name, role: m.role, photo_url: m.photo_url }));
   }
+  // Автомобили (бизнес «Авто»): если SQL ещё не выполнен, просто пусто.
+  const bizType = await getBizType(id);
+  const cars = bizType === "auto" && (await carsReady()) ? await loadCars(id, !(mine || staff)) : [];
   const oq = await supabaseAdmin.from("business_offers").select(OFFER_COLS).eq("business_id", id).eq("is_active", true).order("created_at", { ascending: false }).limit(20);
   return NextResponse.json({
     ok: true,
-    profile: { ...(await withCall(publicBiz(p), id, mine || staff)), city: await cityOf(p) },
+    profile: { ...(await withCall(publicBiz(p), id, mine || staff)), city: await cityOf(p), biz_type: bizType },
     mine,
     userId: (p as any).user_id,
     staffPreview: staff && !mine,
@@ -53,6 +57,7 @@ export async function POST(req: Request) {
     isHidden: !!(p as any).is_hidden,
     cur: await currencyOfCountry((p as any).country_id),
     products: prods,
+    cars,
     services,
     masters,
     extra: await ownerExtra(uid, (p as any).user_id, id, (p as any).site_url),

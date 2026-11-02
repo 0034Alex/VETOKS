@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { bad, requireUser } from "@/lib/shopServer";
 import { rateLimit } from "@/lib/rateLimit";
 import { BIZ_COLS, syncBusinessToUser, getShowCall } from "@/lib/businessServer";
+import { getBizType } from "@/lib/carsServer";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
   if (b.phone !== undefined) patch.phone = s(b.phone, 40) || null;
   if (b.email !== undefined) patch.email = s(b.email, 120) || null;
   if (b.site_url !== undefined) patch.site_url = url(b.site_url) || null;
-  if (b.quick_action !== undefined) patch.quick_action = b.quick_action === "book" ? "book" : "buy";
+  if (b.quick_action !== undefined && b.biz_type === undefined) patch.quick_action = b.quick_action === "book" ? "book" : "buy";
 
   if (b.is_active !== undefined) {
     const want = !!b.is_active;
@@ -52,8 +53,15 @@ export async function POST(req: Request) {
   }
   const { data, error } = await supabaseAdmin.from("business_profiles").update(patch).eq("user_id", uid).select(BIZ_COLS).maybeSingle();
   if (error) return bad("failed", 500);
+  if (b.biz_type !== undefined) {
+    const bt = ["shop", "service", "auto"].includes(String(b.biz_type)) ? String(b.biz_type) : null;
+    if (bt) {
+      const r0 = await supabaseAdmin.from("business_profiles").update({ biz_type: bt }).eq("user_id", uid);
+      if (!r0.error) await supabaseAdmin.from("business_profiles").update({ quick_action: bt === "shop" ? "buy" : "book" }).eq("user_id", uid);
+    }
+  }
   if (b.show_call !== undefined) await supabaseAdmin.from("business_profiles").update({ show_call: !!b.show_call }).eq("user_id", uid);
   if (patch.name) await supabaseAdmin.from("users").update({ first_name: patch.name }).eq("id", uid);
   if (data) await syncBusinessToUser(uid, data);
-  return NextResponse.json({ ok: true, profile: data ? { ...(data as any), show_call: await getShowCall((data as any).id) } : data });
+  return NextResponse.json({ ok: true, profile: data ? { ...(data as any), show_call: await getShowCall((data as any).id), biz_type: await getBizType((data as any).id) } : data });
 }

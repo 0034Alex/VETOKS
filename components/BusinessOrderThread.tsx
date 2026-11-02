@@ -84,15 +84,15 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
   const gift = o.kind === "gift";
   const isBuy = o.kind === "buy";
   const hasItems = Array.isArray(o.items) && o.items.length > 0;
-  const st = statusInfo(o.kind, o.status, !!o.paid_claim_at);
+  const st = statusInfo(o.car_id ? "car" : o.kind, o.status, !!o.paid_claim_at);
   const closed = ["done", "cancelled", "received", "declined"].includes(o.status);
 
   // Кнопки действий
   const actions: [string, string, string?][] = [];
   if (!gift && !isBuy && role === "owner") {
     if (o.status === "new") actions.push(["confirmed", "Подтвердить"]);
-    if (o.status === "confirmed") actions.push(["shipped", o.kind === "book" ? "Бронь состоялась" : "Отправлено"], ["done", "Выполнен"]);
-    if (o.status === "shipped") actions.push(["done", "Выполнен"]);
+    if (o.status === "confirmed") actions.push(["shipped", o.car_id ? "Начать сделку" : o.kind === "book" ? "Бронь состоялась" : "Отправлено"], ["done", o.car_id ? "Продано" : "Выполнен"]);
+    if (o.status === "shipped") actions.push(["done", o.car_id ? "Продано" : "Выполнен"]);
   }
   if (gift && role === "owner") {
     if (o.status === "new") actions.push(["paid", "Оплату получил"]);

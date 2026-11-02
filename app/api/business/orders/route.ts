@@ -5,6 +5,7 @@ import { rateLimit } from "@/lib/rateLimit";
 import { countryOfUser, countryOfRegion } from "@/lib/countryServer";
 import { familyRootId } from "@/lib/familyServer";
 import { offerLive, loadProduct, sizeStockOf } from "@/lib/businessServer";
+import { carsReady } from "@/lib/carsServer";
 import { stage1Ready, NEW_ORDER_COLS, applyAct, notifyShop, logAct } from "@/lib/orderFlow";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ async function orderCols(): Promise<string> {
   }
   let c = giftCols ? BASE_COLS + GIFT_COLS : BASE_COLS;
   if (await stage1Ready()) c += NEW_ORDER_COLS;
+  if (await carsReady()) c += ", car_id";
   return c;
 }
 
@@ -353,6 +355,7 @@ export async function POST(req: Request) {
     if (!allowed) return bad("forbidden", 403);
 
     await supabaseAdmin.from("business_orders").update({ status: st, updated_at: new Date().toISOString() }).eq("id", oid);
+    if (st === "done" && oo.car_id) await supabaseAdmin.from("business_cars").update({ status: "sold" }).eq("id", oo.car_id);
     await logAct(oid, String(oo.business_id), role === "owner" ? "owner" : "buyer", role === "owner" ? "Владелец" : "Покупатель", st);
     if (st === "cancelled" && oo.product_id) {
       const pr: any = await loadProduct(String(oo.product_id), String(oo.business_id));
