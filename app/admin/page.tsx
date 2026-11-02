@@ -12,6 +12,7 @@ import AdminPayoutsPanel from "@/components/AdminPayoutsPanel";
 import AdminCoinsPanel from "@/components/AdminCoinsPanel";
 import AdminShowsPanel from "@/components/AdminShowsPanel";
 import AdminLaunchesPanel from "@/components/AdminLaunchesPanel";
+import AdminShowsHub from "@/components/AdminShowsHub";
 import AdminShowBuilderPanel from "@/components/AdminShowBuilderPanel";
 import AdminAwardsPanel from "@/components/AdminAwardsPanel";
 import AdminStoryReportsPanel from "@/components/AdminStoryReportsPanel";
@@ -97,6 +98,7 @@ type Tab =
   | "coins"
   | "shows"
   | "launches"
+  | "showhub"
   | "builder"
   | "awards"
   | "story-reports"
@@ -148,6 +150,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "shows", label: "Шаблоны шоу" },
   { key: "builder", label: "Конструктор шоу" },
   { key: "launches", label: "Страны и запуск" },
+  { key: "showhub", label: "Шоу: идёт, дальше, прошедшие" },
   { key: "awards", label: "Номинации и победители" },
   { key: "story-reports", label: "Жалобы на истории" },
   { key: "rating-admin", label: "Рейтинг и титулы" },
@@ -188,6 +191,7 @@ const SEARCH_WORDS: Partial<Record<Tab, string>> = {
   payouts: "цены подарков монеты амбассадор процент выплаты активность доля участницы курс",
   coins: "монеты короны комиссия вывод курс баланс",
   shows: "шоу мисс таланты цвета тема баннер старт набор анкет предпросмотр",
+  showhub: "шоу идёт сейчас дальше прошедшие продлить этап запустить новое шоу очередь старт пауза победители сезон",
   launches: "запуск страна очередь шоу старт пауза программа подсказки вопросы задания блоки включить выключить дата этап календарь",
   awards: "номинации победители зал славы",
   "rating-admin": "рейтинг титулы голоса",
@@ -279,7 +283,7 @@ type Level = "r" | "w";
 const CRM_GROUPS: { key: string; ic: string; label: string; desc: string; tabs: Tab[] }[] = [
   { key: "today", ic: "🏠", label: "Сегодня", desc: "Что требует действия прямо сейчас", tabs: ["dashboard", "support"] },
   { key: "people", ic: "👥", label: "Люди", desc: "Все, кто есть в приложении", tabs: ["users", "participants", "applications", "badges", "black-marks"] },
-  { key: "contest", ic: "👑", label: "Шоу страны", desc: "Запуск, страницы приложения, рейтинг, подарки, задания", tabs: ["builder", "shows", "launches", "awards", "stages", "rating-admin", "goal", "tasks", "cards"] },
+  { key: "contest", ic: "👑", label: "Шоу страны", desc: "Запуск, страницы приложения, рейтинг, подарки, задания", tabs: ["showhub", "builder", "shows", "launches", "awards", "stages", "rating-admin", "goal", "tasks", "cards"] },
   { key: "content", ic: "🎬", label: "Контент и связь", desc: "Материалы, афиши, рассылки, бот и канал страны", tabs: ["calendar", "media", "official", "posters", "media-demo-upload", "home-settings", "broadcast", "tgbots", "mediafeed", "banners"] },
   { key: "mod", ic: "🛡", label: "Модерация", desc: "Жалобы, проверка, каналы людей, чаты кланов", tabs: ["content-mod", "reports", "story-reports", "channels", "clan"] },
   { key: "money", ic: "💰", label: "Деньги", desc: "Цены подарков и голосов, монеты, выплаты, рефералы", tabs: ["payouts", "coins", "referrals"] },
@@ -317,6 +321,7 @@ const TAB_DESC: Partial<Record<Tab, string>> = {
   clan: "Чаты кланов",
   coins: "Курсы, пакеты, бонусы",
   launches: "Где и когда идёт шоу, программа",
+  showhub: "Что идёт сейчас, что дальше, что прошло: продлить, запустить, создать новое",
   shows: "Создать шоу, вид и проверка",
   awards: "Победители для зала славы",
   "story-reports": "Жалобы на истории",
@@ -680,6 +685,12 @@ export default function AdminPage() {
                 canOpen={(t) => !!access[t as Tab]}
               />
             }
+          />
+        )}
+        {tab === "showhub" && (
+          <AdminShowsHub
+            allowedIds={me?.role === "super_admin" ? null : Array.isArray(me?.staff_countries) ? (me!.staff_countries as string[]) : []}
+            onGo={(t) => go(t as Tab)}
           />
         )}
         {tab === "launches" && (
