@@ -10,7 +10,11 @@ import { money } from "@/lib/businessShared";
 
 const PROBLEM: Record<string, string> = { gone: "Товар больше недоступен", out: "Закончился", less: "Столько нет в наличии" };
 const ERR: Record<string, string> = {
-  need_phone: "Укажите телефон, чтобы магазин мог связаться.",
+  need_phone: "Укажите телефон получателя.",
+  need_name: "Укажите имя получателя.",
+  need_method: "Выберите способ доставки.",
+  need_address: "Укажите город и отделение или адрес.",
+  need_sql: "Оформление ещё настраивается. Попробуйте позже.",
   promo_invalid: "Промокод не подходит или закончился.",
   not_found: "Магазин недоступен.",
   own_business: "Нельзя заказывать у самого себя.",
@@ -21,7 +25,8 @@ const ERR: Record<string, string> = {
 export default function CartPage() {
   const [groups, setGroups] = useState<any[] | null>(null);
   const [unavailable, setUnavailable] = useState(false);
-  const [phone, setPhone] = useState("");
+  const [ship, setShip] = useState({ name: "", phone: "", method: "np", city: "", point: "" });
+  const [saveShip, setSaveShip] = useState(true);
   const [promos, setPromos] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string>("");
   const [msg, setMsg] = useState("");
@@ -35,6 +40,9 @@ export default function CartPage() {
     }
     setGroups(r?.groups ?? []);
     setUnavailable(!!r?.unavailable);
+    if (r?.ship) {
+      setShip((cur) => (cur.name || cur.phone ? cur : { name: r.ship.full_name ?? "", phone: r.ship.phone ?? "", method: r.ship.method ?? "np", city: r.ship.city ?? "", point: r.ship.point ?? "" }));
+    }
     try {
       window.dispatchEvent(new Event("vetoks:cart"));
     } catch {}
@@ -51,9 +59,9 @@ export default function CartPage() {
   async function buy(businessId?: string) {
     setBusy(businessId ?? "all");
     setMsg("");
-    const r = await apiPost("/api/business/cart", { action: "checkout", businessId, phone, promos });
+    const r = await apiPost("/api/business/cart", { action: "checkout", businessId, ship, save: saveShip, promos });
     setBusy("");
-    if (r?.error === "need_phone") return setMsg(ERR.need_phone);
+    if (r?.error && ERR[r.error]) return setMsg(ERR[r.error]);
     if (!r?.ok) return setMsg("Не получилось оформить. Попробуйте ещё раз.");
     setDone(r.results ?? []);
     load();
@@ -75,7 +83,7 @@ export default function CartPage() {
             <p className="text-offwhite font-semibold text-sm mb-2">Результат покупки</p>
             {done.map((r) => (
               <p key={r.businessId} className={`text-sm ${r.ok ? "text-offwhite" : "text-danger"}`}>
-                {r.name}: {r.ok ? `заказ оформлен · ${money(r.total, r.cur ?? "₴")}${r.skipped ? ` · не вошло: ${r.skipped}` : ""}` : ERR[r.error] ?? "не оформлен"}
+                {r.name}: {r.ok ? `заказ отправлен магазину · ${money(r.total, r.cur ?? "₴")} · ждите счёт в чате${r.skipped ? ` · не вошло: ${r.skipped}` : ""}` : ERR[r.error] ?? "не оформлен"}
               </p>
             ))}
             <Link href="/my-orders" className="block text-center bg-gold text-bgPrimary font-semibold rounded-full py-2.5 text-sm mt-3">Открыть мои заказы</Link>
@@ -87,6 +95,28 @@ export default function CartPage() {
           <div className="text-center py-12">
             <p className="text-muted text-sm mb-4">В корзине пока пусто.</p>
             <Link href="/partners-directory?tab=shops" className="inline-block bg-gold text-bgPrimary font-semibold rounded-full px-6 py-2.5 text-sm">🏪 Магазины платформы</Link>
+          </div>
+        )}
+
+        {groups && groups.length > 0 && (
+          <div className="bg-bgSurface border border-muted rounded-2xl p-3 mb-4 flex flex-col gap-2">
+            <p className="text-offwhite text-sm font-semibold">Кому и куда доставить</p>
+            <input value={ship.name} onChange={(e) => setShip({ ...ship, name: e.target.value })} placeholder="Имя и фамилия получателя" maxLength={80} className={input} />
+            <input value={ship.phone} onChange={(e) => setShip({ ...ship, phone: e.target.value })} placeholder="Телефон получателя" inputMode="tel" maxLength={40} className={input} />
+            <select value={ship.method} onChange={(e) => setShip({ ...ship, method: e.target.value })} className={input}>
+              <option value="np">Новая Почта</option>
+              <option value="up">Укрпочта</option>
+              <option value="courier">Курьер</option>
+              <option value="pickup">Самовывоз</option>
+            </select>
+            {ship.method !== "pickup" && (
+              <>
+                <input value={ship.city} onChange={(e) => setShip({ ...ship, city: e.target.value })} placeholder="Город" maxLength={80} className={input} />
+                <input value={ship.point} onChange={(e) => setShip({ ...ship, point: e.target.value })} placeholder={ship.method === "courier" ? "Улица, дом, квартира" : "Номер отделения или почтомата"} maxLength={160} className={input} />
+              </>
+            )}
+            <label className="flex items-center gap-2 text-muted text-xs"><input type="checkbox" checked={saveShip} onChange={(e) => setSaveShip(e.target.checked)} />Запомнить для следующих заказов</label>
+            {msg && <p className="text-danger text-xs">{msg}</p>}
           </div>
         )}
 
@@ -145,14 +175,10 @@ export default function CartPage() {
 
         {groups && groups.length > 0 && (
           <div className="bg-bgSurface border border-muted rounded-2xl p-3">
-            <label className="text-muted text-xs flex flex-col gap-1">Ваш телефон (для связи магазинов с вами)
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" maxLength={40} className={input} />
-            </label>
-            {msg && <p className="text-danger text-xs mt-2">{msg}</p>}
             <button onClick={() => buy()} disabled={!ready || !!busy} className="w-full mt-3 bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm disabled:opacity-50">
               {busy === "all" ? "Оформляем..." : "Купить всё"}
             </button>
-            <p className="text-muted text-[11px] mt-2 text-center">Каждый магазин получит свой заказ только со своими товарами. Что не купили, останется в корзине.</p>
+            <p className="text-muted text-[11px] mt-2 text-center">Каждый магазин получит один заказ только со своими товарами и пришлёт счёт в чате. Оплата идёт напрямую магазину. Что не купили, останется в корзине.</p>
           </div>
         )}
       </div>

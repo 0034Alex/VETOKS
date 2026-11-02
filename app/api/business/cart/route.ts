@@ -4,6 +4,7 @@ import { bad, requireUser, notify } from "@/lib/shopServer";
 import { rateLimit } from "@/lib/rateLimit";
 import { countryOfUser } from "@/lib/countryServer";
 import { offerLive, loadProduct, sizeStockOf, publicProduct, currencyOfCountry } from "@/lib/businessServer";
+import { stage1Ready, notifyShop, logAct } from "@/lib/orderFlow";
 
 export const dynamic = "force-dynamic";
 
@@ -109,14 +110,28 @@ export async function POST(req: Request) {
   if (a === "list") {
     const r = await load();
     if (!r.ok) return NextResponse.json({ ok: true, groups: [], unavailable: true });
-    return NextResponse.json({ ok: true, groups: r.groups });
+    let ship: any = null;
+    const sp = await supabaseAdmin.from("shop_delivery_profiles").select("full_name, phone, method, city, point").eq("user_id", uid).maybeSingle();
+    if (!sp.error) ship = sp.data;
+    return NextResponse.json({ ok: true, groups: r.groups, ship });
   }
 
   if (a === "checkout") {
     const rl = await rateLimit(req, "business/checkout", 20, 3600, uid);
     if (rl) return rl;
-    const phone = s(b.phone, 40);
-    if (!phone) return bad("need_phone");
+    if (!(await stage1Ready())) return bad("need_sql", 503);
+    const sh = b.ship && typeof b.ship === "object" ? b.ship : {};
+    const ship = {
+      name: s(sh.name, 80),
+      phone: s(sh.phone ?? b.phone, 40),
+      method: ["np", "up", "courier", "pickup"].includes(String(sh.method)) ? String(sh.method) : "",
+      city: s(sh.city, 80),
+      point: s(sh.point, 160),
+    };
+    if (!ship.phone) return bad("need_phone");
+    if (!ship.name) return bad("need_name");
+    if (!ship.method) return bad("need_method");
+    if (ship.method !== "pickup" && (!ship.city || !ship.point)) return bad("need_address");
     const only: string | null = b.businessId ? String(b.businessId) : null;
     const promos: Record<string, string> = b.promos && typeof b.promos === "object" ? b.promos : {};
     const note = s(b.note, 500) || null;
@@ -129,7 +144,7 @@ export async function POST(req: Request) {
       if (only && g.business_id !== only) continue;
       const res: any = { businessId: g.business_id, name: g.name, ok: false, orders: [], total: 0, skipped: 0, error: "" };
       results.push(res);
-      const { data: bp } = await supabaseAdmin.from("business_profiles").select("id, user_id, country_id, is_active, is_hidden").eq("id", g.business_id).maybeSingle();
+      const { data: bp } = await supabaseAdmin.from("business_profiles").select("id, user_id, name, country_id, is_active, is_hidden").eq("id", g.business_id).maybeSingle();
       if (!bp || !(bp as any).is_active || (bp as any).is_hidden) { res.error = "not_found"; continue; }
       if ((bp as any).user_id === uid) { res.error = "own_business"; continue; }
       if ((bp as any).country_id && cid && cid !== (bp as any).country_id) { res.error = "not_found"; continue; }
@@ -146,7 +161,9 @@ export async function POST(req: Request) {
         offerId = (of as any).id;
       }
 
-      const names: string[] = [];
+      // Собираем позиции этого магазина в один заказ.
+      const items: any[] = [];
+      const taken: { ln: any; product: any; ss: Record<string, number> | null; qty: number }[] = [];
       for (const ln of g.lines) {
         if (ln.problem) { res.skipped++; continue; }
         const product = await loadProduct(ln.product_id, g.business_id);
@@ -157,33 +174,55 @@ export async function POST(req: Request) {
           if (!(ln.size in ss) || ss[ln.size] < qty) { res.skipped++; continue; }
         } else if (product.stock != null && Number(product.stock) < qty) { res.skipped++; continue; }
         const unit = Number(product.price);
-        const total = Math.round(unit * qty * (1 - pct / 100) * 100) / 100;
-        const { data: created, error } = await supabaseAdmin.from("business_orders").insert({
-          business_id: g.business_id, buyer_id: uid, kind: "buy", product_id: product.id, product_name: product.name, sku: product.sku ?? null,
-          size: ln.size || null, qty, unit_price: unit, discount_percent: pct, total, promo_code: code, note, when_text: null, phone,
-        }).select("id").maybeSingle();
-        if (error || !created) { res.skipped++; continue; }
-        if (ss) {
-          const next: Record<string, number> = { ...ss, [ln.size]: Math.max(0, ss[ln.size] - qty) };
-          const sum = Object.values(next).reduce((x: number, y: number) => x + y, 0);
-          await supabaseAdmin.from("business_products").update({ size_stock: next, stock: sum }).eq("id", product.id);
-        } else if (product.stock != null) {
-          await supabaseAdmin.from("business_products").update({ stock: Math.max(0, Number(product.stock) - qty) }).eq("id", product.id);
-        }
-        await supabaseAdmin.from("shop_cart_items").delete().eq("id", ln.id).eq("user_id", uid);
-        res.orders.push((created as any).id);
-        res.total = Math.round((res.total + total) * 100) / 100;
-        names.push(`${product.name}${ln.size ? ` (${ln.size})` : ""}${qty > 1 ? ` ×${qty}` : ""}`);
+        const lineTotal = Math.round(unit * qty * (1 - pct / 100) * 100) / 100;
+        items.push({ product_id: product.id, name: product.name, sku: product.sku ?? null, size: ln.size || "", qty, unit, line_total: lineTotal });
+        taken.push({ ln, product, ss, qty });
       }
-      if (res.orders.length) {
-        res.ok = true;
-        res.cur = g.cur;
-        if (offerId) {
-          const { data: cur } = await supabaseAdmin.from("business_offers").select("used_count").eq("id", offerId).maybeSingle();
-          await supabaseAdmin.from("business_offers").update({ used_count: Number((cur as any)?.used_count ?? 0) + 1 }).eq("id", offerId);
+      if (!items.length) { res.error = "nothing"; continue; }
+      const total = Math.round(items.reduce((x: number, y: any) => x + Number(y.line_total), 0) * 100) / 100;
+      const qtyAll = items.reduce((x: number, y: any) => x + Number(y.qty), 0);
+      const summary = items.map((i: any) => `${i.name}${i.size ? ` (${i.size})` : ""}${i.qty > 1 ? ` ×${i.qty}` : ""}`).join(", ").slice(0, 200);
+      const { data: created, error } = await supabaseAdmin.from("business_orders").insert({
+        business_id: g.business_id, buyer_id: uid, kind: "buy", product_id: null, product_name: summary, sku: null, size: null,
+        qty: qtyAll, unit_price: Number(items[0].unit), discount_percent: pct, total, promo_code: code, note, when_text: null, phone: ship.phone,
+        items, ship_name: ship.name, ship_method: ship.method, ship_city: ship.city || null, ship_point: ship.point || null,
+      }).select("id").maybeSingle();
+      if (error || !created) { res.error = "failed"; continue; }
+      const newId = String((created as any).id);
+
+      // Списываем остатки и убираем купленное из корзины.
+      for (const tk of taken) {
+        const fresh: any = await loadProduct(tk.ln.product_id, g.business_id);
+        const ss2 = fresh ? sizeStockOf(fresh) : tk.ss;
+        if (ss2 && tk.ln.size in ss2) {
+          const next: Record<string, number> = { ...ss2, [tk.ln.size]: Math.max(0, ss2[tk.ln.size] - tk.qty) };
+          const sum = Object.values(next).reduce((x: number, y: number) => x + y, 0);
+          await supabaseAdmin.from("business_products").update({ size_stock: next, stock: sum }).eq("id", tk.product.id);
+        } else if (fresh && fresh.stock != null) {
+          await supabaseAdmin.from("business_products").update({ stock: Math.max(0, Number(fresh.stock) - tk.qty) }).eq("id", tk.product.id);
         }
-        await notify((bp as any).user_id, `🛍 Новый заказ: ${names.join(", ")}. Откройте «Заказы».`, `/business?tab=orders&o=${res.orders[0]}`, "other");
-      } else if (!res.error) res.error = "nothing";
+        await supabaseAdmin.from("shop_cart_items").delete().eq("id", tk.ln.id).eq("user_id", uid);
+      }
+      res.ok = true;
+      res.cur = g.cur;
+      res.total = total;
+      res.orders.push(newId);
+      if (offerId) {
+        const { data: cur } = await supabaseAdmin.from("business_offers").select("used_count").eq("id", offerId).maybeSingle();
+        await supabaseAdmin.from("business_offers").update({ used_count: Number((cur as any)?.used_count ?? 0) + 1 }).eq("id", offerId);
+      }
+      await logAct(newId, g.business_id, "buyer", "Покупатель", "created");
+      await notifyShop(
+        { id: g.business_id, user_id: String((bp as any).user_id) },
+        `🛍 Новый заказ: ${summary}. Откройте «Заказы».`,
+        `/business?tab=orders&o=${newId}`,
+        { id: newId, kind: "buy", status: "new", buyer_id: uid, product_name: summary, qty: qtyAll, total, phone: ship.phone, note, items, ship_name: ship.name, ship_method: ship.method, ship_city: ship.city, ship_point: ship.point }
+      );
+    }
+
+    // Запоминаем данные получателя, чтобы в следующий раз не вводить заново.
+    if (b.save !== false && results.some((r) => r.ok)) {
+      await supabaseAdmin.from("shop_delivery_profiles").upsert({ user_id: uid, full_name: ship.name, phone: ship.phone, method: ship.method, city: ship.city || null, point: ship.point || null, updated_at: new Date().toISOString() });
     }
     return NextResponse.json({ ok: true, results });
   }

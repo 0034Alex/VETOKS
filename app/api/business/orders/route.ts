@@ -5,6 +5,7 @@ import { rateLimit } from "@/lib/rateLimit";
 import { countryOfUser, countryOfRegion } from "@/lib/countryServer";
 import { familyRootId } from "@/lib/familyServer";
 import { offerLive, loadProduct, sizeStockOf } from "@/lib/businessServer";
+import { stage1Ready, NEW_ORDER_COLS, applyAct, notifyShop, logAct } from "@/lib/orderFlow";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,9 @@ async function orderCols(): Promise<string> {
     const r = await supabaseAdmin.from("business_orders").select("recipient_user_id").limit(1);
     giftCols = !r.error;
   }
-  return giftCols ? BASE_COLS + GIFT_COLS : BASE_COLS;
+  let c = giftCols ? BASE_COLS + GIFT_COLS : BASE_COLS;
+  if (await stage1Ready()) c += NEW_ORDER_COLS;
+  return c;
 }
 
 const TXT: Record<string, string> = { confirmed: "подтверждён", shipped: "отправлен", done: "выполнен", cancelled: "отменён" };
@@ -181,11 +184,13 @@ export async function POST(req: Request) {
       const { data: cur } = await supabaseAdmin.from("business_offers").select("used_count").eq("id", offerId).maybeSingle();
       await supabaseAdmin.from("business_offers").update({ used_count: Number((cur as any)?.used_count ?? 0) + 1 }).eq("id", offerId);
     }
-    await notify(
-      (bp as any).user_id,
+    const newId = String((created as any).id);
+    await logAct(newId, String((bp as any).id), "buyer", "Покупатель", "created");
+    await notifyShop(
+      { id: String((bp as any).id), user_id: String((bp as any).user_id) },
       kind === "gift" ? `🎁 Новый подарок: ${product?.name}. Ждите оплату от дарителя и отметьте её в «Заказах».` : `🛍 Новый ${kind === "book" ? "запрос на бронь" : "заказ"}: ${product ? product.name : "бронь"}. Откройте «Заказы».`,
-      `/business?tab=orders&o=${(created as any).id}`,
-      "other"
+      `/business?tab=orders&o=${newId}`,
+      kind === "gift" ? undefined : { id: newId, kind, status: "new", buyer_id: uid, product_name: product ? product.name : "Бронь", size: size || null, qty, total, phone, when_text: s(b.whenText, 80) || null, note: s(b.note, 500) || null, items: null }
     );
     return NextResponse.json({ ok: true, id: (created as any).id, total });
   }
@@ -282,7 +287,12 @@ export async function POST(req: Request) {
         recipientName = (ru2 as any)?.first_name ?? "";
       }
     }
-    const base = { ...oo, business_name: (bp2 as any)?.name ?? "", buyer_name: (bu as any)?.first_name ?? "Покупатель", recipient_name: recipientName };
+    let bizPay = "";
+    if (role === "owner" && (await stage1Ready())) {
+      const { data: pp } = await supabaseAdmin.from("business_profiles").select("pay_text").eq("id", oo.business_id).maybeSingle();
+      bizPay = String((pp as any)?.pay_text ?? "");
+    }
+    const base = { ...oo, biz_pay_text: bizPay, business_name: (bp2 as any)?.name ?? "", buyer_name: (bu as any)?.first_name ?? "Покупатель", recipient_name: recipientName };
     // Получательнице не показываем телефон и имя анонимного дарителя.
     const order =
       role === "recipient"
@@ -314,6 +324,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  if (a === "act") {
+    const rl = await rateLimit(req, "business/order-act", 120, 600, uid);
+    if (rl) return rl;
+    if (role === "recipient") return bad("forbidden", 403);
+    if (!(await stage1Ready())) return bad("need_sql", 503);
+    const res = await applyAct(oid, String(b.act ?? ""), role === "owner" ? { role: "owner", name: "Владелец" } : { role: "buyer", name: "Покупатель" }, { pay_text: b.pay_text, tracking: b.tracking, reason: b.reason });
+    if (!res.ok) return bad(res.error || "failed", res.error === "forbidden" ? 403 : 400);
+    return NextResponse.json({ ok: true });
+  }
+
   if (a === "status") {
     const st = String(b.status ?? "");
     if (!STATUSES.includes(st) || st === "new") return bad("bad_status");
@@ -333,6 +353,7 @@ export async function POST(req: Request) {
     if (!allowed) return bad("forbidden", 403);
 
     await supabaseAdmin.from("business_orders").update({ status: st, updated_at: new Date().toISOString() }).eq("id", oid);
+    await logAct(oid, String(oo.business_id), role === "owner" ? "owner" : "buyer", role === "owner" ? "Владелец" : "Покупатель", st);
     if (st === "cancelled" && oo.product_id) {
       const pr: any = await loadProduct(String(oo.product_id), String(oo.business_id));
       const pss = pr ? sizeStockOf(pr) : null;

@@ -364,6 +364,12 @@ async function handle(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  if (cb?.data && /^bo_/.test(String(cb.data))) {
+    const { bizCallback } = await import("@/lib/orderTelegram");
+    await bizCallback(botToken(), cb);
+    return NextResponse.json({ ok: true });
+  }
+
   const message = body?.message;
   if (!message?.chat?.id) {
     return NextResponse.json({ ok: true });
@@ -385,6 +391,12 @@ async function handle(req: Request) {
   const text = String(message.text).trim();
   const username: string | undefined = message.from?.username;
 
+  // Менеджер магазина отвечает номером ТТН на просьбу бота.
+  if (message.reply_to_message?.text && String(message.reply_to_message.text).includes("ID заказа:")) {
+    const { bizReply } = await import("@/lib/orderTelegram");
+    if (await bizReply(botToken(), message)) return NextResponse.json({ ok: true });
+  }
+
   if (text === "/stop") {
     await handleParentStop(chatId);
     return NextResponse.json({ ok: true });
@@ -400,6 +412,11 @@ async function handle(req: Request) {
     }
     if (param && /^parent_[a-f0-9]{32}$/.test(param)) {
       await handleParentStart(chatId, param.slice(7), message.from, new URL(req.url).origin);
+      return NextResponse.json({ ok: true });
+    }
+    if (param && /^bm_[a-f0-9]{24}$/.test(param)) {
+      const { bizBind } = await import("@/lib/orderTelegram");
+      await bizBind(botToken(), chatId, param.slice(3), message.from);
       return NextResponse.json({ ok: true });
     }
     if (param && /^login_[a-f0-9]{32}$/.test(param)) {

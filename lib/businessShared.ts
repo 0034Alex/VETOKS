@@ -6,11 +6,21 @@ const TONE_OK = "text-success border-success";
 const TONE_OFF = "text-muted border-muted";
 
 export const ORDER_STATUS: Record<string, St> = {
-  new: { label: "Новый", tone: TONE_GOLD },
-  confirmed: { label: "Подтверждён", tone: TONE_BLUE },
+  new: { label: "Создан", tone: TONE_GOLD },
+  confirmed: { label: "Ожидает оплаты", tone: TONE_GOLD },
+  paid: { label: "Оплачен · собирается", tone: TONE_BLUE },
   shipped: { label: "Отправлен", tone: TONE_BLUE },
   done: { label: "Выполнен", tone: TONE_OK },
   cancelled: { label: "Отменён", tone: TONE_OFF },
+};
+
+// У брони свои названия.
+export const BOOK_STATUS: Record<string, St> = {
+  new: { label: "Заявка", tone: TONE_GOLD },
+  confirmed: { label: "Подтверждена", tone: TONE_BLUE },
+  shipped: { label: "Состоялась", tone: TONE_BLUE },
+  done: { label: "Завершена", tone: TONE_OK },
+  cancelled: { label: "Отменена", tone: TONE_OFF },
 };
 
 // У подарка свои названия статусов.
@@ -26,8 +36,9 @@ export const GIFT_STATUS: Record<string, St> = {
 
 export const GIFT_STEPS = ["new", "paid", "accepted", "shipped", "received"];
 
-export function statusInfo(kind: string, status: string): St {
-  const m = kind === "gift" ? GIFT_STATUS : ORDER_STATUS;
+export function statusInfo(kind: string, status: string, claimed?: boolean): St {
+  if (kind === "buy" && status === "confirmed" && claimed) return { label: "Оплата: ждёт подтверждения", tone: TONE_BLUE };
+  const m = kind === "gift" ? GIFT_STATUS : kind === "book" ? BOOK_STATUS : ORDER_STATUS;
   return m[status] ?? m.new;
 }
 

@@ -23,7 +23,6 @@ export type BizPublic = {
   quick_action: "buy" | "book";
   verified: boolean;
   show_call?: boolean;
-  city?: string;
 };
 
 // Значок бизнес-аккаунта VETOKS: витрина магазина с короной над входом.
@@ -145,6 +144,17 @@ export default function BusinessPageView({ p, preview = false, products = [], of
       }, 400);
       return;
     }
+    if (!book && !gift && sel) {
+      // Покупка идёт через корзину: там один раз вводятся данные получателя и доставка.
+      const rc = await apiPost("/api/business/cart", { action: "add", productId: sel.id, size: o.size, qty: o.qty });
+      setOBusy(false);
+      if (rc?.ok) {
+        window.location.href = "/cart?shop=" + p.id;
+        return;
+      }
+      setOErr(rc?.error === "no_stock" ? "Этого нет в наличии." : rc?.error === "need_size" ? "Выберите размер." : "Не получилось. Попробуйте ещё раз.");
+      return;
+    }
     const r = await apiPost("/api/business/orders", {
       action: "create",
       businessId: p.id,
@@ -180,7 +190,6 @@ export default function BusinessPageView({ p, preview = false, products = [], of
 
   const can = !(preview || !(canOrder || demo));
   const phoneOn = !!p.phone && p.show_call !== false;
-  const city = (p.city || String(p.address ?? "").split(",")[0]).trim();
   const statusPill = (pr: BizProduct) => {
     const st = stockInfo(productTotal(pr));
     const cls = st.state === "ok" ? "text-success border-success/70" : st.state === "low" ? "text-gold border-gold/70" : "text-danger border-danger/70";
@@ -281,9 +290,12 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         <div className="border border-gold/40 rounded-2xl p-3.5 mt-4 bg-gradient-to-br from-gold/10 via-bgSurface to-bgSurface">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-start">
             <div className="flex flex-col gap-2 text-[13px] min-w-0">
-              {city && <CRow k="pin" v={city} />}
-              {p.hours && <CRow k="clock" v={p.hours} />}
-              {!city && !p.hours && <p className="text-muted text-xs">Нажмите «Подробнее», там все контакты.</p>}
+              {phoneOn && <CRow k="phone" v={p.phone} href={owner || preview ? undefined : `tel:${p.phone}`} />}
+              {p.address && <CRow k="pin" v={p.address} />}
+              {p.email && <CRow k="mail" v={p.email} />}
+              {p.site_url && <CRow k="globe" v={p.site_url.replace(/^https?:\/\//, "")} href={p.site_url} ext />}
+              {!phoneOn && !p.address && !p.email && !p.site_url && !p.hours && <p className="text-muted">Контакты пока не заполнены.</p>}
+              {p.hours && !phoneOn && !p.address && !p.email && !p.site_url && <CRow k="clock" v={p.hours} />}
             </div>
             <div className="flex flex-col items-end gap-2">
               {socials.length > 0 && (
@@ -295,7 +307,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
                   ))}
                 </div>
               )}
-              <button onClick={() => setAllContacts(true)} className="text-gold text-xs border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap">Подробнее ›</button>
+              <button onClick={() => setAllContacts(true)} className="text-gold text-xs border border-gold/50 rounded-full px-3 py-1.5 whitespace-nowrap">Все контакты ›</button>
             </div>
           </div>
           {phoneOn && (
@@ -644,13 +656,14 @@ export default function BusinessPageView({ p, preview = false, products = [], of
                       <button onClick={() => setO({ ...o, qty: Math.min(99, o.qty + 1) })} className="w-8 h-8 rounded-full border border-muted text-offwhite">+</button>
                     </div>
                   )}
-                  {sel && <label className="text-muted text-xs flex flex-col gap-1">Промокод (если есть)<input value={o.promo} onChange={(e) => setO({ ...o, promo: e.target.value })} maxLength={30} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite uppercase" /></label>}
-                  <label className="text-muted text-xs flex flex-col gap-1">Ваш телефон{gift ? " (для связи магазина с вами)" : ""}<input value={o.phone} onChange={(e) => setO({ ...o, phone: e.target.value })} inputMode="tel" maxLength={40} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" /></label>
-                  <label className="text-muted text-xs flex flex-col gap-1">Комментарий<textarea value={o.note} onChange={(e) => setO({ ...o, note: e.target.value })} rows={2} maxLength={500} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" /></label>
+                  {sel && (book || gift) && <label className="text-muted text-xs flex flex-col gap-1">Промокод (если есть)<input value={o.promo} onChange={(e) => setO({ ...o, promo: e.target.value })} maxLength={30} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite uppercase" /></label>}
+                  {(book || gift) && <label className="text-muted text-xs flex flex-col gap-1">Ваш телефон{gift ? " (для связи магазина с вами)" : ""}<input value={o.phone} onChange={(e) => setO({ ...o, phone: e.target.value })} inputMode="tel" maxLength={40} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" /></label>}
+                  {(book || gift) && <label className="text-muted text-xs flex flex-col gap-1">Комментарий<textarea value={o.note} onChange={(e) => setO({ ...o, note: e.target.value })} rows={2} maxLength={500} className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" /></label>}
+                  {!book && !gift && <p className="text-muted text-xs">Дальше откроется корзина: там вы один раз укажете получателя и доставку, а магазин пришлёт счёт в чате.</p>}
                 </div>
                 {oErr && <p className="text-danger text-xs mt-2">{oErr}</p>}
                 <button onClick={sendOrder} disabled={oBusy || (book && !o.whenText.trim())} className="w-full mt-3 bg-gold text-bgPrimary font-semibold rounded-full py-3 text-sm disabled:opacity-50">
-                  {oBusy ? "Отправляем..." : book ? "Отправить запрос" : sel ? `${gift ? "Оформить подарок" : "Оформить"} · ${money(sel.price * o.qty, cur)}` : "Оформить"}
+                  {oBusy ? "Отправляем..." : book ? "Отправить запрос" : sel ? `${gift ? "Оформить подарок" : "Перейти к оформлению"} · ${money(sel.price * o.qty, cur)}` : "Оформить"}
                 </button>
                 <button onClick={closeOrder} className="w-full mt-2 text-muted text-sm py-2">Отмена</button>
               </>
@@ -663,7 +676,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         <div className="fixed inset-0 z-[125] bg-black/70 flex items-end justify-center" onClick={() => setAllContacts(false)}>
           <div className="w-full max-w-md bg-bgSurface rounded-t-3xl p-5 max-h-[85dvh] overflow-y-auto border-t border-gold/50" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-offwhite font-semibold">Подробнее · {p.name}</p>
+              <p className="text-offwhite font-semibold">Контакты · {p.name}</p>
               <button onClick={() => setAllContacts(false)} className="text-muted text-xl">✕</button>
             </div>
             <div className="flex flex-col gap-3 text-sm">

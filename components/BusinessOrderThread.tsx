@@ -4,6 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { apiPost } from "@/lib/authClient";
 import { statusInfo, money, GIFT_STEPS, GIFT_STATUS } from "@/lib/businessShared";
 
+const METHODS: Record<string, string> = { np: "Новая Почта", up: "Укрпочта", courier: "Курьер", pickup: "Самовывоз" };
+const ACT_ERR: Record<string, string> = {
+  need_requisites: "Впишите реквизиты для оплаты.",
+  need_sql: "Раздел ещё настраивается, попробуйте позже.",
+  forbidden: "Статус заказа уже изменился. Обновите страницу.",
+};
+
 // Один заказ или подарок: детали, статусы и чат. Для покупателя, партнёра и получательницы подарка.
 export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id: string; cur: string; onBack: () => void; onChanged?: () => void }) {
   const [d, setD] = useState<any>(null);
@@ -11,11 +18,17 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
   const [chan, setChan] = useState<"main" | "recipient">("main");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [payText, setPayText] = useState("");
+  const [tracking, setTracking] = useState("");
+  const [reason, setReason] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
 
   async function load() {
     const r = await apiPost("/api/business/orders", { action: "get", id });
-    if (r?.ok) setD(r);
+    if (r?.ok) {
+      setD(r);
+      setPayText((p) => p || r.order?.biz_pay_text || "");
+    }
   }
   useEffect(() => {
     load();
@@ -39,6 +52,20 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
     } else setErr(r?.error === "not_accepted" ? "Чат с получателем откроется, когда он примет подарок." : "Не отправилось. Попробуйте ещё раз.");
   }
 
+  async function act(a: string, extra: Record<string, any> = {}, ask?: string) {
+    if (ask && !window.confirm(ask)) return;
+    setBusy(true);
+    setErr("");
+    const r = await apiPost("/api/business/orders", { action: "act", id, act: a, ...extra });
+    setBusy(false);
+    if (r?.ok) {
+      setReason("");
+      setTracking("");
+      await load();
+      onChanged?.();
+    } else setErr(ACT_ERR[r?.error] ?? "Не получилось. Обновите страницу и попробуйте ещё раз.");
+  }
+
   async function setStatus(st: string, ask?: string) {
     if (ask && !window.confirm(ask)) return;
     setBusy(true);
@@ -55,12 +82,14 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
   const o = d.order;
   const role: "owner" | "buyer" | "recipient" = d.role;
   const gift = o.kind === "gift";
-  const st = statusInfo(o.kind, o.status);
+  const isBuy = o.kind === "buy";
+  const hasItems = Array.isArray(o.items) && o.items.length > 0;
+  const st = statusInfo(o.kind, o.status, !!o.paid_claim_at);
   const closed = ["done", "cancelled", "received", "declined"].includes(o.status);
 
   // Кнопки действий
   const actions: [string, string, string?][] = [];
-  if (!gift && role === "owner") {
+  if (!gift && !isBuy && role === "owner") {
     if (o.status === "new") actions.push(["confirmed", "Подтвердить"]);
     if (o.status === "confirmed") actions.push(["shipped", o.kind === "book" ? "Бронь состоялась" : "Отправлено"], ["done", "Выполнен"]);
     if (o.status === "shipped") actions.push(["done", "Выполнен"]);
@@ -73,8 +102,9 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
     if (o.status === "paid") actions.push(["accepted", "Принять подарок"], ["declined", "Отказаться", "Отказаться от подарка? Даритель будет уведомлён."]);
     if (o.status === "shipped") actions.push(["received", "Получено"]);
   }
-  const canCancel =
-    !closed && ((role === "buyer" && o.status === "new") || (role === "owner" && (gift ? ["new", "paid"].includes(o.status) : true)));
+  const canCancel = isBuy
+    ? (role === "owner" ? ["new", "confirmed", "paid"] : ["new", "confirmed"]).includes(o.status)
+    : !closed && ((role === "buyer" && o.status === "new") || (role === "owner" && (gift ? ["new", "paid"].includes(o.status) : true)));
 
   // Чат: у партнёра два канала (даритель и получатель), у остальных один.
   const ownerTwo = gift && role === "owner";
@@ -114,13 +144,23 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
             <p className="text-muted text-xs">{role === "owner" ? `Покупатель: ${o.buyer_name}` : `Партнёр: ${o.business_name}`}</p>
             {gift && <p className="text-offwhite text-sm">Подарок для: {o.recipient_name || "получателя"} · {o.gift_anon ? "анонимно" : "с именем дарителя"}</p>}
             {gift && o.gift_message && <p className="text-muted text-sm">Открытка: «{o.gift_message}»</p>}
-            {o.sku && <p className="text-muted text-xs">Артикул {o.sku}</p>}
-            {o.size && <p className="text-offwhite text-sm">Размер: {o.size}</p>}
-            {o.kind !== "book" && <p className="text-offwhite text-sm">{o.qty} шт. · {money(o.unit_price, cur)}{o.discount_percent ? ` · скидка ${o.discount_percent}% (${o.promo_code})` : ""}</p>}
+            {hasItems && (
+              <div className="flex flex-col gap-0.5 my-1">
+                {o.items.map((i: any, k: number) => (
+                  <p key={k} className="text-offwhite text-sm">• {i.name}{i.size ? ` (${i.size})` : ""} ×{i.qty} · {money(i.line_total, cur)}{i.sku ? <span className="text-muted text-xs"> · {i.sku}</span> : null}</p>
+                ))}
+              </div>
+            )}
+            {!hasItems && o.sku && <p className="text-muted text-xs">Артикул {o.sku}</p>}
+            {!hasItems && o.size && <p className="text-offwhite text-sm">Размер: {o.size}</p>}
+            {!hasItems && o.kind !== "book" && <p className="text-offwhite text-sm">{o.qty} шт. · {money(o.unit_price, cur)}{o.discount_percent ? ` · скидка ${o.discount_percent}% (${o.promo_code})` : ""}</p>}
             {o.kind !== "book" && <p className="text-gold text-sm font-semibold">Итого: {money(o.total, cur)}</p>}
             {o.when_text && <p className="text-offwhite text-sm">Когда: {o.when_text}</p>}
             {o.note && <p className="text-muted text-sm">«{o.note}»</p>}
             {role === "owner" && o.phone && <p className="text-offwhite text-sm">📞 {o.phone}</p>}
+            {o.ship_name && <p className="text-offwhite text-sm">Получатель: {o.ship_name}</p>}
+            {o.ship_method && <p className="text-offwhite text-sm">🚚 {METHODS[o.ship_method] ?? o.ship_method}{o.ship_city ? `, ${o.ship_city}` : ""}{o.ship_point ? `, ${o.ship_point}` : ""}</p>}
+            {o.tracking && <p className="text-offwhite text-sm">ТТН: {o.tracking}</p>}
             {gift && role === "buyer" && o.status === "new" && <p className="text-gold text-xs mt-1">Оплатите подарок магазину напрямую: договоритесь о способе оплаты в чате. Магазин отметит оплату, и подарок уйдёт получателю.</p>}
             {gift && role === "buyer" && o.status === "paid" && <p className="text-muted text-xs mt-1">Ждём, пока получатель примет подарок.</p>}
             {gift && role === "owner" && o.status === "paid" && <p className="text-muted text-xs mt-1">Ждём ответа получателя. Адрес спрашивайте только после того, как он примет подарок.</p>}
@@ -129,13 +169,80 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
         )}
       </div>
 
+      {isBuy && role !== "recipient" && !["cancelled"].includes(o.status) && (
+        <div className="bg-bgSurface border border-gold/30 rounded-xl p-3 flex flex-col gap-2">
+          {role === "owner" && o.status === "new" && (
+            <>
+              <p className="text-offwhite text-sm font-semibold">Новый заказ. Одобрите и выставьте счёт</p>
+              <textarea value={payText} onChange={(e) => setPayText(e.target.value)} rows={3} maxLength={600} placeholder="Реквизиты для оплаты: номер карты или ссылка на банку Mono, LiqPay" className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" />
+              <p className="text-muted text-[11px]">Один раз сохраните реквизиты во вкладке «Оплата», и они будут подставляться сами.</p>
+              <div className="flex gap-2 flex-wrap items-center">
+                <button disabled={busy || !payText.trim()} onClick={() => act("approve", { pay_text: payText })} className="bg-gold text-bgPrimary font-semibold rounded-full px-4 py-2 text-sm disabled:opacity-50">✅ Одобрить и выставить счёт</button>
+                <button disabled={busy} onClick={() => act("decline", {}, "Отказать в заказе?")} className="border border-muted text-offwhite rounded-full px-4 py-2 text-sm">Отказать</button>
+              </div>
+            </>
+          )}
+          {role === "owner" && o.status === "confirmed" && (
+            o.paid_claim_at ? (
+              <>
+                <p className="text-offwhite text-sm font-semibold">Покупатель сообщает, что оплатил</p>
+                <p className="text-muted text-xs">Проверьте поступление денег на ваш счёт.</p>
+                <div className="flex gap-2 flex-wrap">
+                  <button disabled={busy} onClick={() => act("paid")} className="bg-gold text-bgPrimary font-semibold rounded-full px-4 py-2 text-sm disabled:opacity-50">💰 Деньги получил</button>
+                  <button disabled={busy} onClick={() => act("nopaid")} className="border border-muted text-offwhite rounded-full px-4 py-2 text-sm">⚠️ Не пришли</button>
+                </div>
+              </>
+            ) : (
+              <p className="text-muted text-xs">{o.disputed_at ? "Вы сообщили, что деньги не пришли. Ждём чек от покупателя." : "Счёт выставлен. Ждём оплату от покупателя."}</p>
+            )
+          )}
+          {role === "owner" && o.status === "paid" && (
+            <>
+              <p className="text-offwhite text-sm font-semibold">Оплачено. Отправьте заказ</p>
+              <input value={tracking} onChange={(e) => setTracking(e.target.value)} maxLength={60} placeholder="Номер ТТН (если есть)" className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" />
+              <button disabled={busy} onClick={() => act("ship", { tracking })} className="bg-gold text-bgPrimary font-semibold rounded-full px-4 py-2 text-sm self-start disabled:opacity-50">📦 Отправлено</button>
+            </>
+          )}
+          {role === "owner" && o.status === "shipped" && (
+            <button disabled={busy} onClick={() => act("finish")} className="bg-gold text-bgPrimary font-semibold rounded-full px-4 py-2 text-sm self-start disabled:opacity-50">Выполнен</button>
+          )}
+          {role === "owner" && o.status === "done" && !o.returned_at && (
+            <button disabled={busy} onClick={() => act("return_ok", {}, "Оформить возврат? Товары вернутся в наличие.")} className="border border-muted text-offwhite rounded-full px-4 py-2 text-sm self-start">↩️ Оформить возврат</button>
+          )}
+          {role === "buyer" && o.status === "new" && <p className="text-muted text-xs">Заказ отправлен магазину. Ждите счёт в чате.</p>}
+          {role === "buyer" && o.status === "confirmed" && (
+            o.paid_claim_at ? (
+              <p className="text-muted text-xs">Ждём подтверждения оплаты от магазина.</p>
+            ) : (
+              <>
+                <p className="text-offwhite text-sm font-semibold">Магазин выставил счёт: {money(o.total, cur)}</p>
+                {o.pay_text && <p className="text-offwhite text-sm bg-bgPrimary rounded-lg p-2.5 whitespace-pre-wrap break-words">{o.pay_text}</p>}
+                <p className="text-muted text-xs">Оплатите напрямую магазину, пришлите чек в чат и нажмите кнопку.</p>
+                <button disabled={busy} onClick={() => act("claim")} className="bg-gold text-bgPrimary font-semibold rounded-full px-4 py-2 text-sm self-start disabled:opacity-50">💳 Я оплатил</button>
+              </>
+            )
+          )}
+          {role === "buyer" && o.status === "paid" && <p className="text-muted text-xs">Оплата подтверждена. Магазин собирает заказ.</p>}
+          {role === "buyer" && o.status === "shipped" && (
+            <button disabled={busy} onClick={() => act("got")} className="bg-gold text-bgPrimary font-semibold rounded-full px-4 py-2 text-sm self-start disabled:opacity-50">📦 Получил заказ</button>
+          )}
+          {role === "buyer" && o.status === "done" && !o.returned_at && (
+            <>
+              <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} placeholder="Причина возврата (если нужен)" className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" />
+              <button disabled={busy || !reason.trim()} onClick={() => act("return_req", { reason }, "Отправить запрос на возврат магазину?")} className="border border-muted text-offwhite rounded-full px-4 py-2 text-sm self-start disabled:opacity-50">↩️ Запросить возврат</button>
+            </>
+          )}
+          {o.returned_at && <p className="text-muted text-xs">Возврат по этому заказу оформлен.</p>}
+        </div>
+      )}
+
       {(actions.length > 0 || canCancel || (gift && role === "owner" && o.status === "declined")) && (
         <div className="flex flex-wrap gap-2 items-center">
           {actions.map(([k, l, ask]) => (
             <button key={k} disabled={busy} onClick={() => setStatus(k, ask)} className={`font-semibold rounded-full px-4 py-2 text-sm disabled:opacity-50 ${k === "declined" ? "border border-muted text-offwhite" : "bg-gold text-bgPrimary"}`}>{l}</button>
           ))}
           {(canCancel || (gift && role === "owner" && o.status === "declined")) && (
-            <button disabled={busy} onClick={() => setStatus("cancelled", "Отменить?")} className="text-danger text-xs underline">Отменить</button>
+            <button disabled={busy} onClick={() => (isBuy ? act("cancel", {}, "Отменить заказ?") : setStatus("cancelled", "Отменить?"))} className="text-danger text-xs underline">Отменить</button>
           )}
         </div>
       )}
@@ -157,6 +264,13 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
             <div className="flex flex-col gap-1.5 max-h-72 overflow-y-auto">
               {msgs.length === 0 && <p className="text-muted text-xs">Сообщений пока нет.{role === "owner" && activeChan === "recipient" ? " Спросите, куда отправить подарок." : ""}</p>}
               {msgs.map((m: any) => {
+                if (String(m.body).startsWith("§ ")) {
+                  return (
+                    <div key={m.id} className="self-center max-w-[92%] text-center text-[11px] text-muted bg-bgPrimary/60 border border-muted/40 rounded-xl px-3 py-1.5 whitespace-pre-wrap break-words">
+                      {String(m.body).slice(2)}
+                    </div>
+                  );
+                }
                 const mine = m.sender_id === d.me;
                 return (
                   <div key={m.id} className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm break-words ${mine ? "self-end bg-gold text-bgPrimary" : "self-start bg-bgPrimary text-offwhite"}`}>

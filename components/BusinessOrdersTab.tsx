@@ -40,7 +40,7 @@ export default function BusinessOrdersTab({ mode, cur, openId }: { mode: "biz" |
         </p>
       )}
       {shown.map((o) => {
-        const st = statusInfo(o.kind, o.status);
+        const st = statusInfo(o.kind, o.status, !!o.paid_claim_at);
         const who = mode === "biz" ? o.buyer_name : o.business_name;
         return (
           <button key={o.id} onClick={() => setOpen(o.id)} className="text-left bg-bgSurface border border-muted rounded-xl p-3 flex items-start justify-between gap-2">
@@ -52,7 +52,7 @@ export default function BusinessOrdersTab({ mode, cur, openId }: { mode: "biz" |
                 {o.kind !== "book" && mode !== "incoming" ? ` · ${money(o.total, cur)}` : ""}
               </p>
             </div>
-            <span className={`text-xs border rounded-full px-2.5 py-0.5 flex-none ${st.tone}`}>{st.label}</span>
+            <span className={`text-xs border rounded-full px-2.5 py-0.5 flex-none ${o.returned_at ? "text-muted border-muted" : st.tone}`}>{o.returned_at ? "Возврат" : st.label}</span>
           </button>
         );
       })}
