@@ -21,6 +21,7 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
   const [payText, setPayText] = useState("");
   const [tracking, setTracking] = useState("");
   const [reason, setReason] = useState("");
+  const [eta, setEta] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
 
   async function load() {
@@ -82,14 +83,15 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
   const o = d.order;
   const role: "owner" | "buyer" | "recipient" = d.role;
   const gift = o.kind === "gift";
-  const isBuy = o.kind === "buy";
+  const isFood = o.order_type === "food";
+  const isBuy = o.kind === "buy" && !isFood;
   const hasItems = Array.isArray(o.items) && o.items.length > 0;
-  const st = statusInfo(o.car_id ? "car" : o.kind, o.status, !!o.paid_claim_at);
+  const st = statusInfo(o.order_type === "food" ? "food" : o.car_id ? "car" : o.kind, o.status, !!o.paid_claim_at);
   const closed = ["done", "cancelled", "received", "declined"].includes(o.status);
 
   // Кнопки действий
   const actions: [string, string, string?][] = [];
-  if (!gift && !isBuy && role === "owner") {
+  if (!gift && !isBuy && !isFood && role === "owner") {
     if (o.status === "new") actions.push(["confirmed", "Подтвердить"]);
     if (o.status === "confirmed") actions.push(["shipped", o.car_id ? "Начать сделку" : o.kind === "book" ? "Бронь состоялась" : "Отправлено"], ["done", o.car_id ? "Продано" : "Выполнен"]);
     if (o.status === "shipped") actions.push(["done", o.car_id ? "Продано" : "Выполнен"]);
@@ -102,7 +104,9 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
     if (o.status === "paid") actions.push(["accepted", "Принять подарок"], ["declined", "Отказаться", "Отказаться от подарка? Даритель будет уведомлён."]);
     if (o.status === "shipped") actions.push(["received", "Получено"]);
   }
-  const canCancel = isBuy
+  const canCancel = isFood
+    ? (role === "owner" ? ["new", "confirmed", "paid"] : ["new"]).includes(o.status)
+    : isBuy
     ? (role === "owner" ? ["new", "confirmed", "paid"] : ["new", "confirmed"]).includes(o.status)
     : !closed && ((role === "buyer" && o.status === "new") || (role === "owner" && (gift ? ["new", "paid"].includes(o.status) : true)));
 
@@ -169,6 +173,35 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
           </>
         )}
       </div>
+
+      {isFood && role !== "recipient" && o.status !== "cancelled" && (
+        <div className="bg-bgSurface border border-gold/30 rounded-xl p-3 flex flex-col gap-2">
+          {role === "owner" && o.status === "new" && (
+            <>
+              <p className="text-offwhite text-sm font-semibold">Новый заказ еды</p>
+              <input value={eta} onChange={(e) => setEta(e.target.value)} inputMode="numeric" maxLength={3} placeholder="Через сколько минут будет готов (необязательно)" className="bg-bgPrimary border border-muted rounded-lg px-3 py-2 text-sm text-offwhite" />
+              <div className="flex gap-2 flex-wrap items-center">
+                <button disabled={busy} onClick={() => act("approve", { eta })} className="bg-gold text-bgPrimary font-semibold rounded-full px-4 py-2 text-sm disabled:opacity-50">✅ Принять заказ</button>
+                <button disabled={busy} onClick={() => act("decline", {}, "Отказать в заказе?")} className="border border-muted text-offwhite rounded-full px-4 py-2 text-sm">Отказать</button>
+              </div>
+            </>
+          )}
+          {role === "owner" && o.status === "confirmed" && <button disabled={busy} onClick={() => act("cook")} className="bg-gold text-bgPrimary font-semibold rounded-full px-4 py-2 text-sm self-start disabled:opacity-50">👨‍🍳 Готовится</button>}
+          {role === "owner" && ["confirmed", "paid"].includes(o.status) && (
+            <button disabled={busy} onClick={() => act("ship")} className="border border-gold text-gold font-semibold rounded-full px-4 py-2 text-sm self-start disabled:opacity-50">{o.ship_method === "pickup" ? "✅ Готов к выдаче" : "🚴 Передан курьеру"}</button>
+          )}
+          {role === "owner" && o.status === "shipped" && <button disabled={busy} onClick={() => act("finish")} className="bg-gold text-bgPrimary font-semibold rounded-full px-4 py-2 text-sm self-start disabled:opacity-50">✅ {o.ship_method === "pickup" ? "Выдан" : "Доставлен"}</button>}
+          {role === "buyer" && o.status === "new" && <p className="text-muted text-xs">Заказ отправлен. Ждём, пока ресторан его примет.</p>}
+          {role === "buyer" && o.status === "confirmed" && <p className="text-muted text-xs">Ресторан принял заказ.</p>}
+          {role === "buyer" && o.status === "paid" && <p className="text-muted text-xs">Ваш заказ готовится.</p>}
+          {role === "buyer" && o.status === "shipped" && (
+            <>
+              <p className="text-muted text-xs">{o.ship_method === "pickup" ? "Заказ готов, можно забирать." : "Заказ в пути."}</p>
+              <button disabled={busy} onClick={() => act("got")} className="bg-gold text-bgPrimary font-semibold rounded-full px-4 py-2 text-sm self-start disabled:opacity-50">✅ Получил</button>
+            </>
+          )}
+        </div>
+      )}
 
       {isBuy && role !== "recipient" && !["cancelled"].includes(o.status) && (
         <div className="bg-bgSurface border border-gold/30 rounded-xl p-3 flex flex-col gap-2">
@@ -243,7 +276,7 @@ export default function BusinessOrderThread({ id, cur, onBack, onChanged }: { id
             <button key={k} disabled={busy} onClick={() => setStatus(k, ask)} className={`font-semibold rounded-full px-4 py-2 text-sm disabled:opacity-50 ${k === "declined" ? "border border-muted text-offwhite" : "bg-gold text-bgPrimary"}`}>{l}</button>
           ))}
           {(canCancel || (gift && role === "owner" && o.status === "declined")) && (
-            <button disabled={busy} onClick={() => (isBuy ? act("cancel", {}, "Отменить заказ?") : setStatus("cancelled", "Отменить?"))} className="text-danger text-xs underline">Отменить</button>
+            <button disabled={busy} onClick={() => (isBuy || isFood ? act("cancel", {}, "Отменить заказ?") : setStatus("cancelled", "Отменить?"))} className="text-danger text-xs underline">Отменить</button>
           )}
         </div>
       )}

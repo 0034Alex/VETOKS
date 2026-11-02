@@ -5,6 +5,7 @@ import { countryOfUser } from "@/lib/countryServer";
 import { BIZ_COLS, OFFER_COLS, publicBiz, publicOffer, offerLive, currencyOfCountry, loadProducts, publicProduct, getShowCall } from "@/lib/businessServer";
 import { bookingReady, loadCatalog } from "@/lib/bookingServer";
 import { carsReady, loadCars, getBizType } from "@/lib/carsServer";
+import { foodReady, loadDishes } from "@/lib/foodServer";
 import { parseLinks } from "@/lib/socialLinks";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +47,8 @@ export async function POST(req: Request) {
   // Автомобили (бизнес «Авто»): если SQL ещё не выполнен, просто пусто.
   const bizType = await getBizType(id);
   const cars = bizType === "auto" && (await carsReady()) ? await loadCars(id, !(mine || staff)) : [];
+  // Меню ресторана (бизнес «Еда»): если SQL ещё не выполнен, просто пусто.
+  const dishes = bizType === "food" && (await foodReady()) ? await loadDishes(id, !(mine || staff)) : [];
   const oq = await supabaseAdmin.from("business_offers").select(OFFER_COLS).eq("business_id", id).eq("is_active", true).order("created_at", { ascending: false }).limit(20);
   return NextResponse.json({
     ok: true,
@@ -58,6 +61,7 @@ export async function POST(req: Request) {
     cur: await currencyOfCountry((p as any).country_id),
     products: prods,
     cars,
+    dishes,
     services,
     masters,
     extra: await ownerExtra(uid, (p as any).user_id, id, (p as any).site_url),

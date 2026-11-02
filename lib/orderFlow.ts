@@ -44,7 +44,7 @@ export async function tgSend(token: string, chat: string, text: string, markup?:
 }
 
 export function orderText(o: any, shopName: string, cur: string): string {
-  const head = o.kind === "book" ? "📅 Запрос на бронь" : "🛍 Заказ";
+  const head = o.kind === "book" ? "📅 Запрос на бронь" : o.order_type === "food" ? "🍽 Заказ еды" : "🛍 Заказ";
   const lines: string[] = [`${head} №${shortId(o.id)} · ${shopName}`];
   if (Array.isArray(o.items) && o.items.length) {
     for (const i of o.items) lines.push(`• ${i.name}${i.size ? ` (${i.size})` : ""} ×${i.qty} — ${money(i.line_total, cur)}`);
@@ -66,6 +66,13 @@ export function orderKeyboard(o: any): object | undefined {
   const b = (t: string, c: string) => ({ text: t, callback_data: `bo_${o.id}_${c}` });
   if (o.kind === "book") return o.status === "new" ? { inline_keyboard: [[b("✅ Подтвердить", "ok"), b("❌ Отказ", "no")]] } : undefined;
   if (o.kind !== "buy") return undefined;
+  if (o.order_type === "food") {
+    if (o.status === "new") return { inline_keyboard: [[b("✅ Принять заказ", "ok"), b("❌ Отказ", "no")]] };
+    if (o.status === "confirmed") return { inline_keyboard: [[b("👨‍🍳 Готовится", "ck")]] };
+    if (o.status === "paid") return { inline_keyboard: [[b(o.ship_method === "pickup" ? "✅ Готов к выдаче" : "🚴 Передан курьеру", "dl")]] };
+    if (o.status === "shipped") return { inline_keyboard: [[b("✅ Доставлен", "fn")]] };
+    return undefined;
+  }
   if (o.status === "new") return { inline_keyboard: [[b("✅ Одобрить и выставить счёт", "ok")], [b("❌ Отказ", "no")]] };
   if (o.status === "confirmed" && o.paid_claim_at) return { inline_keyboard: [[b("💰 Деньги получил", "pd"), b("⚠️ Не пришли", "np")]] };
   if (o.status === "paid") return { inline_keyboard: [[b("📦 Отправлено (ТТН)", "sh")]] };
@@ -129,7 +136,7 @@ export async function applyAct(
   oid: string,
   act: string,
   actor: Actor,
-  extra: { pay_text?: string; tracking?: string; reason?: string } = {}
+  extra: { pay_text?: string; tracking?: string; reason?: string; eta?: string } = {}
 ): Promise<{ ok: boolean; error?: string }> {
   const { data: o0 } = await supabaseAdmin.from("business_orders").select("*").eq("id", oid).maybeSingle();
   if (!o0) return { ok: false, error: "not_found" };
@@ -153,6 +160,59 @@ export async function applyAct(
   const sayBuyer = (t: string) => sysMsg(oid, o.buyer_id, t);
   const no = (error = "forbidden") => ({ ok: false, error });
   const isBuy = o.kind === "buy";
+
+  // Заказ еды: принят, готовится, передан курьеру или готов к выдаче, доставлен.
+  if (o.order_type === "food") {
+    const pick = o.ship_method === "pickup";
+    const mins = s(extra.eta, 10).replace(/[^0-9]/g, "");
+    if (act === "approve" && shop && st === "new") {
+      await upd({ status: "confirmed" });
+      await log("approve");
+      const pay = o.pay_method === "transfer" ? s(bp.pay_text, 600) : "";
+      await sayShop(`Заказ принят рестораном.${mins ? ` Будет готов примерно через ${mins} мин.` : ""}${pay ? `\nСумма ${money(o.total, cur)}. Оплатите переводом:\n${pay}` : ""}`);
+      await toBuyer(`✅ «${bp.name}» принял ваш заказ.${mins ? ` Будет готов примерно через ${mins} мин.` : ""}`);
+      return { ok: true };
+    }
+    if (act === "decline" && shop && st === "new") {
+      await upd({ status: "cancelled" });
+      await log("decline");
+      await sayShop("Ресторан не смог принять заказ.");
+      await toBuyer(`К сожалению, «${bp.name}» не смог принять ваш заказ.`);
+      return { ok: true };
+    }
+    if (act === "cook" && shop && st === "confirmed") {
+      await upd({ status: "paid" });
+      await log("cook");
+      await sayShop("Заказ готовится.");
+      await toBuyer(`👨‍🍳 Ваш заказ в «${bp.name}» готовится.`);
+      return { ok: true };
+    }
+    if (act === "ship" && shop && ["confirmed", "paid"].includes(st)) {
+      await upd({ status: "shipped" });
+      await log("ship");
+      await sayShop(pick ? "Заказ готов, можно забирать." : "Заказ передан курьеру.");
+      await toBuyer(pick ? `✅ Заказ в «${bp.name}» готов. Можно забирать.` : `🚴 Ваш заказ передан курьеру.`);
+      return { ok: true };
+    }
+    if ((act === "finish" && shop) || (act === "got" && actor.role === "buyer")) {
+      if (st !== "shipped") return no();
+      await upd({ status: "done" });
+      await log(act);
+      await (act === "got" ? sayBuyer("Клиент подтвердил получение. Приятного аппетита!") : sayShop(pick ? "Заказ выдан." : "Заказ доставлен."));
+      if (act === "finish") await toBuyer(`✅ Заказ из «${bp.name}» ${pick ? "выдан" : "доставлен"}. Приятного аппетита!`);
+      return { ok: true };
+    }
+    if (act === "cancel") {
+      if (!(shop ? ["new", "confirmed", "paid"].includes(st) : st === "new")) return no();
+      await upd({ status: "cancelled" });
+      await log("cancel");
+      await (shop ? sayShop("Ресторан отменил заказ.") : sayBuyer("Клиент отменил заказ."));
+      if (shop) await toBuyer(`Заказ в «${bp.name}» отменён рестораном.`);
+      else await notifyShop(bp, `Клиент отменил заказ №${shortId(oid)}.`, link);
+      return { ok: true };
+    }
+    return no();
+  }
 
   if (act === "approve") {
     if (!shop || st !== "new") return no();

@@ -15,6 +15,7 @@ import ShopAccounting from "@/components/ShopAccounting";
 import ShopPayTab from "@/components/ShopPayTab";
 import ServicesTab from "@/components/ServicesTab";
 import CarsTab from "@/components/CarsTab";
+import DishesTab from "@/components/DishesTab";
 import BusinessOffersTab from "@/components/BusinessOffersTab";
 
 const ERR: Record<string, string> = {
@@ -30,11 +31,11 @@ export default function BusinessCabinetPage() {
   const [st, setSt] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState<"buy" | "book" | "auto">("buy");
+  const [mode, setMode] = useState<"buy" | "book" | "auto" | "food">("buy");
   const [msg, setMsg] = useState("");
   const [f, setF] = useState<any>(null);
   const [view, setView] = useState(false);
-  const [tab, setTab] = useState<"page" | "catalog" | "orders" | "offers" | "stats" | "pay" | "services" | "cars">("page");
+  const [tab, setTab] = useState<"page" | "catalog" | "orders" | "offers" | "stats" | "pay" | "services" | "cars" | "menu">("page");
   const [openOrder, setOpenOrder] = useState<string | null>(null);
   const [pv, setPv] = useState<{ products: any[]; offers: any[] }>({ products: [], offers: [] });
 
@@ -55,7 +56,7 @@ export default function BusinessCabinetPage() {
     try {
       const q = new URLSearchParams(window.location.search);
       const t = q.get("tab");
-      if (t === "orders" || t === "catalog" || t === "offers" || t === "stats" || t === "pay" || t === "services" || t === "cars") setTab(t);
+      if (t === "orders" || t === "catalog" || t === "offers" || t === "stats" || t === "pay" || t === "services" || t === "cars" || t === "menu") setTab(t);
       if (q.get("o")) setOpenOrder(q.get("o"));
     } catch {}
   }, []);
@@ -170,7 +171,7 @@ export default function BusinessCabinetPage() {
               <>
                 <p className="text-offwhite text-sm font-semibold mt-4">Что у вас?</p>
                 <div className="flex flex-col gap-2 mt-2">
-                  {([["buy", "🛍 Магазин", "Продаёте товары. Клиенты нажимают «Купить»."], ["book", "📅 Услуги", "Записываете или бронируете. Клиенты нажимают «Забронировать»."], ["auto", "🚗 Авто", "Автосалон, пригон, тюнинг. Клиенты смотрят авто и записываются на осмотр."]] as const).map(([k, l, h]) => (
+                  {([["buy", "🛍 Магазин", "Продаёте товары. Клиенты нажимают «Купить»."], ["book", "📅 Услуги", "Записываете или бронируете. Клиенты нажимают «Забронировать»."], ["auto", "🚗 Авто", "Автосалон, пригон, тюнинг. Клиенты смотрят авто и записываются на осмотр."], ["food", "🍽 Еда", "Ресторан, кафе, доставка. Клиенты собирают заказ из меню."]] as const).map(([k, l, h]) => (
                     <button key={k} onClick={() => setMode(k)} className={`text-left rounded-xl px-4 py-2.5 border ${mode === k ? "border-gold bg-gold/10" : "border-muted"}`}>
                       <span className="text-offwhite text-sm font-semibold block">{l}</span>
                       <span className="text-muted text-xs">{h}</span>
@@ -189,7 +190,7 @@ export default function BusinessCabinetPage() {
 
         {!loading && st?.isBusinessNow && f && (
           <div className="flex gap-2 mb-4 overflow-x-auto">
-            {((([["page", "Страница"], bt === "auto" ? ["cars", "Автомобили"] : bt === "service" ? ["services", "Услуги и мастера"] : ["catalog", "Каталог"], ["orders", bt === "shop" ? "Заказы" : "Записи и заявки"], ["stats", "Учёт"], ["pay", "Оплата"], ["offers", "Предложения"]]) as ["page" | "catalog" | "orders" | "offers" | "stats" | "pay" | "services" | "cars", string][])).map(([k, l]) => (
+            {((([["page", "Страница"], bt === "food" ? ["menu", "Меню"] : bt === "auto" ? ["cars", "Автомобили"] : bt === "service" ? ["services", "Услуги и мастера"] : ["catalog", "Каталог"], ["orders", bt === "shop" || bt === "food" ? "Заказы" : "Записи и заявки"], ["stats", "Учёт"], ["pay", "Оплата"], ["offers", "Предложения"]]) as ["page" | "catalog" | "orders" | "offers" | "stats" | "pay" | "services" | "cars" | "menu", string][])).map(([k, l]) => (
               <button key={k} onClick={() => { setTab(k); setOpenOrder(null); }} className={`px-4 py-2 rounded-full text-sm border whitespace-nowrap ${tab === k ? "bg-gold text-bgPrimary border-gold font-semibold" : "border-muted text-offwhite"}`}>{l}</button>
             ))}
           </div>
@@ -197,6 +198,7 @@ export default function BusinessCabinetPage() {
         {!loading && st?.isBusinessNow && f && tab === "catalog" && <BusinessCatalogTab cur={st.cur ?? "₴"} userId={st.businessUserId} />}
         {!loading && st?.isBusinessNow && f && tab === "orders" && <BusinessOrdersTab key={openOrder ?? "list"} mode="biz" cur={st.cur ?? "₴"} openId={openOrder} />}
         {!loading && st?.isBusinessNow && f && tab === "offers" && <BusinessOffersTab />}
+        {!loading && st?.isBusinessNow && f && tab === "menu" && <DishesTab cur={st.cur ?? "₴"} userId={st.businessUserId} />}
         {!loading && st?.isBusinessNow && f && tab === "cars" && <CarsTab userId={st.businessUserId} />}
         {!loading && st?.isBusinessNow && f && tab === "services" && <ServicesTab cur={st.cur ?? "₴"} userId={st.businessUserId} />}
         {!loading && st?.isBusinessNow && f && tab === "stats" && <ShopAccounting cur={st.cur ?? "₴"} />}
@@ -242,8 +244,8 @@ export default function BusinessCabinetPage() {
             <div>
               <p className="text-muted text-xs mb-1">Тип страницы (какая кнопка у клиентов)</p>
               <div className="flex gap-2">
-                {[["shop", "🛍 Магазин"], ["service", "📅 Услуги"], ["auto", "🚗 Авто"]].map(([k, l]) => (
-                  <button key={k} onClick={() => setF((o: any) => ({ ...o, biz_type: k, quick_action: k === "shop" ? "buy" : "book" }))} className={`px-4 py-2 rounded-full text-sm border ${bt === k ? "bg-gold text-bgPrimary border-gold font-semibold" : "border-muted text-offwhite"}`}>
+                {[["shop", "🛍 Магазин"], ["service", "📅 Услуги"], ["auto", "🚗 Авто"], ["food", "🍽 Еда"]].map(([k, l]) => (
+                  <button key={k} onClick={() => setF((o: any) => ({ ...o, biz_type: k, quick_action: k === "shop" || k === "food" ? "buy" : "book" }))} className={`px-4 py-2 rounded-full text-sm border ${bt === k ? "bg-gold text-bgPrimary border-gold font-semibold" : "border-muted text-offwhite"}`}>
                     {l}
                   </button>
                 ))}

@@ -5,6 +5,8 @@ import { apiPost } from "@/lib/authClient";
 import ShopReportSheet from "@/components/ShopReportSheet";
 import BookingSheet from "@/components/BookingSheet";
 import CarSheet from "@/components/CarSheet";
+import FoodMenu from "@/components/FoodMenu";
+import type { Dish } from "@/lib/foodShared";
 import { carTitle, carPrice, km, CAR_STATUS, Car } from "@/lib/carsShared";
 import { SocialIcon, socialKind } from "@/lib/socialLinks";
 import { money, splitSizes, ShopProduct, stockInfo, sizeInfo, productTotal } from "@/lib/businessShared";
@@ -71,11 +73,12 @@ const ORDER_ERR: Record<string, string> = {
 };
 
 // Страница партнёра: так её видят зрители в приложении. Один и тот же вид для зрителей, владельца и предпросмотра в CRM.
-export default function BusinessPageView({ p, preview = false, products = [], offers = [], cur = "₴", canOrder = false, demo = false, bare = false, owner = false, onEdit, socials = [], services = [], masters = [], cars = [] }: { services?: any[]; masters?: any[]; cars?: Car[]; p: BizPublic; preview?: boolean; products?: BizProduct[]; offers?: BizOffer[]; cur?: string; canOrder?: boolean; demo?: boolean; bare?: boolean; owner?: boolean; onEdit?: (p: BizProduct) => void; socials?: string[] }) {
+export default function BusinessPageView({ p, preview = false, products = [], offers = [], cur = "₴", canOrder = false, demo = false, bare = false, owner = false, onEdit, socials = [], services = [], masters = [], cars = [], dishes = [] }: { services?: any[]; masters?: any[]; cars?: Car[]; dishes?: Dish[]; p: BizPublic; preview?: boolean; products?: BizProduct[]; offers?: BizOffer[]; cur?: string; canOrder?: boolean; demo?: boolean; bare?: boolean; owner?: boolean; onEdit?: (p: BizProduct) => void; socials?: string[] }) {
   const [contact, setContact] = useState(false);
   const [bookOpen, setBookOpen] = useState<string | null>(null);
   const [carOpen, setCarOpen] = useState<Car | null>(null);
   const isAuto = p.biz_type === "auto";
+  const isFood = p.biz_type === "food";
   const [sel, setSel] = useState<BizProduct | null>(null);
   const [book, setBook] = useState(false);
   const [o, setO] = useState({ size: "", qty: 1, promo: "", phone: "", note: "", whenText: "", service: "" });
@@ -186,6 +189,10 @@ export default function BusinessPageView({ p, preview = false, products = [], of
 
   function quickAction() {
     if (preview || !(canOrder || demo)) return setContact(true);
+    if (isFood) {
+      document.getElementById("biz-menu")?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
     if (isAuto) {
       if (cars.length === 1) return setCarOpen(cars[0]);
       document.getElementById("biz-cars")?.scrollIntoView({ behavior: "smooth" });
@@ -334,7 +341,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
         </div>
 
         <div className="flex gap-1 mt-4 border border-gold/30 rounded-full p-1 bg-bgSurface">
-          {([["shop", isAuto ? "🚗 Авто" : services.length > 0 ? "📅 Услуги" : "🛍 Магазин"], ["feed", "Лента"], ["about", "О магазине"]] as const).map(([k, l]) => (
+          {([["shop", isAuto ? "🚗 Авто" : isFood ? "🍽 Меню" : services.length > 0 ? "📅 Услуги" : "🛍 Магазин"], ["feed", "Лента"], ["about", "О магазине"]] as const).map(([k, l]) => (
             <button key={k} onClick={() => setTab(k)} className={`flex-1 py-2 rounded-full text-[13px] ${tab === k ? "bg-gold/20 text-gold font-bold ring-1 ring-gold" : "text-offwhite"}`}>{l}</button>
           ))}
         </div>
@@ -368,6 +375,8 @@ export default function BusinessPageView({ p, preview = false, products = [], of
                 ))}
               </div>
             )}
+
+            {isFood && <FoodMenu businessId={String(p.id)} shopName={p.name} dishes={dishes} cur={cur} canOrder={canOrder && !owner && !preview} />}
 
             {isAuto && (
               <div id="biz-cars" className="mt-4 flex flex-col gap-3">
@@ -424,7 +433,7 @@ export default function BusinessPageView({ p, preview = false, products = [], of
             )}
 
             <div id="biz-catalog" className="mt-4">
-              {products.length === 0 ? ((services.length > 0 || isAuto) ? null : (
+              {products.length === 0 ? ((services.length > 0 || isAuto || isFood) ? null : (
                 <div className="bg-bgSurface border border-muted/60 rounded-xl p-4">
                   <p className="text-muted text-xs">{owner ? "Пока нет товаров. Нажмите «＋ Выставить товар»." : "Товаров пока нет."}</p>
                 </div>

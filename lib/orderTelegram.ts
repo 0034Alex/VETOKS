@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { notify } from "@/lib/shopServer";
-import { applyAct, tgSend, shortId } from "@/lib/orderFlow";
+import { applyAct, tgSend, shortId, orderKeyboard } from "@/lib/orderFlow";
 
 async function tgApi(token: string, method: string, body: object) {
   try {
@@ -45,7 +45,7 @@ const ERR_TEXT: Record<string, string> = {
 
 // Нажатие кнопки под заказом.
 export async function bizCallback(token: string, cb: any) {
-  const m = String(cb?.data ?? "").match(/^bo_([0-9a-f-]{36})_(ok|no|pd|np|sh)$/);
+  const m = String(cb?.data ?? "").match(/^bo_([0-9a-f-]{36})_(ok|no|pd|np|sh|ck|dl|fn)$/);
   if (!m) return;
   const oid = m[1];
   const code = m[2];
@@ -60,7 +60,7 @@ export async function bizCallback(token: string, cb: any) {
     await tgSend(token, chatId, `📦 Заказ №${shortId(oid)}: отправьте номер ТТН ответом на это сообщение (или «-», если без номера).\nID заказа: ${oid}`, { force_reply: true, input_field_placeholder: "ТТН" });
     return;
   }
-  const act = code === "ok" ? "approve" : code === "no" ? "decline" : code === "pd" ? "paid" : "nopaid";
+  const act = code === "ok" ? "approve" : code === "no" ? "decline" : code === "pd" ? "paid" : code === "ck" ? "cook" : code === "dl" ? "ship" : code === "fn" ? "finish" : "nopaid";
   const res = await applyAct(oid, act, { role: "manager", name: who(cb.from) });
   if (!res.ok) {
     await tgApi(token, "answerCallbackQuery", { callback_query_id: cb.id, text: ERR_TEXT[res.error ?? ""] ?? "Не получилось. Откройте заказ в приложении.", show_alert: true });
@@ -73,8 +73,13 @@ export async function bizCallback(token: string, cb: any) {
     no: "❌ Заказ отклонён.",
     pd: "💰 Оплата подтверждена. Когда отправите, нажмите «Отправлено» в новом сообщении.",
     np: "⚠️ Покупателю отправлена просьба прислать чек.",
+    ck: "👨‍🍳 Отмечено: готовится.",
+    dl: "🚴 Отмечено: передан курьеру или готов к выдаче.",
+    fn: "✅ Заказ закрыт.",
   };
-  await tgSend(token, chatId, `${done[code]} (№${shortId(oid)})`, code === "pd" ? { inline_keyboard: [[{ text: "📦 Отправлено (ТТН)", callback_data: `bo_${oid}_sh` }]] } : undefined);
+  const { data: after } = await supabaseAdmin.from("business_orders").select("*").eq("id", oid).maybeSingle();
+  const nextKb = (after as any)?.order_type === "food" ? orderKeyboard(after) : undefined;
+  await tgSend(token, chatId, `${done[code]} (№${shortId(oid)})`, nextKb ? nextKb : code === "pd" ? { inline_keyboard: [[{ text: "📦 Отправлено (ТТН)", callback_data: `bo_${oid}_sh` }]] } : undefined);
 }
 
 // Менеджер ответил на просьбу прислать ТТН.

@@ -54,10 +54,10 @@ export async function POST(req: Request) {
   const { data, error } = await supabaseAdmin.from("business_profiles").update(patch).eq("user_id", uid).select(BIZ_COLS).maybeSingle();
   if (error) return bad("failed", 500);
   if (b.biz_type !== undefined) {
-    const bt = ["shop", "service", "auto"].includes(String(b.biz_type)) ? String(b.biz_type) : null;
+    const bt = ["shop", "service", "auto", "food"].includes(String(b.biz_type)) ? String(b.biz_type) : null;
     if (bt) {
       const r0 = await supabaseAdmin.from("business_profiles").update({ biz_type: bt }).eq("user_id", uid);
-      if (!r0.error) await supabaseAdmin.from("business_profiles").update({ quick_action: bt === "shop" ? "buy" : "book" }).eq("user_id", uid);
+      if (!r0.error) await supabaseAdmin.from("business_profiles").update({ quick_action: bt === "shop" || bt === "food" ? "buy" : "book" }).eq("user_id", uid);
     }
   }
   if (b.show_call !== undefined) await supabaseAdmin.from("business_profiles").update({ show_call: !!b.show_call }).eq("user_id", uid);

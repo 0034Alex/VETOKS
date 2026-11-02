@@ -26,10 +26,10 @@ export async function POST(req: Request) {
   if (!c.sponsor) return bad("not_partner", 403);
 
   const body = await req.json().catch(() => ({}));
-  const mode = body?.mode === "auto" ? "auto" : body?.mode === "book" ? "book" : "buy";
-  const r = await createBusinessAccount(c.rootId, c.sponsor, { quick_action: mode === "buy" ? "buy" : "book" });
+  const mode = body?.mode === "auto" ? "auto" : body?.mode === "food" ? "food" : body?.mode === "book" ? "book" : "buy";
+  const r = await createBusinessAccount(c.rootId, c.sponsor, { quick_action: mode === "buy" || mode === "food" ? "buy" : "book" });
   if (!r.ok) return bad(r.error, r.error === "create_failed" || r.error === "save_failed" ? 500 : 400);
-  await supabaseAdmin.from("business_profiles").update({ biz_type: mode === "auto" ? "auto" : mode === "book" ? "service" : "shop" }).eq("user_id", r.userId);
+  await supabaseAdmin.from("business_profiles").update({ biz_type: mode === "auto" ? "auto" : mode === "food" ? "food" : mode === "book" ? "service" : "shop" }).eq("user_id", r.userId);
   const th = await tokenHashForUser(r.userId);
   if (!th) return bad("login_failed", 500);
   return NextResponse.json({ ok: true, token_hash: th });

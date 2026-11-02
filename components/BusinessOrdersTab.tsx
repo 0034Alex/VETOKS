@@ -40,7 +40,7 @@ export default function BusinessOrdersTab({ mode, cur, openId }: { mode: "biz" |
         </p>
       )}
       {shown.map((o) => {
-        const st = statusInfo(o.car_id ? "car" : o.kind, o.status, !!o.paid_claim_at);
+        const st = statusInfo(o.order_type === "food" ? "food" : o.car_id ? "car" : o.kind, o.status, !!o.paid_claim_at);
         const who = mode === "biz" ? o.buyer_name : o.business_name;
         return (
           <button key={o.id} onClick={() => setOpen(o.id)} className="text-left bg-bgSurface border border-muted rounded-xl p-3 flex items-start justify-between gap-2">

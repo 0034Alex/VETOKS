@@ -6,6 +6,7 @@ import { countryOfUser, countryOfRegion } from "@/lib/countryServer";
 import { familyRootId } from "@/lib/familyServer";
 import { offerLive, loadProduct, sizeStockOf } from "@/lib/businessServer";
 import { carsReady } from "@/lib/carsServer";
+import { foodReady } from "@/lib/foodServer";
 import { stage1Ready, NEW_ORDER_COLS, applyAct, notifyShop, logAct } from "@/lib/orderFlow";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ async function orderCols(): Promise<string> {
   let c = giftCols ? BASE_COLS + GIFT_COLS : BASE_COLS;
   if (await stage1Ready()) c += NEW_ORDER_COLS;
   if (await carsReady()) c += ", car_id";
+  if (await foodReady()) c += ", order_type, pay_method";
   return c;
 }
 
@@ -331,7 +333,7 @@ export async function POST(req: Request) {
     if (rl) return rl;
     if (role === "recipient") return bad("forbidden", 403);
     if (!(await stage1Ready())) return bad("need_sql", 503);
-    const res = await applyAct(oid, String(b.act ?? ""), role === "owner" ? { role: "owner", name: "Владелец" } : { role: "buyer", name: "Покупатель" }, { pay_text: b.pay_text, tracking: b.tracking, reason: b.reason });
+    const res = await applyAct(oid, String(b.act ?? ""), role === "owner" ? { role: "owner", name: "Владелец" } : { role: "buyer", name: "Покупатель" }, { pay_text: b.pay_text, tracking: b.tracking, reason: b.reason, eta: b.eta });
     if (!res.ok) return bad(res.error || "failed", res.error === "forbidden" ? 403 : 400);
     return NextResponse.json({ ok: true });
   }

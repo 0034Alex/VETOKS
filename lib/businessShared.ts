@@ -32,6 +32,16 @@ export const CAR_ORDER_STATUS: Record<string, St> = {
   cancelled: { label: "Отказ", tone: TONE_OFF },
 };
 
+// У заказа еды свои названия.
+export const FOOD_STATUS: Record<string, St> = {
+  new: { label: "Новый заказ", tone: TONE_GOLD },
+  confirmed: { label: "Принят рестораном", tone: TONE_BLUE },
+  paid: { label: "Готовится", tone: TONE_BLUE },
+  shipped: { label: "В пути / готов к выдаче", tone: TONE_BLUE },
+  done: { label: "Доставлен", tone: TONE_OK },
+  cancelled: { label: "Отменён", tone: TONE_OFF },
+};
+
 // У подарка свои названия статусов.
 export const GIFT_STATUS: Record<string, St> = {
   new: { label: "Ждёт оплаты", tone: TONE_GOLD },
@@ -47,7 +57,7 @@ export const GIFT_STEPS = ["new", "paid", "accepted", "shipped", "received"];
 
 export function statusInfo(kind: string, status: string, claimed?: boolean): St {
   if (kind === "buy" && status === "confirmed" && claimed) return { label: "Оплата: ждёт подтверждения", tone: TONE_BLUE };
-  const m = kind === "gift" ? GIFT_STATUS : kind === "car" ? CAR_ORDER_STATUS : kind === "book" ? BOOK_STATUS : ORDER_STATUS;
+  const m = kind === "gift" ? GIFT_STATUS : kind === "food" ? FOOD_STATUS : kind === "car" ? CAR_ORDER_STATUS : kind === "book" ? BOOK_STATUS : ORDER_STATUS;
   return m[status] ?? m.new;
 }
 
