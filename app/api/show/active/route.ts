@@ -22,6 +22,17 @@ type ShowRow = {
 
 const pub = (s: ShowRow) => ({ id: s.id, key: s.key, title: s.title, contest: s.contest ?? s.key, theme: s.theme ?? {}, banner: s.banner ?? {}, endsAt: s.ends_at });
 
+// Владелец, сотрудники CRM и официальная страница VETOKS проходят мимо экрана отсчёта, чтобы проверять и доделывать приложение.
+async function isStaffUser(uid: string): Promise<boolean> {
+  try {
+    const { data: u } = await supabaseAdmin.from("users").select("role, is_official").eq("id", uid).maybeSingle();
+    const row = u as { role?: string | null; is_official?: boolean | null } | null;
+    return !!row && (["moderator", "finance_admin", "super_admin"].includes(String(row.role)) || row.is_official === true);
+  } catch {
+    return false;
+  }
+}
+
 // Какое шоу сейчас показывать. Само переключается по датам из CRM:
 // «запланировано» + наступил старт → идёт; «идёт» + прошёл конец → закончено.
 export async function POST(req: Request) {
@@ -54,7 +65,7 @@ export async function POST(req: Request) {
     const uid2 = await userIdFromBearer(req);
     const cid = uid2 ? await countryOfUser(uid2) : null;
     const cv = cid ? await countryView(cid) : null;
-    if (cv && uid2 && cid && cv.between.prestart && cv.between.prestart > now && (await earlyAccessOpen(uid2, cid, cv.between.prestart, now))) {
+    if (cv && uid2 && cid && cv.between.prestart && cv.between.prestart > now && ((await isStaffUser(uid2)) || (await earlyAccessOpen(uid2, cid, cv.between.prestart, now)))) {
       // ранний доступ: экран отсчёта снимается, но срок старта показываем плашкой
       cv.between = { ...cv.between, early: cv.between.prestart, prestart: null };
     }
